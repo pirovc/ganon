@@ -1,10 +1,10 @@
-Dependencies
+## Dependencies
 
 - gcc7
 - python3.5
 - cmake3
 
-Installation
+## Installation
 
 	# taxsbp
 	pip install binpacking==1.3
@@ -22,10 +22,14 @@ Installation
 
 	make
 
-Usage
+## Usage
 
 	./ganon -h
 	./ganon build -h
 	./ganon classify -h
 	./ganon update -h
 
+## Installing GCC7 in a separate environment with conda
+
+	conda create -n gcc7 -c quantstack gcc-7 libgcc-7
+	source activate gcc7
