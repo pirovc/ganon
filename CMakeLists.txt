@@ -10,31 +10,23 @@ message( STATUS "Configuring ganon" )
 # Dependencies
 # ----------------------------------------------------------------------------
 
-add_library( sdsl-lite INTERFACE )
+find_package( ZLIB )
+find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
+
+add_library( sdsl-lite INTERFACE IMPORTED )
 target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
 
-add_library( seqan INTERFACE )
+add_library( seqan INTERFACE IMPORTED )
 target_include_directories( seqan INTERFACE libs/seqan/include )
-
-find_package( ZLIB )
 
 # ----------------------------------------------------------------------------
 # Build Setup
 # ----------------------------------------------------------------------------
 
-# TODO how to solve SEQAN_DEFINITIONS and SEQAN_CXX_FLAGS?
-# original build cmd line setup:
-# cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-std=c++1z
-# -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros
-# -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native"
-# -DSEQAN_INCLUDE_PATH="${SEQAN_PATH}/include" -DSDSL_INCLUDE_DIRS="${SDSL_PATH}/include"
-# -DCMAKE_PREFIX_PATH="${SEQAN_PATH}/util/cmake" ../
-
-# ...
-# add_definitions (${SEQAN_DEFINITIONS})
-# set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
+add_definitions( ${SEQAN_DEFINITIONS} )
 
 set( CMAKE_CXX_FLAGS "-std=c++1z -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # ----------------------------------------------------------------------------
 # Build Targets
