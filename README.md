@@ -4,6 +4,14 @@
 - python3.5
 - cmake3
 
+## Cloning
+
+Make sure to clone the repository with its submodules. One way to do this is as follows:
+
+```shh
+git clone --recurse-submodules https://github.com/pirovc/ganon.git
+```
+
 ## Installation
 
 	# taxsbp
@@ -18,8 +26,7 @@
 	
 	mkdir build
 	cd build
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-std=c++1z -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" -DSEQAN_INCLUDE_PATH="${SEQAN_PATH}/include" -DSDSL_INCLUDE_DIRS="${SDSL_PATH}/include" -DCMAKE_PREFIX_PATH="${SEQAN_PATH}/util/cmake" ../
-
+	cmake -DCMAKE_BUILD_TYPE=Release ..
 	make
 
 ## Usage
