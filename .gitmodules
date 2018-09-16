@@ -1,0 +1,7 @@
+[submodule "libs/sdsl-lite"]
+	path = libs/sdsl-lite
+	url = https://github.com/xxsds/sdsl-lite
+[submodule "libs/seqan"]
+	path = libs/seqan
+	url = https://github.com/eseiler/seqan
+	branch = unified

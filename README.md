@@ -4,32 +4,44 @@
 - python3.5
 - cmake3
 
+## Cloning
+
+Make sure to clone the repository with its submodules. One way to do this is as follows:
+
+```shh
+git clone --recurse-submodules https://github.com/pirovc/ganon.git
+```
+
 ## Installation
 
-	# taxsbp
-	pip install binpacking==1.3
-	git clone https://github.com/pirovc/taxsbp/
+Installing *binpacking* and *taxsbp*:
 
-	# seqan
-	git clone https://github.com/xxsds/sdsl-lite/
-	SDSL_PATH=$(readlink -e sdsl-lite)
-	git clone -b unified https://github.com/eseiler/seqan.git
-	SEQAN_PATH=$(readlink -e seqan)
+```shh
+pip install binpacking==1.3
+git clone https://github.com/pirovc/taxsbp/
+```
+
+## Building
 	
-	mkdir build
-	cd build
-	cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-std=c++1z -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" -DSEQAN_INCLUDE_PATH="${SEQAN_PATH}/include" -DSDSL_INCLUDE_DIRS="${SDSL_PATH}/include" -DCMAKE_PREFIX_PATH="${SEQAN_PATH}/util/cmake" ../
-
-	make
+```shh
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+```
 
 ## Usage
 
-	./ganon -h
-	./ganon build -h
-	./ganon classify -h
-	./ganon update -h
+```shh
+./ganon -h
+./ganon build -h
+./ganon classify -h
+./ganon update -h
+```
 
 ## Installing GCC7 in a separate environment with conda
 
-	conda create -n gcc7 -c quantstack gcc-7 libgcc-7
-	source activate gcc7
+```shh
+conda create -n gcc7 -c quantstack gcc-7 libgcc-7
+source activate gcc7
+```
