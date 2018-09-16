@@ -5,7 +5,17 @@
 cmake_minimum_required( VERSION 3.2 FATAL_ERROR )
 project( ganon CXX )
 
-option( VERBOSE_CONFIG "Verbose mode for build setup" OFF )
+# ----------------------------------------------------------------------------
+# Build Setup
+# ----------------------------------------------------------------------------
+
+set( CMAKE_CXX_STANDARD 17 )
+
+if( NOT CMAKE_BUILD_TYPE )
+  set( CMAKE_BUILD_TYPE Release )
+endif()
+
+option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
 # ----------------------------------------------------------------------------
 # Dependencies
@@ -27,14 +37,14 @@ add_library( seqan INTERFACE )
 target_include_directories( seqan INTERFACE ${SEQAN_INCLUDE_DIRS} )
 target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 
-# ----------------------------------------------------------------------------
-# Build Setup
-# ----------------------------------------------------------------------------
-
 add_definitions( ${SEQAN_DEFINITIONS} )
 
-set( CMAKE_CXX_FLAGS "-std=c++1z -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" )
+set( CMAKE_CXX_FLAGS "-Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
+
+# ----------------------------------------------------------------------------
+# Verbose log
+# ----------------------------------------------------------------------------
 
 if( VERBOSE_CONFIG )
     message( STATUS "SeqAn symbols")
