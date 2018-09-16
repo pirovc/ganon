@@ -1,9 +1,9 @@
 # ===========================================================================
-#                           ganon
+# ganon
 # ===========================================================================
 
 cmake_minimum_required( VERSION 3.2 FATAL_ERROR )
-project( ganon CXX )
+project( ganon LANGUAGES CXX )
 
 # ----------------------------------------------------------------------------
 # Build Setup
@@ -21,12 +21,15 @@ option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 # Dependencies
 # ----------------------------------------------------------------------------
 
-# 1. sdsl-lite:
+# 1. threads:
+find_package( Threads REQUIRED )
+
+# 2. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
 target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
 
-# 2. SeqAn:
+# 3. SeqAn:
 
 find_package( ZLIB ) # optional for SeqAn
 
@@ -39,7 +42,7 @@ target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 
 add_definitions( ${SEQAN_DEFINITIONS} )
 
-set( CMAKE_CXX_FLAGS "-Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" )
+set( CMAKE_CXX_FLAGS "-Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -march=native" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # ----------------------------------------------------------------------------
@@ -64,6 +67,13 @@ add_executable( ganon-build ganon-build.cpp )
 add_executable( ganon-update ganon-update.cpp )
 add_executable( ganon-classify ganon-classify.cpp )
 
-target_link_libraries( ganon-build sdsl-lite seqan )
-target_link_libraries( ganon-update sdsl-lite seqan )
-target_link_libraries( ganon-classify sdsl-lite seqan )
+set( allTargets ganon-build ganon-update ganon-classify )
+
+foreach( target ${allTargets} )
+    target_link_libraries(
+        ${target}
+        PRIVATE
+        sdsl-lite
+        seqan
+        Threads::Threads )
+endforeach()
