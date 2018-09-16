@@ -13,7 +13,7 @@ option( VERBOSE_CONFIG "Verbose mode for build setup" OFF )
 
 # 1. sdsl-lite:
 
-add_library( sdsl-lite INTERFACE IMPORTED )
+add_library( sdsl-lite INTERFACE )
 target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
 
 # 2. SeqAn:
@@ -23,7 +23,7 @@ find_package( ZLIB ) # optional for SeqAn
 set( SEQAN_INCLUDE_PATH libs/seqan/include )
 find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
 
-add_library( seqan INTERFACE IMPORTED )
+add_library( seqan INTERFACE )
 target_include_directories( seqan INTERFACE ${SEQAN_INCLUDE_DIRS} )
 target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 
