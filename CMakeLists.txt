@@ -63,7 +63,7 @@ if( VERBOSE_CONFIG )
     message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
 
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
-	message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
+    message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 endif()
 
 # ----------------------------------------------------------------------------
