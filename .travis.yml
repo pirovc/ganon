@@ -1,0 +1,15 @@
+language: cpp
+
+sudo: required
+dist: trusty
+
+before_install:
+  - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+  - sudo -E apt-get update -qq
+  - sudo -E apt-get install gcc-7 g++-7 -y
+  - export COMP_CPP=$(which g++-7)
+
+script:
+  - mkdir build && cd build
+  - cmake -DCMAKE_CXX_COMPILER=$COMP_CPP ..
+  - cmake --build . #=make
