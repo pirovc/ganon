@@ -7,13 +7,9 @@ before_install:
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
   - sudo -E apt-get update -qq
   - sudo -E apt-get install gcc-7 g++-7 -y
-  - export COMP_C=$(which gcc-7)
   - export COMP_CPP=$(which g++-7)
-  - echo "LOGING ------------------------------------------"
-  - echo $COMP_C
-  - echo $COMP_CPP
 
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_C_COMPILER=$COMP_C -DCMAKE_CXX_COMPILER=$COMP_CPP ..
+  - cmake -DCMAKE_CXX_COMPILER=$COMP_CPP ..
   - cmake --build . #=make
