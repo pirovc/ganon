@@ -2,7 +2,7 @@
 #                           ganon
 # ===========================================================================
 
-cmake_minimum_required( VERSION 3.0.0 )
+cmake_minimum_required( VERSION 3.2 FATAL_ERROR )
 project( ganon CXX )
 
 option( VERBOSE_CONFIG "Verbose mode for build setup" OFF )
