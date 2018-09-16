@@ -1,0 +1,14 @@
+language: cpp
+
+sudo: required
+dist: trusty
+
+before-install:
+  - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
+  - sudo -E apt-get update -qq
+  - sudo -E apt-get install gcc-7 g++-7 -y
+
+script:
+  - mkdir build && cd build
+  - cmake ..
+  - cmake --build . #=make
