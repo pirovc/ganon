@@ -1,24 +1,43 @@
 # ===========================================================================
-#                           ganon
+# ganon
 # ===========================================================================
 
-cmake_minimum_required( VERSION 3.0.0 )
-project( ganon CXX )
+cmake_minimum_required( VERSION 3.2 FATAL_ERROR )
+project( ganon LANGUAGES CXX )
 
-option( VERBOSE_CONFIG "Verbose mode for build setup" OFF )
+# ----------------------------------------------------------------------------
+# Build Setup
+# ----------------------------------------------------------------------------
+
+set( CMAKE_CXX_STANDARD 17 )
+
+if( NOT CMAKE_BUILD_TYPE )
+  set( CMAKE_BUILD_TYPE Release )
+endif()
+
+add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
+    -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG
+    -static -march=native )
+
+option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
 # ----------------------------------------------------------------------------
 # Dependencies
 # ----------------------------------------------------------------------------
 
-# 1. sdsl-lite:
+# 1. threads:
+find_package( Threads REQUIRED )
+
+# 2. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
 target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
 
-# 2. SeqAn:
+# 3. Zlib (optional for SeqAn):
 
-find_package( ZLIB ) # optional for SeqAn
+find_package( ZLIB )
+
+# 4. SeqAn:
 
 set( SEQAN_INCLUDE_PATH libs/seqan/include )
 find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
@@ -27,14 +46,12 @@ add_library( seqan INTERFACE )
 target_include_directories( seqan INTERFACE ${SEQAN_INCLUDE_DIRS} )
 target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 
-# ----------------------------------------------------------------------------
-# Build Setup
-# ----------------------------------------------------------------------------
-
-add_definitions( ${SEQAN_DEFINITIONS} )
-
-set( CMAKE_CXX_FLAGS "-std=c++1z -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG -static -pthread -march=native" )
+add_compile_options( ${SEQAN_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
+
+# ----------------------------------------------------------------------------
+# Verbose log
+# ----------------------------------------------------------------------------
 
 if( VERBOSE_CONFIG )
     message( STATUS "SeqAn symbols")
@@ -44,6 +61,9 @@ if( VERBOSE_CONFIG )
     message( STATUS "  SEQAN_LIBRARIES   : ${SEQAN_LIBRARIES}" )
     message( STATUS "Misc symbols")
     message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
+
+    get_directory_property( dirCompileOptions COMPILE_OPTIONS )
+    message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 endif()
 
 # ----------------------------------------------------------------------------
@@ -54,6 +74,13 @@ add_executable( ganon-build ganon-build.cpp )
 add_executable( ganon-update ganon-update.cpp )
 add_executable( ganon-classify ganon-classify.cpp )
 
-target_link_libraries( ganon-build sdsl-lite seqan )
-target_link_libraries( ganon-update sdsl-lite seqan )
-target_link_libraries( ganon-classify sdsl-lite seqan )
+set( allTargets ganon-build ganon-update ganon-classify )
+
+foreach( target ${allTargets} )
+    target_link_libraries(
+        ${target}
+        PRIVATE
+        sdsl-lite
+        seqan
+        Threads::Threads )
+endforeach()
