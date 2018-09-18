@@ -45,7 +45,7 @@ int main(int argc, char* argv[]){
 
     if(args.count("help") || old_argc<=1){
         std::cerr << options.help() << std::endl;
-        return 1;
+        return 0;
     }else if(args.count("version")){
         std::cerr << "version" << std::endl;
         return 0;
