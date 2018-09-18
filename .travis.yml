@@ -16,3 +16,6 @@ script:
   - mkdir build && cd build
   - cmake -DCMAKE_CXX_COMPILER=$COMP_CPP ..
   - cmake --build .
+  - ./ganon-build
+  - ./ganon-classify
+  - ./ganon-update
