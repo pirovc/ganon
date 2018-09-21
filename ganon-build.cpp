@@ -3,7 +3,7 @@
 #include <seqan/kmer/kmer_ibf.h>
 #include <seqan/kmer/filtervector.h>
 #include "scripts/safequeue.hpp"
-#include "scripts/cxxopts.hpp"
+#include <cxxopts.hpp>
 #include <mutex>
 #include <vector>
 #include <future>
