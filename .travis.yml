@@ -38,3 +38,6 @@ script:
   - ./ganon-build
   - ./ganon-classify
   - ./ganon-update
+
+notifications:
+  email: false

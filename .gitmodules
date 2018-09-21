@@ -5,3 +5,6 @@
 	path = libs/seqan
 	url = https://github.com/eseiler/seqan
 	branch = unified
+[submodule "libs/cxxopts"]
+	path = libs/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git
