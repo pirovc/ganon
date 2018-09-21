@@ -6,10 +6,11 @@ cmake_minimum_required( VERSION 3.2 FATAL_ERROR )
 project( ganon LANGUAGES CXX )
 
 # ----------------------------------------------------------------------------
-# Build Setup
+# build setup
 # ----------------------------------------------------------------------------
 
 set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
 
 if( NOT CMAKE_BUILD_TYPE )
   set( CMAKE_BUILD_TYPE Release )
@@ -22,10 +23,11 @@ add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
 # ----------------------------------------------------------------------------
-# Dependencies
+# dependencies and 3rd party libraries
 # ----------------------------------------------------------------------------
 
 # 1. threads:
+
 find_package( Threads REQUIRED )
 
 # 2. cxxopts:
@@ -55,7 +57,7 @@ add_compile_options( ${SEQAN_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # ----------------------------------------------------------------------------
-# Verbose log
+# verbose log
 # ----------------------------------------------------------------------------
 
 if( VERBOSE_CONFIG )
@@ -72,7 +74,7 @@ if( VERBOSE_CONFIG )
 endif()
 
 # ----------------------------------------------------------------------------
-# Directories
+# folders
 # ----------------------------------------------------------------------------
 
 add_subdirectory( src )
