@@ -72,21 +72,7 @@ if( VERBOSE_CONFIG )
 endif()
 
 # ----------------------------------------------------------------------------
-# Build Targets
+# Directories
 # ----------------------------------------------------------------------------
 
-add_executable( ganon-build ganon-build.cpp )
-add_executable( ganon-update ganon-update.cpp )
-add_executable( ganon-classify ganon-classify.cpp )
-
-set( allTargets ganon-build ganon-update ganon-classify )
-
-foreach( target ${allTargets} )
-    target_link_libraries(
-        ${target}
-        PRIVATE
-        sdsl-lite
-        seqan
-        Threads::Threads
-        cxxopts )
-endforeach()
+add_subdirectory( src )
