@@ -28,16 +28,21 @@ option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 # 1. threads:
 find_package( Threads REQUIRED )
 
-# 2. sdsl-lite:
+# 2. cxxopts:
+
+add_library( cxxopts INTERFACE )
+target_include_directories( cxxopts INTERFACE libs/cxxopts/include )
+
+# 3. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
 target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
 
-# 3. Zlib (optional for SeqAn):
+# 4. Zlib (optional for SeqAn):
 
 find_package( ZLIB )
 
-# 4. SeqAn:
+# 5. SeqAn:
 
 set( SEQAN_INCLUDE_PATH libs/seqan/include )
 find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
@@ -82,5 +87,6 @@ foreach( target ${allTargets} )
         PRIVATE
         sdsl-lite
         seqan
-        Threads::Threads )
+        Threads::Threads
+        cxxopts )
 endforeach()
