@@ -14,7 +14,7 @@ matrix:
 
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_CXX_COMPILER=$COMP_CPP ..
+  - cmake -DCMAKE_CXX_COMPILER=$COMP_CPP -DVERBOSE_CONFIG=ON ..
   - cmake --build .
   - ./ganon-build
   - ./ganon-classify
