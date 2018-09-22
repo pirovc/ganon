@@ -1,16 +1,16 @@
-#include <chrono>
+#include <utils/safequeue.hpp>
+
 #include <cxxopts.hpp>
+#include <seqan/kmer.h>
+#include <seqan/seq_io.h>
+
+#include <chrono>
 #include <fstream>
 #include <future>
 #include <iomanip>
 #include <iostream>
 #include <map>
 #include <mutex>
-#include <seqan/kmer/filtervector.h>
-#include <seqan/kmer/kmer_base.h>
-#include <seqan/kmer/kmer_ibf.h>
-#include <seqan/seq_io.h>
-#include <utils/safequeue.hpp>
 #include <vector>
 
 using namespace seqan;
