@@ -2,7 +2,7 @@ language: cpp
 
 matrix:
   include:
-    - name: "osx gcc7"
+    - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
       env:
