@@ -2,7 +2,6 @@
 
 #include <cxxopts.hpp>
 #include <seqan/kmer.h>
-#include <seqan/seq_io.h>
 
 #include <chrono>
 #include <fstream>
