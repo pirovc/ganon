@@ -2,7 +2,7 @@
 #include <seqan/kmer/kmer_base.h>
 #include <seqan/kmer/kmer_ibf.h>
 #include <seqan/kmer/filtervector.h>
-#include "scripts/safequeue.hpp"
+#include <utils/safequeue.hpp>
 #include <cxxopts.hpp>
 #include <mutex>
 #include <vector>
@@ -15,6 +15,7 @@
 
 using namespace seqan;
 
+static const uint32_t filterMetadataSize = 256;
 static const uint64_t gbInBits = 8589934592;
 
 struct SeqBin{
@@ -25,14 +26,12 @@ struct SeqBin{
 
 int main(int argc, char* argv[]){
     int old_argc = argc; // parser always set argc to 1
-    cxxopts::Options options("ganon-build", "Ganon bloom filter build");
+    cxxopts::Options options("ganon-update", "Ganon bloom filter update");
     options.add_options()
         ("e,seqid-bin", "Seqid bin file", cxxopts::value<std::string>())
-        ("o,output-file", "Output file", cxxopts::value<std::string>())
-        ("s,bloom-size", "Final bloom filter size in GB", cxxopts::value<int>()->default_value("16"))
-        ("bloom-size-bits", "Final bloom filter size in bits", cxxopts::value<uint64_t>()->default_value("0"))
-        ("k,kmer-size", "K size", cxxopts::value<int>()->default_value("19"))
-        ("n,hash-functions", "Number of hash functions", cxxopts::value<int>()->default_value("3"))
+        ("b,bloom-filter", "Bloom filter file", cxxopts::value<std::string>())
+        ("o,output-file", "Alternative output file (default same as bloom-filter)", cxxopts::value<std::string>())
+        ("complete", "Old and new sequences are provided for updated bins", cxxopts::value<bool>()->default_value("false"))
         ("t,threads", "Number of threads", cxxopts::value<int>()->default_value("1"))
         ("h,help", "Print help")
         ("v,version", "Show version")
@@ -51,47 +50,42 @@ int main(int argc, char* argv[]){
         return 0;
     }
 
-    uint64_t bloom_filter_size;
-    if (args["bloom-size-bits"].as<uint64_t>()>0){
-        bloom_filter_size = args["bloom-size-bits"].as<uint64_t>();
-    }else{
-        bloom_filter_size = args["bloom-size"].as<int>() * gbInBits; //gbInBits -> 8589934592 bits = 1 Gb
-    }
-
     std::cerr << "seqid-bin: " << args["seqid-bin"].as<std::string>() << std::endl;
-    std::cerr << "bloom-size: " << std::fixed << std::setprecision(2) << (float)bloom_filter_size/(float)gbInBits << std::endl;
-    std::cerr << "bloom-size-bits: " << bloom_filter_size << std::endl;
-    std::cerr << "kmer-size: " << args["kmer-size"].as<int>() << std::endl;
-    std::cerr << "hash-functions: " << args["hash-functions"].as<int>() << std::endl;
-    std::cerr << "threads: " << args["threads"].as<int>() << std::endl;
+    std::cerr << "bloom-filter: " << args["bloom-filter"].as<std::string>() << std::endl;
     std::cerr << "output-file: " << args["output-file"].as<std::string>() << std::endl;
+    std::cerr << "threads: " << args["threads"].as<int>() << std::endl;
     std::cerr << "references: " << std::endl;
     for (const auto& s : args["references"].as<std::vector<std::string>>()) {
         std::cerr << s << std::endl;
     }
 
-    uint64_t kmer_size = args["kmer-size"].as<int>();
-    int hash_functions = args["hash-functions"].as<int>();
-    
     int threads = args["threads"].as<int>();
+
+    auto start = std::chrono::high_resolution_clock::now();
+    KmerFilter<Dna5, InterleavedBloomFilter, Uncompressed> filter;
+    retrieve(filter, toCString(args["bloom-filter"].as<std::string>()));
+    uint64_t number_of_bins = getNumberOfBins(filter);
+    uint64_t kmer_size = getKmerSize(filter);  
+    std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
+    std::cerr << "Loading Bloom filter: " << elapsed.count() << std::endl;
 
     std::map<std::string, uint64_t> bins;
     std::ifstream infile(args["seqid-bin"].as<std::string>());
     std::string seqid;
     uint64_t bin;
-    uint64_t noBins=0;
+    std::unordered_set<uint64_t> updated_bins;
     while (infile >> seqid >> bin){
         bins[seqid] = bin;
-        if(bin>noBins)
-            noBins = bin;   
+        updated_bins.insert(bin);   
     }
-    noBins = noBins+1;
-    std::cerr << bins.size() << " sequences on " << noBins <<  " bins" << std::endl;
+    std::cerr << bins.size() << " sequences on " << updated_bins.size() <<  " updated bins (out of " << number_of_bins << " bins)" << std::endl;
 
-    auto start = std::chrono::high_resolution_clock::now();
-    KmerFilter<Dna5, InterleavedBloomFilter, Uncompressed> filter(noBins, hash_functions, kmer_size, bloom_filter_size);
-    std::chrono::duration<double> elapsed = std::chrono::high_resolution_clock::now() - start;
-    std::cerr << "Creating Bloom filter: " << elapsed.count() << std::endl;
+    // Reset bins if complete set of sequences is provided (re-create updated bins)
+    if(args.count("complete")){
+        std::vector<uint32_t> ubins;
+        ubins.insert(ubins.end(), updated_bins.begin(), updated_bins.end());
+        clear(filter, ubins, threads);
+    }
 
     std::mutex mtx;
     SafeQueue<SeqBin> q;
@@ -107,6 +101,9 @@ int main(int argc, char* argv[]){
                     SeqBin val = q.pop();
                     if(val.id!=""){ //if not empty
                         insertKmer(filter, val.seq, val.bin, 0);
+                        mtx.lock();
+                        std::cerr << val.id << " -> k-mers added to bin " << val.bin << std::endl; 
+                        mtx.unlock();
                     }
                     if(finished && q.empty())
                         break;
@@ -162,7 +159,10 @@ int main(int argc, char* argv[]){
     std::cerr << "Adding k-mers: " << elapsed.count() << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    store(filter, toCString(args["output-file"].as<std::string>()));
+    if(args.count("output-file"))
+        store(filter, toCString(args["output-file"].as<std::string>()));
+    else
+        store(filter, toCString(args["bloom-filter"].as<std::string>()));
     elapsed = std::chrono::high_resolution_clock::now() - start;
     std::cerr << "Saving Bloom filter: " << elapsed.count() << std::endl;
 
