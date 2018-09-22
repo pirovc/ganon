@@ -1,3 +1,6 @@
+#include <mutex>
+#include <queue>
+
 template < class T >
 class SafeQueue
 {
