@@ -15,8 +15,14 @@ set( CMAKE_CXX_EXTENSIONS OFF )
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
 
+if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU" )
+    message( FATAL_ERROR
+        "Compiler id '${CMAKE_CXX_COMPILER_ID}' is not supported, please \
+        check the documentation." )
+endif()
+
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE Release FORCE )
+    set( CMAKE_BUILD_TYPE Release FORCE )
 endif()
 
 add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
