@@ -12,15 +12,13 @@
 #include <mutex>
 #include <vector>
 
-using namespace seqan;
-
 static const uint64_t gbInBits = 8589934592;
 
 struct SeqBin
 {
-    CharString id;
-    Dna5String seq;
-    uint64_t   bin;
+    seqan::CharString id;
+    seqan::Dna5String seq;
+    uint64_t          bin;
 };
 
 int main( int argc, char* argv[] )
@@ -103,7 +101,7 @@ int main( int argc, char* argv[] )
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    KmerFilter< Dna5, InterleavedBloomFilter, Uncompressed > filter(
+    seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > filter(
         noBins, hash_functions, kmer_size, bloom_filter_size );
 
     std::chrono::duration< double > elapsed = std::chrono::high_resolution_clock::now() - start;
@@ -136,8 +134,8 @@ int main( int argc, char* argv[] )
     tasks.emplace_back( std::async( std::launch::async, [=, &bins, &q, &finished, &mtx] {
         for ( auto const& reference_fasta_file : args["references"].as< std::vector< std::string > >() )
         {
-            SeqFileIn seqFileIn;
-            if ( !open( seqFileIn, toCString( reference_fasta_file ) ) )
+            seqan::SeqFileIn seqFileIn;
+            if ( !open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
             {
                 std::cerr << "Unable to open " << reference_fasta_file << std::endl;
                 continue;
@@ -148,19 +146,19 @@ int main( int argc, char* argv[] )
                 {
                     ; // spin
                 }
-                StringSet< CharString >  ids;
-                StringSet< IupacString > seqs;
+                seqan::StringSet< seqan::CharString >  ids;
+                seqan::StringSet< seqan::IupacString > seqs;
                 readRecords( ids, seqs, seqFileIn, threads * 5 );
-                for ( uint16_t readID = 0; readID < length( ids ); ++readID )
+                for ( uint16_t readID = 0; readID < seqan::length( ids ); ++readID )
                 {
-                    if ( length( seqs[readID] ) < kmer_size )
+                    if ( seqan::length( seqs[readID] ) < kmer_size )
                     { // sequence too small
                         mtx.lock();
                         std::cerr << ids[readID] << " has sequence smaller than k-mer size" << std::endl;
                         mtx.unlock();
                         continue;
                     }
-                    std::string cid = toCString( ids[readID] );
+                    std::string cid = seqan::toCString( ids[readID] );
                     std::string acc = cid.substr( 0, cid.find( ' ' ) );
                     if ( bins.count( acc ) == 0 )
                     { // not defined on the bins
@@ -185,7 +183,7 @@ int main( int argc, char* argv[] )
     std::cerr << "Adding k-mers: " << elapsed.count() << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    store( filter, toCString( args["output-file"].as< std::string >() ) );
+    store( filter, seqan::toCString( args["output-file"].as< std::string >() ) );
     elapsed = std::chrono::high_resolution_clock::now() - start;
     std::cerr << "Saving Bloom filter: " << elapsed.count() << std::endl;
 
