@@ -122,7 +122,7 @@ int main( int argc, char* argv[] )
                 SeqBin val = q.pop();
                 if ( val.id != "" )
                 { // if not empty
-                    insertKmer( filter, val.seq, val.bin, 0 );
+                    seqan::insertKmer( filter, val.seq, val.bin, 0 );
                 }
                 if ( finished && q.empty() )
                     break;
@@ -135,12 +135,12 @@ int main( int argc, char* argv[] )
         for ( auto const& reference_fasta_file : args["references"].as< std::vector< std::string > >() )
         {
             seqan::SeqFileIn seqFileIn;
-            if ( !open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
+            if ( !seqan::open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
             {
                 std::cerr << "Unable to open " << reference_fasta_file << std::endl;
                 continue;
             }
-            while ( !atEnd( seqFileIn ) )
+            while ( !seqan::atEnd( seqFileIn ) )
             {
                 while ( q.size() > ( threads * 10 ) )
                 {
@@ -148,7 +148,7 @@ int main( int argc, char* argv[] )
                 }
                 seqan::StringSet< seqan::CharString >  ids;
                 seqan::StringSet< seqan::IupacString > seqs;
-                readRecords( ids, seqs, seqFileIn, threads * 5 );
+                seqan::readRecords( ids, seqs, seqFileIn, threads * 5 );
                 for ( uint16_t readID = 0; readID < seqan::length( ids ); ++readID )
                 {
                     if ( seqan::length( seqs[readID] ) < kmer_size )
@@ -170,7 +170,7 @@ int main( int argc, char* argv[] )
                     q.push( SeqBin{ acc, seqs[readID], bins[acc] } );
                 }
             }
-            close( seqFileIn );
+            seqan::close( seqFileIn );
         }
         finished = true;
     } ) );
@@ -183,7 +183,7 @@ int main( int argc, char* argv[] )
     std::cerr << "Adding k-mers: " << elapsed.count() << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    store( filter, seqan::toCString( args["output-file"].as< std::string >() ) );
+    seqan::store( filter, seqan::toCString( args["output-file"].as< std::string >() ) );
     elapsed = std::chrono::high_resolution_clock::now() - start;
     std::cerr << "Saving Bloom filter: " << elapsed.count() << std::endl;
 

@@ -230,12 +230,12 @@ int main( int argc, char* argv[] )
             for ( auto const& reads_file : args["reads"].as< std::vector< std::string > >() )
             {
                 seqan::SeqFileIn seqFileIn;
-                if ( !open( seqFileIn, seqan::toCString( reads_file ) ) )
+                if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
                 {
                     std::cerr << "Unable to open " << reads_file << std::endl;
                     continue;
                 }
-                while ( !atEnd( seqFileIn ) )
+                while ( !seqan::atEnd( seqFileIn ) )
                 {
                     // std::cerr << queue1->size() << std::endl;
                     while ( queue1.size() > num_of_batches )
@@ -244,11 +244,11 @@ int main( int argc, char* argv[] )
                     }
                     seqan::StringSet< seqan::CharString > ids;
                     seqan::StringSet< seqan::Dna5String > seqs;
-                    readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
+                    seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
                     totalReads += seqan::length( ids );
                     queue1.push( ReadBatches{ ids, seqs } );
                 }
-                close( seqFileIn );
+                seqan::close( seqFileIn );
             }
             finished_read     = true;
             loading_reads_end = std::chrono::high_resolution_clock::now();
@@ -323,9 +323,9 @@ int main( int argc, char* argv[] )
 
             // bloom filter
             filterType filter;
-            retrieve( filter, seqan::toCString( bloom_filter_file_hierarchy ) );
-            filter_hierarchy.push_back(
-                Filter{ std::move( filter ), group_bin, getNumberOfBins( filter ), getKmerSize( filter ) } );
+            seqan::retrieve( filter, seqan::toCString( bloom_filter_file_hierarchy ) );
+            filter_hierarchy.push_back( Filter{
+                std::move( filter ), group_bin, seqan::getNumberOfBins( filter ), seqan::getKmerSize( filter ) } );
         }
         loading_filter_elapsed += std::chrono::high_resolution_clock::now() - loading_filter_start;
 
@@ -455,8 +455,8 @@ int main( int argc, char* argv[] )
                             }
                             else if ( hierarchy_id < hierarchy_size )
                             {
-                                appendValue( left_over_reads.ids, rb.ids[readID] );
-                                appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                                seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
+                                seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
                             }
                             else if ( output_unclassified )
                             {

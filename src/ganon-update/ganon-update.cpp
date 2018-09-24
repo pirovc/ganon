@@ -71,8 +71,8 @@ int main( int argc, char* argv[] )
 
     seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > filter;
     retrieve( filter, seqan::toCString( args["bloom-filter"].as< std::string >() ) );
-    uint64_t                        number_of_bins = getNumberOfBins( filter );
-    uint64_t                        kmer_size      = getKmerSize( filter );
+    uint64_t                        number_of_bins = seqan::getNumberOfBins( filter );
+    uint64_t                        kmer_size      = seqan::getKmerSize( filter );
     std::chrono::duration< double > elapsed        = std::chrono::high_resolution_clock::now() - start;
     std::cerr << "Loading Bloom filter: " << elapsed.count() << std::endl;
 
@@ -94,7 +94,7 @@ int main( int argc, char* argv[] )
     {
         std::vector< uint32_t > ubins;
         ubins.insert( ubins.end(), updated_bins.begin(), updated_bins.end() );
-        clear( filter, ubins, threads );
+        seqan::clear( filter, ubins, threads );
     }
 
     std::mutex                         mtx;
@@ -128,12 +128,12 @@ int main( int argc, char* argv[] )
         for ( auto const& reference_fasta_file : args["references"].as< std::vector< std::string > >() )
         {
             seqan::SeqFileIn seqFileIn;
-            if ( !open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
+            if ( !seqan::open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
             {
                 std::cerr << "Unable to open " << reference_fasta_file << std::endl;
                 continue;
             }
-            while ( !atEnd( seqFileIn ) )
+            while ( !seqan::atEnd( seqFileIn ) )
             {
                 while ( q.size() > ( threads * 10 ) )
                 {
@@ -141,7 +141,7 @@ int main( int argc, char* argv[] )
                 }
                 seqan::StringSet< seqan::CharString >  ids;
                 seqan::StringSet< seqan::IupacString > seqs;
-                readRecords( ids, seqs, seqFileIn, threads * 5 );
+                seqan::readRecords( ids, seqs, seqFileIn, threads * 5 );
                 for ( uint16_t readID = 0; readID < seqan::length( ids ); ++readID )
                 {
                     if ( seqan::length( seqs[readID] ) < kmer_size )
@@ -163,7 +163,7 @@ int main( int argc, char* argv[] )
                     q.push( SeqBin{ acc, seqs[readID], bins[acc] } );
                 }
             }
-            close( seqFileIn );
+            seqan::close( seqFileIn );
         }
         finished = true;
     } ) );
