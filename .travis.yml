@@ -23,7 +23,8 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON ..
+  - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+  - cat compile_commands.json
   - cmake --build .
   - ./ganon-build
   - ./ganon-classify
