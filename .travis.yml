@@ -4,7 +4,6 @@ matrix:
   include:
     - name: "linux gcc-7"
       os: linux
-      dist: trusty
       addons:
         apt: { packages: [g++-7],
                sources:  [ubuntu-toolchain-r-test] }
@@ -12,7 +11,6 @@ matrix:
 
     - name: "linux clang-6"
       os: linux
-      dist: trusty
       addons:
         apt: { packages: [clang-6.0, libstdc++-7-dev],
                sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
