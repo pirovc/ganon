@@ -4,37 +4,26 @@ matrix:
   include:
     - name: "linux gcc-7"
       os: linux
-      dist: trusty
       addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-7
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+        apt: { packages: [g++-7],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
     - name: "linux clang-6"
       os: linux
-      dist: trusty
       addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty-6.0
-          packages:
-            - g++-7 # for libstdc++ dependency
-            - clang-6.0
-      env:
-        - MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
+        apt: { packages: [clang-6.0, libstdc++-7-dev],
+               sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
 
 before_install:
   - eval "${MATRIX_EVAL}"
 
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON ..
-  - cmake --build .
+  - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+  - cat compile_commands.json
+  - cmake --build . -- -j2
   - ./ganon-build
   - ./ganon-classify
   - ./ganon-update
