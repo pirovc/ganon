@@ -92,14 +92,14 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py create --sorted-output -f {1} -n {2} -m {3} -l {4} -r {5} {6}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} -m {3} -l {4} -r {5} {6}'.format(
                             args.taxsbp_path,
-                            taxsbp_input_file, 
-                            taxsbp_nodes_file, 
+                            taxsbp_input_file,
+                            taxsbp_nodes_file,
                             taxspb_merged_file,
                             args.bin_length,
-                            "group" if use_assembly else args.rank,
-                            "--use-group" if use_assembly else "")
+                            "assembly" if use_assembly else args.rank,
+                            "-z assembly" if use_assembly else "")
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
         
         acc_bin_file = db_prefix + "_acc_bin.txt"
@@ -496,7 +496,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
     run_get_len_taxid_cmd = 'parallel --gnu -j {0} -a {1} {2}{3} {{}}'.format(
                             threads,
                             tmp_output_folder + 'accessions.txt',
-                            taxsbp_path,
+                            taxsbp_path+"/scripts/",
                             "get_len_taxid_assembly.sh" if use_assembly else "get_len_taxid.sh")
     _, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
     sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
