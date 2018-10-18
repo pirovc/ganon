@@ -200,13 +200,15 @@ def main():
         taxsbp_input_file, taxsbp_nodes_file, taxspb_merged_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py add -f {1} -n {2} -m {3} -i {4} -r {5}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} -m {3} -l {4} -r {5} {6} -u {7}'.format(
                             args.taxsbp_path,
-                            taxsbp_input_file, 
-                            taxsbp_nodes_file, 
+                            taxsbp_input_file,
+                            taxsbp_nodes_file,
                             taxspb_merged_file,
-                            db_prefix_bins,
-                            "group" if use_assembly else rank)
+                            bin_length,
+                            "assembly" if use_assembly else rank,
+                            "-z assembly" if use_assembly else "",
+                            db_prefix_bins)
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
     
         acc_bin_file = tmp_db_prefix + "_acc_bin.txt"
