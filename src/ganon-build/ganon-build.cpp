@@ -11,14 +11,14 @@
 #include <map>
 #include <mutex>
 #include <vector>
+#include <tuple>
 
 static const uint64_t gbInBits = 8589934592;
 
-struct SeqBin
+struct Seqs
 {
-    seqan::CharString id;
+    std::string acc;
     seqan::Dna5String seq;
-    uint64_t          bin;
 };
 
 int main( int argc, char* argv[] )
@@ -85,14 +85,16 @@ int main( int argc, char* argv[] )
 
     int threads = args["threads"].as< int >();
 
-    std::map< std::string, uint64_t > bins;
+    std::map< std::string, std::vector< std::tuple<uint64_t,uint64_t,uint64_t> > > bins;
     std::ifstream                     infile( args["seqid-bin"].as< std::string >() );
     std::string                       seqid;
+    uint64_t                          seqstart;
+    uint64_t                          seqend;
     uint64_t                          bin;
     uint64_t                          noBins = 0;
-    while ( infile >> seqid >> bin )
+    while ( infile >> seqid >> seqstart >> seqend >> bin )
     {
-        bins[seqid] = bin;
+        bins[seqid].push_back(std::make_tuple(seqstart, seqend, bin));
         if ( bin > noBins )
             noBins = bin;
     }
@@ -108,7 +110,7 @@ int main( int argc, char* argv[] )
     std::cerr << "Creating Bloom filter: " << elapsed.count() << std::endl;
 
     std::mutex                         mtx;
-    SafeQueue< SeqBin >                q;
+    SafeQueue< Seqs >                  q;
     std::vector< std::future< void > > tasks;
     bool                               finished = false;
 
@@ -116,13 +118,25 @@ int main( int argc, char* argv[] )
     start = std::chrono::high_resolution_clock::now();
     for ( int taskNo = 0; taskNo < threads; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &filter, &q, &finished, &mtx] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &bins, &filter, &q, &finished, &mtx] {
             while ( true )
             {
-                SeqBin val = q.pop();
-                if ( val.id != "" )
+                Seqs val = q.pop();
+                if ( val.acc != "" )
                 { // if not empty
-                    seqan::insertKmer( filter, val.seq, val.bin, 0 );
+                    for (uint64_t i=0; i < bins[val.acc].size(); i++)
+                    {
+                        auto [ fragstart, fragend, binid ] = bins[val.acc][i];
+                        // For infixes, we have to provide both the including start and the excluding end position.
+                        // fragstart -1 to fix offset
+                        // fragend -1+1 to fix offset and not exclude last position
+                        seqan::Infix< seqan::Dna5String >::Type fragment = infix(val.seq, fragstart - 1, fragend);
+                        seqan::insertKmer( filter, fragment, binid, 0 );
+                        mtx.lock();
+                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid << std::endl;
+                        std::cerr << fragment << std::endl;
+                        mtx.unlock();
+                    }
                 }
                 if ( finished && q.empty() )
                     break;
@@ -149,16 +163,16 @@ int main( int argc, char* argv[] )
                 seqan::StringSet< seqan::CharString >  ids;
                 seqan::StringSet< seqan::IupacString > seqs;
                 seqan::readRecords( ids, seqs, seqFileIn, threads * 5 );
-                for ( uint16_t readID = 0; readID < seqan::length( ids ); ++readID )
+                for ( uint16_t seqID = 0; seqID < seqan::length( ids ); ++seqID )
                 {
-                    if ( seqan::length( seqs[readID] ) < kmer_size )
+                    if ( seqan::length( seqs[seqID] ) < kmer_size )
                     { // sequence too small
                         mtx.lock();
-                        std::cerr << ids[readID] << " has sequence smaller than k-mer size" << std::endl;
+                        std::cerr << ids[seqID] << " has sequence smaller than k-mer size" << std::endl;
                         mtx.unlock();
                         continue;
                     }
-                    std::string cid = seqan::toCString( ids[readID] );
+                    std::string cid = seqan::toCString( ids[seqID] );
                     std::string acc = cid.substr( 0, cid.find( ' ' ) );
                     if ( bins.count( acc ) == 0 )
                     { // not defined on the bins
@@ -167,7 +181,7 @@ int main( int argc, char* argv[] )
                         mtx.unlock();
                         continue;
                     }
-                    q.push( SeqBin{ acc, seqs[readID], bins[acc] } );
+                    q.push( Seqs{ acc, seqs[seqID] } );
                 }
             }
             seqan::close( seqFileIn );
