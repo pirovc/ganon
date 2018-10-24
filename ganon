@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math
+from collections import defaultdict
 
 def main():
     version = '1.0'
@@ -16,8 +17,8 @@ def main():
     ganon_build_group.add_argument('-n', '--hash-functions', type=int, default=3, help='The number of hash functions to use for the bloom filter [2..5] (default: 3)')
     ganon_build_group.add_argument('-s', '--bloom-size', type=int, default=64, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 64)')
     ganon_build_group.add_argument('-f', '--min-fp', type=float, help='Min. false positive for bloom filter - slower, requires k-mer counting [Mutually exclusive --bloom-size]')
-    ganon_build_group.add_argument('--max-ram', type=int, default=2, help='Max. available RAM to count k-mers per thread (only with --min-fp) in GB (default: 2)')
-    ganon_build_group.add_argument('--kmc-path', type=str, default='./', help='kmc binaries path (only with --min-fp). Default: ./')
+    #ganon_build_group.add_argument('--max-ram', type=int, default=2, help='Max. available RAM to count k-mers per thread (only with --min-fp) in GB (default: 2)')
+    #ganon_build_group.add_argument('--kmc-path', type=str, default='./', help='kmc binaries path (only with --min-fp). Default: ./')
     ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
@@ -83,7 +84,6 @@ def main():
         
         # if -1 set default, if not set value (0 deactivated)
         fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length
-        print(fragment_length)
         if args.overlap_length > fragment_length:
             sys.stderr.write("--overlap_length cannot be bigger than --fragment_length")
             return 1
@@ -117,46 +117,51 @@ def main():
                             "-a " + str(fragment_length) if fragment_length else "",
                             "-o " + str(args.overlap_length) if fragment_length else "")
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
-        print(run_taxsbp_cmd)
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        actual_number_of_bins, unique_taxids = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
+        actual_number_of_bins, unique_taxids, max_length_bin = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
         sys.stderr.write(str(actual_number_of_bins) + " bins created. ")
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         # define bloom filter size based on given false positive
         if args.min_fp:
-            import re
-            tx = time.time()
-            sys.stderr.write("Spliting files... ")
-            taxsbp_split_files(args.input_files, db_prefix_bins, tmp_output_folder, use_assembly)
-            sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
+            # import re
+            # tx = time.time()
+            # sys.stderr.write("Spliting files... ")
+            # taxsbp_split_files(args.input_files, db_prefix_bins, tmp_output_folder, use_assembly)
+            # sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
-            tx = time.time()
-            kmer_counts={}
-            sys.stderr.write("Counting k-mers (kmc)... \n")
-            run_kmc_cmd = "parallel --gnu -j {0} \"mkdir -p {1}{{}}_tmp ; {2}kmc -fm -ci1 -cs1 -b -k{3} -t1 -m{4} {1}{{}}.fna {1}{{}}_tmp/{{}} {1}{{}}_tmp/ | grep 'No. of unique k-mers' | grep -o '[0-9]*' | sed 's/^/{{}}\t/' ; rm -rf {1}{{}}_tmp/\" ::: {5}".format(
-                            args.threads,
-                            tmp_output_folder,
-                            args.kmc_path,
-                            args.kmer_size,
-                            args.max_ram,
-                            " ".join([str(b) for b in list(range(actual_number_of_bins))]))
-            #stdout, stderr, errcode = run(run_kmc_cmd) 
-            stdout, stderr, errcode = run(run_kmc_cmd, output_file=db_prefix + ".kcounts")
-            # todo - do not save to file, parse stdout
-            with open(db_prefix + ".kcounts", "r") as f:
-                for line in f:
-                    b,kc=line.rstrip().split("\t")
-                    kmer_counts[int(b)] = int(kc)
+            # tx = time.time()
+            # kmer_counts={}
+            # sys.stderr.write("Counting k-mers (kmc)... \n")
+            # run_kmc_cmd = "parallel --gnu -j {0} \"mkdir -p {1}{{}}_tmp ; {2}kmc -fm -ci1 -cs1 -b -k{3} -t1 -m{4} {1}{{}}.fna {1}{{}}_tmp/{{}} {1}{{}}_tmp/ | grep 'No. of unique k-mers' | grep -o '[0-9]*' | sed 's/^/{{}}\t/' ; rm -rf {1}{{}}_tmp/\" ::: {5}".format(
+            #                 args.threads,
+            #                 tmp_output_folder,
+            #                 args.kmc_path,
+            #                 args.kmer_size,
+            #                 args.max_ram,
+            #                 " ".join([str(b) for b in list(range(actual_number_of_bins))]))
+            # #stdout, stderr, errcode = run(run_kmc_cmd) 
+            # stdout, stderr, errcode = run(run_kmc_cmd, output_file=db_prefix + ".kcounts")
+            # # todo - do not save to file, parse stdout
+            # with open(db_prefix + ".kcounts", "r") as f:
+            #     for line in f:
+            #         b,kc=line.rstrip().split("\t")
+            #         kmer_counts[int(b)] = int(kc)
                     
-            # Calculate the number of bits for the bin with max. number of k-mers
-            max_kmer_count = max(kmer_counts.values())
-            bin_max_kmer_count = max(kmer_counts, key=kmer_counts.get)
+            # # Calculate the number of bits for the bin with max. number of k-mers
+            # max_kmer_count = max(kmer_counts.values())
+            # bin_max_kmer_count = max(kmer_counts, key=kmer_counts.get)
+            # sys.stderr.write("Max # unique k-mers: " + str(max_kmer_count) + " -> bin " + str(bin_max_kmer_count) + "\n")
+
+            # aproximate number of unique k-mers by just considering they are all unique
+            max_kmer_count = max_length_bin-args.kmer_size+1
+            sys.stderr.write("Approximate # unique k-mers: " + str(max_kmer_count) +  "\n")
+
             bin_size_bits = math.ceil(-(1/((1-args.min_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))
-            # get theoretical number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
-            theoretical_number_of_bins = math.ceil(actual_number_of_bins/64)*64
-            sys.stderr.write("Max # unique k-mers: " + str(max_kmer_count) + " -> bin " + str(bin_max_kmer_count) + "\n")
-            sys.stderr.write("Bloom filter calculated size with fp<=" + str(args.min_fp) + ": " + str("{0:.4f}".format((bin_size_bits*theoretical_number_of_bins)/8589934592)) + "GB (" + str(bin_size_bits) + " bits/bin * " + str(theoretical_number_of_bins) + " bins)\n")
+            # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
+            optimal_number_of_bins = math.ceil(actual_number_of_bins/64)*64
+            
+            sys.stderr.write("Bloom filter calculated size with fp<=" + str(args.min_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/8589934592)) + "GB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         tx = time.time()
@@ -165,7 +170,7 @@ def main():
                                         args.ganon_path,
                                         acc_bin_file,
                                         "--bloom-size-bits" if args.min_fp else "-s",
-                                        bin_size_bits*theoretical_number_of_bins if args.min_fp else args.bloom_size,
+                                        bin_size_bits*optimal_number_of_bins if args.min_fp else args.bloom_size,
                                         args.kmer_size,
                                         args.hash_functions,
                                         args.threads,
@@ -226,7 +231,7 @@ def main():
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
     
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        updated_bins, unique_taxids = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly)
+        updated_bins, unique_taxids, _ = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly)
         sys.stderr.write(str(updated_bins) + " bins updated. ")
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
@@ -467,7 +472,8 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
     acc_bin = open(acc_bin_file,'w') #.temp for build
     group_bin = open(db_prefix_map,'w') #.map
     unique_taxids = set() # for nodes
-    unique_bins = set()
+    bin_length = defaultdict(int) # calculate max bin length
+
     for line in stdout.split("\n"):
         if line:
             #acc, length, taxid, [group/rank taxid,] binno
@@ -485,32 +491,32 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
                 frag_start = 1
                 frag_end = length
 
+            bin_length[binno]=+int(length)
             unique_taxids.add(int(taxid))
-            unique_bins.add(binno)
             print(line, file=bins) 
             print(acc, frag_start, frag_end, binno, sep=" ", file=acc_bin)
             print(group, binno, sep=" ", file=group_bin)
     bins.close()
     acc_bin.close()
     group_bin.close()
-    return len(unique_bins), unique_taxids
+    return len(bin_length), unique_taxids, max(bin_length.values())
 
-def taxsbp_split_files(files, taxsbp_bins_file, output_folder, use_assembly):
-    bins = {}
-    with open(taxsbp_bins_file, 'r') as file:
-        for line in file:
-            fields = line.rstrip().split("\t")
-            # bins[seqid] = binid
-            bins[fields[0]] = fields[3] if not use_assembly else fields[4]
+# def taxsbp_split_files(files, taxsbp_bins_file, output_folder, use_assembly):
+#     bins = {}
+#     with open(taxsbp_bins_file, 'r') as file:
+#         for line in file:
+#             fields = line.rstrip().split("\t")
+#             # bins[seqid] = binid
+#             bins[fields[0]] = fields[3] if not use_assembly else fields[4]
 
-    for file in files:
-        handler = gzip.open(file, 'rt') if file.endswith(".gz") else open(file,'r')
-        for header, sequence in fasta_read_generator(handler):
-            if header.split(' ', 1)[0] in bins:
-                outfilename = output_folder + bins[header.split(' ', 1)[0]] + ".fna"
-                outfile = open(outfilename, 'a')
-                outfile.write('>' + header + '\n' + sequence)
-                outfile.close()
+#     for file in files:
+#         handler = gzip.open(file, 'rt') if file.endswith(".gz") else open(file,'r')
+#         for header, sequence in fasta_read_generator(handler):
+#             if header.split(' ', 1)[0] in bins:
+#                 outfilename = output_folder + bins[header.split(' ', 1)[0]] + ".fna"
+#                 outfile = open(outfilename, 'a')
+#                 outfile.write('>' + header + '\n' + sequence)
+#                 outfile.close()
 
 def get_taxdump(tmp_output_folder):
     tx = time.time()

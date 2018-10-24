@@ -29,14 +29,17 @@ int main( int argc, char* argv[] )
 
     // clang-format off
     options.add_options()
-        ( "e,seqid-bin", "Seqid bin file", cxxopts::value< std::string >() )
+        ( "e,seqid-bin", "Space-separated file with the following fields: Seq. Identifier <space> Pos. Start <space> Pos. End <space> Bin Id", cxxopts::value< std::string >() )
         ( "o,output-file", "Output file", cxxopts::value< std::string >() )
         ( "s,bloom-size", "Final bloom filter size in GB", cxxopts::value< int >()->default_value( "16" ) )
         ( "bloom-size-bits", "Final bloom filter size in bits", cxxopts::value< uint64_t >()->default_value( "0" ) )
-        ( "k,kmer-size", "K size", cxxopts::value< int >()->default_value( "19" ) )
+        ( "k,kmer-size", "k size", cxxopts::value< int >()->default_value( "19" ) )
         ( "n,hash-functions", "Number of hash functions", cxxopts::value< int >()->default_value( "3" ) )
         ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "1" ) )
-        ( "h,help", "Print help" )( "v,version", "Show version" )
+        //( "silent", "Silent mode", cxxopts::value<bool>()->default_value("false"))
+        //( "verbose", "Verbose mode to STDERR", cxxopts::value<bool>()->default_value("false"))
+        ( "h,help", "Print help" )
+        ( "v,version", "Show version" )
         ( "references", "references", cxxopts::value< std::vector< std::string > >() );
     // clang-format on
 
@@ -132,10 +135,10 @@ int main( int argc, char* argv[] )
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix(val.seq, fragstart - 1, fragend);
                         seqan::insertKmer( filter, fragment, binid, 0 );
-                        mtx.lock();
-                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid << std::endl;
-                        std::cerr << fragment << std::endl;
-                        mtx.unlock();
+                        //mtx.lock();
+                        //std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid << std::endl;
+                        //std::cerr << fragment << std::endl;
+                        //mtx.unlock();
                     }
                 }
                 if ( finished && q.empty() )
