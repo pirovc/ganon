@@ -15,10 +15,8 @@ def main():
     ganon_build_group = build_parser.add_argument_group('ganon')
     ganon_build_group.add_argument('-k', '--kmer-size', type=int, default=19, help='The k-mer size for the bloom filter [14..32] (default: 19)')
     ganon_build_group.add_argument('-n', '--hash-functions', type=int, default=3, help='The number of hash functions to use for the bloom filter [2..5] (default: 3)')
-    ganon_build_group.add_argument('-s', '--bloom-size', type=int, default=64, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 64)')
-    ganon_build_group.add_argument('-f', '--min-fp', type=float, help='Min. false positive for bloom filter - slower, requires k-mer counting [Mutually exclusive --bloom-size]')
-    #ganon_build_group.add_argument('--max-ram', type=int, default=2, help='Max. available RAM to count k-mers per thread (only with --min-fp) in GB (default: 2)')
-    #ganon_build_group.add_argument('--kmc-path', type=str, default='./', help='kmc binaries path (only with --min-fp). Default: ./')
+    ganon_build_group.add_argument('-s', '--bloom-size', type=int, default=64, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 8)')
+    ganon_build_group.add_argument('-f', '--min-fp', type=float, help='Min. false positive for bloom filter based on estimated unique k-mers [Mutually exclusive --bloom-size]')
     ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
@@ -124,35 +122,6 @@ def main():
 
         # define bloom filter size based on given false positive
         if args.min_fp:
-            # import re
-            # tx = time.time()
-            # sys.stderr.write("Spliting files... ")
-            # taxsbp_split_files(args.input_files, db_prefix_bins, tmp_output_folder, use_assembly)
-            # sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
-
-            # tx = time.time()
-            # kmer_counts={}
-            # sys.stderr.write("Counting k-mers (kmc)... \n")
-            # run_kmc_cmd = "parallel --gnu -j {0} \"mkdir -p {1}{{}}_tmp ; {2}kmc -fm -ci1 -cs1 -b -k{3} -t1 -m{4} {1}{{}}.fna {1}{{}}_tmp/{{}} {1}{{}}_tmp/ | grep 'No. of unique k-mers' | grep -o '[0-9]*' | sed 's/^/{{}}\t/' ; rm -rf {1}{{}}_tmp/\" ::: {5}".format(
-            #                 args.threads,
-            #                 tmp_output_folder,
-            #                 args.kmc_path,
-            #                 args.kmer_size,
-            #                 args.max_ram,
-            #                 " ".join([str(b) for b in list(range(actual_number_of_bins))]))
-            # #stdout, stderr, errcode = run(run_kmc_cmd) 
-            # stdout, stderr, errcode = run(run_kmc_cmd, output_file=db_prefix + ".kcounts")
-            # # todo - do not save to file, parse stdout
-            # with open(db_prefix + ".kcounts", "r") as f:
-            #     for line in f:
-            #         b,kc=line.rstrip().split("\t")
-            #         kmer_counts[int(b)] = int(kc)
-                    
-            # # Calculate the number of bits for the bin with max. number of k-mers
-            # max_kmer_count = max(kmer_counts.values())
-            # bin_max_kmer_count = max(kmer_counts, key=kmer_counts.get)
-            # sys.stderr.write("Max # unique k-mers: " + str(max_kmer_count) + " -> bin " + str(bin_max_kmer_count) + "\n")
-
             # aproximate number of unique k-mers by just considering they are all unique
             max_kmer_count = max_length_bin-args.kmer_size+1
             sys.stderr.write("Approximate # unique k-mers: " + str(max_kmer_count) +  "\n")
@@ -452,20 +421,6 @@ def fasta_header_generator(file_handler):
             name = line.rstrip()[1:].split(' ', 1)[0]  # omitting the leading > until first space
             yield name
 
-def fasta_read_generator(file_handler):
-    seq = []
-    name = ''
-    for line in file_handler:
-        if line[0] == '>':
-            sequence = ''.join(seq)
-            if name:  # only yield when we already have all data for the first sequence
-                yield name, sequence
-            name = line.rstrip()[1:]  # omitting the leading >
-            seq = []
-        else:
-            seq += [line]#.rstrip()] # keep line breaks
-    sequence = ''.join(seq)
-    yield name, sequence  # don't forget the last sequence
 
 def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length):
     bins = open(db_prefix_bins,'w')
@@ -500,23 +455,6 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
     acc_bin.close()
     group_bin.close()
     return len(bin_length), unique_taxids, max(bin_length.values())
-
-# def taxsbp_split_files(files, taxsbp_bins_file, output_folder, use_assembly):
-#     bins = {}
-#     with open(taxsbp_bins_file, 'r') as file:
-#         for line in file:
-#             fields = line.rstrip().split("\t")
-#             # bins[seqid] = binid
-#             bins[fields[0]] = fields[3] if not use_assembly else fields[4]
-
-#     for file in files:
-#         handler = gzip.open(file, 'rt') if file.endswith(".gz") else open(file,'r')
-#         for header, sequence in fasta_read_generator(handler):
-#             if header.split(' ', 1)[0] in bins:
-#                 outfilename = output_folder + bins[header.split(' ', 1)[0]] + ".fna"
-#                 outfile = open(outfilename, 'a')
-#                 outfile.write('>' + header + '\n' + sequence)
-#                 outfile.close()
 
 def get_taxdump(tmp_output_folder):
     tx = time.time()
