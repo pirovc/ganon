@@ -23,19 +23,19 @@ public:
         return val;
     }
 
-    int size()
+    auto size() const
     {
         std::lock_guard< std::mutex > lock( m_mutex );
         return m_queue.size();
     }
 
-    bool empty()
+    bool empty() const
     {
         std::lock_guard< std::mutex > lock( m_mutex );
         return m_queue.empty();
     }
 
 private:
-    std::queue< T > m_queue;
-    std::mutex      m_mutex;
+    std::queue< T >    m_queue;
+    mutable std::mutex m_mutex;
 };
