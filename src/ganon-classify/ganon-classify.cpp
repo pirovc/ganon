@@ -296,7 +296,7 @@ int main( int argc, char* argv[] )
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_clas, &printing_unclassified_end] {
                             while ( true )
                             {
-                                if ( auto rou = unclassified_reads_queue.pop() ) // if not empty
+                                if ( auto rou = unclassified_reads_queue.pop(); rou.has_value() )
                                     out_unclassified << rou->readID << '\n';
                                 if ( finished_clas && unclassified_reads_queue.empty() )
                                 {
@@ -379,8 +379,8 @@ int main( int argc, char* argv[] )
                 while ( true )
                 {
                     // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                    if ( auto rb = pointer_current->pop() )
-                    {                                // if not empty
+                    if ( auto rb = pointer_current->pop(); rb.has_value() )
+                    {
                         ReadBatches left_over_reads; // store unclassified reads for next iteration
                         for ( uint32_t readID = 0; readID < seqan::length( rb->ids ); ++readID )
                         {

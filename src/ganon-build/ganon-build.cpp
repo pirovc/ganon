@@ -185,8 +185,8 @@ int main( int argc, char* argv[] )
         tasks.emplace_back( std::async( std::launch::async, [=, &bins, &filter, &q, &finished, &mtx] {
             while ( true )
             {
-                if ( auto val = q.pop() )
-                { // if not empty
+                if ( auto val = q.pop(); val.has_value() )
+                {
                     for ( uint64_t i = 0; i < bins[val->acc].size(); i++ )
                     {
                         auto [fragstart, fragend, binid] = bins[val->acc][i];
