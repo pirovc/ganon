@@ -26,7 +26,6 @@ script:
   - cmake --build . -- -j2
   - ./ganon-build
   - ./ganon-classify
-  - ./ganon-update
 
 notifications:
   email: false
