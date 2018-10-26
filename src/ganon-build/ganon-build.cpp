@@ -66,7 +66,7 @@ int main( int argc, char* argv[] )
     uint64_t    kmer_size                = args["kmer-size"].as< uint64_t >();
     uint16_t    hash_functions           = args["hash-functions"].as< uint16_t >();
     std::string update_bloom_filter_file = args["update-bloom-filter"].as< std::string >();
-    bool update_complete = args["update-complete"].as< bool >();
+    bool        update_complete          = args["update-complete"].as< bool >();
     uint16_t    threads                  = args["threads"].as< uint16_t >();
     std::string output_file              = args["output-file"].as< std::string >();
 
@@ -109,43 +109,45 @@ int main( int argc, char* argv[] )
     }
 
     std::map< std::string, std::vector< std::tuple< uint64_t, uint64_t, uint64_t > > > bins;
-    std::ifstream                                                                              infile( seqid_bin_file );
-    std::string                                                                                seqid;
-    uint64_t                                                                                   seqstart;
-    uint64_t                                                                                   seqend;
-    uint64_t                                                                                   bin;
-    std::unordered_set< uint64_t >    updated_bins;
-    uint32_t max_bin_updated = 0;
+    std::ifstream                                                                      infile( seqid_bin_file );
+    std::string                                                                        seqid;
+    uint64_t                                                                           seqstart;
+    uint64_t                                                                           seqend;
+    uint64_t                                                                           bin;
+    std::unordered_set< uint64_t >                                                     updated_bins;
+    uint32_t                                                                           max_bin_updated = 0;
 
     while ( infile >> seqid >> seqstart >> seqend >> bin )
     {
         bins[seqid].push_back( std::make_tuple( seqstart, seqend, bin ) );
         updated_bins.insert( bin );
-        if(bin > max_bin_updated){
+        if ( bin > max_bin_updated )
+        {
             max_bin_updated = bin;
         }
     }
     std::cerr << bins.size() << " sequences will be added on " << updated_bins.size() << " bins" << std::endl;
     number_of_bins = updated_bins.size();
-    
+
     auto start = std::chrono::high_resolution_clock::now();
     typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > IBloomFilter;
 
     // dummy variables in case of update
-    if( !update_bloom_filter_file.empty() ){
+    if ( !update_bloom_filter_file.empty() )
+    {
         number_of_bins = hash_functions = kmer_size = bloom_filter_size = 1;
     }
 
 
     // define filter
-    IBloomFilter filter(number_of_bins, hash_functions,  kmer_size,  bloom_filter_size);
-    
+    IBloomFilter filter( number_of_bins, hash_functions, kmer_size, bloom_filter_size );
+
     // load from disk in case of update
     if ( !update_bloom_filter_file.empty() )
     {
         // load filter
         retrieve( filter, seqan::toCString( update_bloom_filter_file ) );
-        kmer_size      = seqan::getKmerSize( filter ); 
+        kmer_size = seqan::getKmerSize( filter );
 
         uint32_t number_of_bins_before = seqan::getNumberOfBins( filter );
 
@@ -158,8 +160,8 @@ int main( int argc, char* argv[] )
         }
 
         // TODO -> create new bins on the loaded bloom
-        std::cerr << max_bin_updated+1-number_of_bins_before << " new bins added to existing  " << number_of_bins_before << " bins" << std::endl;
-        
+        std::cerr << max_bin_updated + 1 - number_of_bins_before << " new bins added to existing  "
+                  << number_of_bins_before << " bins" << std::endl;
     }
 
     std::chrono::duration< double > elapsed = std::chrono::high_resolution_clock::now() - start;
@@ -189,8 +191,8 @@ int main( int argc, char* argv[] )
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid, 0 );
                         mtx.lock();
-                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid <<
-                        std::endl;
+                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                                  << std::endl;
                         mtx.unlock();
                     }
                 }
