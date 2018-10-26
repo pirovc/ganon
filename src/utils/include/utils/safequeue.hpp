@@ -3,9 +3,12 @@
 #include <mutex>
 #include <optional>
 #include <queue>
+#include <type_traits>
 #include <utility>
 
-template < class T >
+template < class T,
+           class Enabled = std::enable_if_t< std::is_move_assignable< T >::value && //
+                                             std::is_move_constructible< T >::value > >
 class SafeQueue
 {
 public:
