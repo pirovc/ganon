@@ -10,14 +10,14 @@
 #include <iostream>
 #include <map>
 #include <mutex>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 static const uint64_t gbInBits = 8589934592;
 
 struct Seqs
 {
-    std::string acc;
+    std::string       acc;
     seqan::Dna5String seq;
 };
 
@@ -88,16 +88,16 @@ int main( int argc, char* argv[] )
 
     int threads = args["threads"].as< int >();
 
-    std::map< std::string, std::vector< std::tuple<uint64_t,uint64_t,uint64_t> > > bins;
-    std::ifstream                     infile( args["seqid-bin"].as< std::string >() );
-    std::string                       seqid;
-    uint64_t                          seqstart;
-    uint64_t                          seqend;
-    uint64_t                          bin;
-    uint64_t                          noBins = 0;
+    std::map< std::string, std::vector< std::tuple< uint64_t, uint64_t, uint64_t > > > bins;
+    std::ifstream infile( args["seqid-bin"].as< std::string >() );
+    std::string   seqid;
+    uint64_t      seqstart;
+    uint64_t      seqend;
+    uint64_t      bin;
+    uint64_t      noBins = 0;
     while ( infile >> seqid >> seqstart >> seqend >> bin )
     {
-        bins[seqid].push_back(std::make_tuple(seqstart, seqend, bin));
+        bins[seqid].push_back( std::make_tuple( seqstart, seqend, bin ) );
         if ( bin > noBins )
             noBins = bin;
     }
@@ -127,18 +127,17 @@ int main( int argc, char* argv[] )
                 Seqs val = q.pop();
                 if ( val.acc != "" )
                 { // if not empty
-                    for (uint64_t i=0; i < bins[val.acc].size(); i++)
+                    for ( uint64_t i = 0; i < bins[val.acc].size(); i++ )
                     {
-                        auto [ fragstart, fragend, binid ] = bins[val.acc][i];
+                        auto [fragstart, fragend, binid] = bins[val.acc][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
-                        seqan::Infix< seqan::Dna5String >::Type fragment = infix(val.seq, fragstart - 1, fragend);
+                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid, 0 );
-                        //mtx.lock();
-                        //std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid << std::endl;
-                        //std::cerr << fragment << std::endl;
-                        //mtx.unlock();
+                        // mtx.lock();
+                        // std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid <<
+                        // std::endl; std::cerr << fragment << std::endl; mtx.unlock();
                     }
                 }
                 if ( finished && q.empty() )
