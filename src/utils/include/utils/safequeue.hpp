@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <utility>
 
@@ -20,14 +21,17 @@ public:
         m_queue.push( value );
     }
 
-    T pop()
+    std::optional< T > pop()
     {
         std::lock_guard< std::mutex > lock( m_mutex );
         if ( m_queue.empty() )
-            return T();
-        T val = m_queue.front();
+        {
+            return std::nullopt;
+        }
+
+        auto value = std::make_optional( std::move( m_queue.front() ) );
         m_queue.pop();
-        return val;
+        return value;
     }
 
     auto size() const

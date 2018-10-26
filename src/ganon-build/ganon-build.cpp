@@ -179,19 +179,18 @@ int main( int argc, char* argv[] )
         tasks.emplace_back( std::async( std::launch::async, [=, &bins, &filter, &q, &finished, &mtx] {
             while ( true )
             {
-                Seqs val = q.pop();
-                if ( val.acc != "" )
+                if ( auto val = q.pop() )
                 { // if not empty
-                    for ( uint64_t i = 0; i < bins[val.acc].size(); i++ )
+                    for ( uint64_t i = 0; i < bins[val->acc].size(); i++ )
                     {
-                        auto [fragstart, fragend, binid] = bins[val.acc][i];
+                        auto [fragstart, fragend, binid] = bins[val->acc][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
-                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
+                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val->seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid, 0 );
                         mtx.lock();
-                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                        std::cerr << val->acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid
                                   << std::endl;
                         mtx.unlock();
                     }

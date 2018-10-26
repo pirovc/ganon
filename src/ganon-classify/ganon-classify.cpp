@@ -260,9 +260,9 @@ int main( int argc, char* argv[] )
         std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_clas, &printing_classified_end] {
             while ( true )
             {
-                ReadOut ro = classified_reads_queue.pop();
-                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
-                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+                auto ro = classified_reads_queue.pop();
+                for ( uint32_t i = 0; i < ro->matches.size(); ++i )
+                    out << ro->readID << '\t' << ro->matches[i].group << '\t' << ro->matches[i].kmer_count << '\n';
                 if ( finished_clas && classified_reads_queue.empty() )
                 {
                     printing_classified_end = std::chrono::high_resolution_clock::now();
@@ -279,9 +279,8 @@ int main( int argc, char* argv[] )
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_clas, &printing_unclassified_end] {
                             while ( true )
                             {
-                                ReadOut rou = unclassified_reads_queue.pop();
-                                if ( rou.readID != "" ) // if not empty
-                                    out_unclassified << rou.readID << '\n';
+                                if ( auto rou = unclassified_reads_queue.pop() ) // if not empty
+                                    out_unclassified << rou->readID << '\n';
                                 if ( finished_clas && unclassified_reads_queue.empty() )
                                 {
                                     printing_unclassified_end = std::chrono::high_resolution_clock::now();
@@ -363,13 +362,12 @@ int main( int argc, char* argv[] )
                 while ( true )
                 {
                     // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                    ReadBatches rb = pointer_current->pop();
-                    if ( rb.ids != "" )
+                    if ( auto rb = pointer_current->pop() )
                     {                                // if not empty
                         ReadBatches left_over_reads; // store unclassified reads for next iteration
-                        for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
+                        for ( uint32_t readID = 0; readID < seqan::length( rb->ids ); ++readID )
                         {
-                            uint16_t readLen = seqan::length( rb.seqs[readID] );
+                            uint16_t readLen = seqan::length( rb->seqs[readID] );
                             // count lens just once
                             if ( hierarchy_id == 1 )
                                 sumReadLen += readLen;
@@ -388,9 +386,9 @@ int main( int argc, char* argv[] )
 
                                 auto                    select_start = std::chrono::high_resolution_clock::now();
                                 std::vector< uint32_t > selectedBins( filter.numberOfBins, 0 );
-                                filter.bloom_filter.select( selectedBins, rb.seqs[readID] );
+                                filter.bloom_filter.select( selectedBins, rb->seqs[readID] );
                                 std::vector< uint32_t > selectedBinsRev( filter.numberOfBins, 0 );
-                                filter.bloom_filter.select( selectedBinsRev, reversedRead( rb.seqs[readID] ) );
+                                filter.bloom_filter.select( selectedBinsRev, reversedRead( rb->seqs[readID] ) );
                                 select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
 
                                 filter_start = std::chrono::high_resolution_clock::now();
@@ -438,7 +436,7 @@ int main( int argc, char* argv[] )
                             if ( classified )
                             {
                                 classifiedReads += 1;
-                                classified_read_out.readID = rb.ids[readID];
+                                classified_read_out.readID = rb->ids[readID];
 
                                 // set as negative for unique filtering
                                 if ( unique_filtering )
@@ -455,13 +453,13 @@ int main( int argc, char* argv[] )
                             }
                             else if ( hierarchy_id < hierarchy_size )
                             {
-                                seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
-                                seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                                seqan::appendValue( left_over_reads.ids, rb->ids[readID] );
+                                seqan::appendValue( left_over_reads.seqs, rb->seqs[readID] );
                             }
                             else if ( output_unclassified )
                             {
                                 ReadOut unclassified_read_out;
-                                unclassified_read_out.readID = rb.ids[readID];
+                                unclassified_read_out.readID = rb->ids[readID];
                                 unclassified_reads_queue.push( unclassified_read_out );
                             }
                             filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
