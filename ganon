@@ -210,10 +210,10 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Updating index (ganon-update)... \n")
-        run_ganon_build_cmd = '{0}ganon-update -e {1} -b {2} -o {3} -t {4} {5}'.format(
+        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5}'.format(
                                         args.ganon_path,
-                                        acc_bin_file,
                                         db_prefix_filter,
+                                        acc_bin_file,
                                         tmp_db_prefix_filter,
                                         args.threads,
                                         " ".join([file for file in args.input_files]))
