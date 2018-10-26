@@ -7,9 +7,8 @@
 set( utils-src
     utils/include/utils/safequeue.hpp )
 
-add_library( utils STATIC ${utils-src} )
-set_target_properties( utils PROPERTIES LINKER_LANGUAGE CXX CXX_STANDARD 17 )
-target_include_directories( utils PUBLIC utils/include )
+add_library( utils INTERFACE )
+target_include_directories( utils INTERFACE utils/include )
 
 # helper function:
 
