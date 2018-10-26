@@ -2,15 +2,22 @@
 
 #include <mutex>
 #include <queue>
+#include <utility>
 
 template < class T >
 class SafeQueue
 {
 public:
-    void push( T t )
+    void push( const T& value )
     {
         std::lock_guard< std::mutex > lock( m_mutex );
-        m_queue.push( t );
+        m_queue.push( value );
+    }
+
+    void push( T&& value )
+    {
+        std::lock_guard< std::mutex > lock( m_mutex );
+        m_queue.push( value );
     }
 
     T pop()
