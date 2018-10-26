@@ -22,6 +22,15 @@ inline uint16_t kmer_threshold( const uint16_t& readLen, const uint16_t& kmerSiz
 
 struct ReadBatches
 {
+    ReadBatches() = default;
+
+    ReadBatches( seqan::StringSet< seqan::CharString > _ids, //
+                 seqan::StringSet< seqan::Dna5String > _seqs )
+    : ids{ std::move( _ids ) }
+    , seqs{ std::move( _seqs ) }
+    {
+    }
+
     seqan::StringSet< seqan::CharString > ids;
     seqan::StringSet< seqan::Dna5String > seqs;
 };
@@ -34,6 +43,14 @@ struct ReadMatch
 
 struct ReadOut
 {
+    ReadOut() = default;
+
+    ReadOut( seqan::CharString _readID, std::vector< ReadMatch > _matches )
+    : readID{ std::move( _readID ) }
+    , matches{ std::move( _matches ) }
+    {
+    }
+
     seqan::CharString        readID;
     std::vector< ReadMatch > matches;
 };
@@ -246,7 +263,7 @@ int main( int argc, char* argv[] )
                     seqan::StringSet< seqan::Dna5String > seqs;
                     seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
                     totalReads += seqan::length( ids );
-                    queue1.push( ReadBatches{ ids, seqs } );
+                    queue1.emplace( std::move( ids ), std::move( seqs ) );
                 }
                 seqan::close( seqFileIn );
             }
@@ -458,16 +475,14 @@ int main( int argc, char* argv[] )
                             }
                             else if ( output_unclassified )
                             {
-                                ReadOut unclassified_read_out;
-                                unclassified_read_out.readID = rb->ids[readID];
-                                unclassified_reads_queue.push( unclassified_read_out );
+                                unclassified_reads_queue.emplace( rb->ids[readID], std::vector< ReadMatch >{} );
                             }
                             filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
                         }
 
                         // if something was added to the classified reads (there are more levels, keep reads in memory)
                         if ( seqan::length( left_over_reads.ids ) > 0 )
-                            pointer_helper->push( left_over_reads );
+                            pointer_helper->push( std::move( left_over_reads ) );
                     }
 
                     if ( finished_read

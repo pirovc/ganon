@@ -17,6 +17,12 @@ static const uint64_t gbInBits = 8589934592;
 
 struct Seqs
 {
+    Seqs( std::string _acc, seqan::Dna5String _seq )
+    : acc{ std::move( _acc ) }
+    , seq{ std::move( _seq ) }
+    {
+    }
+
     std::string       acc;
     seqan::Dna5String seq;
 };
@@ -238,7 +244,7 @@ int main( int argc, char* argv[] )
                         mtx.unlock();
                         continue;
                     }
-                    q.push( Seqs{ acc, seqs[seqID] } );
+                    q.emplace( acc, seqs[seqID] );
                 }
             }
             seqan::close( seqFileIn );
