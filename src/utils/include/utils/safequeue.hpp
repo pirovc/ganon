@@ -21,6 +21,13 @@ public:
         m_queue.push( value );
     }
 
+    template < class... Args >
+    void emplace( Args&&... args )
+    {
+        std::lock_guard< std::mutex > lock( m_mutex );
+        m_queue.emplace( std::forward< Args >( args )... );
+    }
+
     std::optional< T > pop()
     {
         std::lock_guard< std::mutex > lock( m_mutex );
