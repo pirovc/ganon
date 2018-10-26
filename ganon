@@ -79,13 +79,6 @@ def main():
         if not args.retrieve_ncbi and (not args.len_taxid_file or not args.nodes_file or not args.merged_file):
             sys.stderr.write("--len-taxid-file --nodes-file --merged-file should be provided or --retrieve-ncbi activated")
             return 1
-        
-        # if -1 set default, if not set value (0 deactivated)
-        fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length
-        if args.overlap_length > fragment_length:
-            sys.stderr.write("--overlap_length cannot be bigger than --fragment_length")
-            return 1
-        
         db_prefix = args.db_prefix
         output_folder = os.path.abspath(os.path.dirname(db_prefix)) + "/"
         tmp_output_folder = db_prefix + "_tmp/"
@@ -94,9 +87,16 @@ def main():
         db_prefix_map = db_prefix + ".map"
         db_prefix_bins = db_prefix + ".bins"
 
-    elif args.which=='classify':
+    if args.which=='classify':
         if not args.db_hierarchy:
             args.db_hierarchy = ",".join("1"*len(args.db_prefix))
+    elif args.which=='build':
+        # if -1 set default, if not set value (0 deactivated)
+        fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length
+        if args.overlap_length > fragment_length:
+            sys.stderr.write("--overlap_length cannot be bigger than --fragment_length")
+            return 1
+
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
@@ -122,7 +122,7 @@ def main():
 
         # define bloom filter size based on given false positive
         if args.min_fp:
-            # aproximate number of unique k-mers by just considering they are all unique
+            # aproximate number of unique k-mers by just considering that they are all unique
             max_kmer_count = max_length_bin-args.kmer_size+1
             sys.stderr.write("Approximate # unique k-mers: " + str(max_kmer_count) +  "\n")
 
@@ -156,6 +156,8 @@ def main():
                 'number_of_bins': actual_number_of_bins, 
                 'rank': args.rank,
                 'bin_length': args.bin_length,
+                'fragment_length': fragment_length,
+                'overlap_length': args.overlap_length,
                 'filtered_nodes': {}}
         nodes = read_nodes(taxsbp_nodes_file)
         # Filter nodes for used taxids
@@ -182,25 +184,27 @@ def main():
         tmp_db_prefix_map = tmp_db_prefix + ".map"
         tmp_db_prefix_bins = tmp_db_prefix + ".bins"
 
-        kmer_size, hash_functions, number_of_bins, rank, bin_length, filtered_nodes = parse_db_prefix_nodes(db_prefix_nodes)
+        kmer_size, hash_functions, number_of_bins, rank, bin_length, fragment_length, overlap_length, filtered_nodes = parse_db_prefix_nodes(db_prefix_nodes)
         use_assembly=True if rank=="assembly" else False
 
         taxsbp_input_file, taxsbp_nodes_file, taxspb_merged_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} -m {3} -l {4} -r {5} {6} -u {7}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -u {1} -f {2} -n {3} -m {4} -l {5} -r {6} {7} {8} {9}'.format(
                             args.taxsbp_path,
+                            db_prefix_bins,
                             taxsbp_input_file,
                             taxsbp_nodes_file,
                             taxspb_merged_file,
                             bin_length,
                             "assembly" if use_assembly else rank,
                             "-z assembly" if use_assembly else "",
-                            db_prefix_bins)
+                            "-a " + str(fragment_length) if fragment_length else "",
+                            "-o " + str(overlap_length) if fragment_length else "")
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
     
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        updated_bins, unique_taxids, _ = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly)
+        updated_bins, unique_taxids, _ = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly, fragment_length)
         sys.stderr.write(str(updated_bins) + " bins updated. ")
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
@@ -223,6 +227,8 @@ def main():
                 'number_of_bins': number_of_bins, 
                 'rank': rank,
                 'bin_length': bin_length,
+                'fragment_length': fragment_length,
+                'overlap_length': overlap_length,
                 'filtered_nodes': {}}
 
         nodes = read_nodes(taxsbp_nodes_file)
@@ -255,6 +261,14 @@ def main():
         shutil.move(tmp_db_prefix_filter, db_prefix_filter)
         shutil.move(tmp_db_prefix_nodes, db_prefix_nodes)
         # TODO -> when update adding new bins, also update db_prefix_map file
+        # append new map
+        # old_map_file = open(db_prefix_map, "a")
+        # with open(tmp_db_prefix_map, 'r') as file:
+        #     for line in file:
+        #         old_map_file.write(line)
+        # old_map_file.close()
+
+        
         # append new bins
         old_bins_file = open(db_prefix_bins, "a")
         with open(tmp_db_prefix_bins, 'r') as file:
@@ -263,7 +277,7 @@ def main():
         old_bins_file.close()
 
         # Delete temp files
-        shutil.rmtree(tmp_output_folder)
+        #shutil.rmtree(tmp_output_folder)
 
     elif args.which=='classify':
 
@@ -276,7 +290,7 @@ def main():
         merged_groupTaxid = {}
         merged_filtered_nodes = {}
         for db_prefix in args.db_prefix:
-            kmer_size, hash_functions, number_of_bins, rank, bin_length, filtered_nodes = parse_db_prefix_nodes(db_prefix+".nodes")
+            kmer_size, hash_functions, number_of_bins, rank, bin_length, fragment_length, overlap_length, filtered_nodes = parse_db_prefix_nodes(db_prefix+".nodes")
             use_assembly=True if rank=="assembly" else False
 
             merged_groupTaxid.update(parse_db_prefix_bins(db_prefix+".bins", use_assembly))
@@ -520,8 +534,10 @@ def parse_db_prefix_nodes(file):
     number_of_bins = info['number_of_bins']
     rank = info['rank']
     bin_length = info['bin_length']
+    fragment_length = info['fragment_length']
+    overlap_length = info['overlap_length']
     filtered_nodes = info['filtered_nodes']
-    return kmer_size, hash_functions, number_of_bins, rank, bin_length, filtered_nodes
+    return kmer_size, hash_functions, number_of_bins, rank, bin_length, fragment_length, overlap_length, filtered_nodes
 
 if __name__ == '__main__':
     main()
