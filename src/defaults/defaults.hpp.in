@@ -10,9 +10,9 @@
 namespace defaults
 {
 
-constexpr int version_major   = ${PROJECT_VERSION_MAJOR};
-constexpr int version_minor   = ${PROJECT_VERSION_MINOR};
-constexpr int version_patch   = ${PROJECT_VERSION_PATCH};
+constexpr int  version_major  = ${PROJECT_VERSION_MAJOR};
+constexpr int  version_minor  = ${PROJECT_VERSION_MINOR};
+constexpr int  version_patch  = ${PROJECT_VERSION_PATCH};
 constexpr auto version_string = "${PROJECT_NAME} ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}";
 
 } // namespace defaults
