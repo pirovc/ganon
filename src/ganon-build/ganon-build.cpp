@@ -10,17 +10,15 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <tuple>
 #include <vector>
-
-using namespace seqan;
 
 static const uint64_t gbInBits = 8589934592;
 
-struct SeqBin
+struct Seqs
 {
-    CharString id;
-    Dna5String seq;
-    uint64_t   bin;
+    std::string       acc;
+    seqan::Dna5String seq;
 };
 
 int main( int argc, char* argv[] )
@@ -31,14 +29,19 @@ int main( int argc, char* argv[] )
 
     // clang-format off
     options.add_options()
-        ( "e,seqid-bin", "Seqid bin file", cxxopts::value< std::string >() )
+        ( "e,seqid-bin", "Space-separated file with the following fields: Seq. Identifier <space> Pos. Start <space> Pos. End <space> Bin Id", cxxopts::value< std::string >() )
         ( "o,output-file", "Output file", cxxopts::value< std::string >() )
-        ( "s,bloom-size", "Final bloom filter size in GB", cxxopts::value< int >()->default_value( "16" ) )
-        ( "bloom-size-bits", "Final bloom filter size in bits", cxxopts::value< uint64_t >()->default_value( "0" ) )
-        ( "k,kmer-size", "K size", cxxopts::value< int >()->default_value( "19" ) )
-        ( "n,hash-functions", "Number of hash functions", cxxopts::value< int >()->default_value( "3" ) )
-        ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "1" ) )
-        ( "h,help", "Print help" )( "v,version", "Show version" )
+        ( "s,bloom-size", "Final bloom filter size in GB", cxxopts::value< uint64_t >()->default_value( "16" ) )
+        ( "b,bloom-size-bits", "Final bloom filter size in bits", cxxopts::value< uint64_t >()->default_value( "0" ) )
+        ( "k,kmer-size", "k size", cxxopts::value< uint64_t >()->default_value( "19" ) )
+        ( "n,hash-functions", "Number of hash functions", cxxopts::value< uint16_t >()->default_value( "3" ) )
+        ( "u,update-bloom-filter", "If provided, filte updated with new sequences", cxxopts::value< std::string >()->default_value( "" ) )
+        ( "c,update-complete", "Old and new sequences are provided for updated bins", cxxopts::value< bool >()->default_value( "false" ) )
+        ( "t,threads", "Number of threads", cxxopts::value< uint16_t >()->default_value( "1" ) )
+        //( "silent", "Silent mode", cxxopts::value<bool>()->default_value("false"))
+        //( "verbose", "Verbose mode to STDERR", cxxopts::value<bool>()->default_value("false"))
+        ( "h,help", "Print help" )
+        ( "v,version", "Show version" )
         ( "references", "references", cxxopts::value< std::vector< std::string > >() );
     // clang-format on
 
@@ -58,59 +61,114 @@ int main( int argc, char* argv[] )
         return 0;
     }
 
-    uint64_t bloom_filter_size;
-    if ( args["bloom-size-bits"].as< uint64_t >() > 0 )
+    std::string seqid_bin_file           = args["seqid-bin"].as< std::string >();
+    uint64_t    bloom_filter_size        = 0;
+    uint64_t    kmer_size                = args["kmer-size"].as< uint64_t >();
+    uint16_t    hash_functions           = args["hash-functions"].as< uint16_t >();
+    std::string update_bloom_filter_file = args["update-bloom-filter"].as< std::string >();
+    bool        update_complete          = args["update-complete"].as< bool >();
+    uint16_t    threads                  = args["threads"].as< uint16_t >();
+    std::string output_file              = args["output-file"].as< std::string >();
+
+
+    uint64_t number_of_bins;
+
+    // Updating
+    if ( !update_bloom_filter_file.empty() )
     {
-        bloom_filter_size = args["bloom-size-bits"].as< uint64_t >();
+        std::cerr
+            << "--bloom-size[-bits], --kmer-size --hash-funtions ignored, using metadata from --update-bloom-filter"
+            << std::endl;
     }
     else
     {
-        bloom_filter_size = args["bloom-size"].as< int >() * gbInBits; // gbInBits -> 8589934592 bits = 1 Gb
+        if ( args["bloom-size-bits"].as< uint64_t >() > 0 )
+        {
+            bloom_filter_size = args["bloom-size-bits"].as< uint64_t >();
+        }
+        else
+        {
+            bloom_filter_size = args["bloom-size"].as< uint64_t >() * gbInBits; // gbInBits -> 8589934592 bits = 1 Gb
+        }
     }
 
-    std::cerr << "seqid-bin: " << args["seqid-bin"].as< std::string >() << std::endl;
+    std::cerr << "seqid-bin: " << seqid_bin_file << std::endl;
     std::cerr << "bloom-size: " << std::fixed << std::setprecision( 2 ) << (float) bloom_filter_size / (float) gbInBits
               << std::endl;
     std::cerr << "bloom-size-bits: " << bloom_filter_size << std::endl;
-    std::cerr << "kmer-size: " << args["kmer-size"].as< int >() << std::endl;
-    std::cerr << "hash-functions: " << args["hash-functions"].as< int >() << std::endl;
-    std::cerr << "threads: " << args["threads"].as< int >() << std::endl;
-    std::cerr << "output-file: " << args["output-file"].as< std::string >() << std::endl;
+    std::cerr << "kmer-size: " << kmer_size << std::endl;
+    std::cerr << "hash-functions: " << hash_functions << std::endl;
+    std::cerr << "bloom-filter: " << update_bloom_filter_file << std::endl;
+    std::cerr << "update-complete: " << update_complete << std::endl;
+    std::cerr << "threads: " << threads << std::endl;
+    std::cerr << "output-file: " << output_file << std::endl;
     std::cerr << "references: " << std::endl;
     for ( const auto& s : args["references"].as< std::vector< std::string > >() )
     {
         std::cerr << s << std::endl;
     }
 
-    uint64_t kmer_size      = args["kmer-size"].as< int >();
-    int      hash_functions = args["hash-functions"].as< int >();
+    std::map< std::string, std::vector< std::tuple< uint64_t, uint64_t, uint64_t > > > bins;
+    std::ifstream                                                                      infile( seqid_bin_file );
+    std::string                                                                        seqid;
+    uint64_t                                                                           seqstart;
+    uint64_t                                                                           seqend;
+    uint64_t                                                                           bin;
+    std::unordered_set< uint64_t >                                                     updated_bins;
+    uint32_t                                                                           max_bin_updated = 0;
 
-    int threads = args["threads"].as< int >();
-
-    std::map< std::string, uint64_t > bins;
-    std::ifstream                     infile( args["seqid-bin"].as< std::string >() );
-    std::string                       seqid;
-    uint64_t                          bin;
-    uint64_t                          noBins = 0;
-    while ( infile >> seqid >> bin )
+    while ( infile >> seqid >> seqstart >> seqend >> bin )
     {
-        bins[seqid] = bin;
-        if ( bin > noBins )
-            noBins = bin;
+        bins[seqid].push_back( std::make_tuple( seqstart, seqend, bin ) );
+        updated_bins.insert( bin );
+        if ( bin > max_bin_updated )
+        {
+            max_bin_updated = bin;
+        }
     }
-    noBins = noBins + 1;
-    std::cerr << bins.size() << " sequences on " << noBins << " bins" << std::endl;
+    std::cerr << bins.size() << " sequences will be added on " << updated_bins.size() << " bins" << std::endl;
+    number_of_bins = updated_bins.size();
 
     auto start = std::chrono::high_resolution_clock::now();
+    typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > IBloomFilter;
 
-    KmerFilter< Dna5, InterleavedBloomFilter, Uncompressed > filter(
-        noBins, hash_functions, kmer_size, bloom_filter_size );
+    // dummy variables in case of update
+    if ( !update_bloom_filter_file.empty() )
+    {
+        number_of_bins = hash_functions = kmer_size = bloom_filter_size = 1;
+    }
+
+
+    // define filter
+    IBloomFilter filter( number_of_bins, hash_functions, kmer_size, bloom_filter_size );
+
+    // load from disk in case of update
+    if ( !update_bloom_filter_file.empty() )
+    {
+        // load filter
+        retrieve( filter, seqan::toCString( update_bloom_filter_file ) );
+        kmer_size = seqan::getKmerSize( filter );
+
+        uint32_t number_of_bins_before = seqan::getNumberOfBins( filter );
+
+        // Reset bins if complete set of sequences is provided (re-create updated bins)
+        if ( update_complete )
+        {
+            std::vector< uint32_t > ubins;
+            ubins.insert( ubins.end(), updated_bins.begin(), updated_bins.end() );
+            seqan::clear( filter, ubins, threads );
+        }
+
+        // TODO -> create new bins on the loaded bloom
+        std::cerr << max_bin_updated + 1 - number_of_bins_before << " new bins added to existing  "
+                  << number_of_bins_before << " bins" << std::endl;
+    }
 
     std::chrono::duration< double > elapsed = std::chrono::high_resolution_clock::now() - start;
-    std::cerr << "Creating Bloom filter: " << elapsed.count() << std::endl;
+    std::cerr << "Creating/Loading Bloom filter: " << elapsed.count() << std::endl;
 
     std::mutex                         mtx;
-    SafeQueue< SeqBin >                q;
+    SafeQueue< Seqs >                  q;
     std::vector< std::future< void > > tasks;
     bool                               finished = false;
 
@@ -118,13 +176,25 @@ int main( int argc, char* argv[] )
     start = std::chrono::high_resolution_clock::now();
     for ( int taskNo = 0; taskNo < threads; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &filter, &q, &finished, &mtx] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &bins, &filter, &q, &finished, &mtx] {
             while ( true )
             {
-                SeqBin val = q.pop();
-                if ( val.id != "" )
+                Seqs val = q.pop();
+                if ( val.acc != "" )
                 { // if not empty
-                    insertKmer( filter, val.seq, val.bin, 0 );
+                    for ( uint64_t i = 0; i < bins[val.acc].size(); i++ )
+                    {
+                        auto [fragstart, fragend, binid] = bins[val.acc][i];
+                        // For infixes, we have to provide both the including start and the excluding end position.
+                        // fragstart -1 to fix offset
+                        // fragend -1+1 to fix offset and not exclude last position
+                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
+                        seqan::insertKmer( filter, fragment, binid, 0 );
+                        mtx.lock();
+                        std::cerr << val.acc << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                                  << std::endl;
+                        mtx.unlock();
+                    }
                 }
                 if ( finished && q.empty() )
                     break;
@@ -136,31 +206,31 @@ int main( int argc, char* argv[] )
     tasks.emplace_back( std::async( std::launch::async, [=, &bins, &q, &finished, &mtx] {
         for ( auto const& reference_fasta_file : args["references"].as< std::vector< std::string > >() )
         {
-            SeqFileIn seqFileIn;
-            if ( !open( seqFileIn, toCString( reference_fasta_file ) ) )
+            seqan::SeqFileIn seqFileIn;
+            if ( !seqan::open( seqFileIn, seqan::toCString( reference_fasta_file ) ) )
             {
                 std::cerr << "Unable to open " << reference_fasta_file << std::endl;
                 continue;
             }
-            while ( !atEnd( seqFileIn ) )
+            while ( !seqan::atEnd( seqFileIn ) )
             {
                 while ( q.size() > ( threads * 10 ) )
                 {
                     ; // spin
                 }
-                StringSet< CharString >  ids;
-                StringSet< IupacString > seqs;
-                readRecords( ids, seqs, seqFileIn, threads * 5 );
-                for ( uint16_t readID = 0; readID < length( ids ); ++readID )
+                seqan::StringSet< seqan::CharString >  ids;
+                seqan::StringSet< seqan::IupacString > seqs;
+                seqan::readRecords( ids, seqs, seqFileIn, threads * 5 );
+                for ( uint16_t seqID = 0; seqID < seqan::length( ids ); ++seqID )
                 {
-                    if ( length( seqs[readID] ) < kmer_size )
+                    if ( seqan::length( seqs[seqID] ) < kmer_size )
                     { // sequence too small
                         mtx.lock();
-                        std::cerr << ids[readID] << " has sequence smaller than k-mer size" << std::endl;
+                        std::cerr << ids[seqID] << " has sequence smaller than k-mer size" << std::endl;
                         mtx.unlock();
                         continue;
                     }
-                    std::string cid = toCString( ids[readID] );
+                    std::string cid = seqan::toCString( ids[seqID] );
                     std::string acc = cid.substr( 0, cid.find( ' ' ) );
                     if ( bins.count( acc ) == 0 )
                     { // not defined on the bins
@@ -169,10 +239,10 @@ int main( int argc, char* argv[] )
                         mtx.unlock();
                         continue;
                     }
-                    q.push( SeqBin{ acc, seqs[readID], bins[acc] } );
+                    q.push( Seqs{ acc, seqs[seqID] } );
                 }
             }
-            close( seqFileIn );
+            seqan::close( seqFileIn );
         }
         finished = true;
     } ) );
@@ -185,7 +255,7 @@ int main( int argc, char* argv[] )
     std::cerr << "Adding k-mers: " << elapsed.count() << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    store( filter, toCString( args["output-file"].as< std::string >() ) );
+    seqan::store( filter, seqan::toCString( output_file ) );
     elapsed = std::chrono::high_resolution_clock::now() - start;
     std::cerr << "Saving Bloom filter: " << elapsed.count() << std::endl;
 

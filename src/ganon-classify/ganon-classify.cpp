@@ -12,8 +12,6 @@
 #include <map>
 #include <vector>
 
-using namespace seqan;
-
 inline uint16_t kmer_threshold( const uint16_t& readLen, const uint16_t& kmerSize, const uint16_t& max_error )
 {
     uint16_t threshold = 0;
@@ -24,8 +22,8 @@ inline uint16_t kmer_threshold( const uint16_t& readLen, const uint16_t& kmerSiz
 
 struct ReadBatches
 {
-    StringSet< CharString > ids;
-    StringSet< Dna5String > seqs;
+    seqan::StringSet< seqan::CharString > ids;
+    seqan::StringSet< seqan::Dna5String > seqs;
 };
 
 struct ReadMatch
@@ -36,7 +34,7 @@ struct ReadMatch
 
 struct ReadOut
 {
-    CharString               readID;
+    seqan::CharString        readID;
     std::vector< ReadMatch > matches;
 };
 
@@ -181,11 +179,17 @@ int main( int argc, char* argv[] )
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
 
-    typedef ModifiedString< ModifiedString< Dna5String, ModComplementDna >, ModReverse > reversedRead;
-    std::vector< std::future< void > >                                                   read_write;
-    std::atomic< uint64_t >                                                              sumReadLen      = 0;
-    std::atomic< uint64_t >                                                              classifiedReads = 0;
-    uint64_t                                                                             totalReads      = 0;
+    // clang-format off
+    typedef seqan::ModifiedString<
+                seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >,
+                seqan::ModReverse
+            > reversedRead;
+    // clang-format on
+
+    std::vector< std::future< void > > read_write;
+    std::atomic< uint64_t >            sumReadLen      = 0;
+    std::atomic< uint64_t >            classifiedReads = 0;
+    uint64_t                           totalReads      = 0;
 
     SafeQueue< ReadBatches > queue1;
     SafeQueue< ReadBatches > queue2;
@@ -195,7 +199,7 @@ int main( int argc, char* argv[] )
     bool                 finished_read = false;
     bool                 finished_clas = false;
 
-    typedef KmerFilter< Dna5, InterleavedBloomFilter, Uncompressed > filterType;
+    typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > filterType;
     struct Filter
     {
         filterType                        bloom_filter;
@@ -225,26 +229,26 @@ int main( int argc, char* argv[] )
         std::async( std::launch::async, [=, &queue1, &finished_read, &loading_reads_end, &totalReads] {
             for ( auto const& reads_file : args["reads"].as< std::vector< std::string > >() )
             {
-                SeqFileIn seqFileIn;
-                if ( !open( seqFileIn, toCString( reads_file ) ) )
+                seqan::SeqFileIn seqFileIn;
+                if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
                 {
                     std::cerr << "Unable to open " << reads_file << std::endl;
                     continue;
                 }
-                while ( !atEnd( seqFileIn ) )
+                while ( !seqan::atEnd( seqFileIn ) )
                 {
                     // std::cerr << queue1->size() << std::endl;
                     while ( queue1.size() > num_of_batches )
                     {
                         ; // spin
                     }
-                    StringSet< CharString > ids;
-                    StringSet< Dna5String > seqs;
-                    readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
-                    totalReads += length( ids );
+                    seqan::StringSet< seqan::CharString > ids;
+                    seqan::StringSet< seqan::Dna5String > seqs;
+                    seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
+                    totalReads += seqan::length( ids );
                     queue1.push( ReadBatches{ ids, seqs } );
                 }
-                close( seqFileIn );
+                seqan::close( seqFileIn );
             }
             finished_read     = true;
             loading_reads_end = std::chrono::high_resolution_clock::now();
@@ -319,9 +323,9 @@ int main( int argc, char* argv[] )
 
             // bloom filter
             filterType filter;
-            retrieve( filter, toCString( bloom_filter_file_hierarchy ) );
-            filter_hierarchy.push_back(
-                Filter{ std::move( filter ), group_bin, getNumberOfBins( filter ), getKmerSize( filter ) } );
+            seqan::retrieve( filter, seqan::toCString( bloom_filter_file_hierarchy ) );
+            filter_hierarchy.push_back( Filter{
+                std::move( filter ), group_bin, seqan::getNumberOfBins( filter ), seqan::getKmerSize( filter ) } );
         }
         loading_filter_elapsed += std::chrono::high_resolution_clock::now() - loading_filter_start;
 
@@ -363,9 +367,9 @@ int main( int argc, char* argv[] )
                     if ( rb.ids != "" )
                     {                                // if not empty
                         ReadBatches left_over_reads; // store unclassified reads for next iteration
-                        for ( uint32_t readID = 0; readID < length( rb.ids ); ++readID )
+                        for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
                         {
-                            uint16_t readLen = length( rb.seqs[readID] );
+                            uint16_t readLen = seqan::length( rb.seqs[readID] );
                             // count lens just once
                             if ( hierarchy_id == 1 )
                                 sumReadLen += readLen;
@@ -451,8 +455,8 @@ int main( int argc, char* argv[] )
                             }
                             else if ( hierarchy_id < hierarchy_size )
                             {
-                                appendValue( left_over_reads.ids, rb.ids[readID] );
-                                appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                                seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
+                                seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
                             }
                             else if ( output_unclassified )
                             {
@@ -464,7 +468,7 @@ int main( int argc, char* argv[] )
                         }
 
                         // if something was added to the classified reads (there are more levels, keep reads in memory)
-                        if ( length( left_over_reads.ids ) > 0 )
+                        if ( seqan::length( left_over_reads.ids ) > 0 )
                             pointer_helper->push( left_over_reads );
                     }
 
@@ -473,8 +477,6 @@ int main( int argc, char* argv[] )
                                 ->empty() ) // if finished reading from file (first iter) and current queue is empty
                         break;
                 }
-
-
             } ) );
         }
         for ( auto&& task : tasks )

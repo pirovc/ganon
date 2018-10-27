@@ -20,7 +20,7 @@ Installing *binpacking* and *taxsbp*:
 
 ```shh
 pip install binpacking==1.3
-git clone https://github.com/pirovc/taxsbp/
+git clone -b v0.1 https://github.com/pirovc/taxsbp/
 ```
 
 ## Building

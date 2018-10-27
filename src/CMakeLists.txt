@@ -42,13 +42,3 @@ set( ganon-classify-src
 
 add_executable( ganon-classify ${ganon-classify-src} )
 link_to_ganon_dependencies( ganon-classify )
-
-# ----------------------------------------------------------------------------
-# ganon-update
-# ----------------------------------------------------------------------------
-
-set( ganon-update-src
-    ganon-update/ganon-update.cpp )
-
-add_executable( ganon-update ${ganon-update-src} )
-link_to_ganon_dependencies( ganon-update )
