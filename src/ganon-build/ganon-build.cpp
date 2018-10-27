@@ -1,3 +1,4 @@
+#include <defaults/defaults.hpp>
 #include <utils/safequeue.hpp>
 
 #include <cxxopts.hpp>
@@ -57,7 +58,7 @@ int main( int argc, char* argv[] )
     }
     else if ( args.count( "version" ) )
     {
-        std::cerr << "version" << std::endl;
+        std::cerr << "version: " << defaults::version_string << std::endl;
         return 0;
     }
 
