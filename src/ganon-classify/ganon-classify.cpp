@@ -1,5 +1,5 @@
 #include <defaults/defaults.hpp>
-#include <utils/safequeue.hpp>
+#include <utils/SafeQueue.hpp>
 
 #include <cxxopts.hpp>
 #include <seqan/kmer.h>

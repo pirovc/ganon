@@ -5,7 +5,7 @@
 # utils lib: this target holds resources shared by all other targets.
 
 set( utils-src
-    utils/include/utils/safequeue.hpp )
+    utils/include/utils/SafeQueue.hpp )
 
 add_library( utils STATIC ${utils-src} )
 set_target_properties( utils PROPERTIES LINKER_LANGUAGE CXX CXX_STANDARD 17 )

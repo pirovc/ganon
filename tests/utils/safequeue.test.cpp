@@ -1,4 +1,4 @@
-#include <utils/safequeue.hpp>
+#include <utils/SafeQueue.hpp>
 
 #include <catch2/catch.hpp>
 
