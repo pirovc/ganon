@@ -20,8 +20,23 @@ function( link_to_ganon_dependencies target )
         seqan
         Threads::Threads
         cxxopts
-        utils )
+        utils 
+        defaults )
 endfunction()
+
+# ===========================================================================
+# config files
+# ===========================================================================
+
+configure_file(
+    ${PROJECT_SOURCE_DIR}/src/defaults/defaults.hpp.in
+    ${PROJECT_BINARY_DIR}/include/defaults/defaults.hpp )
+
+add_library( defaults INTERFACE )
+
+target_include_directories( defaults 
+    INTERFACE 
+    ${PROJECT_BINARY_DIR}/include )
 
 # ===========================================================================
 # ganon targets
