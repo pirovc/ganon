@@ -4,7 +4,7 @@
 
 add_executable( ganon-tests
 	setup/Catch2.setup.cpp
-	utils/safequeue.test.cpp )
+        utils/SafeQueue.test.cpp )
 
 target_link_libraries( ganon-tests
 	PRIVATE
