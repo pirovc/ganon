@@ -110,22 +110,22 @@ int main( int argc, char* argv[] )
     }
 
     std::map< std::string, std::vector< std::tuple< uint64_t, uint64_t, uint64_t > > > bins;
-    std::ifstream                                                                      infile( seqid_bin_file );
-    std::string                                                                        seqid;
-    uint64_t                                                                           seqstart;
-    uint64_t                                                                           seqend;
-    uint64_t                                                                           bin;
     std::unordered_set< uint64_t >                                                     updated_bins;
     uint32_t                                                                           max_bin_updated = 0;
-
-    while ( infile >> seqid >> seqstart >> seqend >> bin )
-    {
-        bins[seqid].push_back( std::make_tuple( seqstart, seqend, bin ) );
-        updated_bins.insert( bin );
-        if ( bin > max_bin_updated )
-        {
-            max_bin_updated = bin;
-        }
+    std::ifstream                                                                      infile( seqid_bin_file );
+    std::string line;
+    while(std::getline(infile, line, '\n' )) {
+        std::istringstream stream_line(line);
+        std::vector< std::string > fields;
+        std::string                field;
+        while ( std::getline( stream_line, field, '\t' ) )
+            fields.push_back( field );
+        // seqid <tab> seqstart <tab> seqend <tab> binid
+        uint32_t binid = std::stoul(fields[3]);
+        bins[fields[0]].push_back( std::make_tuple( std::stoul(fields[1]), std::stoul(fields[2]), binid ) );
+        updated_bins.insert( binid );
+        if ( binid > max_bin_updated )
+            max_bin_updated = binid;
     }
     std::cerr << bins.size() << " sequences will be added on " << updated_bins.size() << " bins" << std::endl;
     number_of_bins = updated_bins.size();
