@@ -15,8 +15,8 @@ def main():
     ganon_build_group = build_parser.add_argument_group('ganon')
     ganon_build_group.add_argument('-k', '--kmer-size', type=int, default=19, help='The k-mer size for the bloom filter [14..32] (default: 19)')
     ganon_build_group.add_argument('-n', '--hash-functions', type=int, default=3, help='The number of hash functions to use for the bloom filter [2..5] (default: 3)')
-    ganon_build_group.add_argument('-f', '--min-fp', type=float, default=0.05, help='Min. false positive for bloom filter based on estimated unique k-mers [Mutually exclusive --bloom-size]')
-    ganon_build_group.add_argument('-s', '--bloom-size', type=int, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 8)')
+    ganon_build_group.add_argument('-f', '--max-fp', type=float, default=0.05, help='Max. false positive rate for k-mer classification. Filter size will be defined base on this value by the estimated number of unique k-mers [Mutually exclusive --bloom-size] (default: 0.05)')
+    ganon_build_group.add_argument('-s', '--bloom-size', type=int, help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --min-fp] ')
     ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
@@ -120,26 +120,29 @@ def main():
         sys.stderr.write(str(actual_number_of_bins) + " bins created. ")
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
-        # define bloom filter size based on given false positive
-        if not args.bloom_size:
-            # aproximate number of unique k-mers by just considering that they are all unique
-            max_kmer_count = max_length_bin-args.kmer_size+1
-            sys.stderr.write("Approximate # unique k-mers: " + str(max_kmer_count) +  "\n")
+        # aproximate number of unique k-mers by just considering that they are all unique
+        max_kmer_count = max_length_bin-args.kmer_size+1
+        sys.stderr.write("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
+        # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
+        optimal_number_of_bins = math.ceil(actual_number_of_bins/64)*64
 
-            bin_size_bits = math.ceil(-(1/((1-args.min_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))
-            # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
-            optimal_number_of_bins = math.ceil(actual_number_of_bins/64)*64
-            
-            sys.stderr.write("Bloom filter calculated size with fp<=" + str(args.min_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/8589934592)) + "GB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
-            sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
+        # define bloom filter size based on given false positive
+        MBinBits = 8388608
+        if not args.bloom_size:
+            bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
+            sys.stderr.write("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
+        else:
+            bin_size_bits = math.ceil((args.bloom_size * MBinBits)/optimal_number_of_bins);
+            estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
+            sys.stderr.write("Bloom filter calculated max. fp with size=" + str(args.bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
 
         tx = time.time()
         sys.stderr.write("Building index (ganon-build)... \n")
         run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8}'.format(
                                         args.ganon_path,
                                         acc_bin_file,
-                                        "--bloom-size-bits" if args.min_fp else "-s",
-                                        bin_size_bits*optimal_number_of_bins if args.min_fp else args.bloom_size,
+                                        "--bloom-size-bits" if args.max_fp else "-s",
+                                        bin_size_bits*optimal_number_of_bins if args.max_fp else args.bloom_size,
                                         args.kmer_size,
                                         args.hash_functions,
                                         args.threads,

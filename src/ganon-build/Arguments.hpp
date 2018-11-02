@@ -4,25 +4,27 @@
 struct Arguments
 {
 
-    static const uint64_t gbInBits = 8589934592;
-    int                   argc;
-    char**                argv;
+    static const uint64_t MBinBits = 8388608;
+    // static const uint64_t GBinBits = 8589934592;
+
+    int    argc;
+    char** argv;
 
     // Build options
     std::string seqid_bin_file;
-    std::string output_file;
-    uint64_t    bloom_filter_size;
+    std::string output_filter_file;
+    uint64_t    filter_size;
     uint16_t    kmer_size;
     uint16_t    hash_functions;
 
     // Update options
-    std::string update_bloom_filter_file;
+    std::string update_filter_file;
     bool        update_complete;
 
     // General options
     std::vector< std::string > reference_files;
     uint16_t                   threads;
-    bool verbose;
+    bool                       verbose;
 
 
     Arguments( int _argc, char** _argv )
@@ -38,23 +40,22 @@ struct Arguments
 
         // clang-format off
         options.add_options()
-            ( "e,seqid-bin", "Tab-separated with the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
-            ( "o,output-file", "Output file", cxxopts::value< std::string >() )
-            ( "s,bloom-size", "Final bloom filter size in GB", cxxopts::value< uint64_t >()->default_value( "16" ) )
-            ( "b,bloom-size-bits", "Final bloom filter size in bits", cxxopts::value< uint64_t >()->default_value( "0" ) )
+            ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
+            ( "o,output-filter-file", "Output filter file", cxxopts::value< std::string >() )            
+            ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >()->default_value( "" ) )
+            ( "c,update-complete", "Old and new sequences are provided for updated bins (used to remove sequences)", cxxopts::value< bool >()->default_value( "false" ) )
+            ( "s,filter-size", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint64_t >()->default_value( "16" ) )
+            ( "b,filter-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >()->default_value( "0" ) )
             ( "k,kmer-size", "k size", cxxopts::value< uint16_t >()->default_value( "19" ) )
             ( "n,hash-functions", "Number of hash functions", cxxopts::value< uint16_t >()->default_value( "3" ) )
-            ( "u,update-bloom-filter", "If provided, filte updated with new sequences", cxxopts::value< std::string >()->default_value( "" ) )
-            ( "c,update-complete", "Old and new sequences are provided for updated bins", cxxopts::value< bool >()->default_value( "false" ) )
             ( "t,threads", "Number of threads", cxxopts::value< uint16_t >()->default_value( "1" ) )
-            //( "silent", "Silent mode", cxxopts::value<bool>()->default_value("false"))
             ( "verbose", "Verbose output mode", cxxopts::value<bool>()->default_value("false"))
-            ( "h,help", "Print help" )
-            ( "v,version", "Show version" )
-            ( "references", "references", cxxopts::value< std::vector< std::string > >() );
+            ( "h,help", "Show help commands" )
+            ( "v,version", "Show current version" )
+            ( "reference-files", "reference-files", cxxopts::value< std::vector< std::string > >() );
         // clang-format on
-        options.parse_positional( { "references" } );
-        options.positional_help( "reference.fna[.gz] [reference2.fna[.gz] ... referenceN.fna[.gz]]" );
+        options.parse_positional( { "reference-files" } );
+        options.positional_help( "ref.fna[.gz] [ref2.fna[.gz] ... refN.fna[.gz]]" );
 
         auto args = options.parse( argc, argv );
 
@@ -70,29 +71,29 @@ struct Arguments
         }
         else
         {
-            seqid_bin_file           = args["seqid-bin"].as< std::string >();
-            update_bloom_filter_file = args["update-bloom-filter"].as< std::string >();
-            update_complete          = args["update-complete"].as< bool >();
-            threads                  = args["threads"].as< uint16_t >();
-            output_file              = args["output-file"].as< std::string >();
-            reference_files          = args["references"].as< std::vector< std::string > >();
-            verbose          = args["verbose"].as< bool >();
+            seqid_bin_file     = args["seqid-bin-file"].as< std::string >();
+            output_filter_file = args["output-filter-file"].as< std::string >();
+            update_filter_file = args["update-filter-file"].as< std::string >();
+            reference_files    = args["reference-files"].as< std::vector< std::string > >();
+            update_complete    = args["update-complete"].as< bool >();
+            threads            = args["threads"].as< uint16_t >();
+            verbose            = args["verbose"].as< bool >();
 
-            // Skip variables if updating
-            if ( !update_bloom_filter_file.empty() )
+            // Skip variables if updating, loads from existing filter file
+            if ( !update_filter_file.empty() )
             {
-                std::cerr << "--bloom-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
-                             "--update-bloom-filter file"
+                std::cerr << "--filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
+                             "--update-filter-file"
                           << std::endl;
             }
             else
             {
                 kmer_size      = args["kmer-size"].as< uint16_t >();
                 hash_functions = args["hash-functions"].as< uint16_t >();
-                if ( args["bloom-size-bits"].as< uint64_t >() > 0 )
-                    bloom_filter_size = args["bloom-size-bits"].as< uint64_t >();
+                if ( args["filter-size-bits"].as< uint64_t >() > 0 )
+                    filter_size = args["filter-size-bits"].as< uint64_t >();
                 else
-                    bloom_filter_size = args["bloom-size"].as< uint64_t >() * gbInBits;
+                    filter_size = args["filter-size"].as< uint64_t >() * MBinBits;
             }
             return true;
         }
@@ -100,21 +101,23 @@ struct Arguments
 
     void print()
     {
-        std::cerr << "seqid-bin: " << seqid_bin_file << std::endl;
-        std::cerr << "bloom-size: " << std::fixed << std::setprecision( 2 )
-                  << (float) bloom_filter_size / (float) gbInBits << std::endl;
-        std::cerr << "bloom-size-bits: " << bloom_filter_size << std::endl;
-        std::cerr << "kmer-size: " << kmer_size << std::endl;
-        std::cerr << "hash-functions: " << hash_functions << std::endl;
-        std::cerr << "bloom-filter: " << update_bloom_filter_file << std::endl;
-        std::cerr << "update-complete: " << update_complete << std::endl;
-        std::cerr << "threads: " << threads << std::endl;
-        std::cerr << "verbose: " << verbose << std::endl;
-        std::cerr << "output-file: " << output_file << std::endl;
-        std::cerr << "references: " << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "--seqid-bin-file      " << seqid_bin_file << std::endl;
+        std::cerr << "--output-filter-file  " << output_filter_file << std::endl;
+        std::cerr << "--update-filter-file  " << update_filter_file << std::endl;
+        std::cerr << "--reference-files     " << std::endl;
         for ( const auto& reference_file : reference_files )
         {
-            std::cerr << reference_file << std::endl;
+            std::cerr << "                      " << reference_file << std::endl;
         }
+        std::cerr << "--update-complete     " << update_complete << std::endl;
+        std::cerr << "--filter-size         " << std::fixed << std::setprecision( 2 )
+                  << (float) filter_size / (float) MBinBits << std::endl;
+        std::cerr << "--filter-size-bits    " << filter_size << std::endl;
+        std::cerr << "--kmer-size           " << kmer_size << std::endl;
+        std::cerr << "--hash-functions      " << hash_functions << std::endl;
+        std::cerr << "--threads             " << threads << std::endl;
+        std::cerr << "--verbose             " << verbose << std::endl;
+        std::cerr << std::endl;
     }
 };
