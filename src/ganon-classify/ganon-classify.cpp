@@ -1,9 +1,3 @@
-#include <defaults/defaults.hpp>
-#include <utils/safequeue.hpp>
-
-#include <cxxopts.hpp>
-#include <seqan/kmer.h>
-
 #include <atomic>
 #include <chrono>
 #include <ctime>
@@ -11,9 +5,13 @@
 #include <future>
 #include <iostream>
 #include <map>
+#include <seqan/kmer.h>
+#include <utils/safequeue.hpp>
 #include <vector>
 
-inline uint16_t kmer_threshold( const uint16_t& readLen, const uint16_t& kmerSize, const uint16_t& max_error )
+#include "Arguments.hpp"
+
+inline uint16_t kmer_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error )
 {
     uint16_t threshold = 0;
     if ( readLen > kmerSize * ( 1 + max_error ) )
@@ -39,153 +37,45 @@ struct ReadOut
     std::vector< ReadMatch > matches;
 };
 
-std::vector< std::string > split( const std::string& s, char delimiter )
+
+int main( int argc, char** argv )
 {
-    std::vector< std::string > tokens;
-    std::string                token;
-    std::istringstream         tokenStream( s );
-    while ( std::getline( tokenStream, token, delimiter ) )
-        tokens.push_back( token );
-    return tokens;
-}
+    std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
+                                             // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
 
-int main( int argc, char* argv[] )
-{
-
-    // speed up output to STDOUT (allows buffering) -> https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
-    std::ios_base::sync_with_stdio( false );
-
-    int              old_argc = argc; // parser always set argc to 1
-    cxxopts::Options options( "ganon-classify", "Ganon classifier" );
-
-    // clang-format off
-    options.add_options()
-        ( "b,bloom-filter", "Bloom filter file[s]", cxxopts::value< std::vector< std::string > >() )
-        ( "g,group-bin", "Group bin file", cxxopts::value< std::vector< std::string > >() )
-        ( "c,filter-hierarchy", "Hierarchy of the given filters (e.g. 1,1,2,3)", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed for filtering", cxxopts::value< int >()->default_value( "3" ) )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this " "criterial will have negative k-mer counts.", cxxopts::value< int >() )
-        ( "o,output-file", "Output file, omit for STDOUT", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "output-unclassified-file", "Output unclassified reads to file", cxxopts::value< std::string >()->default_value( "" ) )
-        // option to skip filtering and work as a k-mer counter
-        // option to output read len?
-        // silent option
-        ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
-        ( "h,help", "Print help" )
-        ( "v,version", "Show version" )
-        ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
-    // clang-format on
-
-    options.parse_positional( { "reads" } );
-    options.positional_help( "file1.fastq[.gz] [file2.fastq[.gz] ... fileN.fastq[.gz]]" );
-    auto args = options.parse( argc, argv );
-
-    if ( args.count( "help" ) || old_argc <= 1 )
-    {
-        std::cerr << options.help() << std::endl;
-        return 0;
-    }
-    else if ( args.count( "version" ) )
-    {
-        std::cerr << "version: " << defaults::version_string << std::endl;
-        return 0;
-    }
 
     auto ganon_start = std::chrono::high_resolution_clock::now();
 
-    std::string output_file              = args["output-file"].as< std::string >();
-    std::string output_unclassified_file = args["output-unclassified-file"].as< std::string >();
-    uint16_t    max_error                = args["max-error"].as< int >();
-    uint16_t    threads                  = args["threads"].as< int >();
-    uint16_t    clas_threads             = threads - 2;
-    bool        output_unclassified      = false;
-    if ( !output_unclassified_file.empty() )
-    {
-        output_unclassified = true;
-        clas_threads        = clas_threads - 1;
-    }
-    bool     unique_filtering = false;
-    uint16_t max_error_unique;
-    if ( args.count( "max-error-unique" ) )
-    {
-        max_error_unique = args["max-error-unique"].as< int >();
-        if ( max_error_unique < max_error )
-            unique_filtering = true;
-    }
+    // Parse arguments
+    Arguments args( argc, argv );
+    if ( !args.parse() )
+        return 0;
 
-    std::vector< std::string > bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
-    std::vector< std::string > group_bin_files    = args["group-bin"].as< std::vector< std::string > >();
-    std::string                filter_hierarchy   = args["filter-hierarchy"].as< std::string >();
+    // if ( args.verbose )
+    args.print();
+    //////////////////////////////
 
-    std::map< std::string, std::vector< std::tuple< std::string, std::string > > > filters;
-    if ( filter_hierarchy.empty() )
-    {
-        if ( bloom_filter_files.size() != group_bin_files.size() )
-        {
-            std::cerr << "Filters and maps files do not match" << std::endl;
-            return 1;
-        }
-        else
-        {
-            for ( uint16_t h = 0; h < bloom_filter_files.size(); ++h )
-            {
-                filters["1"].push_back( std::make_tuple( bloom_filter_files[h], group_bin_files[h] ) );
-            }
-        }
-    }
-    else
-    {
-        std::vector< std::string > hierarchy = split( filter_hierarchy, ',' );
-        if ( hierarchy.size() != bloom_filter_files.size() || hierarchy.size() != group_bin_files.size() )
-        {
-            std::cerr << "Hierarchy does not match with the number of provided files" << std::endl;
-            return 1;
-        }
-        else
-        {
-            for ( uint16_t h = 0; h < hierarchy.size(); ++h )
-                filters[hierarchy[h]].push_back( std::make_tuple( bloom_filter_files[h], group_bin_files[h] ) );
-        }
-    }
 
-    std::cerr << "filters: " << std::endl;
-    for ( auto const& hierarchy : filters )
-    { // filter[h] = vector<(filter, map)> -> map already sort by key
-        for ( auto const& file : hierarchy.second )
-            std::cerr << " " << hierarchy.first << ") " << std::get< 0 >( file ) << "," << std::get< 1 >( file )
-                      << std::endl;
-    }
-    std::cerr << "max-error: " << max_error << std::endl;
-    if ( unique_filtering )
-        std::cerr << "max-error-unique: " << max_error_unique << std::endl;
-    std::cerr << "threads: " << threads << std::endl;
-    if ( !output_file.empty() )
-        std::cerr << "output-file: " << output_file << std::endl;
-    if ( output_unclassified )
-        std::cerr << "output-unclassified-file: " << output_unclassified_file << std::endl;
-    std::cerr << "reads: " << std::endl;
-    for ( const auto& s : args["reads"].as< std::vector< std::string > >() )
-        std::cerr << " - " << s << std::endl;
-
+    // Set output
     std::ofstream out;
     std::ofstream out_unclassified;
-    if ( !output_file.empty() )
+    if ( !args.output_file.empty() )
     { // output to a file
-        out.open( output_file );
+        out.open( args.output_file );
     }
     else
-    { // STDOUT
-        out.copyfmt( std::cout );
+    {
+        out.copyfmt( std::cout ); // STDOUT
         out.clear( std::cout.rdstate() );
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
 
-    // clang-format off
     typedef seqan::ModifiedString<
                 seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >,
                 seqan::ModReverse
             > reversedRead;
-    // clang-format on
+
+
 
     std::vector< std::future< void > > read_write;
     std::atomic< uint64_t >            sumReadLen      = 0;
@@ -228,7 +118,7 @@ int main( int argc, char* argv[] )
     // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
     read_write.emplace_back(
         std::async( std::launch::async, [=, &queue1, &finished_read, &loading_reads_end, &totalReads] {
-            for ( auto const& reads_file : args["reads"].as< std::vector< std::string > >() )
+            for ( auto const& reads_file : args.reads )
             {
                 seqan::SeqFileIn seqFileIn;
                 if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -258,23 +148,27 @@ int main( int argc, char* argv[] )
     general_start = std::chrono::high_resolution_clock::now();
     // extra thread for printing classified reads
     read_write.emplace_back(
-        std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_clas, &printing_classified_end] {
-            while ( true )
-            {
-                ReadOut ro = classified_reads_queue.pop();
-                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
-                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
-                if ( finished_clas && classified_reads_queue.empty() )
-                {
-                    printing_classified_end = std::chrono::high_resolution_clock::now();
-                    break;
-                }
-            }
-        } ) );
+        std::async( std::launch::async, 
+                    [=, &classified_reads_queue, &out, &finished_clas, &printing_classified_end] {
+                        while ( true )
+                        {
+                            ReadOut ro = classified_reads_queue.pop();
+                            for ( uint32_t i = 0; i < ro.matches.size(); ++i )
+                                out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+                            if ( finished_clas && classified_reads_queue.empty() )
+                            {
+                                printing_classified_end = std::chrono::high_resolution_clock::now();
+                                break;
+                            }
+                        }
+                    } 
+                ) 
+    );
+
     // extra thread for printing unclassified reads
-    if ( output_unclassified )
+    if ( args.output_unclassified )
     {
-        out_unclassified.open( output_unclassified_file );
+        out_unclassified.open( args.output_unclassified_file );
         read_write.emplace_back(
             std::async( std::launch::async,
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_clas, &printing_unclassified_end] {
@@ -298,8 +192,8 @@ int main( int argc, char* argv[] )
     SafeQueue< ReadBatches >* pointer_extra;   // pointer to the queues
 
     uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = filters.size();
-    for ( auto const& hierarchy : filters )
+    uint16_t hierarchy_size = args.filters.size();
+    for ( auto const& hierarchy : args.filters )
     { // filter[h] = vector<(filter, map)> -> map already sort by key
         ++hierarchy_id;
         // std::string hierarchy_name = hierarchy.first;
@@ -315,15 +209,16 @@ int main( int argc, char* argv[] )
             // group bin files
             std::map< uint32_t, std::string > group_bin;
             std::ifstream                     infile( group_bin_file_hierarchy );
-            std::string line;
-            while(std::getline(infile, line, '\n' )) {
-                std::istringstream stream_line(line);
+            std::string                       line;
+            while ( std::getline( infile, line, '\n' ) )
+            {
+                std::istringstream         stream_line( line );
                 std::vector< std::string > fields;
                 std::string                field;
                 while ( std::getline( stream_line, field, '\t' ) )
                     fields.push_back( field );
                 // group <tab> binid
-                group_bin[std::stoul(fields[1])] = fields[0];
+                group_bin[std::stoul( fields[1] )] = fields[0];
             }
 
             // bloom filter
@@ -353,18 +248,13 @@ int main( int argc, char* argv[] )
         // std::cerr << hierarchy_id << " - queue2 address: " << &queue2 << std::endl;
         // std::cerr << hierarchy_id << " - pointer_current: " << pointer_current << " - pointer_helper: " <<
         // pointer_helper << std::endl;
+
         std::vector< std::future< void > > tasks;
-        for ( uint16_t taskNo = 0; taskNo < clas_threads; ++taskNo )
+
+        for ( uint16_t taskNo = 0; taskNo < args.clas_threads; ++taskNo )
         {
-            tasks.emplace_back( std::async( [=,
-                                             &filter_hierarchy,
-                                             &classified_reads_queue,
-                                             &unclassified_reads_queue,
-                                             &finished_read,
-                                             &select_elapsed,
-                                             &filter_elapsed,
-                                             &sumReadLen,
-                                             &classifiedReads] {
+            tasks.emplace_back( std::async( std::launch::async, [=, &filter_hierarchy,&classified_reads_queue,&unclassified_reads_queue,&finished_read,&select_elapsed,&filter_elapsed,&sumReadLen,&classifiedReads] 
+            {
                 while ( true )
                 {
                     // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
@@ -384,7 +274,7 @@ int main( int argc, char* argv[] )
 
                             std::unordered_map< std::string, int16_t > groups;
                             uint16_t                                   maxKmerCountRead = 0;
-                            uint16_t threshold = kmer_threshold( readLen, kmerSize, max_error );
+                            uint16_t threshold = kmer_threshold( readLen, kmerSize, args.max_error );
 
                             std::chrono::time_point< std::chrono::high_resolution_clock > filter_start;
                             // for every filter in this level
@@ -446,11 +336,11 @@ int main( int argc, char* argv[] )
                                 classified_read_out.readID = rb.ids[readID];
 
                                 // set as negative for unique filtering
-                                if ( unique_filtering )
+                                if ( args.unique_filtering )
                                     // if there's only one match and kmer count is lower than expected
                                     if ( classified_read_out.matches.size() == 1
                                          && classified_read_out.matches[0].kmer_count
-                                                < readLen - kmerSize + 1 - ( max_error_unique * kmerSize ) )
+                                                < readLen - kmerSize + 1 - ( args.max_error_unique * kmerSize ) )
                                         classified_read_out.matches[0].kmer_count =
                                             -classified_read_out.matches[0].kmer_count;
 
@@ -463,7 +353,7 @@ int main( int argc, char* argv[] )
                                 seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                                 seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
                             }
-                            else if ( output_unclassified )
+                            else if ( args.output_unclassified )
                             {
                                 ReadOut unclassified_read_out;
                                 unclassified_read_out.readID = rb.ids[readID];
@@ -477,10 +367,10 @@ int main( int argc, char* argv[] )
                             pointer_helper->push( left_over_reads );
                     }
 
-                    if ( finished_read
-                         && pointer_current
-                                ->empty() ) // if finished reading from file (first iter) and current queue is empty
+                    if ( finished_read && pointer_current->empty() )
+                    { // if finished reading from file (first iter) and current queue is empty
                         break;
+                    }
                 }
             } ) );
         }
@@ -498,10 +388,10 @@ int main( int argc, char* argv[] )
         task.get();
     }
 
-    if ( output_file != "" )
+    if ( args.output_file != "" )
         out.close();
 
-    if ( output_unclassified )
+    if ( args.output_unclassified )
         out_unclassified.close();
 
     auto ganon_end      = std::chrono::high_resolution_clock::now();
@@ -520,7 +410,7 @@ int main( int argc, char* argv[] )
     std::cerr << "Classifying      end time: " << std::ctime( &classifying_end_time );
     auto printing_classified_end_time = std::chrono::system_clock::to_time_t( printing_classified_end );
     std::cerr << "Printing clas.   end time: " << std::ctime( &printing_classified_end_time );
-    if ( output_unclassified )
+    if ( args.output_unclassified )
     {
         auto printing_unclassified_end_time = std::chrono::system_clock::to_time_t( printing_unclassified_end );
         std::cerr << "Printing unclas. end time: " << std::ctime( &printing_unclassified_end_time );
@@ -530,7 +420,7 @@ int main( int argc, char* argv[] )
 
     std::cerr << " 1) loading filters: " << loading_filter_elapsed.count() << std::endl;
     double total_classifying_elapsed = classifying_elapsed.count();
-    std::cerr << " 2) classifying (" << clas_threads << "t): " << total_classifying_elapsed << std::endl;
+    std::cerr << " 2) classifying (" << args.clas_threads << "t): " << total_classifying_elapsed << std::endl;
     std::cerr << "    - select: "
               << total_classifying_elapsed
                      * ( select_elapsed.count() / ( select_elapsed.count() + filter_elapsed.count() ) )
