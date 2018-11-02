@@ -38,6 +38,8 @@ struct Arguments
 
         cxxopts::Options options( "ganon-build", "Ganon builder" );
 
+        int _argc = argc;
+
         // clang-format off
         options.add_options()
             ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
@@ -59,14 +61,14 @@ struct Arguments
 
         auto args = options.parse( argc, argv );
 
-        if ( args.count( "version" ) )
-        {
-            std::cerr << "version: " << defaults::version_string << std::endl;
-            return false;
-        }
-        else if ( args.count( "help" ) )
+        if ( args.count( "help" ) || _argc == 1 )
         {
             std::cerr << options.help() << std::endl;
+            return false;
+        }
+        else if ( args.count( "version" ) )
+        {
+            std::cerr << "version: " << defaults::version_string << std::endl;
             return false;
         }
         else
