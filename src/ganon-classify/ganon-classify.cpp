@@ -313,13 +313,17 @@ int main( int argc, char* argv[] )
             std::string group_bin_file_hierarchy    = std::get< 1 >( file );
 
             // group bin files
-            std::string                       group;
-            uint32_t                          bin;
             std::map< uint32_t, std::string > group_bin;
             std::ifstream                     infile( group_bin_file_hierarchy );
-            while ( infile >> group >> bin )
-            {
-                group_bin[bin] = group;
+            std::string line;
+            while(std::getline(infile, line, '\n' )) {
+                std::istringstream stream_line(line);
+                std::vector< std::string > fields;
+                std::string                field;
+                while ( std::getline( stream_line, field, '\t' ) )
+                    fields.push_back( field );
+                // group <tab> binid
+                group_bin[std::stoul(fields[1])] = fields[0];
             }
 
             // bloom filter

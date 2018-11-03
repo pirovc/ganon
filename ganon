@@ -15,12 +15,12 @@ def main():
     ganon_build_group = build_parser.add_argument_group('ganon')
     ganon_build_group.add_argument('-k', '--kmer-size', type=int, default=19, help='The k-mer size for the bloom filter [14..32] (default: 19)')
     ganon_build_group.add_argument('-n', '--hash-functions', type=int, default=3, help='The number of hash functions to use for the bloom filter [2..5] (default: 3)')
-    ganon_build_group.add_argument('-s', '--bloom-size', type=int, default=64, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 8)')
-    ganon_build_group.add_argument('-f', '--min-fp', type=float, help='Min. false positive for bloom filter based on estimated unique k-mers [Mutually exclusive --bloom-size]')
+    ganon_build_group.add_argument('-f', '--min-fp', type=float, default=0.05, help='Min. false positive for bloom filter based on estimated unique k-mers [Mutually exclusive --bloom-size]')
+    ganon_build_group.add_argument('-s', '--bloom-size', type=int, help='Bloom filter size in GB [1..512] [Mutually exclusive --min-fp] (default: 8)')
     ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
-    taxsbp_build_group.add_argument('-l', '--bin-length', type=int, default=5000000, help='Maximum length (in bp) for each bin (default: 5000000')
+    taxsbp_build_group.add_argument('-l', '--bin-length', type=int, default=3000000, help='Maximum length (in bp) for each bin (default: 3000000')
     taxsbp_build_group.add_argument('--fragment-length', type=int, default=-1, help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
     taxsbp_build_group.add_argument('--overlap-length', type=int, default=500, help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton (default: 500)')
     taxsbp_build_group.add_argument('--retrieve-ncbi', default=False, action='store_true', help='Retrieve taxdump (--nodes-file, --merged-file) and TaxSBP information (--len-taxid-file) automatically from NCBI')
@@ -121,7 +121,7 @@ def main():
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         # define bloom filter size based on given false positive
-        if args.min_fp:
+        if not args.bloom_size:
             # aproximate number of unique k-mers by just considering that they are all unique
             max_kmer_count = max_length_bin-args.kmer_size+1
             sys.stderr.write("Approximate # unique k-mers: " + str(max_kmer_count) +  "\n")
@@ -277,7 +277,7 @@ def main():
         old_bins_file.close()
 
         # Delete temp files
-        #shutil.rmtree(tmp_output_folder)
+        shutil.rmtree(tmp_output_folder)
 
     elif args.which=='classify':
 
@@ -463,8 +463,8 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
             bin_length[binno]=+int(length)
             unique_taxids.add(int(taxid))
             print(line, file=bins) 
-            print(acc, frag_start, frag_end, binno, sep=" ", file=acc_bin)
-            print(group, binno, sep=" ", file=group_bin)
+            print(acc, frag_start, frag_end, binno, sep="\t", file=acc_bin)
+            print(group, binno, sep="\t", file=group_bin)
     bins.close()
     acc_bin.close()
     group_bin.close()
