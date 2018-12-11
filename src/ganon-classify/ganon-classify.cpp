@@ -10,14 +10,7 @@
 #include <vector>
 
 #include "Arguments.hpp"
-
-inline uint16_t kmer_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error )
-{
-    uint16_t threshold = 0;
-    if ( readLen > kmerSize * ( 1 + max_error ) )
-        threshold = readLen - kmerSize + 1 - ( max_error * kmerSize );
-    return threshold;
-}
+#include "Time.hpp"
 
 struct ReadBatches
 {
@@ -37,14 +30,66 @@ struct ReadOut
     std::vector< ReadMatch > matches;
 };
 
+struct Stats
+{
+	std::atomic< uint64_t > sumReadLen;
+    std::atomic< uint64_t > classifiedReads;
+    uint64_t  totalReads;
+};
+
+inline uint16_t kmer_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error )
+{
+    uint16_t threshold = 0;
+    if ( readLen > kmerSize * ( 1 + max_error ) )
+        threshold = readLen - kmerSize + 1 - ( max_error * kmerSize );
+    return threshold;
+}
+
+void print_time(Arguments & args, Time & timeGanon, Time & timeLoadingReads, Time & timeLoadingFilters, Time & timeClass, Time & timePrintClass, Time & timePrintUnclass){
+    std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
+    std::cerr << "Loading reads  start time: " << timeLoadingReads.get_start_ctime();
+    std::cerr << "Class./ Print. start time: " << timeClass.get_start_ctime();
+    std::cerr << "Loading reads    end time: " << timeLoadingReads.get_end_ctime();
+    std::cerr << "Classifying      end time: " << timeClass.get_end_ctime();
+    std::cerr << "Printing clas.   end time: " << timePrintClass.get_end_ctime();
+    if ( args.output_unclassified )
+        std::cerr << "Printing unclas. end time: " << timePrintUnclass.get_end_ctime();
+    std::cerr << "ganon-classify   end time: " << timeGanon.get_end_ctime();
+
+    std::cerr << " - loading filters: " << timeLoadingFilters.get_elapsed() << std::endl;
+    std::cerr << " - classifying (" << args.clas_threads << "t): " << timeClass.get_elapsed() << std::endl;
+    std::cerr << " - printing (1t): " << timePrintClass.get_elapsed() << std::endl;
+    if ( args.output_unclassified )
+        std::cerr << " - printing unclassified (1t) " << timePrintUnclass.get_elapsed() << std::endl;
+    std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
+    std::cerr << std::endl;
+}
+
+void print_stats(Stats & stats, Time & timeClass){
+	double elapsed_classification = timeClass.get_elapsed();
+	std::cerr << "ganon-classify processed " << stats.totalReads << " sequences (" << stats.sumReadLen / 1000000.0 << " Mbp) in "
+              << elapsed_classification << " seconds ("
+              << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
+              << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
+    std::cerr << " - " << stats.classifiedReads << " sequences classified ("
+              << ( stats.classifiedReads / (double) stats.totalReads ) * 100 << "%)" << std::endl;
+    std::cerr << " - " << stats.totalReads - stats.classifiedReads << " sequences unclassified ("
+              << ( ( stats.totalReads - stats.classifiedReads ) / (double) stats.totalReads ) * 100 << "%)" << std::endl;
+
+}
 
 int main( int argc, char** argv )
 {
     std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
                                              // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
+    Time timeGanon;
+    timeGanon.start();
 
-
-    auto ganon_start = std::chrono::high_resolution_clock::now();
+    Time timeLoadingReads;
+    Time timeLoadingFilters;
+    Time timeClass;
+    Time timePrintClass;
+    Time timePrintUnclass;
 
     // Parse arguments
     Arguments args( argc, argv );
@@ -52,6 +97,7 @@ int main( int argc, char** argv )
         return 0;
 
     // if ( args.verbose )
+	std::cerr << std::endl;
     args.print();
     //////////////////////////////
 
@@ -70,17 +116,14 @@ int main( int argc, char** argv )
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
 
+
+    // Statistics values
+    Stats stats{0,0,0};
+
     typedef seqan::ModifiedString<
                 seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >,
                 seqan::ModReverse
             > reversedRead;
-
-
-
-    std::vector< std::future< void > > read_write;
-    std::atomic< uint64_t >            sumReadLen      = 0;
-    std::atomic< uint64_t >            classifiedReads = 0;
-    uint64_t                           totalReads      = 0;
 
     SafeQueue< ReadBatches > queue1;
     SafeQueue< ReadBatches > queue2;
@@ -99,25 +142,15 @@ int main( int argc, char** argv )
         uint16_t                          kmerSize;
     };
 
-    std::chrono::duration< double >                               loading_filter_elapsed;
-    std::chrono::duration< double >                               classifying_elapsed;
-    std::chrono::duration< double >                               select_elapsed;
-    std::chrono::duration< double >                               filter_elapsed;
-    std::chrono::time_point< std::chrono::high_resolution_clock > loading_reads_start;
-    std::chrono::time_point< std::chrono::high_resolution_clock > loading_reads_end;
-    std::chrono::time_point< std::chrono::high_resolution_clock > general_start;
-    std::chrono::time_point< std::chrono::high_resolution_clock > classifying_end;
-    std::chrono::time_point< std::chrono::high_resolution_clock > printing_classified_end;
-    std::chrono::time_point< std::chrono::high_resolution_clock > printing_unclassified_end;
-
-
-    loading_reads_start = std::chrono::high_resolution_clock::now();
+    timeLoadingReads.start();
     // extra thread for reading the reads in batches
     int num_of_batches         = 1000;
     int num_of_reads_per_batch = 400;
     // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
+
+    std::vector< std::future< void > > read_write;
     read_write.emplace_back(
-        std::async( std::launch::async, [=, &queue1, &finished_read, &loading_reads_end, &totalReads] {
+        std::async( std::launch::async, [=, &queue1, &finished_read, &timeLoadingReads, &stats] {
             for ( auto const& reads_file : args.reads )
             {
                 seqan::SeqFileIn seqFileIn;
@@ -136,20 +169,20 @@ int main( int argc, char** argv )
                     seqan::StringSet< seqan::CharString > ids;
                     seqan::StringSet< seqan::Dna5String > seqs;
                     seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
-                    totalReads += seqan::length( ids );
+                    stats.totalReads += seqan::length( ids );
                     queue1.push( ReadBatches{ ids, seqs } );
                 }
                 seqan::close( seqFileIn );
             }
-            finished_read     = true;
-            loading_reads_end = std::chrono::high_resolution_clock::now();
+            finished_read = true;
+            timeLoadingReads.end();
         } ) );
 
-    general_start = std::chrono::high_resolution_clock::now();
+	timePrintClass.start();
     // extra thread for printing classified reads
     read_write.emplace_back(
         std::async( std::launch::async, 
-                    [=, &classified_reads_queue, &out, &finished_clas, &printing_classified_end] {
+                    [=, &classified_reads_queue, &out, &finished_clas, &timePrintClass] {
                         while ( true )
                         {
                             ReadOut ro = classified_reads_queue.pop();
@@ -157,7 +190,7 @@ int main( int argc, char** argv )
                                 out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
                             if ( finished_clas && classified_reads_queue.empty() )
                             {
-                                printing_classified_end = std::chrono::high_resolution_clock::now();
+                                timePrintClass.end();
                                 break;
                             }
                         }
@@ -165,13 +198,14 @@ int main( int argc, char** argv )
                 ) 
     );
 
+    timePrintUnclass.start();
     // extra thread for printing unclassified reads
     if ( args.output_unclassified )
     {
         out_unclassified.open( args.output_unclassified_file );
         read_write.emplace_back(
             std::async( std::launch::async,
-                        [=, &unclassified_reads_queue, &out_unclassified, &finished_clas, &printing_unclassified_end] {
+                        [=, &unclassified_reads_queue, &out_unclassified, &finished_clas, &timePrintUnclass] {
                             while ( true )
                             {
                                 ReadOut rou = unclassified_reads_queue.pop();
@@ -179,7 +213,7 @@ int main( int argc, char** argv )
                                     out_unclassified << rou.readID << '\n';
                                 if ( finished_clas && unclassified_reads_queue.empty() )
                                 {
-                                    printing_unclassified_end = std::chrono::high_resolution_clock::now();
+                                    timePrintUnclass.end();
                                     break;
                                 }
                             }
@@ -200,7 +234,7 @@ int main( int argc, char** argv )
 
         std::vector< Filter > filter_hierarchy;
 
-        auto loading_filter_start = std::chrono::high_resolution_clock::now();
+        timeLoadingFilters.start();
         for ( auto const& file : hierarchy.second )
         {
             std::string bloom_filter_file_hierarchy = std::get< 0 >( file );
@@ -227,10 +261,9 @@ int main( int argc, char** argv )
             filter_hierarchy.push_back( Filter{
                 std::move( filter ), group_bin, seqan::getNumberOfBins( filter ), seqan::getKmerSize( filter ) } );
         }
-        loading_filter_elapsed += std::chrono::high_resolution_clock::now() - loading_filter_start;
+        timeLoadingFilters.end();
 
-        auto classifying_start = std::chrono::high_resolution_clock::now();
-
+        timeClass.start();
         // manage queues instance pointers
         if ( hierarchy_id == 1 )
         {
@@ -253,7 +286,7 @@ int main( int argc, char** argv )
 
         for ( uint16_t taskNo = 0; taskNo < args.clas_threads; ++taskNo )
         {
-            tasks.emplace_back( std::async( std::launch::async, [=, &filter_hierarchy,&classified_reads_queue,&unclassified_reads_queue,&finished_read,&select_elapsed,&filter_elapsed,&sumReadLen,&classifiedReads] 
+            tasks.emplace_back( std::async( std::launch::async, [=, &filter_hierarchy,&classified_reads_queue,&unclassified_reads_queue,&finished_read,&stats] 
             {
                 while ( true )
                 {
@@ -267,7 +300,7 @@ int main( int argc, char** argv )
                             uint16_t readLen = seqan::length( rb.seqs[readID] );
                             // count lens just once
                             if ( hierarchy_id == 1 )
-                                sumReadLen += readLen;
+                                stats.sumReadLen += readLen;
 
                             // k-mer sizes should be the same among filters, groups should not overlap
                             uint16_t kmerSize = filter_hierarchy[0].kmerSize;
@@ -276,19 +309,19 @@ int main( int argc, char** argv )
                             uint16_t                                   maxKmerCountRead = 0;
                             uint16_t threshold = kmer_threshold( readLen, kmerSize, args.max_error );
 
-                            std::chrono::time_point< std::chrono::high_resolution_clock > filter_start;
+                            //std::chrono::time_point< std::chrono::high_resolution_clock > filter_start;
                             // for every filter in this level
                             for ( Filter& filter : filter_hierarchy )
                             {
 
-                                auto                    select_start = std::chrono::high_resolution_clock::now();
+                                //auto                    select_start = std::chrono::high_resolution_clock::now();
                                 std::vector< uint32_t > selectedBins( filter.numberOfBins, 0 );
-                                filter.bloom_filter.select( selectedBins, rb.seqs[readID] );
                                 std::vector< uint32_t > selectedBinsRev( filter.numberOfBins, 0 );
+                                filter.bloom_filter.select( selectedBins, rb.seqs[readID] );
                                 filter.bloom_filter.select( selectedBinsRev, reversedRead( rb.seqs[readID] ) );
-                                select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
+                                //select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
 
-                                filter_start = std::chrono::high_resolution_clock::now();
+                                //filter_start = std::chrono::high_resolution_clock::now();
                                 for ( uint32_t binNo = 0; binNo < filter.numberOfBins; ++binNo )
                                 {
                                     if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
@@ -308,10 +341,10 @@ int main( int argc, char** argv )
                                         }
                                     }
                                 }
-                                filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
+                                //filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
                             }
 
-                            filter_start = std::chrono::high_resolution_clock::now();
+                            //filter_start = std::chrono::high_resolution_clock::now();
                             // get maximum possible number of error for this read
                             // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
                             uint16_t max_errorRead =
@@ -332,7 +365,7 @@ int main( int argc, char** argv )
 
                             if ( classified )
                             {
-                                classifiedReads += 1;
+                                stats.classifiedReads += 1;
                                 classified_read_out.readID = rb.ids[readID];
 
                                 // set as negative for unique filtering
@@ -359,7 +392,7 @@ int main( int argc, char** argv )
                                 unclassified_read_out.readID = rb.ids[readID];
                                 unclassified_reads_queue.push( unclassified_read_out );
                             }
-                            filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
+                            //filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
                         }
 
                         // if something was added to the classified reads (there are more levels, keep reads in memory)
@@ -378,10 +411,9 @@ int main( int argc, char** argv )
         {
             task.get();
         }
-        classifying_elapsed += std::chrono::high_resolution_clock::now() - classifying_start;
+        timeClass.end();
     }
     finished_clas   = true;
-    classifying_end = std::chrono::high_resolution_clock::now();
 
     for ( auto&& task : read_write )
     {
@@ -394,52 +426,11 @@ int main( int argc, char** argv )
     if ( args.output_unclassified )
         out_unclassified.close();
 
-    auto ganon_end      = std::chrono::high_resolution_clock::now();
-    auto ganon_end_time = std::chrono::system_clock::to_time_t( ganon_end );
+    timeGanon.end();
 
     std::cerr << std::endl;
-    auto ganon_start_time = std::chrono::system_clock::to_time_t( ganon_start );
-    std::cerr << "ganon-classify start time: " << std::ctime( &ganon_start_time );
-    auto loading_reads_start_time = std::chrono::system_clock::to_time_t( loading_reads_start );
-    std::cerr << "Loading reads  start time: " << std::ctime( &loading_reads_start_time );
-    auto general_start_time = std::chrono::system_clock::to_time_t( general_start );
-    std::cerr << "Class./ Print. start time: " << std::ctime( &general_start_time );
-    auto loading_reads_end_time = std::chrono::system_clock::to_time_t( loading_reads_end );
-    std::cerr << "Loading reads    end time: " << std::ctime( &loading_reads_end_time );
-    auto classifying_end_time = std::chrono::system_clock::to_time_t( classifying_end );
-    std::cerr << "Classifying      end time: " << std::ctime( &classifying_end_time );
-    auto printing_classified_end_time = std::chrono::system_clock::to_time_t( printing_classified_end );
-    std::cerr << "Printing clas.   end time: " << std::ctime( &printing_classified_end_time );
-    if ( args.output_unclassified )
-    {
-        auto printing_unclassified_end_time = std::chrono::system_clock::to_time_t( printing_unclassified_end );
-        std::cerr << "Printing unclas. end time: " << std::ctime( &printing_unclassified_end_time );
-    }
-    std::cerr << "ganon-classify   end time: " << std::ctime( &ganon_end_time ) << std::endl;
-
-
-    std::cerr << " 1) loading filters: " << loading_filter_elapsed.count() << std::endl;
-    double total_classifying_elapsed = classifying_elapsed.count();
-    std::cerr << " 2) classifying (" << args.clas_threads << "t): " << total_classifying_elapsed << std::endl;
-    std::cerr << "    - select: "
-              << total_classifying_elapsed
-                     * ( select_elapsed.count() / ( select_elapsed.count() + filter_elapsed.count() ) )
-              << " (" << select_elapsed.count() << ")" << std::endl;
-    std::cerr << "    - filter: "
-              << total_classifying_elapsed
-                     * ( filter_elapsed.count() / ( select_elapsed.count() + filter_elapsed.count() ) )
-              << " (" << filter_elapsed.count() << ")" << std::endl;
-    std::cerr << " Total elapsed: " << std::chrono::duration< double >( ganon_end - ganon_start ).count() << std::endl;
-    std::cerr << std::endl;
-
-    std::cerr << "ganon-classify processed " << totalReads << " sequences (" << sumReadLen / 1000000.0 << " Mbp) in "
-              << total_classifying_elapsed << " seconds ("
-              << ( totalReads / 1000.0 ) / ( total_classifying_elapsed / 60.0 ) << " Kseq/m, "
-              << ( sumReadLen / 1000000.0 ) / ( total_classifying_elapsed / 60.0 ) << " Mbp/m)" << std::endl;
-    std::cerr << " - " << classifiedReads << " sequences classified ("
-              << ( classifiedReads / (double) totalReads ) * 100 << "%)" << std::endl;
-    std::cerr << " - " << totalReads - classifiedReads << " sequences unclassified ("
-              << ( ( totalReads - classifiedReads ) / (double) totalReads ) * 100 << "%)" << std::endl;
+    print_time(args, timeGanon, timeLoadingReads, timeLoadingFilters, timeClass, timePrintClass, timePrintUnclass);
+    print_stats(stats, timeGanon);
 
     return 0;
 }

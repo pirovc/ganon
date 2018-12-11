@@ -85,7 +85,7 @@ struct Arguments
             output_unclassified_file = args["output-unclassified-file"].as< std::string >();
             max_error                = args["max-error"].as< int >();
             threads                  = args["threads"].as< int >();
-            clas_threads             = threads - 2;
+            clas_threads             = threads - 1;
             output_unclassified      = false;
             unique_filtering         = false;
             reads = args["reads"].as< std::vector< std::string > >();
@@ -142,8 +142,6 @@ struct Arguments
 
     void print()
     {
-
-        std::cerr << std::endl;
         std::cerr << "filter,group-bin files: " << std::endl;
         for ( auto const& hierarchy : filters )
         {
