@@ -88,8 +88,8 @@ struct Arguments
             clas_threads             = threads - 1;
             output_unclassified      = false;
             unique_filtering         = false;
-            reads = args["reads"].as< std::vector< std::string > >();
-            
+            reads                    = args["reads"].as< std::vector< std::string > >();
+
             if ( !output_unclassified_file.empty() )
             {
                 output_unclassified = true;
@@ -101,7 +101,9 @@ struct Arguments
                 max_error_unique = args["max-error-unique"].as< int >();
                 if ( max_error_unique < max_error )
                     unique_filtering = true;
-            }else{
+            }
+            else
+            {
                 max_error_unique = 0;
             }
 
