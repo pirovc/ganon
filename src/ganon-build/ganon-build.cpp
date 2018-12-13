@@ -1,13 +1,14 @@
-#include <chrono>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
 #include <mutex>
-#include <seqan/kmer.h>
 #include <tuple>
-#include <utils/safequeue.hpp>
 #include <vector>
+
+#include <seqan/kmer.h>
+#include <utils/Time.hpp>
+#include <utils/safequeue.hpp>
 
 #include "Arguments.hpp"
 
@@ -17,6 +18,27 @@ struct Seqs
     seqan::Dna5String seq;
 };
 
+struct Stats
+{
+    Stats()
+    : sumSeqLen{ 0 }
+    , totalSeqsBinId{ 0 }
+    , totalBinsBinId{ 0 }
+    , totalSeqsFile{ 0 }
+    , totalBinsFile{ 0 }
+    , invalidSeqs{ 0 }
+    , newBins{ 0 }
+    {
+    }
+
+    uint64_t sumSeqLen;
+    uint64_t totalSeqsBinId;
+    uint32_t totalBinsBinId;
+    uint64_t totalSeqsFile;
+    uint32_t totalBinsFile;
+    uint64_t invalidSeqs;
+    uint32_t newBins;
+};
 
 struct FragmentBin
 {
@@ -47,7 +69,7 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
 }
 
 
-TInterleavedBloomFilter load_filter( Arguments& args, const std::set< uint64_t >& bin_ids )
+TInterleavedBloomFilter load_filter( Arguments& args, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
 
     uint64_t number_of_bins;
@@ -72,8 +94,6 @@ TInterleavedBloomFilter load_filter( Arguments& args, const std::set< uint64_t >
 
         args.kmer_size = seqan::getKmerSize( filter );
 
-        uint32_t number_of_bins_before = seqan::getNumberOfBins( filter );
-
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( args.update_complete )
         {
@@ -83,14 +103,64 @@ TInterleavedBloomFilter load_filter( Arguments& args, const std::set< uint64_t >
         }
 
         // TODO -> create new bins on the loaded filter
-        std::cerr << *bin_ids.rbegin() + 1 - number_of_bins_before << " new bins added to existing  "
-                  << number_of_bins_before << " bins" << std::endl;
+        stats.newBins = *bin_ids.rbegin() + 1 - stats.totalBinsFile;
     }
+
+    stats.totalBinsFile = seqan::getNumberOfBins( filter );
+
     return filter;
+}
+
+void print_time(
+    Arguments& args, Time& timeGanon, Time& timeLoadFiles, Time& timeLoadSeq, Time& timeBuild, Time& timeSaveFilter )
+{
+    std::cerr << "ganon-build       start time: " << timeGanon.get_start_ctime();
+    std::cerr << "Loading files     start time: " << timeLoadFiles.get_start_ctime();
+    std::cerr << "Loading files       end time: " << timeLoadFiles.get_end_ctime();
+    std::cerr << "Loading sequences start time: " << timeLoadSeq.get_start_ctime();
+    std::cerr << "Building          start time: " << timeBuild.get_start_ctime();
+    std::cerr << "Loading sequences   end time: " << timeLoadSeq.get_end_ctime();
+    std::cerr << "Building            end time: " << timeBuild.get_end_ctime();
+    std::cerr << "Saving filter     start time: " << timeSaveFilter.get_start_ctime();
+    std::cerr << "Saving filter       end time: " << timeSaveFilter.get_end_ctime();
+    std::cerr << "ganon-build         end time: " << timeGanon.get_end_ctime();
+    std::cerr << std::endl;
+    std::cerr << " - loading files: " << timeLoadFiles.get_elapsed() << std::endl;
+    std::cerr << " - loading sequences (1t): " << timeLoadSeq.get_elapsed() << std::endl;
+    std::cerr << " - building filter (" << args.build_threads << "t): " << timeBuild.get_elapsed() << std::endl;
+    std::cerr << " - saving filter: " << timeSaveFilter.get_elapsed() << std::endl;
+    std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
+    std::cerr << std::endl;
+}
+
+
+void print_stats( Stats& stats, Arguments& args, Time& timeBuild )
+{
+    double   elapsed_build = timeBuild.get_elapsed();
+    uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
+    std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
+              << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
+              << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed_build / 60.0 ) << " Mbp/m)" << std::endl;
+    std::cerr << " - " << stats.totalSeqsBinId << " sequences and " << stats.totalBinsBinId << " bins defined on "
+              << args.seqid_bin_file << std::endl;
+    std::cerr << " - " << stats.totalSeqsFile << " sequences (" << stats.invalidSeqs
+              << " invalid) were read from the input sequence files." << std::endl;
+    if ( !args.update_filter_file.empty() )
+        std::cerr << " - " << stats.newBins << " new bins were added to the existing " << stats.totalBinsFile
+                  << " bins." << std::endl;
+    std::cerr << " - " << validSeqs << " valid sequences in " << stats.totalBinsFile + stats.newBins
+              << " bins were written to " << args.output_filter_file << std::endl;
 }
 
 int main( int argc, char** argv )
 {
+
+    Time timeGanon;
+    timeGanon.start();
+    Time timeLoadFiles;
+    Time timeLoadSeq;
+    Time timeBuild;
+    Time timeSaveFilter;
 
     // Parse arguments
     Arguments args( argc, argv );
@@ -101,32 +171,28 @@ int main( int argc, char** argv )
         args.print();
     //////////////////////////////
 
+    Stats stats;
 
-    // Load seqid-bin and filter
-    auto start = std::chrono::high_resolution_clock::now();
-
+    timeLoadFiles.start();
     // parse seqid bin
     TSeqBin              seq_bin;
     std::set< uint64_t > bin_ids;
     parse_seqid_bin( args.seqid_bin_file, seq_bin, bin_ids );
-    std::cerr << seq_bin.size() << " sequences, " << bin_ids.size() << " bins defined on " << args.seqid_bin_file
-              << std::endl;
+    stats.totalSeqsBinId = seq_bin.size();
+    stats.totalBinsBinId = bin_ids.size();
 
     // load new or given filter
-    TInterleavedBloomFilter filter = load_filter( args, bin_ids );
-
-    std::chrono::duration< double > elapsed = std::chrono::high_resolution_clock::now() - start;
-    std::cerr << "Loading filter and files: " << elapsed.count() << "s" << std::endl;
+    TInterleavedBloomFilter filter = load_filter( args, bin_ids, stats );
+    timeLoadFiles.end();
     //////////////////////////////
 
-
     // Start execution threads to add kmers
+    timeBuild.start();
     std::mutex                         mtx;
     SafeQueue< Seqs >                  q_Seqs;
     std::vector< std::future< void > > tasks;
     bool                               finished = false;
-    start                                       = std::chrono::high_resolution_clock::now();
-    for ( int taskNo = 0; taskNo < args.threads; ++taskNo )
+    for ( int taskNo = 0; taskNo < args.build_threads; ++taskNo )
     {
         tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &args] {
             while ( true )
@@ -159,7 +225,8 @@ int main( int argc, char** argv )
     //////////////////////////////
 
     // Start extra thread for reading the input
-    tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx] {
+    timeLoadSeq.start();
+    tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &timeLoadSeq, &stats] {
         for ( auto const& reference_file : args.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -184,6 +251,7 @@ int main( int argc, char** argv )
                         mtx.lock();
                         std::cerr << ids[i] << " has sequence smaller than k-mer size" << std::endl;
                         mtx.unlock();
+                        stats.invalidSeqs += 1;
                         continue;
                     }
                     std::string cid   = seqan::toCString( ids[i] );
@@ -193,29 +261,38 @@ int main( int argc, char** argv )
                         mtx.lock();
                         std::cerr << seqid << " not defined on seqid-bin file" << std::endl;
                         mtx.unlock();
+                        stats.invalidSeqs += 1;
                         continue;
                     }
+                    stats.totalSeqsFile += 1;
+                    stats.sumSeqLen += seqan::length( seqs[i] );
                     q_Seqs.push( Seqs{ seqid, seqs[i] } );
                 }
             }
             seqan::close( seqFileIn );
         }
         finished = true;
+        timeLoadSeq.end();
     } ) );
     for ( auto&& task : tasks )
     {
         task.get();
     }
-    elapsed = std::chrono::high_resolution_clock::now() - start;
-    std::cerr << "Adding k-mers: " << elapsed.count() << "s" << std::endl;
+    timeBuild.end();
     //////////////////////////////
 
+
     // Store filter
-    start = std::chrono::high_resolution_clock::now();
+    timeSaveFilter.start();
     seqan::store( filter, seqan::toCString( args.output_filter_file ) );
-    elapsed = std::chrono::high_resolution_clock::now() - start;
-    std::cerr << "Saving filter: " << elapsed.count() << "s" << std::endl;
+    timeSaveFilter.end();
     //////////////////////////////
+
+    timeGanon.end();
+
+    std::cerr << std::endl;
+    print_time( args, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeSaveFilter );
+    print_stats( stats, args, timeBuild );
 
     return 0;
 }
