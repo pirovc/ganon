@@ -4,11 +4,11 @@
 #include <iostream>
 #include <map>
 #include <seqan/kmer.h>
+#include <utils/Time.hpp>
 #include <utils/safequeue.hpp>
 #include <vector>
 
 #include "Arguments.hpp"
-#include "Time.hpp"
 
 typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > Tfilter;
 
@@ -177,23 +177,23 @@ void load_filters( std::vector< Filter >&                                filter_
 
 void print_time( Arguments& args,
                  Time&      timeGanon,
-                 Time&      timeLoadingReads,
-                 Time&      timeLoadingFilters,
+                 Time&      timeLoadReads,
+                 Time&      timeLoadFilters,
                  Time&      timeClass,
                  Time&      timePrintClass,
                  Time&      timePrintUnclass )
 {
     std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
-    std::cerr << "Loading reads  start time: " << timeLoadingReads.get_start_ctime();
+    std::cerr << "Loading reads  start time: " << timeLoadReads.get_start_ctime();
     std::cerr << "Class./ Print. start time: " << timeClass.get_start_ctime();
-    std::cerr << "Loading reads    end time: " << timeLoadingReads.get_end_ctime();
+    std::cerr << "Loading reads    end time: " << timeLoadReads.get_end_ctime();
     std::cerr << "Classifying      end time: " << timeClass.get_end_ctime();
     std::cerr << "Printing clas.   end time: " << timePrintClass.get_end_ctime();
     if ( args.output_unclassified )
         std::cerr << "Printing unclas. end time: " << timePrintUnclass.get_end_ctime();
     std::cerr << "ganon-classify   end time: " << timeGanon.get_end_ctime();
     std::cerr << std::endl;
-    std::cerr << " - loading filters: " << timeLoadingFilters.get_elapsed() << std::endl;
+    std::cerr << " - loading filters: " << timeLoadFilters.get_elapsed() << std::endl;
     std::cerr << " - classifying (" << args.clas_threads << "t): " << timeClass.get_elapsed() << std::endl;
     std::cerr << " - printing (1t): " << timePrintClass.get_elapsed() << std::endl;
     if ( args.output_unclassified )
@@ -226,8 +226,8 @@ int main( int argc, char** argv )
     // Time control
     Time timeGanon;
     timeGanon.start();
-    Time timeLoadingReads;
-    Time timeLoadingFilters;
+    Time timeLoadReads;
+    Time timeLoadFilters;
     Time timeClass;
     Time timePrintClass;
     Time timePrintUnclass;
@@ -237,8 +237,8 @@ int main( int argc, char** argv )
     if ( !args.parse() )
         return 0;
 
-    std::cerr << std::endl;
-    args.print(); // if ( args.verbose )
+    if ( args.verbose )
+        args.print();
 
     // Set output stream (file or stdout)
     std::ofstream out;
@@ -279,35 +279,34 @@ int main( int argc, char** argv )
     std::vector< std::future< void > > read_write;
 
     // Thread for reading input files
-    timeLoadingReads.start();
-    read_write.emplace_back(
-        std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadingReads, &stats] {
-            for ( auto const& reads_file : args.reads )
+    timeLoadReads.start();
+    read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats] {
+        for ( auto const& reads_file : args.reads )
+        {
+            seqan::SeqFileIn seqFileIn;
+            if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
             {
-                seqan::SeqFileIn seqFileIn;
-                if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
-                {
-                    std::cerr << "Unable to open " << reads_file << std::endl;
-                    continue;
-                }
-                while ( !seqan::atEnd( seqFileIn ) )
-                {
-                    // std::cerr << queue1->size() << std::endl;
-                    while ( queue1.size() > num_of_batches )
-                    {
-                        ; // spin
-                    }
-                    seqan::StringSet< seqan::CharString > ids;
-                    seqan::StringSet< seqan::Dna5String > seqs;
-                    seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
-                    stats.totalReads += seqan::length( ids );
-                    queue1.push( ReadBatches{ ids, seqs } );
-                }
-                seqan::close( seqFileIn );
+                std::cerr << "Unable to open " << reads_file << std::endl;
+                continue;
             }
-            finished_reading = true;
-            timeLoadingReads.end();
-        } ) );
+            while ( !seqan::atEnd( seqFileIn ) )
+            {
+                // std::cerr << queue1->size() << std::endl;
+                while ( queue1.size() > num_of_batches )
+                {
+                    ; // spin
+                }
+                seqan::StringSet< seqan::CharString > ids;
+                seqan::StringSet< seqan::Dna5String > seqs;
+                seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
+                stats.totalReads += seqan::length( ids );
+                queue1.push( ReadBatches{ ids, seqs } );
+            }
+            seqan::close( seqFileIn );
+        }
+        finished_reading = true;
+        timeLoadReads.end();
+    } ) );
 
     // Thread for printing classified reads
     timePrintClass.start();
@@ -365,10 +364,10 @@ int main( int argc, char** argv )
         // std::string -> hierarchy.first [hierarchy_name]
         // std::vector< std::tuple< std::string, std::string > > = hierachy.second [hierarchy_files]
 
-        timeLoadingFilters.start();
+        timeLoadFilters.start();
         std::vector< Filter > filter_hierarchy;
         load_filters( filter_hierarchy, hierarchy.second );
-        timeLoadingFilters.end();
+        timeLoadFilters.end();
 
         // Exchange queues instance pointers for each hierachy (if not first)
         if ( hierarchy_id > 1 )
@@ -478,8 +477,8 @@ int main( int argc, char** argv )
     timeGanon.end();
 
     std::cerr << std::endl;
-    print_time( args, timeGanon, timeLoadingReads, timeLoadingFilters, timeClass, timePrintClass, timePrintUnclass );
-    print_stats( stats, timeGanon );
+    print_time( args, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+    print_stats( stats, timeClass );
 
     return 0;
 }

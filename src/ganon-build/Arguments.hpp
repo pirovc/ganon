@@ -24,6 +24,7 @@ struct Arguments
     // General options
     std::vector< std::string > reference_files;
     uint16_t                   threads;
+    uint16_t                   build_threads;
     bool                       verbose;
 
 
@@ -80,6 +81,8 @@ struct Arguments
             update_complete    = args["update-complete"].as< bool >();
             threads            = args["threads"].as< uint16_t >();
             verbose            = args["verbose"].as< bool >();
+
+            build_threads = threads - 1; //-1 reading files
 
             // Skip variables if updating, loads from existing filter file
             if ( !update_filter_file.empty() )

@@ -144,6 +144,7 @@ struct Arguments
 
     void print()
     {
+        std::cerr << std::endl;
         std::cerr << "filter,group-bin files: " << std::endl;
         for ( auto const& hierarchy : filters )
         {
