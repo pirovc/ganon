@@ -19,6 +19,7 @@ struct Arguments
 
     std::string                                                                    output_file;
     std::string                                                                    output_unclassified_file;
+    std::string                                                                    filter_hierarchy;
     uint16_t                                                                       max_error;
     uint16_t                                                                       threads;
     uint16_t                                                                       clas_threads;
@@ -29,7 +30,7 @@ struct Arguments
     std::vector< std::string >                                                     group_bin_files;
     std::vector< std::string >                                                     reads;
     std::map< std::string, std::vector< std::tuple< std::string, std::string > > > filters;
-
+    bool                                                                           verbose;
 
     Arguments( int _argc, char** _argv )
     : argc{ _argc }
@@ -57,6 +58,7 @@ struct Arguments
             // option to output read len?
             //( "silent", "Silent mode, just print results", cxxopts::value< int >()->default_value( "3" ) )
             ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
+            ( "verbose", "Verbose output mode", cxxopts::value<bool>()->default_value("false"))
             ( "h,help", "Print help" )
             ( "v,version", "Show version" )
             ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
@@ -89,6 +91,8 @@ struct Arguments
             output_unclassified      = false;
             unique_filtering         = false;
             reads                    = args["reads"].as< std::vector< std::string > >();
+            verbose                  = args["verbose"].as< bool >();
+            filter_hierarchy         = args["filter-hierarchy"].as< std::string >();
 
             if ( !output_unclassified_file.empty() )
             {
@@ -107,7 +111,6 @@ struct Arguments
                 max_error_unique = 0;
             }
 
-            std::string filter_hierarchy = args["filter-hierarchy"].as< std::string >();
 
             if ( filter_hierarchy.empty() )
             {
@@ -145,21 +148,25 @@ struct Arguments
     void print()
     {
         std::cerr << std::endl;
-        std::cerr << "filter,group-bin files: " << std::endl;
+        std::cerr << "--filter-hierarchy          " << filter_hierarchy << std::endl;
+        std::cerr << "--bloom-filter,--group-bin  " << std::endl;
         for ( auto const& hierarchy : filters )
         {
             for ( auto const& file : hierarchy.second )
-                std::cerr << " " << hierarchy.first << ") " << std::get< 0 >( file ) << "," << std::get< 1 >( file )
-                          << std::endl;
+            {
+                std::cerr << "                            (" << hierarchy.first << ") " << std::get< 0 >( file ) << ", "
+                          << std::get< 1 >( file ) << std::endl;
+            }
         }
-        std::cerr << "max-error: " << max_error << std::endl;
-        std::cerr << "max-error-unique: " << max_error_unique << std::endl;
-        std::cerr << "threads: " << threads << std::endl;
-        std::cerr << "output-file: " << output_file << std::endl;
-        std::cerr << "output-unclassified-file: " << output_unclassified_file << std::endl;
-        std::cerr << "reads: " << std::endl;
+        std::cerr << "--max-error                 " << max_error << std::endl;
+        std::cerr << "--max-error-unique          " << max_error_unique << std::endl;
+        std::cerr << "--output-file               " << output_file << std::endl;
+        std::cerr << "--output-unclassified-file  " << output_unclassified_file << std::endl;
+        std::cerr << "--verbose                   " << verbose << std::endl;
+        std::cerr << "--threads                   " << threads << std::endl;
+        std::cerr << "--reads                     " << std::endl;
         for ( const auto& s : reads )
-            std::cerr << " - " << s << std::endl;
+            std::cerr << "                            " << s << std::endl;
         std::cerr << std::endl;
     }
 };
