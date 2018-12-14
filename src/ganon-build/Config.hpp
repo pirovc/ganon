@@ -28,7 +28,7 @@ struct Config
     bool                       verbose;
 };
 
-std::ostream& operator<<( std::ostream& stream, const Config& config )
+inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 {
     constexpr auto newl{ "\n" };
 
