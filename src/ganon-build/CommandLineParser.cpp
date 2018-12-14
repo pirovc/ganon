@@ -60,7 +60,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
                      "--update-filter-file"
                   << std::endl;
 
-        // TODO diogo: what about all values set in the else and not set here?
+        // TODO: what about all values set in the else block and not set here?
     }
     else
     {
