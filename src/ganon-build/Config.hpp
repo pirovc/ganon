@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cinttypes>
+#include <iomanip>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -25,3 +27,33 @@ struct Config
     std::uint16_t              build_threads;
     bool                       verbose;
 };
+
+std::ostream& operator<<( std::ostream& stream, const Config& config )
+{
+    constexpr auto newl{ "\n" };
+
+    stream << newl;
+    stream << "--seqid-bin-file      " << config.seqid_bin_file << newl;
+    stream << "--output-filter-file  " << config.output_filter_file << newl;
+    stream << "--update-filter-file  " << config.update_filter_file << newl;
+    stream << "--reference-files     " << newl;
+
+    for ( const auto& file : config.reference_files )
+    {
+        stream << "                      " << file << newl;
+    }
+
+    stream << "--update-complete     " << config.update_complete << newl;
+
+    stream << "--filter-size         " << std::fixed << std::setprecision( 2 )
+           << static_cast< float >( config.filter_size ) / static_cast< float >( Config::MBinBits ) << newl;
+
+    stream << "--filter-size-bits    " << config.filter_size << newl;
+    stream << "--kmer-size           " << config.kmer_size << newl;
+    stream << "--hash-functions      " << config.hash_functions << newl;
+    stream << "--threads             " << config.threads << newl;
+    stream << "--verbose             " << config.verbose << newl;
+    stream << std::endl;
+
+    return stream;
+}
