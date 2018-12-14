@@ -48,6 +48,7 @@ target_include_directories( defaults
 # ----------------------------------------------------------------------------
 
 set( ganon-build-src
+    ganon-build/Arguments.hpp
     ganon-build/ganon-build.cpp )
 
 add_executable( ganon-build ${ganon-build-src} )
@@ -58,6 +59,7 @@ link_to_ganon_dependencies( ganon-build )
 # ----------------------------------------------------------------------------
 
 set( ganon-classify-src
+    ganon-classify/Arguments.hpp
     ganon-classify/ganon-classify.cpp )
 
 add_executable( ganon-classify ${ganon-classify-src} )
