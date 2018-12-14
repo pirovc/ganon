@@ -1,4 +1,4 @@
-#include "CommandLineParser.hpp"
+#include "GanonClassify.hpp"
 
 #include <utils/Time.hpp>
 #include <utils/safequeue.hpp>
@@ -6,13 +6,18 @@
 #include <seqan/kmer.h>
 
 #include <atomic>
+#include <cinttypes>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
+#include <string>
 #include <tuple>
 #include <vector>
 
+
+namespace detail
+{
 
 typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > Tfilter;
 
@@ -51,6 +56,14 @@ struct ReadOut
 
 struct Stats
 {
+    Stats()
+    : sumReadLen{ 0 }
+    , classifiedReads{ 0 }
+    , matches{ 0 }
+    , totalReads{ 0 }
+    {
+    }
+
     std::atomic< uint64_t > sumReadLen;
     std::atomic< uint64_t > classifiedReads;
     std::atomic< uint64_t > matches;
@@ -222,7 +235,10 @@ void print_stats( Stats& stats, Time& timeClass )
               << " match/read)" << std::endl;
 }
 
-int main( int argc, char** argv )
+} // namespace detail
+
+
+bool GanonClassify::run( Config config )
 {
     std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
                                              // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
@@ -236,16 +252,9 @@ int main( int argc, char** argv )
     Time timePrintClass;
     Time timePrintUnclass;
 
-    // Parse arguments
-    auto config = CommandLineParser::parse( argc, argv );
-    if ( !config.has_value() )
+    if ( config.verbose )
     {
-        return 0;
-    }
-
-    if ( config->verbose )
-    {
-        std::cerr << config.value();
+        std::cerr << config;
     }
 
     //////////////////////////////
@@ -254,9 +263,9 @@ int main( int argc, char** argv )
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_unclassified;
-    if ( !config->output_file.empty() )
+    if ( !config.output_file.empty() )
     { // output to a file
-        out.open( config->output_file );
+        out.open( config.output_file );
     }
     else
     {
@@ -269,19 +278,19 @@ int main( int argc, char** argv )
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
     // if hierachy == 3 queue1 is used for unclassified and so on
-    SafeQueue< ReadBatches > queue1;
-    SafeQueue< ReadBatches > queue2;
+    SafeQueue< detail::ReadBatches > queue1;
+    SafeQueue< detail::ReadBatches > queue2;
 
     // Queues for classified, unclassified reads (print)
-    SafeQueue< ReadOut > classified_reads_queue;
-    SafeQueue< ReadOut > unclassified_reads_queue;
+    SafeQueue< detail::ReadOut > classified_reads_queue;
+    SafeQueue< detail::ReadOut > unclassified_reads_queue;
 
     // Control flags
     bool finished_reading     = false;
     bool finished_classifying = false;
 
     // Statistics values
-    Stats stats{ 0, 0, 0, 0 };
+    detail::Stats stats;
 
     // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
     int num_of_batches         = 1000;
@@ -292,7 +301,7 @@ int main( int argc, char** argv )
     // Thread for reading input files
     timeLoadReads.start();
     read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats] {
-        for ( auto const& reads_file : config->reads )
+        for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -311,7 +320,7 @@ int main( int argc, char** argv )
                 seqan::StringSet< seqan::Dna5String > seqs;
                 seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
                 stats.totalReads += seqan::length( ids );
-                queue1.push( ReadBatches{ ids, seqs } );
+                queue1.push( detail::ReadBatches{ ids, seqs } );
             }
             seqan::close( seqFileIn );
         }
@@ -325,7 +334,7 @@ int main( int argc, char** argv )
         std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_classifying, &timePrintClass] {
             while ( true )
             {
-                ReadOut ro = classified_reads_queue.pop();
+                detail::ReadOut ro = classified_reads_queue.pop();
                 for ( uint32_t i = 0; i < ro.matches.size(); ++i )
                     out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
                 if ( finished_classifying && classified_reads_queue.empty() )
@@ -338,15 +347,15 @@ int main( int argc, char** argv )
 
     // Thread for printing unclassified reads
     timePrintUnclass.start();
-    if ( config->output_unclassified )
+    if ( config.output_unclassified )
     {
-        out_unclassified.open( config->output_unclassified_file );
+        out_unclassified.open( config.output_unclassified_file );
         read_write.emplace_back(
             std::async( std::launch::async,
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_classifying, &timePrintUnclass] {
                             while ( true )
                             {
-                                ReadOut rou = unclassified_reads_queue.pop();
+                                detail::ReadOut rou = unclassified_reads_queue.pop();
                                 if ( rou.readID != "" ) // if not empty
                                     out_unclassified << rou.readID << '\n';
                                 if ( finished_classifying && unclassified_reads_queue.empty() )
@@ -360,14 +369,14 @@ int main( int argc, char** argv )
 
 
     // Pointer to the queues
-    SafeQueue< ReadBatches >* pointer_current = &queue1; // pointer to the queues
-    SafeQueue< ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
-    SafeQueue< ReadBatches >* pointer_extra;             // pointer to the queues
+    SafeQueue< detail::ReadBatches >* pointer_current = &queue1; // pointer to the queues
+    SafeQueue< detail::ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
+    SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
 
     uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = config->filters.size();
+    uint16_t hierarchy_size = config.filters.size();
     // For every hiearchy level
-    for ( auto const& hierarchy : config->filters )
+    for ( auto const& hierarchy : config.filters )
     {
         ++hierarchy_id;
         // filter[h] = vector<(filter, map)> -> map already sort by key
@@ -376,8 +385,8 @@ int main( int argc, char** argv )
         // std::vector< std::tuple< std::string, std::string > > = hierachy.second [hierarchy_files]
 
         timeLoadFilters.start();
-        std::vector< Filter > filter_hierarchy;
-        load_filters( filter_hierarchy, hierarchy.second );
+        std::vector< detail::Filter > filter_hierarchy;
+        detail::load_filters( filter_hierarchy, hierarchy.second );
         timeLoadFilters.end();
 
         // Exchange queues instance pointers for each hierachy (if not first)
@@ -396,7 +405,7 @@ int main( int argc, char** argv )
 
         // Threads for classification
         timeClass.start();
-        for ( uint16_t taskNo = 0; taskNo < config->clas_threads; ++taskNo )
+        for ( uint16_t taskNo = 0; taskNo < config.clas_threads; ++taskNo )
         {
             tasks.emplace_back( std::async(
                 std::launch::async,
@@ -410,10 +419,10 @@ int main( int argc, char** argv )
                     while ( true )
                     {
                         // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                        ReadBatches rb = pointer_current->pop();
+                        detail::ReadBatches rb = pointer_current->pop();
                         if ( rb.ids != "" )
                         {
-                            ReadBatches left_over_reads; // store unclassified reads for next iteration
+                            detail::ReadBatches left_over_reads; // store unclassified reads for next iteration
                             for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
                             {
                                 uint16_t readLen = seqan::length( rb.seqs[readID] );
@@ -423,17 +432,17 @@ int main( int argc, char** argv )
 
                                 // k-mer sizes should be the same among filters, groups should not overlap
                                 uint16_t kmerSize  = filter_hierarchy[0].kmerSize;
-                                uint16_t threshold = kmer_threshold( readLen, kmerSize, config->max_error );
+                                uint16_t threshold = detail::kmer_threshold( readLen, kmerSize, config.max_error );
 
                                 // Classify reads, returing matches and max kmer count achieved for the read
-                                Tmatches matches;
-                                uint16_t maxKmerCountRead =
-                                    classify_read( matches, filter_hierarchy, rb.seqs[readID], threshold );
+                                detail::Tmatches matches;
+                                uint16_t         maxKmerCountRead =
+                                    detail::classify_read( matches, filter_hierarchy, rb.seqs[readID], threshold );
 
                                 // Filter reads by number of errors, special filtering for unique matches
-                                ReadOut  read_out( rb.ids[readID] );
-                                uint32_t count_filtered_matches = filter_matches(
-                                    read_out, matches, kmerSize, readLen, maxKmerCountRead, config.value() );
+                                detail::ReadOut read_out( rb.ids[readID] );
+                                uint32_t        count_filtered_matches = detail::filter_matches(
+                                    read_out, matches, kmerSize, readLen, maxKmerCountRead, config );
 
                                 // If there are matches, add to printing queue
                                 if ( count_filtered_matches > 0 )
@@ -447,8 +456,8 @@ int main( int argc, char** argv )
                                     seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                                     seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
                                 }
-                                else if ( config->output_unclassified ) // no more levels and no classification, add to
-                                                                        // unclassified printing queue
+                                else if ( config.output_unclassified ) // no more levels and no classification, add to
+                                                                       // unclassified printing queue
                                 {
                                     unclassified_reads_queue.push( read_out );
                                 }
@@ -479,18 +488,18 @@ int main( int argc, char** argv )
         task.get();
     }
 
-    if ( config->output_file != "" )
+    if ( config.output_file != "" )
         out.close();
 
-    if ( config->output_unclassified )
+    if ( config.output_unclassified )
         out_unclassified.close();
 
     timeGanon.end();
 
     std::cerr << std::endl;
-    print_time(
-        config.value(), timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
-    print_stats( stats, timeClass );
+    detail::print_time(
+        config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+    detail::print_stats( stats, timeClass );
 
-    return 0;
+    return true;
 }

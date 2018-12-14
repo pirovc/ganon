@@ -66,7 +66,9 @@ set( ganon-classify-src
     ganon-classify/CommandLineParser.cpp
     ganon-classify/CommandLineParser.hpp
     ganon-classify/Config.hpp
-    ganon-classify/ganon-classify.cpp )
+    ganon-classify/GanonClassify.cpp
+    ganon-classify/GanonClassify.hpp
+    ganon-classify/main.cpp )
 
 add_executable( ganon-classify ${ganon-classify-src} )
 link_to_ganon_dependencies( ganon-classify )
