@@ -8,8 +8,7 @@ int main( int argc, char** argv )
 {
     if ( auto config = CommandLineParser::parse( argc, argv ); config.has_value() )
     {
-        // TODO here is the main idea:
-        // return GanonBuild::run( std::move( config.value() ) ) ? EXIT_SUCCESS : EXIT_FAILURE;
+        return GanonBuild::run( std::move( config.value() ) ) ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
     return EXIT_FAILURE;

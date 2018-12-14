@@ -51,7 +51,9 @@ set( ganon-build-src
     ganon-build/CommandLineParser.cpp
     ganon-build/CommandLineParser.hpp
     ganon-build/Config.hpp
-    ganon-build/ganon-build.cpp )
+    ganon-build/GanonBuild.cpp
+    ganon-build/GanonBuild.hpp
+    ganon-build/main.cpp )
 
 add_executable( ganon-build ${ganon-build-src} )
 link_to_ganon_dependencies( ganon-build )
