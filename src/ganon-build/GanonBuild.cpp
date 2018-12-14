@@ -1,25 +1,24 @@
 #include "GanonBuild.hpp"
 
-bool GanonBuild::run( Config )
-{
-    return true;
-}
-
-/*
-#include "CommandLineParser.hpp"
-
 #include <utils/Time.hpp>
 #include <utils/safequeue.hpp>
 
 #include <seqan/kmer.h>
 
+#include <cinttypes>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <set>
+#include <sstream>
+#include <string>
 #include <tuple>
 #include <vector>
+
+namespace detail
+{
 
 struct Seqs
 {
@@ -164,9 +163,10 @@ void print_stats( Stats& stats, const Config& config, Time& timeBuild )
               << " bins were written to " << config.output_filter_file << std::endl;
 }
 
-int main( int argc, char** argv )
-{
+} // namespace detail
 
+bool GanonBuild::run( Config config )
+{
     Time timeGanon;
     timeGanon.start();
     Time timeLoadFiles;
@@ -174,47 +174,40 @@ int main( int argc, char** argv )
     Time timeBuild;
     Time timeSaveFilter;
 
-    // Parse arguments
-    auto config = CommandLineParser::parse( argc, argv );
-    if ( !config.has_value() )
+    if ( config.verbose )
     {
-        return 0;
-    }
-
-    if ( config->verbose )
-    {
-        std::cerr << config.value();
+        std::cerr << config;
     }
 
     //////////////////////////////
 
-    Stats stats;
+    detail::Stats stats;
 
     timeLoadFiles.start();
     // parse seqid bin
-    TSeqBin              seq_bin;
+    detail::TSeqBin      seq_bin;
     std::set< uint64_t > bin_ids;
-    parse_seqid_bin( config->seqid_bin_file, seq_bin, bin_ids );
+    parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids );
     stats.totalSeqsBinId = seq_bin.size();
     stats.totalBinsBinId = bin_ids.size();
 
     // load new or given filter
-    TInterleavedBloomFilter filter = load_filter( config.value(), bin_ids, stats );
+    detail::TInterleavedBloomFilter filter = load_filter( config, bin_ids, stats );
     timeLoadFiles.end();
     //////////////////////////////
 
     // Start execution threads to add kmers
     timeBuild.start();
     std::mutex                         mtx;
-    SafeQueue< Seqs >                  q_Seqs;
+    SafeQueue< detail::Seqs >          q_Seqs;
     std::vector< std::future< void > > tasks;
     bool                               finished = false;
-    for ( int taskNo = 0; taskNo < config->build_threads; ++taskNo )
+    for ( int taskNo = 0; taskNo < config.build_threads; ++taskNo )
     {
         tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
             while ( true )
             {
-                Seqs val = q_Seqs.pop();
+                detail::Seqs val = q_Seqs.pop();
                 if ( val.seqid != "" )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
@@ -225,7 +218,7 @@ int main( int argc, char** argv )
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid, 0 );
-                        if ( config->verbose )
+                        if ( config.verbose )
                         {
                             mtx.lock();
                             std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
@@ -244,7 +237,7 @@ int main( int argc, char** argv )
     // Start extra thread for reading the input
     timeLoadSeq.start();
     tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &timeLoadSeq, &stats] {
-        for ( auto const& reference_file : config->reference_files )
+        for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reference_file ) ) )
@@ -254,16 +247,16 @@ int main( int argc, char** argv )
             }
             while ( !seqan::atEnd( seqFileIn ) )
             {
-                while ( q_Seqs.size() > ( config->threads * 10 ) )
+                while ( q_Seqs.size() > ( config.threads * 10 ) )
                 {
                     ; // spin
                 }
                 seqan::StringSet< seqan::CharString >  ids;
                 seqan::StringSet< seqan::IupacString > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, config->threads * 5 );
+                seqan::readRecords( ids, seqs, seqFileIn, config.threads * 5 );
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
-                    if ( seqan::length( seqs[i] ) < config->kmer_size )
+                    if ( seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
                         std::cerr << ids[i] << " has sequence smaller than k-mer size" << std::endl;
@@ -283,7 +276,7 @@ int main( int argc, char** argv )
                     }
                     stats.totalSeqsFile += 1;
                     stats.sumSeqLen += seqan::length( seqs[i] );
-                    q_Seqs.push( Seqs{ seqid, seqs[i] } );
+                    q_Seqs.push( detail::Seqs{ seqid, seqs[i] } );
                 }
             }
             seqan::close( seqFileIn );
@@ -301,16 +294,15 @@ int main( int argc, char** argv )
 
     // Store filter
     timeSaveFilter.start();
-    seqan::store( filter, seqan::toCString( config->output_filter_file ) );
+    seqan::store( filter, seqan::toCString( config.output_filter_file ) );
     timeSaveFilter.end();
     //////////////////////////////
 
     timeGanon.end();
 
     std::cerr << std::endl;
-    print_time( config.value(), timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeSaveFilter );
-    print_stats( stats, config.value(), timeBuild );
+    detail::print_time( config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeSaveFilter );
+    detail::print_stats( stats, config, timeBuild );
 
-    return 0;
+    return true;
 }
-*/
