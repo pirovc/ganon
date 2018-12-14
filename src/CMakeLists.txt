@@ -48,7 +48,6 @@ target_include_directories( defaults
 # ----------------------------------------------------------------------------
 
 set( ganon-build-src
-    ganon-build/Arguments.hpp
     ganon-build/CommandLineParser.cpp
     ganon-build/CommandLineParser.hpp
     ganon-build/Config.hpp
