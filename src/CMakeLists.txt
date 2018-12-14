@@ -49,6 +49,7 @@ target_include_directories( defaults
 
 set( ganon-build-src
     ganon-build/Arguments.hpp
+    ganon-build/Config.hpp
     ganon-build/ganon-build.cpp )
 
 add_executable( ganon-build ${ganon-build-src} )
