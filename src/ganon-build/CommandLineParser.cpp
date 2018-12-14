@@ -28,9 +28,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     options.parse_positional( { "reference-files" } );
     options.positional_help( "ref.fna[.gz] [ref2.fna[.gz] ... refN.fna[.gz]]" );
 
-    const auto args = options.parse( argc, argv );
+    const auto argcCopy = argc;
+    const auto args     = options.parse( argc, argv );
 
-    if ( args.count( "help" ) || argc == 1 )
+    if ( args.count( "help" ) || argcCopy == 1 )
     {
         std::cerr << options.help() << std::endl;
         return std::nullopt;
