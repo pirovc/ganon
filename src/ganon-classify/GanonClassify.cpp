@@ -1,7 +1,7 @@
 #include "GanonClassify.hpp"
 
+#include <utils/SafeQueue.hpp>
 #include <utils/Time.hpp>
-#include <utils/safequeue.hpp>
 
 #include <seqan/kmer.h>
 
