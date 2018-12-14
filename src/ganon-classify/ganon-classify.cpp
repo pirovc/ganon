@@ -1,14 +1,18 @@
+#include "CommandLineParser.hpp"
+
+#include <utils/Time.hpp>
+#include <utils/safequeue.hpp>
+
+#include <seqan/kmer.h>
+
 #include <atomic>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
-#include <seqan/kmer.h>
-#include <utils/Time.hpp>
-#include <utils/safequeue.hpp>
+#include <tuple>
 #include <vector>
 
-#include "Arguments.hpp"
 
 typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > Tfilter;
 
@@ -113,12 +117,12 @@ inline uint16_t classify_read( Tmatches&              matches,
     return maxKmerCountRead;
 }
 
-inline uint32_t filter_matches( ReadOut&   read_out,
-                                Tmatches&  matches,
-                                uint16_t   kmerSize,
-                                uint16_t   readLen,
-                                uint16_t   maxKmerCountRead,
-                                Arguments& args )
+inline uint32_t filter_matches( ReadOut&  read_out,
+                                Tmatches& matches,
+                                uint16_t  kmerSize,
+                                uint16_t  readLen,
+                                uint16_t  maxKmerCountRead,
+                                Config&   config )
 {
     // get maximum possible number of error for this read
     // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
@@ -135,10 +139,10 @@ inline uint32_t filter_matches( ReadOut&   read_out,
     }
 
     // set as negative for unique filtering
-    if ( args.unique_filtering )
+    if ( config.unique_filtering )
         // if there's only one match and kmer count is lower than expected
         if ( read_out.matches.size() == 1
-             && read_out.matches[0].kmer_count < readLen - kmerSize + 1 - ( args.max_error_unique * kmerSize ) )
+             && read_out.matches[0].kmer_count < readLen - kmerSize + 1 - ( config.max_error_unique * kmerSize ) )
             read_out.matches[0].kmer_count = -read_out.matches[0].kmer_count;
 
     return read_out.matches.size();
@@ -175,13 +179,13 @@ void load_filters( std::vector< Filter >&                                filter_
     }
 }
 
-void print_time( Arguments& args,
-                 Time&      timeGanon,
-                 Time&      timeLoadReads,
-                 Time&      timeLoadFilters,
-                 Time&      timeClass,
-                 Time&      timePrintClass,
-                 Time&      timePrintUnclass )
+void print_time( Config& config,
+                 Time&   timeGanon,
+                 Time&   timeLoadReads,
+                 Time&   timeLoadFilters,
+                 Time&   timeClass,
+                 Time&   timePrintClass,
+                 Time&   timePrintUnclass )
 {
     std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
     std::cerr << "Loading reads  start time: " << timeLoadReads.get_start_ctime();
@@ -189,14 +193,14 @@ void print_time( Arguments& args,
     std::cerr << "Loading reads    end time: " << timeLoadReads.get_end_ctime();
     std::cerr << "Classifying      end time: " << timeClass.get_end_ctime();
     std::cerr << "Printing clas.   end time: " << timePrintClass.get_end_ctime();
-    if ( args.output_unclassified )
+    if ( config.output_unclassified )
         std::cerr << "Printing unclas. end time: " << timePrintUnclass.get_end_ctime();
     std::cerr << "ganon-classify   end time: " << timeGanon.get_end_ctime();
     std::cerr << std::endl;
     std::cerr << " - loading filters: " << timeLoadFilters.get_elapsed() << std::endl;
-    std::cerr << " - classifying (" << args.clas_threads << "t): " << timeClass.get_elapsed() << std::endl;
+    std::cerr << " - classifying (" << config.clas_threads << "t): " << timeClass.get_elapsed() << std::endl;
     std::cerr << " - printing (1t): " << timePrintClass.get_elapsed() << std::endl;
-    if ( args.output_unclassified )
+    if ( config.output_unclassified )
         std::cerr << " - printing unclassified (1t) " << timePrintUnclass.get_elapsed() << std::endl;
     std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
     std::cerr << std::endl;
@@ -233,19 +237,26 @@ int main( int argc, char** argv )
     Time timePrintUnclass;
 
     // Parse arguments
-    Arguments args( argc, argv );
-    if ( !args.parse() )
+    auto config = CommandLineParser::parse( argc, argv );
+    if ( !config.has_value() )
+    {
         return 0;
+    }
 
-    if ( args.verbose )
-        args.print();
+    if ( config->verbose )
+    {
+        std::cerr << config.value();
+    }
+
+    //////////////////////////////
+
 
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_unclassified;
-    if ( !args.output_file.empty() )
+    if ( !config->output_file.empty() )
     { // output to a file
-        out.open( args.output_file );
+        out.open( config->output_file );
     }
     else
     {
@@ -281,7 +292,7 @@ int main( int argc, char** argv )
     // Thread for reading input files
     timeLoadReads.start();
     read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats] {
-        for ( auto const& reads_file : args.reads )
+        for ( auto const& reads_file : config->reads )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -327,9 +338,9 @@ int main( int argc, char** argv )
 
     // Thread for printing unclassified reads
     timePrintUnclass.start();
-    if ( args.output_unclassified )
+    if ( config->output_unclassified )
     {
-        out_unclassified.open( args.output_unclassified_file );
+        out_unclassified.open( config->output_unclassified_file );
         read_write.emplace_back(
             std::async( std::launch::async,
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_classifying, &timePrintUnclass] {
@@ -354,9 +365,9 @@ int main( int argc, char** argv )
     SafeQueue< ReadBatches >* pointer_extra;             // pointer to the queues
 
     uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = args.filters.size();
+    uint16_t hierarchy_size = config->filters.size();
     // For every hiearchy level
-    for ( auto const& hierarchy : args.filters )
+    for ( auto const& hierarchy : config->filters )
     {
         ++hierarchy_id;
         // filter[h] = vector<(filter, map)> -> map already sort by key
@@ -385,7 +396,7 @@ int main( int argc, char** argv )
 
         // Threads for classification
         timeClass.start();
-        for ( uint16_t taskNo = 0; taskNo < args.clas_threads; ++taskNo )
+        for ( uint16_t taskNo = 0; taskNo < config->clas_threads; ++taskNo )
         {
             tasks.emplace_back( std::async(
                 std::launch::async,
@@ -395,7 +406,7 @@ int main( int argc, char** argv )
                  &unclassified_reads_queue,
                  &finished_reading,
                  &stats,
-                 &args] {
+                 &config] {
                     while ( true )
                     {
                         // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
@@ -412,7 +423,7 @@ int main( int argc, char** argv )
 
                                 // k-mer sizes should be the same among filters, groups should not overlap
                                 uint16_t kmerSize  = filter_hierarchy[0].kmerSize;
-                                uint16_t threshold = kmer_threshold( readLen, kmerSize, args.max_error );
+                                uint16_t threshold = kmer_threshold( readLen, kmerSize, config->max_error );
 
                                 // Classify reads, returing matches and max kmer count achieved for the read
                                 Tmatches matches;
@@ -421,8 +432,8 @@ int main( int argc, char** argv )
 
                                 // Filter reads by number of errors, special filtering for unique matches
                                 ReadOut  read_out( rb.ids[readID] );
-                                uint32_t count_filtered_matches =
-                                    filter_matches( read_out, matches, kmerSize, readLen, maxKmerCountRead, args );
+                                uint32_t count_filtered_matches = filter_matches(
+                                    read_out, matches, kmerSize, readLen, maxKmerCountRead, config.value() );
 
                                 // If there are matches, add to printing queue
                                 if ( count_filtered_matches > 0 )
@@ -436,8 +447,8 @@ int main( int argc, char** argv )
                                     seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                                     seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
                                 }
-                                else if ( args.output_unclassified ) // no more levels and no classification, add to
-                                                                     // unclassified printing queue
+                                else if ( config->output_unclassified ) // no more levels and no classification, add to
+                                                                        // unclassified printing queue
                                 {
                                     unclassified_reads_queue.push( read_out );
                                 }
@@ -468,16 +479,17 @@ int main( int argc, char** argv )
         task.get();
     }
 
-    if ( args.output_file != "" )
+    if ( config->output_file != "" )
         out.close();
 
-    if ( args.output_unclassified )
+    if ( config->output_unclassified )
         out_unclassified.close();
 
     timeGanon.end();
 
     std::cerr << std::endl;
-    print_time( args, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+    print_time(
+        config.value(), timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
     print_stats( stats, timeClass );
 
     return 0;
