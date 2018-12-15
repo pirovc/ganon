@@ -141,7 +141,7 @@ def main():
         run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8}'.format(
                                         args.ganon_path,
                                         acc_bin_file,
-                                        "--bloom-size-bits" if args.max_fp else "-s",
+                                        "--filter-size-bits" if args.max_fp else "--filter-size",
                                         bin_size_bits*optimal_number_of_bins if args.max_fp else args.bloom_size,
                                         args.kmer_size,
                                         args.hash_functions,
