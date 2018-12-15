@@ -27,7 +27,7 @@ struct Time
     double get_elapsed()
     {
         Telapsed elapsed;
-        for ( uint i = 0; i < _start.size(); ++i )
+        for ( auto i = 0; i < _start.size(); ++i )
         {
             elapsed += _end[i] - _start[i];
         }
