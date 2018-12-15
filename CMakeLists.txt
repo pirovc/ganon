@@ -17,7 +17,7 @@ if( NOT CMAKE_BUILD_TYPE )
 endif()
 
 add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
-    -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG
+    -Wno-long-long -Wno-variadic-macros -Wunused -O3 -DNDEBUG
     -static -march=native )
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )

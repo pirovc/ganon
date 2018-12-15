@@ -49,14 +49,19 @@ target_include_directories( defaults
 
 set( ganon-build-src
     ganon-build/CommandLineParser.cpp
-    ganon-build/CommandLineParser.hpp
-    ganon-build/Config.hpp
-    ganon-build/GanonBuild.cpp
-    ganon-build/GanonBuild.hpp
-    ganon-build/main.cpp )
+    ganon-build/GanonBuild.cpp )
 
-add_executable( ganon-build ${ganon-build-src} )
-link_to_ganon_dependencies( ganon-build )
+add_library( ganon-build-lib STATIC ${ganon-build-src} )
+link_to_ganon_dependencies( ganon-build-lib )
+
+target_include_directories( ganon-build-lib
+    PUBLIC
+    ganon-build/include
+    PRIVATE
+    ganon-build/include/ganon-build )
+
+add_executable( ganon-build ganon-build/main.cpp )
+target_link_libraries( ganon-build ganon-build-lib )
 
 # ----------------------------------------------------------------------------
 # ganon-classify
