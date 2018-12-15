@@ -30,7 +30,7 @@ SCENARIO( "ganon-build test" )
     config.seqid_bin_file     = "bacteria_seqid_bin.txt";
     config.output_filter_file = "test_output.filter";
     config.filter_size        = 15797760;
-    config.kmer_size          = 18; // fail test, should be 19
+    config.kmer_size          = 19;
     config.hash_functions     = 3;
     config.reference_files    = {
         "bacteria_NC_010333.1.fasta.gz",
