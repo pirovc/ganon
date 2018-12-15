@@ -2,28 +2,8 @@
 # ganon utils
 # ===========================================================================
 
-# utils lib: this target holds resources shared by all other targets.
-
-set( utils-src
-    utils/include/utils/safequeue.hpp
-    utils/include/utils/Time.hpp )
-
-add_library( utils STATIC ${utils-src} )
-set_target_properties( utils PROPERTIES LINKER_LANGUAGE CXX CXX_STANDARD 17 )
-target_include_directories( utils PUBLIC utils/include )
-
-# helper function:
-
-function( link_to_ganon_dependencies target )
-    target_link_libraries( ${target}
-        PRIVATE
-        sdsl-lite
-        seqan
-        Threads::Threads
-        cxxopts
-        utils 
-        defaults )
-endfunction()
+add_library( utils INTERFACE )
+target_include_directories( utils INTERFACE utils/include )
 
 # ===========================================================================
 # config files
@@ -42,6 +22,19 @@ target_include_directories( defaults
 # ===========================================================================
 # ganon targets
 # ===========================================================================
+
+# helper function:
+
+function( link_to_ganon_dependencies target )
+    target_link_libraries( ${target}
+        PRIVATE
+        sdsl-lite
+        seqan
+        Threads::Threads
+        cxxopts
+        utils
+        defaults )
+endfunction()
 
 # ----------------------------------------------------------------------------
 # ganon-build
