@@ -24,7 +24,9 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
   - cat compile_commands.json
   - cmake --build . -- -j2
-  - ctest -VV .
+# TODO use cmake test target when paths are fixed
+#  - ctest -VV .
+  - ./ganon-tests
   - ./ganon-build
   - ./ganon-classify
 
