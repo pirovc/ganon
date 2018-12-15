@@ -7,6 +7,10 @@ matrix:
       osx_image: xcode10
       env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7"
 
+    - name: "osx appleclang 10"
+      os: osx
+      osx_image: xcode10
+
     - name: "linux gcc-7"
       os: linux
       addons:
