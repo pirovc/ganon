@@ -27,5 +27,6 @@ target_link_libraries( ganon-tests
 
 target_include_directories( ganon-tests PRIVATE . )
 
-# TODO resolve relative path to test target
-# add_test( NAME GanonTestSuite COMMAND ganon-tests )
+add_test( NAME GanonTestSuite
+    COMMAND $<TARGET_FILE:ganon-tests>
+    WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
