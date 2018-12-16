@@ -14,6 +14,7 @@ file(
     ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 
 add_executable( ganon-tests
+    aux/Aux.hpp
     setup/Catch2.setup.cpp
     ganon-build/GanonBuild.test.cpp
     utils/SafeQueue.test.cpp )
@@ -23,6 +24,8 @@ target_link_libraries( ganon-tests
     utils
     catch2
     ganon-build-lib )
+
+target_include_directories( ganon-tests PRIVATE . )
 
 # TODO resolve relative path to test target
 # add_test( NAME GanonTestSuite COMMAND ganon-tests )
