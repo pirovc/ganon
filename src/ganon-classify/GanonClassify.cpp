@@ -15,7 +15,6 @@
 #include <tuple>
 #include <vector>
 
-
 namespace detail
 {
 
@@ -334,9 +333,9 @@ bool GanonClassify::run( Config config )
         std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_classifying, &timePrintClass] {
             while ( true )
             {
-                detail::ReadOut ro = classified_reads_queue.pop();
-                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
-                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+                auto ro = classified_reads_queue.pop();
+                for ( uint32_t i = 0; i < ro->matches.size(); ++i )
+                    out << ro->readID << '\t' << ro->matches[i].group << '\t' << ro->matches[i].kmer_count << '\n';
                 if ( finished_classifying && classified_reads_queue.empty() )
                 {
                     timePrintClass.end();
@@ -355,9 +354,9 @@ bool GanonClassify::run( Config config )
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_classifying, &timePrintUnclass] {
                             while ( true )
                             {
-                                detail::ReadOut rou = unclassified_reads_queue.pop();
-                                if ( rou.readID != "" ) // if not empty
-                                    out_unclassified << rou.readID << '\n';
+                                auto rou = unclassified_reads_queue.pop();
+                                if ( rou->readID != "" ) // if not empty
+                                    out_unclassified << rou->readID << '\n';
                                 if ( finished_classifying && unclassified_reads_queue.empty() )
                                 {
                                     timePrintUnclass.end();
@@ -419,13 +418,13 @@ bool GanonClassify::run( Config config )
                     while ( true )
                     {
                         // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                        detail::ReadBatches rb = pointer_current->pop();
-                        if ( rb.ids != "" )
+                        auto rb = pointer_current->pop();
+                        if ( rb->ids != "" )
                         {
                             detail::ReadBatches left_over_reads; // store unclassified reads for next iteration
-                            for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
+                            for ( uint32_t readID = 0; readID < seqan::length( rb->ids ); ++readID )
                             {
-                                uint16_t readLen = seqan::length( rb.seqs[readID] );
+                                uint16_t readLen = seqan::length( rb->seqs[readID] );
                                 // count lens just once
                                 if ( hierarchy_id == 1 )
                                     stats.sumReadLen += readLen;
@@ -437,10 +436,10 @@ bool GanonClassify::run( Config config )
                                 // Classify reads, returing matches and max kmer count achieved for the read
                                 detail::Tmatches matches;
                                 uint16_t         maxKmerCountRead =
-                                    detail::classify_read( matches, filter_hierarchy, rb.seqs[readID], threshold );
+                                    detail::classify_read( matches, filter_hierarchy, rb->seqs[readID], threshold );
 
                                 // Filter reads by number of errors, special filtering for unique matches
-                                detail::ReadOut read_out( rb.ids[readID] );
+                                detail::ReadOut read_out( rb->ids[readID] );
                                 uint32_t        count_filtered_matches = detail::filter_matches(
                                     read_out, matches, kmerSize, readLen, maxKmerCountRead, config );
 
@@ -453,8 +452,8 @@ bool GanonClassify::run( Config config )
                                 }
                                 else if ( hierarchy_id < hierarchy_size ) // if there is more levels, store read
                                 {
-                                    seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
-                                    seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                                    seqan::appendValue( left_over_reads.ids, rb->ids[readID] );
+                                    seqan::appendValue( left_over_reads.seqs, rb->seqs[readID] );
                                 }
                                 else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                                        // unclassified printing queue
