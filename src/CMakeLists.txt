@@ -47,11 +47,11 @@ target_include_directories( defaults
 # ganon-build
 # ----------------------------------------------------------------------------
 
-set( ganon-build-src
+set( ganon-build-lib-src
     ganon-build/CommandLineParser.cpp
     ganon-build/GanonBuild.cpp )
 
-add_library( ganon-build-lib STATIC ${ganon-build-src} )
+add_library( ganon-build-lib STATIC ${ganon-build-lib-src} )
 link_to_ganon_dependencies( ganon-build-lib )
 
 target_include_directories( ganon-build-lib

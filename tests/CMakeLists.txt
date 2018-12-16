@@ -4,14 +4,14 @@
 
 file(
     COPY
-        ganon-build/data/bacteria_NC_010333.1.fasta.gz
-        ganon-build/data/bacteria_NC_017163.1.fasta.gz
-        ganon-build/data/bacteria_NC_017164.1.fasta.gz
-        ganon-build/data/bacteria_NC_017543.1.fasta.gz
-        ganon-build/data/bacteria_seqid_bin.txt
-        ganon-build/data/build_output.filter
+    ganon-build/data/bacteria_NC_010333.1.fasta.gz
+    ganon-build/data/bacteria_NC_017163.1.fasta.gz
+    ganon-build/data/bacteria_NC_017164.1.fasta.gz
+    ganon-build/data/bacteria_NC_017543.1.fasta.gz
+    ganon-build/data/bacteria_seqid_bin.txt
+    ganon-build/data/build_output.filter
     DESTINATION
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
+    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 
 add_executable( ganon-tests
     setup/Catch2.setup.cpp
