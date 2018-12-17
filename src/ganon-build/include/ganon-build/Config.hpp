@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+namespace GanonBuild
+{
+
 struct Config
 {
     static constexpr std::uint64_t MBinBits = 8388608;
@@ -57,3 +60,5 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 
     return stream;
 }
+
+} // namespace GanonBuild

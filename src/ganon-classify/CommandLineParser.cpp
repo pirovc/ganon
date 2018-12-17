@@ -4,6 +4,9 @@
 
 #include <cxxopts.hpp>
 
+namespace GanonClassify
+{
+
 std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 {
     cxxopts::Options options( "ganon-classify", "Ganon classifier" );
@@ -59,3 +62,5 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     return config;
 }
+
+} // namespace GanonClassify

@@ -4,9 +4,9 @@
 
 #include <optional>
 
-namespace CommandLineParser
+namespace GanonBuild::CommandLineParser
 {
 
 std::optional< Config > parse( int argc, char** argv );
 
-} // namespace CommandLineParser
+} // namespace GanonBuild::CommandLineParser

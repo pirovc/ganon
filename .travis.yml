@@ -25,8 +25,6 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
-  - ./ganon-build
-  - ./ganon-classify
 
 notifications:
   email: false

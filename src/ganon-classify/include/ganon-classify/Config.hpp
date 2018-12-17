@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+namespace GanonClassify
+{
+
 struct Config
 {
     std::string                                                                    output_file;
@@ -54,3 +57,5 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 
     return stream;
 }
+
+} // namespace GanonClassify

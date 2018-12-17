@@ -8,9 +8,9 @@
 namespace config_build
 {
 
-Config testConfig()
+GanonBuild::Config testConfig()
 {
-    Config cfg;
+    GanonBuild::Config cfg;
     cfg.seqid_bin_file     = "bacteria_seqid_bin.txt";
     cfg.output_filter_file = "test_output.filter";
     cfg.filter_size        = 15797760;

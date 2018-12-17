@@ -130,12 +130,12 @@ inline uint16_t classify_read( Tmatches&              matches,
     return maxKmerCountRead;
 }
 
-inline uint32_t filter_matches( ReadOut&  read_out,
-                                Tmatches& matches,
-                                uint16_t  kmerSize,
-                                uint16_t  readLen,
-                                uint16_t  maxKmerCountRead,
-                                Config&   config )
+inline uint32_t filter_matches( ReadOut&               read_out,
+                                Tmatches&              matches,
+                                uint16_t               kmerSize,
+                                uint16_t               readLen,
+                                uint16_t               maxKmerCountRead,
+                                GanonClassify::Config& config )
 {
     // get maximum possible number of error for this read
     // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
@@ -192,13 +192,13 @@ void load_filters( std::vector< Filter >&                                filter_
     }
 }
 
-void print_time( Config& config,
-                 Time&   timeGanon,
-                 Time&   timeLoadReads,
-                 Time&   timeLoadFilters,
-                 Time&   timeClass,
-                 Time&   timePrintClass,
-                 Time&   timePrintUnclass )
+void print_time( GanonClassify::Config& config,
+                 Time&                  timeGanon,
+                 Time&                  timeLoadReads,
+                 Time&                  timeLoadFilters,
+                 Time&                  timeClass,
+                 Time&                  timePrintClass,
+                 Time&                  timePrintUnclass )
 {
     std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
     std::cerr << "Loading reads  start time: " << timeLoadReads.get_start_ctime();
@@ -245,7 +245,7 @@ std::vector< std::string > split( const std::string& s, char delimiter )
     return tokens;
 }
 
-bool parse_hierarchy( Config& config )
+bool parse_hierarchy( GanonClassify::Config& config )
 {
 
     if ( config.filter_hierarchy.empty() )
