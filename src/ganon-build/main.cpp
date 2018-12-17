@@ -11,5 +11,5 @@ int main( int argc, char** argv )
         return GanonBuild::run( std::move( config.value() ) ) ? EXIT_SUCCESS : EXIT_FAILURE;
     }
 
-    return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
