@@ -16,7 +16,7 @@ Config testConfig()
     cfg.output_file              = "test_output.txt";
     cfg.max_error                = 3;
     cfg.reads                    = { "simulated.1.fq" };
-    cfg.verbose                  = true;
+    cfg.verbose                  = false;
     return cfg;
 }
 
@@ -28,14 +28,14 @@ SCENARIO( "Classify", "[ganon-classify]" )
 {
     const auto cfg = config_classify::testConfig();
     REQUIRE( GanonClassify::run( cfg ) );
-    //REQUIRE( aux::filesAreEqual( cfg.output_file, config_classify::outputFile ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, config_classify::outputFile ) );
 }
 
-// SCENARIO( "Classify forced failure with different number of errors allowed", "[ganon-classify]" )
-// {
-//     auto cfg      = config_classify::testConfig();
-//     cfg.max_error        = 1;
+SCENARIO( "Classify forced failure with different number of errors allowed", "[ganon-classify]" )
+{
+    auto cfg      = config_classify::testConfig();
+    cfg.max_error        = 1;
 
-//     REQUIRE( GanonClassify::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_file, config_classify::outputFile ) );
-// }
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_file, config_classify::outputFile ) );
+}
