@@ -11,12 +11,13 @@ namespace config_classify
 Config testConfig()
 {
     Config cfg;
-    cfg.bloom_filter_files       = { "classify.filter" };
-    cfg.group_bin_files          = { "bacteria_group_bin.txt" };
-    cfg.output_file              = "test_output.txt";
-    cfg.max_error                = 3;
-    cfg.reads                    = { "simulated.1.fq" };
-    cfg.verbose                  = false;
+    cfg.bloom_filter_files = { "classify.filter" };
+    cfg.group_bin_files    = { "bacteria_group_bin.txt" };
+    cfg.output_file        = "test_output.txt";
+    cfg.max_error          = 3;
+    cfg.reads              = { "simulated.1.fq" };
+    cfg.verbose            = false;
+    cfg.testing            = true;
     return cfg;
 }
 
@@ -34,7 +35,7 @@ SCENARIO( "Classify", "[ganon-classify]" )
 SCENARIO( "Classify forced failure with different number of errors allowed", "[ganon-classify]" )
 {
     auto cfg      = config_classify::testConfig();
-    cfg.max_error        = 1;
+    cfg.max_error = 1;
 
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_file, config_classify::outputFile ) );

@@ -23,6 +23,7 @@ struct Config
     std::vector< std::string >                                                     reads;
     std::map< std::string, std::vector< std::tuple< std::string, std::string > > > filters;
     bool                                                                           verbose;
+    bool                                                                           testing = false; // internal
 };
 
 inline std::ostream& operator<<( std::ostream& stream, const Config& config )

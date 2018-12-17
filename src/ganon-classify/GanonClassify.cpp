@@ -287,8 +287,10 @@ bool parse_hierarchy( Config& config )
 
 bool GanonClassify::run( Config config )
 {
-    std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
-                                             // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
+    // disable on testing, messing up syncing with ctest
+    if ( !config.testing )
+        std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
+                                                 // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
 
     // Check parameters
     config.clas_threads = config.threads - 2; //-1 reading, -1 printing

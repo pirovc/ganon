@@ -26,9 +26,10 @@ file(
 add_executable( ganon-tests
     aux/Aux.hpp
     setup/Catch2.setup.cpp
-    ganon-build/GanonBuild.test.cpp
+    #ganon-build/GanonBuild.test.cpp
     ganon-classify/GanonClassify.test.cpp
-    utils/SafeQueue.test.cpp)
+    utils/SafeQueue.test.cpp
+    )
 
 target_link_libraries( ganon-tests
     PRIVATE
