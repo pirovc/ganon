@@ -56,6 +56,11 @@ target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 add_compile_options( ${SEQAN_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
+# 6. Catch2:
+
+add_library( catch2 INTERFACE )
+target_include_directories( catch2 INTERFACE libs/Catch2/single_include )
+
 # ----------------------------------------------------------------------------
 # verbose log
 # ----------------------------------------------------------------------------
@@ -77,4 +82,6 @@ endif()
 # folders
 # ----------------------------------------------------------------------------
 
+enable_testing()
 add_subdirectory( src )
+add_subdirectory( tests )

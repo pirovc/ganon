@@ -5,7 +5,7 @@
 # utils lib: this target holds resources shared by all other targets.
 
 set( utils-src
-    utils/include/utils/safequeue.hpp
+    utils/include/utils/SafeQueue.hpp
     utils/include/utils/Time.hpp )
 
 add_library( utils STATIC ${utils-src} )
@@ -47,16 +47,21 @@ target_include_directories( defaults
 # ganon-build
 # ----------------------------------------------------------------------------
 
-set( ganon-build-src
+set( ganon-build-lib-src
     ganon-build/CommandLineParser.cpp
-    ganon-build/CommandLineParser.hpp
-    ganon-build/Config.hpp
-    ganon-build/GanonBuild.cpp
-    ganon-build/GanonBuild.hpp
-    ganon-build/main.cpp )
+    ganon-build/GanonBuild.cpp )
 
-add_executable( ganon-build ${ganon-build-src} )
-link_to_ganon_dependencies( ganon-build )
+add_library( ganon-build-lib STATIC ${ganon-build-lib-src} )
+link_to_ganon_dependencies( ganon-build-lib )
+
+target_include_directories( ganon-build-lib
+    PUBLIC
+    ganon-build/include
+    PRIVATE
+    ganon-build/include/ganon-build )
+
+add_executable( ganon-build ganon-build/main.cpp )
+target_link_libraries( ganon-build ganon-build-lib )
 
 # ----------------------------------------------------------------------------
 # ganon-classify

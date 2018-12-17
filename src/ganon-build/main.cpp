@@ -1,5 +1,5 @@
-#include "CommandLineParser.hpp"
-#include "GanonBuild.hpp"
+#include <ganon-build/CommandLineParser.hpp>
+#include <ganon-build/GanonBuild.hpp>
 
 #include <cstdlib>
 #include <utility>
