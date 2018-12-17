@@ -77,7 +77,7 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
 }
 
 
-TInterleavedBloomFilter load_filter( Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
+TInterleavedBloomFilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
     uint64_t number_of_bins;
     if ( !config.update_filter_file.empty() )
@@ -118,12 +118,12 @@ TInterleavedBloomFilter load_filter( Config& config, const std::set< uint64_t >&
     return filter;
 }
 
-void print_time( const Config& config,
-                 Time&         timeGanon,
-                 Time&         timeLoadFiles,
-                 Time&         timeLoadSeq,
-                 Time&         timeBuild,
-                 Time&         timeSaveFilter )
+void print_time( const GanonBuild::Config& config,
+                 Time&                     timeGanon,
+                 Time&                     timeLoadFiles,
+                 Time&                     timeLoadSeq,
+                 Time&                     timeBuild,
+                 Time&                     timeSaveFilter )
 {
     std::cerr << "ganon-build       start time: " << timeGanon.get_start_ctime();
     std::cerr << "Loading files     start time: " << timeLoadFiles.get_start_ctime();
@@ -144,8 +144,7 @@ void print_time( const Config& config,
     std::cerr << std::endl;
 }
 
-
-void print_stats( Stats& stats, const Config& config, Time& timeBuild )
+void print_stats( Stats& stats, const GanonBuild::Config& config, Time& timeBuild )
 {
     double   elapsed_build = timeBuild.get_elapsed();
     uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;

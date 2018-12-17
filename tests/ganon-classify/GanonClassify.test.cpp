@@ -8,9 +8,9 @@
 namespace config_classify
 {
 
-Config testConfig()
+GanonClassify::Config testConfig()
 {
-    Config cfg;
+    GanonClassify::Config cfg;
     cfg.bloom_filter_files = { "classify.filter" };
     cfg.group_bin_files    = { "bacteria_group_bin.txt" };
     cfg.output_file        = "test_output.txt";
