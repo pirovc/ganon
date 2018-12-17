@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+namespace GanonClassify
+{
+
 struct Config
 {
     std::string                                                                    output_file;
@@ -24,7 +27,7 @@ struct Config
     std::map< std::string, std::vector< std::tuple< std::string, std::string > > > filters;
     bool                                                                           verbose;
     bool                                                                           testing = false; // internal
-};
+}; // namespace GanonClassifystructConfig
 
 inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 {
@@ -54,3 +57,5 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 
     return stream;
 }
+
+} // namespace GanonClassify
