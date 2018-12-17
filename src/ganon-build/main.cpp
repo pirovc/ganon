@@ -6,7 +6,7 @@
 
 int main( int argc, char** argv )
 {
-    if ( auto config = CommandLineParser::parse( argc, argv ); config.has_value() )
+    if ( auto config = GanonBuild::CommandLineParser::parse( argc, argv ); config.has_value() )
     {
         return GanonBuild::run( std::move( config.value() ) ) ? EXIT_SUCCESS : EXIT_FAILURE;
     }
