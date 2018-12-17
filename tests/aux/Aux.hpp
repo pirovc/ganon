@@ -8,7 +8,7 @@
 namespace aux
 {
 
-bool filesAreEqual( const std::string& file1, const std::string& file2 )
+inline bool filesAreEqual( const std::string& file1, const std::string& file2 )
 {
     std::ifstream     stream1{ file1 };
     const std::string data1{ std::istreambuf_iterator< char >{ stream1 }, std::istreambuf_iterator< char >{} };

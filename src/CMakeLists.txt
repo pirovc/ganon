@@ -67,13 +67,18 @@ target_link_libraries( ganon-build ganon-build-lib )
 # ganon-classify
 # ----------------------------------------------------------------------------
 
-set( ganon-classify-src
+set( ganon-classify-lib-src
     ganon-classify/CommandLineParser.cpp
-    ganon-classify/CommandLineParser.hpp
-    ganon-classify/Config.hpp
-    ganon-classify/GanonClassify.cpp
-    ganon-classify/GanonClassify.hpp
-    ganon-classify/main.cpp )
+    ganon-classify/GanonClassify.cpp )
 
-add_executable( ganon-classify ${ganon-classify-src} )
-link_to_ganon_dependencies( ganon-classify )
+add_library( ganon-classify-lib STATIC ${ganon-classify-lib-src} )
+link_to_ganon_dependencies( ganon-classify-lib )
+
+target_include_directories( ganon-classify-lib
+    PUBLIC
+    ganon-classify/include
+    PRIVATE
+    ganon-classify/include/ganon-classify )
+
+add_executable( ganon-classify ganon-classify/main.cpp )
+target_link_libraries( ganon-classify ganon-classify-lib )

@@ -1,5 +1,5 @@
-#include "CommandLineParser.hpp"
-#include "GanonClassify.hpp"
+#include <ganon-classify/CommandLineParser.hpp>
+#include <ganon-classify/GanonClassify.hpp>
 
 #include <cstdlib>
 #include <utility>

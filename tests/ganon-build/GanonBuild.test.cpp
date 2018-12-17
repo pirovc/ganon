@@ -5,7 +5,7 @@
 
 #include <catch2/catch.hpp>
 
-namespace detail
+namespace config_build
 {
 
 Config testConfig()
@@ -28,21 +28,21 @@ Config testConfig()
 
 const std::string outputFile = "build_output.filter";
 
-} // namespace detail
+} // namespace config_build
 
 SCENARIO( "Bacteria", "[ganon-build]" )
 {
-    const auto cfg = detail::testConfig();
+    const auto cfg = config_build::testConfig();
 
     REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, detail::outputFile ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
 }
 
 SCENARIO( "Bacteria forced failure", "[ganon-build]" )
 {
-    auto cfg      = detail::testConfig();
+    auto cfg      = config_build::testConfig();
     cfg.kmer_size = 18;
 
     REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, detail::outputFile ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
 }
