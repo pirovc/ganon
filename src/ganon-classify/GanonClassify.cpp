@@ -221,7 +221,7 @@ void print_time( GanonClassify::Config& config,
 
 void print_stats( Stats& stats, Time& timeClass )
 {
-    double elapsed_classification = timeClass.get_elapsed();
+    const double elapsed_classification = timeClass.get_elapsed();
     std::cerr << "ganon-classify processed " << stats.totalReads << " sequences (" << stats.sumReadLen / 1000000.0
               << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
