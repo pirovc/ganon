@@ -16,7 +16,7 @@ GanonClassify::Config testConfig()
     cfg.output_file        = "test_output.txt";
     cfg.max_error          = 3;
     cfg.reads              = { "simulated.1.fq" };
-    cfg.verbose            = false;
+    cfg.verbose            = true;
     cfg.testing            = true;
     return cfg;
 }

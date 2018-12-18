@@ -22,7 +22,7 @@ struct Config
 
     // Update options
     std::string update_filter_file;
-    bool        update_complete;
+    bool        update_complete = false;
 
     // General options
     std::vector< std::string > reference_files;
