@@ -255,6 +255,7 @@ bool GanonBuild::run( Config config )
                 seqan::readRecords( ids, seqs, seqFileIn, config.threads * 5 );
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
+                    stats.totalSeqsFile += 1;
                     if ( seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
@@ -273,7 +274,6 @@ bool GanonBuild::run( Config config )
                         stats.invalidSeqs += 1;
                         continue;
                     }
-                    stats.totalSeqsFile += 1;
                     stats.sumSeqLen += seqan::length( seqs[i] );
                     q_Seqs.push( detail::Seqs{ seqid, seqs[i] } );
                 }
