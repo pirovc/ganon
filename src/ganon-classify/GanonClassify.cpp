@@ -1,7 +1,7 @@
 #include "GanonClassify.hpp"
 
+#include <utils/SafeQueue.hpp>
 #include <utils/Time.hpp>
-#include <utils/safequeue.hpp>
 
 #include <seqan/kmer.h>
 
@@ -129,12 +129,12 @@ inline uint16_t classify_read( Tmatches&              matches,
     return maxKmerCountRead;
 }
 
-inline uint32_t filter_matches( ReadOut&  read_out,
-                                Tmatches& matches,
-                                uint16_t  kmerSize,
-                                uint16_t  readLen,
-                                uint16_t  maxKmerCountRead,
-                                Config&   config )
+inline uint32_t filter_matches( ReadOut&               read_out,
+                                Tmatches&              matches,
+                                uint16_t               kmerSize,
+                                uint16_t               readLen,
+                                uint16_t               maxKmerCountRead,
+                                GanonClassify::Config& config )
 {
     // get maximum possible number of error for this read
     // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
@@ -191,13 +191,13 @@ void load_filters( std::vector< Filter >&                                filter_
     }
 }
 
-void print_time( Config& config,
-                 Time&   timeGanon,
-                 Time&   timeLoadReads,
-                 Time&   timeLoadFilters,
-                 Time&   timeClass,
-                 Time&   timePrintClass,
-                 Time&   timePrintUnclass )
+void print_time( GanonClassify::Config& config,
+                 Time&                  timeGanon,
+                 Time&                  timeLoadReads,
+                 Time&                  timeLoadFilters,
+                 Time&                  timeClass,
+                 Time&                  timePrintClass,
+                 Time&                  timePrintUnclass )
 {
     std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
     std::cerr << "Loading reads  start time: " << timeLoadReads.get_start_ctime();
@@ -220,7 +220,7 @@ void print_time( Config& config,
 
 void print_stats( Stats& stats, Time& timeClass )
 {
-    double elapsed_classification = timeClass.get_elapsed();
+    const double elapsed_classification = timeClass.get_elapsed();
     std::cerr << "ganon-classify processed " << stats.totalReads << " sequences (" << stats.sumReadLen / 1000000.0
               << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
@@ -234,13 +234,85 @@ void print_stats( Stats& stats, Time& timeClass )
               << " match/read)" << std::endl;
 }
 
+std::vector< std::string > split( const std::string& s, char delimiter )
+{
+    std::vector< std::string > tokens;
+    std::string                token;
+    std::istringstream         tokenStream( s );
+    while ( std::getline( tokenStream, token, delimiter ) )
+        tokens.push_back( token );
+    return tokens;
+}
+
+bool parse_hierarchy( GanonClassify::Config& config )
+{
+
+    if ( config.filter_hierarchy.empty() )
+    {
+        if ( config.bloom_filter_files.size() != config.group_bin_files.size() )
+        {
+            std::cerr << "Filter and group-bin files do not match" << std::endl;
+            return false;
+        }
+        else
+        {
+            for ( uint16_t h = 0; h < config.bloom_filter_files.size(); ++h )
+            {
+                config.filters["1"].push_back(
+                    std::make_tuple( config.bloom_filter_files[h], config.group_bin_files[h] ) );
+            }
+        }
+    }
+    else
+    {
+        std::vector< std::string > hierarchy = split( config.filter_hierarchy, ',' );
+        if ( hierarchy.size() != config.bloom_filter_files.size() || hierarchy.size() != config.group_bin_files.size() )
+        {
+            std::cerr << "Hierarchy does not match with the number of provided files" << std::endl;
+            return false;
+        }
+        else
+        {
+            for ( uint16_t h = 0; h < hierarchy.size(); ++h )
+                config.filters[hierarchy[h]].push_back(
+                    std::make_tuple( config.bloom_filter_files[h], config.group_bin_files[h] ) );
+        }
+    }
+    return true;
+}
+
 } // namespace detail
 
 
 bool GanonClassify::run( Config config )
 {
-    std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
-                                             // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
+    // disable on testing, messing up syncing with ctest
+    if ( !config.testing )
+        std::ios_base::sync_with_stdio( false ); // speed up output to STDOUT (allows buffering) ->
+                                                 // https://en.cppreference.com/w/cpp/io/ios_base/sync_with_stdio
+
+    // Check parameters
+    config.clas_threads = config.threads - 2; //-1 reading, -1 printing
+    if ( !config.output_unclassified_file.empty() )
+    {
+        config.output_unclassified = true;
+        config.clas_threads        = config.clas_threads - 1; //-1 printing unclassified
+    }
+    else
+    {
+        config.output_unclassified = false;
+    }
+
+    if ( config.max_error_unique >= 0 && config.max_error_unique < config.max_error )
+    {
+        config.unique_filtering = true;
+    }
+    else
+    {
+        config.unique_filtering = false;
+    }
+    if ( !detail::parse_hierarchy( config ) )
+        return false;
 
     // Time control
     Time timeGanon;

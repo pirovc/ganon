@@ -4,15 +4,8 @@
 
 #include <cxxopts.hpp>
 
-std::vector< std::string > split( const std::string& s, char delimiter )
+namespace GanonClassify
 {
-    std::vector< std::string > tokens;
-    std::string                token;
-    std::istringstream         tokenStream( s );
-    while ( std::getline( tokenStream, token, delimiter ) )
-        tokens.push_back( token );
-    return tokens;
-}
 
 std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 {
@@ -29,7 +22,6 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
         // option to skip filtering and work as a k-mer counter
         // option to output read len?
-        //( "silent", "Silent mode, just print results", cxxopts::value< int >()->default_value( "3" ) )
         ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
         ( "verbose", "Verbose output mode", cxxopts::value<bool>()->default_value("false"))
         ( "h,help", "Print help" )
@@ -55,7 +47,6 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         return std::nullopt;
     }
 
-
     Config config;
 
     config.bloom_filter_files       = args["bloom-filter"].as< std::vector< std::string > >();
@@ -67,56 +58,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     config.reads                    = args["reads"].as< std::vector< std::string > >();
     config.verbose                  = args["verbose"].as< bool >();
     config.filter_hierarchy         = args["filter-hierarchy"].as< std::string >();
+    config.max_error_unique         = args.count( "max-error-unique" ) ? args["max-error-unique"].as< int >() : -1;
 
-    config.clas_threads        = config.threads - 2; //-1 reading, -1 printing
-    config.output_unclassified = false;
-    config.unique_filtering    = false;
-    config.max_error_unique    = 0;
-
-    if ( !config.output_unclassified_file.empty() )
-    {
-        config.output_unclassified = true;
-        config.clas_threads        = config.clas_threads - 1; //-1 printing unclassified
-    }
-
-    if ( args.count( "max-error-unique" ) )
-    {
-        config.max_error_unique = args["max-error-unique"].as< int >();
-        if ( config.max_error_unique < config.max_error )
-            config.unique_filtering = true;
-    }
-
-
-    if ( config.filter_hierarchy.empty() )
-    {
-        if ( config.bloom_filter_files.size() != config.group_bin_files.size() )
-        {
-            std::cerr << "Filter and group-bin files do not match" << std::endl;
-            return std::nullopt;
-        }
-        else
-        {
-            for ( uint16_t h = 0; h < config.bloom_filter_files.size(); ++h )
-            {
-                config.filters["1"].push_back(
-                    std::make_tuple( config.bloom_filter_files[h], config.group_bin_files[h] ) );
-            }
-        }
-    }
-    else
-    {
-        std::vector< std::string > hierarchy = split( config.filter_hierarchy, ',' );
-        if ( hierarchy.size() != config.bloom_filter_files.size() || hierarchy.size() != config.group_bin_files.size() )
-        {
-            std::cerr << "Hierarchy does not match with the number of provided files" << std::endl;
-            return std::nullopt;
-        }
-        else
-        {
-            for ( uint16_t h = 0; h < hierarchy.size(); ++h )
-                config.filters[hierarchy[h]].push_back(
-                    std::make_tuple( config.bloom_filter_files[h], config.group_bin_files[h] ) );
-        }
-    }
     return config;
 }
+
+} // namespace GanonClassify

@@ -2,6 +2,11 @@ language: cpp
 
 matrix:
   include:
+    - name: "osx gcc-7"
+      os: osx
+      osx_image: xcode10
+      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7"
+
     - name: "linux gcc-7"
       os: linux
       addons:
@@ -24,8 +29,7 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
   - cat compile_commands.json
   - cmake --build . -- -j2
-  - ./ganon-build
-  - ./ganon-classify
+  - ctest -VV .
 
 notifications:
   email: false

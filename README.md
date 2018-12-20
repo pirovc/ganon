@@ -1,3 +1,5 @@
+# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon)
+
 ## Dependencies
 
 - gcc7

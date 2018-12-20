@@ -7,22 +7,26 @@
 #include <string>
 #include <vector>
 
+namespace GanonClassify
+{
+
 struct Config
 {
     std::string                                                                    output_file;
     std::string                                                                    output_unclassified_file;
     std::string                                                                    filter_hierarchy;
     uint16_t                                                                       max_error;
-    uint16_t                                                                       threads;
+    uint16_t                                                                       threads = 3;
     uint16_t                                                                       clas_threads;
     bool                                                                           output_unclassified;
     bool                                                                           unique_filtering;
-    uint16_t                                                                       max_error_unique;
+    int16_t                                                                        max_error_unique = -1;
     std::vector< std::string >                                                     bloom_filter_files;
     std::vector< std::string >                                                     group_bin_files;
     std::vector< std::string >                                                     reads;
     std::map< std::string, std::vector< std::tuple< std::string, std::string > > > filters;
     bool                                                                           verbose;
+    bool                                                                           testing = false; // internal
 };
 
 inline std::ostream& operator<<( std::ostream& stream, const Config& config )
@@ -53,3 +57,5 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 
     return stream;
 }
+
+} // namespace GanonClassify

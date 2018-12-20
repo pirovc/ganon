@@ -4,6 +4,9 @@
 
 #include <cxxopts.hpp>
 
+namespace GanonBuild
+{
+
 std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 {
     cxxopts::Options options( "ganon-build", "Ganon builder" );
@@ -75,3 +78,5 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     return config;
 }
+
+} // namespace GanonBuild

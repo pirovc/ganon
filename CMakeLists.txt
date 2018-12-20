@@ -10,10 +10,19 @@ project( ganon VERSION 0.9.0 LANGUAGES CXX )
 # ----------------------------------------------------------------------------
 
 set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD_REQUIRED ON )
+set( CMAKE_CXX_EXTENSIONS OFF )
+
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
 
+if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
+    message( FATAL_ERROR
+        "Compiler id '${CMAKE_CXX_COMPILER_ID}' is not supported, please \
+        check the documentation." )
+endif()
+
 if( NOT CMAKE_BUILD_TYPE )
-  set( CMAKE_BUILD_TYPE Release )
+    set( CMAKE_BUILD_TYPE Release FORCE )
 endif()
 
 add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
@@ -56,6 +65,11 @@ target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 add_compile_options( ${SEQAN_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
+# 6. Catch2:
+
+add_library( catch2 INTERFACE )
+target_include_directories( catch2 INTERFACE libs/Catch2/single_include )
+
 # ----------------------------------------------------------------------------
 # verbose log
 # ----------------------------------------------------------------------------
@@ -77,4 +91,6 @@ endif()
 # folders
 # ----------------------------------------------------------------------------
 
+enable_testing()
 add_subdirectory( src )
+add_subdirectory( tests )

@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+namespace GanonBuild
+{
+
 struct Config
 {
     static constexpr std::uint64_t MBinBits = 8388608;
@@ -19,7 +22,7 @@ struct Config
 
     // Update options
     std::string update_filter_file;
-    bool        update_complete;
+    bool        update_complete = false;
 
     // General options
     std::vector< std::string > reference_files;
@@ -57,3 +60,5 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 
     return stream;
 }
+
+} // namespace GanonBuild
