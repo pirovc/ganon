@@ -28,13 +28,17 @@ endif()
 add_compile_options(
     # warning options:
     -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
-    -pedantic -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual
-    -Wpedantic -Wconversion -Wsign-conversion -Wmisleading-indentation
-    -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wnull-dereference
-    -Wuseless-cast -Wdouble-promotion -Wformat=2 -Wstrict-aliasing
-    -Wno-long-long -Wno-variadic-macros
+    -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual
+    -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference
+    -Wdouble-promotion -Wformat=2 -Wstrict-aliasing -Wno-long-long
+    -Wno-variadic-macros
     # other options:
     -msse4.2 -O3 -DNDEBUG -static -march=native )
+
+if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
+    add_compile_options( -Wmisleading-indentation -Wduplicated-cond
+        -Wduplicated-branches -Wlogical-op -Wuseless-cast )
+endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
