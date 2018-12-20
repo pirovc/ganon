@@ -206,8 +206,7 @@ bool GanonBuild::run( Config config )
         tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
             while ( true )
             {
-                auto val = q_Seqs.pop();
-                if ( val->seqid != "" )
+                if ( auto val = q_Seqs.pop(); val.has_value() )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val->seqid].size(); i++ )
                     {
@@ -215,7 +214,8 @@ bool GanonBuild::run( Config config )
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
-                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val->seq, fragstart - 1, fragend );
+                        seqan::Infix< seqan::Dna5String >::Type fragment =
+                            seqan::infix( val->seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid, 0 );
                         if ( config.verbose )
                         {

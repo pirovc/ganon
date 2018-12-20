@@ -406,6 +406,7 @@ bool GanonClassify::run( Config config )
             while ( true )
             {
                 auto ro = classified_reads_queue.pop();
+                // TODO why there are no checks here for an invalid element?
                 for ( uint32_t i = 0; i < ro->matches.size(); ++i )
                     out << ro->readID << '\t' << ro->matches[i].group << '\t' << ro->matches[i].kmer_count << '\n';
                 if ( finished_classifying && classified_reads_queue.empty() )
@@ -426,8 +427,7 @@ bool GanonClassify::run( Config config )
                         [=, &unclassified_reads_queue, &out_unclassified, &finished_classifying, &timePrintUnclass] {
                             while ( true )
                             {
-                                auto rou = unclassified_reads_queue.pop();
-                                if ( rou->readID != "" ) // if not empty
+                                if ( auto rou = unclassified_reads_queue.pop(); rou.has_value() )
                                     out_unclassified << rou->readID << '\n';
                                 if ( finished_classifying && unclassified_reads_queue.empty() )
                                 {
