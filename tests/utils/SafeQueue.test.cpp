@@ -37,9 +37,9 @@ SCENARIO( "Popping from an empty queue", "[utils][safequeue]" )
         {
             const auto value = queue.pop();
 
-            THEN( "the popped element is the default value of the type" )
+            THEN( "nothing is popped (element is invalid or empty)" )
             {
-                REQUIRE( value == int{} );
+                REQUIRE_FALSE( value.has_value() );
             }
             AND_THEN( "the queue remains empty" )
             {

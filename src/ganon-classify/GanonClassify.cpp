@@ -405,10 +405,11 @@ bool GanonClassify::run( Config config )
         std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_classifying, &timePrintClass] {
             while ( true )
             {
-                auto ro = classified_reads_queue.pop();
-                // TODO why there are no checks here for an invalid element?
-                for ( uint32_t i = 0; i < ro->matches.size(); ++i )
-                    out << ro->readID << '\t' << ro->matches[i].group << '\t' << ro->matches[i].kmer_count << '\n';
+                if ( auto ro = classified_reads_queue.pop(); ro.has_value() )
+                {
+                    for ( uint32_t i = 0; i < ro->matches.size(); ++i )
+                        out << ro->readID << '\t' << ro->matches[i].group << '\t' << ro->matches[i].kmer_count << '\n';
+                }
                 if ( finished_classifying && classified_reads_queue.empty() )
                 {
                     timePrintClass.end();
@@ -489,9 +490,7 @@ bool GanonClassify::run( Config config )
                  &config] {
                     while ( true )
                     {
-                        // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                        auto rb = pointer_current->pop();
-                        if ( rb->ids != "" )
+                        if ( auto rb = pointer_current->pop(); rb.has_value() )
                         {
                             detail::ReadBatches left_over_reads; // store unclassified reads for next iteration
                             for ( uint32_t readID = 0; readID < seqan::length( rb->ids ); ++readID )
