@@ -25,9 +25,16 @@ if( NOT CMAKE_BUILD_TYPE )
     set( CMAKE_BUILD_TYPE Release FORCE )
 endif()
 
-add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
-    -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG
-    -static -march=native )
+add_compile_options(
+    # warning options:
+    -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
+    -pedantic -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual
+    -Wpedantic -Wconversion -Wsign-conversion -Wmisleading-indentation
+    -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wnull-dereference
+    -Wuseless-cast -Wdouble-promotion -Wformat=2 -Wstrict-aliasing
+    -Wno-long-long -Wno-variadic-macros
+    # other options:
+    -msse4.2 -O3 -DNDEBUG -static -march=native )
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
