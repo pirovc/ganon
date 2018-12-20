@@ -25,5 +25,4 @@ inline bool fileIsEmpty( const std::string& file )
     return stream.peek() == std::ifstream::traits_type::eof();
 }
 
-
 } // namespace aux
