@@ -195,47 +195,14 @@ bool GanonBuild::run( Config config )
     timeLoadFiles.end();
     //////////////////////////////
 
-    // Start execution threads to add kmers
-    timeBuild.start();
     std::mutex                         mtx;
     SafeQueue< detail::Seqs >          q_Seqs;
-    std::vector< std::future< void > > tasks;
     bool                               finished = false;
-    for ( int taskNo = 0; taskNo < config.build_threads; ++taskNo )
-    {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
-            while ( true )
-            {
-                detail::Seqs val = q_Seqs.pop();
-                if ( val.seqid != "" )
-                {
-                    for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
-                    {
-                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
-                        // For infixes, we have to provide both the including start and the excluding end position.
-                        // fragstart -1 to fix offset
-                        // fragend -1+1 to fix offset and not exclude last position
-                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        seqan::insertKmer( filter, fragment, binid, 0 );
-                        if ( config.verbose )
-                        {
-                            mtx.lock();
-                            std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
-                                      << std::endl;
-                            mtx.unlock();
-                        }
-                    }
-                }
-                if ( finished && q_Seqs.empty() )
-                    break;
-            }
-        } ) );
-    }
-    //////////////////////////////
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &timeLoadSeq, &stats] {
+    std::vector< std::future< void > > read_task;
+    read_task.emplace_back( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &timeLoadSeq, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -283,13 +250,53 @@ bool GanonBuild::run( Config config )
         finished = true;
         timeLoadSeq.end();
     } ) );
+
+    // Start execution threads to add kmers
+    timeBuild.start();
+    std::vector< std::future< void > > tasks;
+    for ( int taskNo = 0; taskNo < config.build_threads; ++taskNo )
+    {
+        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
+            while ( true )
+            {
+                detail::Seqs val = q_Seqs.pop();
+                if ( val.seqid != "" )
+                {
+                    for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
+                    {
+                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        // For infixes, we have to provide both the including start and the excluding end position.
+                        // fragstart -1 to fix offset
+                        // fragend -1+1 to fix offset and not exclude last position
+                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
+                        seqan::insertKmer( filter, fragment, binid, 0 );
+                        if ( config.verbose )
+                        {
+                            mtx.lock();
+                            std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                                      << std::endl;
+                            mtx.unlock();
+                        }
+                    }
+                }
+                if ( finished && q_Seqs.empty() )
+                    break;
+            }
+        } ) );
+    }
+    //////////////////////////////
+
     for ( auto&& task : tasks )
     {
         task.get();
     }
     timeBuild.end();
-    //////////////////////////////
 
+    for ( auto&& task : read_task )
+    {
+        task.get();
+    }
+    //////////////////////////////
 
     // Store filter
     timeSaveFilter.start();
