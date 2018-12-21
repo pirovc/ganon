@@ -201,7 +201,7 @@ bool GanonBuild::run( Config config )
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    std::future< void > read_task ( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &timeLoadSeq, &stats] {
+    std::future< void > read_task ( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -247,7 +247,6 @@ bool GanonBuild::run( Config config )
             seqan::close( seqFileIn );
         }
         finished = true;
-        timeLoadSeq.end();
     } ) );
 
     // Start execution threads to add kmers
@@ -286,14 +285,14 @@ bool GanonBuild::run( Config config )
     //////////////////////////////
 
     read_task.get();
-
+    timeLoadSeq.end();
+    
     for ( auto&& task : tasks )
     {
         task.get();
     }
     timeBuild.end();
     //////////////////////////////
-
 
     // Store filter
     timeSaveFilter.start();
