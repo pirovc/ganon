@@ -25,9 +25,20 @@ if( NOT CMAKE_BUILD_TYPE )
     set( CMAKE_BUILD_TYPE Release FORCE )
 endif()
 
-add_compile_options( -Wuninitialized -W -Wall -Wstrict-aliasing -pedantic
-    -Wno-long-long -Wno-variadic-macros -Wunused -msse4.2 -O3 -DNDEBUG
-    -static -march=native )
+add_compile_options(
+    # warning options:
+    -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
+    -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual
+    -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference
+    -Wdouble-promotion -Wformat=2 -Wstrict-aliasing -Wno-long-long
+    -Wno-variadic-macros
+    # other options:
+    -msse4.2 -O3 -DNDEBUG -static -march=native )
+
+if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
+    add_compile_options( -Wmisleading-indentation -Wduplicated-cond
+        -Wduplicated-branches -Wlogical-op -Wuseless-cast )
+endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 
@@ -42,12 +53,13 @@ find_package( Threads REQUIRED )
 # 2. cxxopts:
 
 add_library( cxxopts INTERFACE )
-target_include_directories( cxxopts INTERFACE libs/cxxopts/include )
+target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
 
 # 3. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
-target_include_directories( sdsl-lite INTERFACE libs/sdsl-lite/include )
+target_include_directories( sdsl-lite
+    SYSTEM INTERFACE libs/sdsl-lite/include )
 
 # 4. Zlib (optional for SeqAn):
 
@@ -59,7 +71,7 @@ set( SEQAN_INCLUDE_PATH libs/seqan/include )
 find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
 
 add_library( seqan INTERFACE )
-target_include_directories( seqan INTERFACE ${SEQAN_INCLUDE_DIRS} )
+target_include_directories( seqan SYSTEM INTERFACE ${SEQAN_INCLUDE_DIRS} )
 target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 
 add_compile_options( ${SEQAN_DEFINITIONS} )
@@ -68,7 +80,8 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 # 6. Catch2:
 
 add_library( catch2 INTERFACE )
-target_include_directories( catch2 INTERFACE libs/Catch2/single_include )
+target_include_directories( catch2
+    SYSTEM INTERFACE libs/Catch2/single_include )
 
 # ----------------------------------------------------------------------------
 # verbose log
