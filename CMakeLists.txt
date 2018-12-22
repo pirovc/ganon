@@ -35,7 +35,7 @@ if( isMultiConfig )
         list( APPEND CMAKE_CONFIGURATION_TYPES Coverage )
     endif()
 else()
-    set( allowableBuildTypes Debug Release Coverage )
+    set( allowableBuildTypes Debug Release RelWithDebInfo MinSizeRel Coverage )
 
     set_property( CACHE CMAKE_BUILD_TYPE
         PROPERTY STRINGS "${allowableBuildTypes}" )
