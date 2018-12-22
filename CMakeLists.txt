@@ -27,8 +27,6 @@ option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 # build types
 # -----------------------------------------------------------------------------
 
-# add Coverage build type:
-
 get_property( isMultiConfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG )
 if( isMultiConfig )
     if( NOT "Coverage" IN_LIST CMAKE_CONFIGURATION_TYPES )
