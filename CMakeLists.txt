@@ -49,7 +49,7 @@ endif()
 
 # Release flags:
 
-set( CMAKE_CXX_FLAGS_RELEASE "-msse4.2 -O3 -DNDEBUG -static -march=native" )
+set( CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" )
 
 # Coverage flags:
 
@@ -73,6 +73,10 @@ if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
     add_compile_options( -Wmisleading-indentation -Wduplicated-cond
         -Wduplicated-branches -Wlogical-op -Wuseless-cast )
 endif()
+
+# seqan specific flags:
+
+add_compile_options( -static -msse4.2 -march=native )
 
 # -----------------------------------------------------------------------------
 # dependencies and 3rd party libraries
