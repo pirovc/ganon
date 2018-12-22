@@ -1,0 +1,7 @@
+codecov:
+  branch: master
+
+ignore:
+  - "/usr/.*"
+  - "tests/.*"
+  - "libs/.*"
