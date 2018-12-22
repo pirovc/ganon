@@ -1,4 +1,4 @@
-# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon)
+# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/benvenutti/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/benvenutti/ganon)
 
 ## Dependencies
 
