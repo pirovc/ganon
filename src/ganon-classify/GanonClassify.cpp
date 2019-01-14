@@ -15,6 +15,8 @@
 #include <tuple>
 #include <vector>
 
+namespace GanonClassify
+{
 
 namespace detail
 {
@@ -285,7 +287,7 @@ bool parse_hierarchy( GanonClassify::Config& config )
 } // namespace detail
 
 
-bool GanonClassify::run( Config config )
+bool run( Config config )
 {
     // disable on testing, messing up syncing with ctest
     if ( !config.testing )
@@ -575,3 +577,5 @@ bool GanonClassify::run( Config config )
 
     return true;
 }
+
+} // namespace GanonClassify

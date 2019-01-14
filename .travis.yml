@@ -5,31 +5,44 @@ matrix:
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7"
+      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
 
     - name: "linux gcc-7"
       os: linux
       addons:
         apt: { packages: [g++-7],
                sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+
+    - name: "linux gcc-7 (coverage)"
+      os: linux
+      addons:
+        apt: { packages: [g++-7, lcov],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Coverage GCOV=gcov-7
 
     - name: "linux clang-6"
       os: linux
       addons:
         apt: { packages: [clang-6.0, libstdc++-7-dev],
                sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0"
+      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0" BUILD_TYPE=Release
 
 before_install:
   - eval "${MATRIX_EVAL}"
 
 script:
   - mkdir build && cd build
-  - cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
+
+after_success:
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
+      bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
+    fi
 
 notifications:
   email: false

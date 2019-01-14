@@ -17,6 +17,9 @@
 #include <tuple>
 #include <vector>
 
+namespace GanonBuild
+{
+
 namespace detail
 {
 
@@ -164,7 +167,7 @@ void print_stats( Stats& stats, const GanonBuild::Config& config, Time& timeBuil
 
 } // namespace detail
 
-bool GanonBuild::run( Config config )
+bool run( Config config )
 {
     Time timeGanon;
     timeGanon.start();
@@ -305,3 +308,5 @@ bool GanonBuild::run( Config config )
 
     return true;
 }
+
+} // namespace GanonBuild
