@@ -3,7 +3,7 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/Time.hpp>
 
-#include <seqan/kmer.h>
+#include <seqan/binning_directory.h>
 
 #include <cinttypes>
 #include <fstream>
@@ -59,7 +59,8 @@ struct FragmentBin
 };
 
 typedef std::map< std::string, std::vector< FragmentBin > >                                  TSeqBin;
-typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > TInterleavedBloomFilter;
+
+typedef seqan::BinningDirectory<seqan::InterleavedBloomFilter, seqan::BDConfig<seqan::Dna5, seqan::Normal, seqan::Uncompressed> > Tfilter;
 
 void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::set< uint64_t >& bin_ids )
 {
@@ -80,7 +81,7 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
 }
 
 
-TInterleavedBloomFilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
+Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
     uint64_t number_of_bins;
     if ( !config.update_filter_file.empty() )
@@ -94,7 +95,7 @@ TInterleavedBloomFilter load_filter( GanonBuild::Config& config, const std::set<
     }
 
     // define filter
-    TInterleavedBloomFilter filter( number_of_bins, config.hash_functions, config.kmer_size, config.filter_size );
+    Tfilter filter( number_of_bins, config.hash_functions, config.kmer_size, config.filter_size );
 
     // load from disk in case of update
     if ( !config.update_filter_file.empty() )
@@ -194,7 +195,7 @@ bool run( Config config )
     stats.totalBinsBinId = bin_ids.size();
 
     // load new or given filter
-    detail::TInterleavedBloomFilter filter = load_filter( config, bin_ids, stats );
+    detail::Tfilter filter = load_filter( config, bin_ids, stats );
     timeLoadFiles.end();
     //////////////////////////////
 
@@ -270,7 +271,7 @@ bool run( Config config )
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        seqan::insertKmer( filter, fragment, binid, 0 );
+                        seqan::insertKmer( filter, fragment, binid );
                         if ( config.verbose )
                         {
                             mtx.lock();
