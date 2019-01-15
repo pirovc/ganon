@@ -21,7 +21,9 @@ namespace GanonClassify
 namespace detail
 {
 
-typedef seqan::BinningDirectory<seqan::InterleavedBloomFilter, seqan::BDConfig<seqan::Dna5, seqan::Normal, seqan::Uncompressed> > Tfilter;
+typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
+                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
+    Tfilter;
 
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
     reversedRead;
@@ -101,8 +103,12 @@ inline uint16_t classify_read( Tmatches&              matches,
     for ( Filter& filter : filter_hierarchy )
     {
         // auto                    select_start = std::chrono::high_resolution_clock::now();
-        std::vector< uint64_t > selectedBins = seqan::count(filter.bloom_filter, read_seq );
-        std::vector< uint64_t > selectedBinsRev = seqan::count(filter.bloom_filter, reversedRead( read_seq ));
+        // std::vector< uint64_t > selectedBins = seqan::count<seqan::Offset<6>>(filter.bloom_filter, read_seq );
+        // std::vector< uint64_t > selectedBinsRev = seqan::count<seqan::Offset<6>>(filter.bloom_filter, reversedRead(
+        // read_seq ));
+        std::vector< uint64_t > selectedBins = seqan::count< seqan::Normal >( filter.bloom_filter, read_seq );
+        std::vector< uint64_t > selectedBinsRev =
+            seqan::count< seqan::Normal >( filter.bloom_filter, reversedRead( read_seq ) );
         // select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
 
         // filter_start = std::chrono::high_resolution_clock::now();

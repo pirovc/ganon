@@ -58,9 +58,11 @@ struct FragmentBin
     uint64_t bin_id;
 };
 
-typedef std::map< std::string, std::vector< FragmentBin > >                                  TSeqBin;
+typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
 
-typedef seqan::BinningDirectory<seqan::InterleavedBloomFilter, seqan::BDConfig<seqan::Dna5, seqan::Normal, seqan::Uncompressed> > Tfilter;
+typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
+                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
+    Tfilter;
 
 void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::set< uint64_t >& bin_ids )
 {
@@ -199,13 +201,13 @@ bool run( Config config )
     timeLoadFiles.end();
     //////////////////////////////
 
-    std::mutex                         mtx;
-    SafeQueue< detail::Seqs >          q_Seqs;
-    bool                               finished = false;
+    std::mutex                mtx;
+    SafeQueue< detail::Seqs > q_Seqs;
+    bool                      finished = false;
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    std::future< void > read_task ( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
+    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -271,7 +273,9 @@ bool run( Config config )
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
+                        // mtx.lock();
                         seqan::insertKmer( filter, fragment, binid );
+                        // mtx.unlock();
                         if ( config.verbose )
                         {
                             mtx.lock();
@@ -290,7 +294,7 @@ bool run( Config config )
 
     read_task.get();
     timeLoadSeq.end();
-    
+
     for ( auto&& task : tasks )
     {
         task.get();

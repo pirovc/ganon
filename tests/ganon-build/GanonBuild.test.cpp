@@ -11,9 +11,9 @@ namespace config_build
 GanonBuild::Config defaultConfig()
 {
     GanonBuild::Config cfg;
-    cfg.seqid_bin_file     = "bacteria_seqid_bin.txt";
+    cfg.seqid_bin_file     = "bacteria_acc_bin.txt";
     cfg.output_filter_file = "test_output.filter";
-    cfg.filter_size        = 15797760;
+    cfg.filter_size        = 8388352;
     cfg.kmer_size          = 19;
     cfg.hash_functions     = 3;
     cfg.reference_files    = { "bacteria_NC_010333.1.fasta.gz",
@@ -27,7 +27,7 @@ GanonBuild::Config defaultConfig()
     return cfg;
 }
 
-const std::string outputFile = "build_output.filter";
+const std::string outputFile = "bacteria_build.filter";
 
 } // namespace config_build
 
@@ -39,46 +39,46 @@ SCENARIO( "Build", "[ganon-build]" )
     REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
 }
 
-SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
-{
-    auto cfg      = config_build::defaultConfig();
-    cfg.kmer_size = 18;
+// SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
+// {
+//     auto cfg      = config_build::defaultConfig();
+//     cfg.kmer_size = 18;
 
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-}
+//     REQUIRE( GanonBuild::run( cfg ) );
+//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+// }
 
-SCENARIO( "Build forced failure with different number of hash functions", "[ganon-build]" )
-{
-    auto cfg           = config_build::defaultConfig();
-    cfg.hash_functions = 2;
+// SCENARIO( "Build forced failure with different number of hash functions", "[ganon-build]" )
+// {
+//     auto cfg           = config_build::defaultConfig();
+//     cfg.hash_functions = 2;
 
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-}
+//     REQUIRE( GanonBuild::run( cfg ) );
+//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+// }
 
-SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
-{
-    auto cfg        = config_build::defaultConfig();
-    cfg.filter_size = 17000000;
+// SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
+// {
+//     auto cfg        = config_build::defaultConfig();
+//     cfg.filter_size = 17000000;
 
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-}
+//     REQUIRE( GanonBuild::run( cfg ) );
+//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+// }
 
-SCENARIO( "Build forced failure with different reference files", "[ganon-build]" )
-{
-    auto cfg = config_build::defaultConfig();
-    cfg.reference_files.erase( cfg.reference_files.begin() );
+// SCENARIO( "Build forced failure with different reference files", "[ganon-build]" )
+// {
+//     auto cfg = config_build::defaultConfig();
+//     cfg.reference_files.erase( cfg.reference_files.begin() );
 
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-}
-SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
-{
-    auto cfg           = config_build::defaultConfig();
-    cfg.seqid_bin_file = "bacteria_seqid_bin_incomplete.txt";
+//     REQUIRE( GanonBuild::run( cfg ) );
+//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+// }
+// SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
+// {
+//     auto cfg           = config_build::defaultConfig();
+//     cfg.seqid_bin_file = "bacteria_acc_bin_incomplete.txt";
 
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-}
+//     REQUIRE( GanonBuild::run( cfg ) );
+//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+// }
