@@ -39,46 +39,46 @@ SCENARIO( "Build", "[ganon-build]" )
     REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
 }
 
-// SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
-// {
-//     auto cfg      = config_build::defaultConfig();
-//     cfg.kmer_size = 18;
+SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
+{
+    auto cfg      = config_build::defaultConfig();
+    cfg.kmer_size = 18;
 
-//     REQUIRE( GanonBuild::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-// }
+    REQUIRE( GanonBuild::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+}
 
-// SCENARIO( "Build forced failure with different number of hash functions", "[ganon-build]" )
-// {
-//     auto cfg           = config_build::defaultConfig();
-//     cfg.hash_functions = 2;
+SCENARIO( "Build forced failure with different number of hash functions", "[ganon-build]" )
+{
+    auto cfg           = config_build::defaultConfig();
+    cfg.hash_functions = 2;
 
-//     REQUIRE( GanonBuild::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-// }
+    REQUIRE( GanonBuild::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+}
 
-// SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
-// {
-//     auto cfg        = config_build::defaultConfig();
-//     cfg.filter_size = 17000000;
+SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
+{
+    auto cfg        = config_build::defaultConfig();
+    cfg.filter_size = 17000000;
 
-//     REQUIRE( GanonBuild::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-// }
+    REQUIRE( GanonBuild::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+}
 
-// SCENARIO( "Build forced failure with different reference files", "[ganon-build]" )
-// {
-//     auto cfg = config_build::defaultConfig();
-//     cfg.reference_files.erase( cfg.reference_files.begin() );
+SCENARIO( "Build forced failure with different reference files", "[ganon-build]" )
+{
+    auto cfg = config_build::defaultConfig();
+    cfg.reference_files.erase( cfg.reference_files.begin() );
 
-//     REQUIRE( GanonBuild::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-// }
-// SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
-// {
-//     auto cfg           = config_build::defaultConfig();
-//     cfg.seqid_bin_file = "bacteria_acc_bin_incomplete.txt";
+    REQUIRE( GanonBuild::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+}
+SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
+{
+    auto cfg           = config_build::defaultConfig();
+    cfg.seqid_bin_file = "bacteria_acc_bin_incomplete.txt";
 
-//     REQUIRE( GanonBuild::run( cfg ) );
-//     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
-// }
+    REQUIRE( GanonBuild::run( cfg ) );
+    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );
+}
