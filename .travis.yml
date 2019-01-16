@@ -30,7 +30,6 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - git submodule update --init --recursive
 
 script:
   - mkdir build && cd build
