@@ -11,9 +11,9 @@ namespace config_build
 GanonBuild::Config defaultConfig()
 {
     GanonBuild::Config cfg;
-    cfg.seqid_bin_file     = "bacteria_seqid_bin.txt";
+    cfg.seqid_bin_file     = "bacteria_acc_bin.txt";
     cfg.output_filter_file = "test_output.filter";
-    cfg.filter_size        = 15797760;
+    cfg.filter_size        = 8388352;
     cfg.kmer_size          = 19;
     cfg.hash_functions     = 3;
     cfg.reference_files    = { "bacteria_NC_010333.1.fasta.gz",
@@ -27,7 +27,7 @@ GanonBuild::Config defaultConfig()
     return cfg;
 }
 
-const std::string outputFile = "build_output.filter";
+const std::string outputFile = "bacteria_build.filter";
 
 } // namespace config_build
 
@@ -77,7 +77,7 @@ SCENARIO( "Build forced failure with different reference files", "[ganon-build]"
 SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
 {
     auto cfg           = config_build::defaultConfig();
-    cfg.seqid_bin_file = "bacteria_seqid_bin_incomplete.txt";
+    cfg.seqid_bin_file = "bacteria_acc_bin_incomplete.txt";
 
     REQUIRE( GanonBuild::run( cfg ) );
     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::outputFile ) );

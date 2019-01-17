@@ -3,7 +3,7 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/Time.hpp>
 
-#include <seqan/kmer.h>
+#include <seqan/binning_directory.h>
 
 #include <cinttypes>
 #include <fstream>
@@ -58,8 +58,11 @@ struct FragmentBin
     uint64_t bin_id;
 };
 
-typedef std::map< std::string, std::vector< FragmentBin > >                                  TSeqBin;
-typedef seqan::KmerFilter< seqan::Dna5, seqan::InterleavedBloomFilter, seqan::Uncompressed > TInterleavedBloomFilter;
+typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
+
+typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
+                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
+    Tfilter;
 
 void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::set< uint64_t >& bin_ids )
 {
@@ -80,7 +83,7 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
 }
 
 
-TInterleavedBloomFilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
+Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
     uint64_t number_of_bins;
     if ( !config.update_filter_file.empty() )
@@ -94,7 +97,7 @@ TInterleavedBloomFilter load_filter( GanonBuild::Config& config, const std::set<
     }
 
     // define filter
-    TInterleavedBloomFilter filter( number_of_bins, config.hash_functions, config.kmer_size, config.filter_size );
+    Tfilter filter( number_of_bins, config.hash_functions, config.kmer_size, config.filter_size );
 
     // load from disk in case of update
     if ( !config.update_filter_file.empty() )
@@ -194,17 +197,17 @@ bool run( Config config )
     stats.totalBinsBinId = bin_ids.size();
 
     // load new or given filter
-    detail::TInterleavedBloomFilter filter = load_filter( config, bin_ids, stats );
+    detail::Tfilter filter = load_filter( config, bin_ids, stats );
     timeLoadFiles.end();
     //////////////////////////////
 
-    std::mutex                         mtx;
-    SafeQueue< detail::Seqs >          q_Seqs;
-    bool                               finished = false;
+    std::mutex                mtx;
+    SafeQueue< detail::Seqs > q_Seqs;
+    bool                      finished = false;
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    std::future< void > read_task ( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
+    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -270,7 +273,9 @@ bool run( Config config )
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        seqan::insertKmer( filter, fragment, binid, 0 );
+                        // mtx.lock();
+                        seqan::insertKmer( filter, fragment, binid );
+                        // mtx.unlock();
                         if ( config.verbose )
                         {
                             mtx.lock();
@@ -289,7 +294,7 @@ bool run( Config config )
 
     read_task.get();
     timeLoadSeq.end();
-    
+
     for ( auto&& task : tasks )
     {
         task.get();
