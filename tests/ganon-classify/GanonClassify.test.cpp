@@ -3,6 +3,9 @@
 #include <ganon-classify/Config.hpp>
 #include <ganon-classify/GanonClassify.hpp>
 
+#include <ganon-build/Config.hpp>
+#include <ganon-build/GanonBuild.hpp>
+
 #include <catch2/catch.hpp>
 
 namespace config_classify
@@ -231,4 +234,45 @@ SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classi
     REQUIRE( GanonClassify::run( cfg1 ) );
     REQUIRE( GanonClassify::run( cfg2 ) );
     REQUIRE( aux::filesAreEqual( cfg1.output_file, cfg2.output_file ) );
+}
+
+SCENARIO( "Classify after update", "[ganon-classify]" )
+{
+    // No match
+    auto cfg               = config_classify::defaultConfig();
+    cfg.bloom_filter_files = { "bacteria.filter" };
+    cfg.group_bin_files    = { "bacteria.map" };
+    cfg.reads              = { "virus.simulated.1.fq" };
+    cfg.max_error          = 3;
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::fileIsEmpty( cfg.output_file ) );
+
+
+    GanonBuild::Config cfg_build;
+    cfg_build.update_filter_file = "bacteria.filter";
+    cfg_build.seqid_bin_file     = "virus_acc_bin_update.txt";
+    cfg_build.output_filter_file = "bacteria_virus.filter";
+    cfg_build.reference_files    = { "virus_NC_003676.1.fasta.gz",
+                                  "virus_NC_011646.1.fasta.gz",
+                                  "virus_NC_032412.1.fasta.gz",
+                                  "virus_NC_035470.1.fasta.gz" };
+    cfg_build.threads            = 1;
+    cfg_build.build_threads      = 1;
+    cfg_build.verbose            = true;
+    REQUIRE( GanonBuild::run( cfg_build ) );
+
+
+    auto cfg2               = config_classify::defaultConfig();
+    cfg2.bloom_filter_files = { cfg_build.output_filter_file };
+    cfg2.group_bin_files    = { "bacteria_virus.map" };
+
+    // Results of bacteria should be the same as without update
+    cfg2.reads = { "bacteria.simulated.1.fq" };
+    REQUIRE( GanonClassify::run( cfg2 ) );
+    REQUIRE( aux::filesAreEqual( cfg2.output_file, "classify_output-b-b_e3.txt" ) );
+
+    // Virus reads should now map
+    // cfg2.reads              = { "virus.simulated.1.fq" };
+    // REQUIRE( GanonClassify::run( cfg2 ) );
+    // REQUIRE( aux::filesAreEqual( cfg2.output_file, "classify_output-v-v_e3.txt" ) );
 }

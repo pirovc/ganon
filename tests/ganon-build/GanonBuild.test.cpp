@@ -87,7 +87,7 @@ SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]"
 SCENARIO( "Update", "[ganon-build]" )
 {
     auto cfg            = config_build::defaultConfig();
-    cfg.seqid_bin_file  = "virus_acc_bin.txt";
+    cfg.seqid_bin_file  = "virus_acc_bin_update.txt";
     cfg.reference_files = { "virus_NC_003676.1.fasta.gz",
                             "virus_NC_011646.1.fasta.gz",
                             "virus_NC_032412.1.fasta.gz",
