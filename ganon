@@ -263,13 +263,13 @@ def main():
 
         shutil.move(tmp_db_prefix_filter, db_prefix_filter)
         shutil.move(tmp_db_prefix_nodes, db_prefix_nodes)
-        # TODO -> when update adding new bins, also update db_prefix_map file
+        
         # append new map
-        # old_map_file = open(db_prefix_map, "a")
-        # with open(tmp_db_prefix_map, 'r') as file:
-        #     for line in file:
-        #         old_map_file.write(line)
-        # old_map_file.close()
+        old_map_file = open(db_prefix_map, "a")
+        with open(tmp_db_prefix_map, 'r') as file:
+            for line in file:
+                old_map_file.write(line) # TODO -> remove duplicated lines
+        old_map_file.close()
 
         
         # append new bins

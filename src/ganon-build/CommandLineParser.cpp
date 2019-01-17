@@ -63,8 +63,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         std::cerr << "--filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
                      "--update-filter-file"
                   << std::endl;
-
-        // TODO: what about all values set in the else block and not set here?
+        config.kmer_size      = 0;
+        config.hash_functions = 0;
+        config.filter_size    = 0;
     }
     else
     {
