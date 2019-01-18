@@ -85,19 +85,8 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
 
 Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
-    uint64_t number_of_bins;
-    if ( !config.update_filter_file.empty() )
-    {
-        // dummy variables in case of update
-        number_of_bins = config.hash_functions = config.kmer_size = config.filter_size = 1;
-    }
-    else
-    {
-        number_of_bins = bin_ids.size();
-    }
 
-    // define filter
-    Tfilter filter( number_of_bins, config.hash_functions, config.kmer_size, config.filter_size );
+    Tfilter filter;
 
     // load from disk in case of update
     if ( !config.update_filter_file.empty() )
@@ -106,17 +95,27 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
 
         config.kmer_size = seqan::getKmerSize( filter );
+        // config.hash_functions = seqan::get...( filter ); // not avail.
+        // config.filter_size = seqan::get...( filter ); // not avail.
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
         {
             std::vector< uint32_t > updated_bins;
             updated_bins.insert( updated_bins.end(), bin_ids.begin(), bin_ids.end() );
-            seqan::clear( filter, updated_bins, config.threads );
+            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
 
-        // TODO -> create new bins on the loaded filter
-        stats.newBins = *bin_ids.rbegin() + 1 - stats.totalBinsFile;
+        // create new bins on the loaded filter
+        uint32_t length_new_bins = *bin_ids.rbegin() + 1; // get last binid in the set = total number of bins
+        stats.newBins            = length_new_bins - seqan::getNumberOfBins( filter );
+
+        if ( stats.newBins > 0 )
+            filter.resizeBins( length_new_bins );
+    }
+    else
+    {
+        filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size );
     }
 
     stats.totalBinsFile = seqan::getNumberOfBins( filter );

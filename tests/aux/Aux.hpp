@@ -1,12 +1,20 @@
 #pragma once
 
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <streambuf>
 #include <string>
 
 namespace aux
 {
+
+
+inline int fileSize( const std::string& file )
+{
+    std::ifstream f( file, std::ios::binary | std::ios::ate );
+    return f.tellg();
+}
 
 inline bool filesAreEqual( const std::string& file1, const std::string& file2 )
 {
