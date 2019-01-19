@@ -2,6 +2,11 @@ language: cpp
 
 matrix:
   include:
+    - name: "osx appleclang-10"
+      os: osx
+      osx_image: xcode10
+      env: BUILD_TYPE=Release
+
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
