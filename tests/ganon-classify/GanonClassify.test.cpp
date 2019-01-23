@@ -17,6 +17,7 @@ GanonClassify::Config defaultConfig()
     cfg.output_file      = "classify_test_output.txt";
     cfg.max_error        = 3;
     cfg.max_error_unique = -1;
+    cfg.offset           = 1;
     cfg.verbose          = true;
     cfg.testing          = true;
     cfg.threads          = 3;
@@ -35,6 +36,19 @@ SCENARIO( "Classify", "[ganon-classify]" )
     cfg.group_bin_files              = { "files/bacteria.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq" };
     const std::string desired_output = "results/classify_output-b-b_e3.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
+}
+
+SCENARIO( "Classify with offset", "[ganon-classify]" )
+{
+    auto cfg                         = config_classify::defaultConfig();
+    cfg.bloom_filter_files           = { "filters/bacteria.filter" };
+    cfg.group_bin_files              = { "files/bacteria.map" };
+    cfg.reads                        = { "reads/bacteria.simulated.1.fq" };
+    cfg.offset                       = 2;
+    const std::string desired_output = "results/classify_output-b-b_e3f2.txt";
 
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
@@ -62,6 +76,22 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     cfg.max_error_unique   = 1;
 
     const std::string desired_output = "results/classify_output-b-b_e3u1.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
+}
+
+SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
+{
+    auto cfg               = config_classify::defaultConfig();
+    cfg.bloom_filter_files = { "filters/bacteria.filter" };
+    cfg.group_bin_files    = { "files/bacteria.map" };
+    cfg.reads              = { "reads/bacteria.simulated.1.fq" };
+    cfg.max_error          = 2;
+    cfg.max_error_unique   = 0;
+    cfg.offset             = 6;
+
+    const std::string desired_output = "results/classify_output-b-b_e2u0f6.txt";
 
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );

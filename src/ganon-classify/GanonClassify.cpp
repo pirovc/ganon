@@ -24,8 +24,8 @@ namespace detail
 {
 
 
-// Filter is created with seqan::Offset<1> (== seqan::Normal)
-// to allow changes in the offset later on run-time
+// Filter is created with seqan::Offset<1>
+// when using seqan::count it acts like seqan::Normal if offset=1
 typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
                                  seqan::BDConfig< seqan::Dna5, seqan::Offset< 1 >, seqan::Uncompressed > >
     Tfilter;
