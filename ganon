@@ -52,6 +52,7 @@ def main():
     classify_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
     classify_group.add_argument('-e', '--max-error', type=int, default=1, help='Max. number of errors allowed (default: 3)')
     classify_group.add_argument('-u', '--max-error-unique', type=int, default=None, help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will be assigned to parent taxonomic level.')
+    classify_group.add_argument('-f', '--offset', type=int, default=1, help='Number of k-mer to skip during clasification. Can reduce recall but speed up analysis. 1 = no skip (default: 1)')
     classify_group.add_argument('-o', '--output-file', type=str, help='Output file (default: STDOUT)')
     classify_group.add_argument('--skip-lca', default=False, action='store_true', help='Skip LCA step and output multiple matches (max-error-unique will not be applied)')
     classify_group.add_argument('--output-unclassified-file', type=str, help='Output file for unclassified reads')
@@ -317,13 +318,14 @@ def main():
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         sys.stderr.write("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -t {5} {6} {7} {8}'.format(
+        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -t {5} -f {6} {7} {8} {9}'.format(
                                         args.ganon_path,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in dbs]),
                                         " ".join(["-g "+db_prefix+".map" for db_prefix in dbs]),
                                         args.db_hierarchy,
                                         args.max_error,
                                         args.threads,
+                                        args.offset,
                                         "-u " + str(args.max_error_unique) if args.max_error_unique!=None else "",
                                         "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         " ".join(args.reads))
