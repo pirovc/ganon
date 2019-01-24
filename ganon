@@ -18,6 +18,7 @@ def main():
     ganon_build_group.add_argument('-f', '--max-fp', type=float, default=0.05, help='Max. false positive rate for k-mer classification. Filter size will be defined base on this value by the estimated number of unique k-mers [Mutually exclusive --bloom-size] (default: 0.05)')
     ganon_build_group.add_argument('-s', '--bloom-size', type=int, help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --min-fp] ')
     ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
+    ganon_build_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
     taxsbp_build_group.add_argument('-l', '--bin-length', type=int, default=3000000, help='Maximum length (in bp) for each bin (default: 3000000')
@@ -37,6 +38,7 @@ def main():
     default_update_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
     ganon_update_group = update_parser.add_argument_group('ganon')
     ganon_update_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
+    ganon_update_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
     taxsbp_update_group = update_parser.add_argument_group('taxsbp')  
     taxsbp_update_group.add_argument('--retrieve-ncbi', default=False, action='store_true', help='Retrieve taxdump (--nodes-file, --merged-file) and TaxSBP information (--len-taxid-file) automatically from NCBI')
     taxsbp_update_group.add_argument('--len-taxid-file', type=str, help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen [Mutually exclusive --retrieve-ncbi]')
@@ -57,6 +59,7 @@ def main():
     classify_group.add_argument('--skip-lca', default=False, action='store_true', help='Skip LCA step and output multiple matches (max-error-unique will not be applied)')
     classify_group.add_argument('--output-unclassified-file', type=str, help='Output file for unclassified reads')
     classify_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
+    classify_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
 
     parser = argparse.ArgumentParser(prog='ganon', description='ganon', conflict_handler='resolve')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version)
@@ -139,7 +142,7 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Building index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8}'.format(
+        run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9}'.format(
                                         args.ganon_path,
                                         acc_bin_file,
                                         "--filter-size-bits" if args.max_fp else "--filter-size",
@@ -148,6 +151,7 @@ def main():
                                         args.hash_functions,
                                         args.threads,
                                         db_prefix_filter,
+                                        "--verbose" if args.verbose else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
@@ -213,13 +217,14 @@ def main():
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         tx = time.time()
-        sys.stderr.write("Updating index (ganon-update)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5}'.format(
+        sys.stderr.write("Updating index (ganon-build)... \n")
+        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5} {6}'.format(
                                         args.ganon_path,
                                         db_prefix_filter,
                                         acc_bin_file,
                                         tmp_db_prefix_filter,
                                         args.threads,
+                                        "--verbose" if args.verbose else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
@@ -318,7 +323,7 @@ def main():
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         sys.stderr.write("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -t {5} -f {6} {7} {8} {9}'.format(
+        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -t {5} -f {6} {7} {8} {9} {10}'.format(
                                         args.ganon_path,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in dbs]),
                                         " ".join(["-g "+db_prefix+".map" for db_prefix in dbs]),
@@ -328,6 +333,7 @@ def main():
                                         args.offset,
                                         "-u " + str(args.max_error_unique) if args.max_error_unique!=None else "",
                                         "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
+                                        "--verbose" if args.verbose else "",
                                         " ".join(args.reads))
         p = subprocess.Popen(shlex.split(run_ganon_classify), shell=False, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
