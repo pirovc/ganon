@@ -18,12 +18,13 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >()->default_value( "" ) )
         ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< int >()->default_value( "3" ) )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< int >() )
+        ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< int >()->default_value( "1" ) )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >()->default_value( "" ) )
         ( "output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
         // option to skip filtering and work as a k-mer counter
         // option to output read len?
         ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
-        ( "verbose", "Verbose output mode", cxxopts::value<bool>()->default_value("false"))
+        ( "verbose", "Verbose output mode", cxxopts::value< bool >()->default_value("false"))
         ( "h,help", "Print help" )
         ( "v,version", "Show version" )
         ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
@@ -54,6 +55,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     config.output_file              = args["output-file"].as< std::string >();
     config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
     config.max_error                = args["max-error"].as< int >();
+    config.offset                   = args["offset"].as< int >();
     config.threads                  = args["threads"].as< int >();
     config.reads                    = args["reads"].as< std::vector< std::string > >();
     config.verbose                  = args["verbose"].as< bool >();

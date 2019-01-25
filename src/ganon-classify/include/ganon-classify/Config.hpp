@@ -16,6 +16,7 @@ struct Config
     std::string                                                                    output_unclassified_file;
     std::string                                                                    filter_hierarchy;
     uint16_t                                                                       max_error;
+    uint16_t                                                                       offset  = 1;
     uint16_t                                                                       threads = 3;
     uint16_t                                                                       clas_threads;
     bool                                                                           output_unclassified;
@@ -46,6 +47,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     }
     stream << "--max-error                 " << config.max_error << newl;
     stream << "--max-error-unique          " << config.max_error_unique << newl;
+    stream << "--offset                    " << config.offset << newl;
     stream << "--output-file               " << config.output_file << newl;
     stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
     stream << "--verbose                   " << config.verbose << newl;

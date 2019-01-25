@@ -7,12 +7,14 @@
 
 #include <atomic>
 #include <cinttypes>
+#include <cmath>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 namespace GanonClassify
@@ -21,8 +23,11 @@ namespace GanonClassify
 namespace detail
 {
 
+
+// Filter is created with seqan::Offset<1>
+// when using seqan::count it acts like seqan::Normal if offset=1
 typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
-                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
+                                 seqan::BDConfig< seqan::Dna5, seqan::Offset< 1 >, seqan::Uncompressed > >
     Tfilter;
 
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
@@ -83,32 +88,29 @@ struct Filter
     uint16_t                          kmerSize;
 };
 
-
-inline uint16_t kmer_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error )
+inline uint16_t get_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
 {
-    uint16_t threshold = 0;
-    if ( readLen > kmerSize * ( 1 + max_error ) )
-        threshold = readLen - kmerSize + 1 - ( max_error * kmerSize );
-    return threshold;
+    return readLen + 1u > kmerSize * ( 1u + max_error )
+               ? std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
+               : 0u;
 }
 
 inline uint16_t classify_read( Tmatches&              matches,
                                std::vector< Filter >& filter_hierarchy,
                                seqan::Dna5String&     read_seq,
-                               uint16_t               threshold )
+                               uint16_t               max_error )
 {
     // std::chrono::time_point< std::chrono::high_resolution_clock > filter_start;
     // for every filter in this level
     uint16_t maxKmerCountRead = 0;
     for ( Filter& filter : filter_hierarchy )
     {
-        // auto                    select_start = std::chrono::high_resolution_clock::now();
-        // std::vector< uint64_t > selectedBins = seqan::count<seqan::Offset<6>>(filter.bloom_filter, read_seq );
-        // std::vector< uint64_t > selectedBinsRev = seqan::count<seqan::Offset<6>>(filter.bloom_filter, reversedRead(
-        // read_seq ));
-        std::vector< uint64_t > selectedBins = seqan::count< seqan::Normal >( filter.bloom_filter, read_seq );
-        std::vector< uint64_t > selectedBinsRev =
-            seqan::count< seqan::Normal >( filter.bloom_filter, reversedRead( read_seq ) );
+        // uint16_t threshold = get_threshold(seqan::length(read_seq), filter.bloom_filter.kmerSize, max_error,
+        // filter.bloom_filter.offset); should match threshold
+        uint32_t                threshold       = max_error;
+        std::vector< uint64_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        std::vector< uint64_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
+
         // select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
 
         // filter_start = std::chrono::high_resolution_clock::now();
@@ -136,22 +138,27 @@ inline uint16_t classify_read( Tmatches&              matches,
     return maxKmerCountRead;
 }
 
-inline uint32_t filter_matches( ReadOut&               read_out,
-                                Tmatches&              matches,
-                                uint16_t               kmerSize,
-                                uint16_t               readLen,
-                                uint16_t               maxKmerCountRead,
-                                GanonClassify::Config& config )
+inline uint32_t filter_matches( ReadOut&                     read_out,
+                                Tmatches&                    matches,
+                                uint16_t                     kmerSize,
+                                uint16_t                     readLen,
+                                uint16_t                     maxKmerCountRead,
+                                GanonClassify::Config const& config )
 {
+
+
     // get maximum possible number of error for this read
-    // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
-    uint16_t max_errorRead = ( ( -kmerSize + readLen - maxKmerCountRead + 1 ) + kmerSize - 1 ) / kmerSize;
+    // round to get approximate error rate (not perfect precision when offset > 1)
+    // (config.offset-1) -> to correct for the floor left overs
+    uint16_t max_errorRead = std::ceil(
+        ( -kmerSize + readLen - ( maxKmerCountRead * config.offset + ( config.offset - 1 ) ) + 1 ) / (float) kmerSize );
+
     // get min kmer count necesary to achieve the calculated number of errors
-    uint16_t minKmerCount = readLen - kmerSize + 1 - ( max_errorRead * kmerSize );
+    uint16_t threshold_strata = get_threshold( readLen, kmerSize, max_errorRead, config.offset );
 
     for ( auto const& v : matches )
     { // matches[group] = kmerCount
-        if ( v.second >= minKmerCount )
+        if ( v.second >= threshold_strata )
         { // apply strata filter
             read_out.matches.push_back( ReadMatch{ v.first, v.second } );
         }
@@ -161,14 +168,85 @@ inline uint32_t filter_matches( ReadOut&               read_out,
     if ( config.unique_filtering )
         // if there's only one match and kmer count is lower than expected
         if ( read_out.matches.size() == 1
-             && read_out.matches[0].kmer_count < readLen - kmerSize + 1 - ( config.max_error_unique * kmerSize ) )
+             && read_out.matches[0].kmer_count
+                    < get_threshold( readLen, kmerSize, config.max_error_unique, config.offset ) )
             read_out.matches[0].kmer_count = -read_out.matches[0].kmer_count;
 
     return read_out.matches.size();
 }
 
+void classify( std::vector< Filter >&    filter_hierarchy,
+               SafeQueue< ReadOut >&     classified_reads_queue,
+               SafeQueue< ReadOut >&     unclassified_reads_queue,
+               bool&                     finished_reading,
+               Stats&                    stats,
+               Config const&             config,
+               SafeQueue< ReadBatches >* pointer_current,
+               SafeQueue< ReadBatches >* pointer_helper,
+               uint16_t                  hierarchy_id,
+               uint16_t                  hierarchy_size )
+{
+    while ( true )
+    {
+        // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
+        ReadBatches rb = pointer_current->pop();
+        if ( rb.ids != "" )
+        {
+            ReadBatches left_over_reads; // store unclassified reads for next iteration
+            for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
+            {
+                uint16_t readLen = seqan::length( rb.seqs[readID] );
+                // count lens just once
+                if ( hierarchy_id == 1 )
+                    stats.sumReadLen += readLen;
+
+                // k-mer sizes should be the same among filters, groups should not overlap
+                uint16_t kmerSize = filter_hierarchy[0].kmerSize;
+
+                // Classify reads, returing matches and max kmer count achieved for the read
+                Tmatches matches;
+                uint16_t maxKmerCountRead =
+                    classify_read( matches, filter_hierarchy, rb.seqs[readID], config.max_error );
+
+                // Filter reads by number of errors, special filtering for unique matches
+                ReadOut  read_out( rb.ids[readID] );
+                uint32_t count_filtered_matches =
+                    filter_matches( read_out, matches, kmerSize, readLen, maxKmerCountRead, config );
+
+                // If there are matches, add to printing queue
+                if ( count_filtered_matches > 0 )
+                {
+                    stats.classifiedReads += 1;
+                    stats.matches += count_filtered_matches;
+                    classified_reads_queue.push( read_out );
+                }
+                else if ( hierarchy_id < hierarchy_size ) // if there is more levels, store read
+                {
+                    seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
+                    seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                }
+                else if ( config.output_unclassified ) // no more levels and no classification, add to
+                                                       // unclassified printing queue
+                {
+                    unclassified_reads_queue.push( read_out );
+                }
+            }
+
+            // if there are more levels to classify and something was left, keep reads in memory
+            if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
+                pointer_helper->push( left_over_reads );
+        }
+
+        if ( finished_reading && pointer_current->empty() )
+        { // if finished reading from file (first iter) and current queue is empty
+            break;
+        }
+    }
+}
+
 void load_filters( std::vector< Filter >&                                filter_hierarchy,
-                   std::vector< std::tuple< std::string, std::string > > hierarchy_files )
+                   std::vector< std::tuple< std::string, std::string > > hierarchy_files,
+                   Config const&                                         config )
 {
     for ( auto const& file : hierarchy_files )
     {
@@ -193,6 +271,9 @@ void load_filters( std::vector< Filter >&                                filter_
         // bloom filter
         Tfilter filter;
         seqan::retrieve( filter, seqan::toCString( bloom_filter_file_hierarchy ) );
+        // set offset to user-defined value (1==no offset)
+        filter.offset = config.offset;
+
         filter_hierarchy.push_back(
             Filter{ std::move( filter ), group_bin, seqan::getNumberOfBins( filter ), seqan::getKmerSize( filter ) } );
     }
@@ -337,7 +418,6 @@ bool run( Config config )
 
     //////////////////////////////
 
-
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_unclassified;
@@ -464,7 +544,7 @@ bool run( Config config )
 
         timeLoadFilters.start();
         std::vector< detail::Filter > filter_hierarchy;
-        detail::load_filters( filter_hierarchy, hierarchy.second );
+        detail::load_filters( filter_hierarchy, hierarchy.second, config );
         timeLoadFilters.end();
 
         // Exchange queues instance pointers for each hierachy (if not first)
@@ -481,78 +561,25 @@ bool run( Config config )
 
         std::vector< std::future< void > > tasks;
 
+
         // Threads for classification
         timeClass.start();
         for ( uint16_t taskNo = 0; taskNo < config.clas_threads; ++taskNo )
         {
-            tasks.emplace_back( std::async(
-                std::launch::async,
-                [=,
-                 &filter_hierarchy,
-                 &classified_reads_queue,
-                 &unclassified_reads_queue,
-                 &finished_reading,
-                 &stats,
-                 &config] {
-                    while ( true )
-                    {
-                        // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
-                        detail::ReadBatches rb = pointer_current->pop();
-                        if ( rb.ids != "" )
-                        {
-                            detail::ReadBatches left_over_reads; // store unclassified reads for next iteration
-                            for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
-                            {
-                                uint16_t readLen = seqan::length( rb.seqs[readID] );
-                                // count lens just once
-                                if ( hierarchy_id == 1 )
-                                    stats.sumReadLen += readLen;
-
-                                // k-mer sizes should be the same among filters, groups should not overlap
-                                uint16_t kmerSize  = filter_hierarchy[0].kmerSize;
-                                uint16_t threshold = detail::kmer_threshold( readLen, kmerSize, config.max_error );
-
-                                // Classify reads, returing matches and max kmer count achieved for the read
-                                detail::Tmatches matches;
-                                uint16_t         maxKmerCountRead =
-                                    detail::classify_read( matches, filter_hierarchy, rb.seqs[readID], threshold );
-
-                                // Filter reads by number of errors, special filtering for unique matches
-                                detail::ReadOut read_out( rb.ids[readID] );
-                                uint32_t        count_filtered_matches = detail::filter_matches(
-                                    read_out, matches, kmerSize, readLen, maxKmerCountRead, config );
-
-                                // If there are matches, add to printing queue
-                                if ( count_filtered_matches > 0 )
-                                {
-                                    stats.classifiedReads += 1;
-                                    stats.matches += count_filtered_matches;
-                                    classified_reads_queue.push( read_out );
-                                }
-                                else if ( hierarchy_id < hierarchy_size ) // if there is more levels, store read
-                                {
-                                    seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
-                                    seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
-                                }
-                                else if ( config.output_unclassified ) // no more levels and no classification, add to
-                                                                       // unclassified printing queue
-                                {
-                                    unclassified_reads_queue.push( read_out );
-                                }
-                            }
-
-                            // if there are more levels to classify and something was left, keep reads in memory
-                            if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
-                                pointer_helper->push( left_over_reads );
-                        }
-
-                        if ( finished_reading && pointer_current->empty() )
-                        { // if finished reading from file (first iter) and current queue is empty
-                            break;
-                        }
-                    }
-                } ) );
+            tasks.emplace_back( std::async( std::launch::async,
+                                            detail::classify,
+                                            std::ref( filter_hierarchy ),
+                                            std::ref( classified_reads_queue ),
+                                            std::ref( unclassified_reads_queue ),
+                                            std::ref( finished_reading ),
+                                            std::ref( stats ),
+                                            std::ref( config ),
+                                            pointer_current,
+                                            pointer_helper,
+                                            hierarchy_id,
+                                            hierarchy_size ) );
         }
+
         for ( auto&& task : tasks )
         {
             task.get();
