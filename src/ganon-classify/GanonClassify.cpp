@@ -145,10 +145,13 @@ inline uint32_t filter_matches( ReadOut&                     read_out,
                                 uint16_t                     maxKmerCountRead,
                                 GanonClassify::Config const& config )
 {
+
+
     // get maximum possible number of error for this read
-    // (-kmerSize+readLen-maxKmerCountRead+1)/kmerSize in a ceil formula (x + y - 1) / y
-    uint16_t max_errorRead =
-        ( ( -kmerSize + readLen - maxKmerCountRead * config.offset + 1 ) + kmerSize - 1 ) / kmerSize;
+    // round to get approximate error rate (not perfect precision when offset > 1)
+    // (config.offset-1) -> to correct for the floor left overs
+    uint16_t max_errorRead = std::ceil(
+        ( -kmerSize + readLen - ( maxKmerCountRead * config.offset + ( config.offset - 1 ) ) + 1 ) / (float) kmerSize );
 
     // get min kmer count necesary to achieve the calculated number of errors
     uint16_t threshold_strata = get_threshold( readLen, kmerSize, max_errorRead, config.offset );
