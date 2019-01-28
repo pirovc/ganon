@@ -15,11 +15,10 @@ GanonClassify::Config defaultConfig()
 {
     GanonClassify::Config cfg;
     cfg.output_file      = "classify_test_output.txt";
-    cfg.max_error        = 3;
-    cfg.max_error_unique = -1;
+    cfg.max_error        = "3";
+    cfg.max_error_unique = "-1";
     cfg.offset           = 1;
     cfg.verbose          = true;
-    cfg.testing          = true;
     cfg.threads          = 3;
     return cfg;
 }
@@ -31,12 +30,14 @@ GanonClassify::Config defaultConfig()
 
 SCENARIO( "Classify", "[ganon-classify]" )
 {
-    auto cfg                         = config_classify::defaultConfig();
-    cfg.bloom_filter_files           = { "filters/bacteria.filter" };
-    cfg.group_bin_files              = { "files/bacteria.map" };
-    cfg.reads                        = { "reads/bacteria.simulated.1.fq" };
+    auto cfg               = config_classify::defaultConfig();
+    cfg.bloom_filter_files = { "filters/bacteria.filter" };
+    cfg.group_bin_files    = { "files/bacteria.map" };
+    cfg.reads              = { "reads/bacteria.simulated.1.fq" };
+
     const std::string desired_output = "results/classify_output-b-b_e3.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -50,6 +51,7 @@ SCENARIO( "Classify with offset", "[ganon-classify]" )
     cfg.offset                       = 2;
     const std::string desired_output = "results/classify_output-b-b_e3f2.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -60,9 +62,10 @@ SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
     cfg.bloom_filter_files           = { "filters/bacteria.filter" };
     cfg.group_bin_files              = { "files/bacteria.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error                    = 0;
+    cfg.max_error                    = "0";
     const std::string desired_output = "results/classify_output-b-b_e0.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -73,10 +76,11 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error_unique   = 1;
+    cfg.max_error_unique   = "1";
 
     const std::string desired_output = "results/classify_output-b-b_e3u1.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -87,12 +91,13 @@ SCENARIO( "Classify with offset and different max. unique errors allowed", "[gan
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error          = 2;
-    cfg.max_error_unique   = 0;
+    cfg.max_error          = "2";
+    cfg.max_error_unique   = "0";
     cfg.offset             = 6;
 
     const std::string desired_output = "results/classify_output-b-b_e2u0f6.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -103,9 +108,10 @@ SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
     cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error                    = 0;
+    cfg.max_error                    = "0";
     const std::string desired_output = "results/classify_output-ba-ba_e0.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -116,9 +122,10 @@ SCENARIO( "Classify multi-filter with errors allowed", "[ganon-classify]" )
     cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error                    = 4;
+    cfg.max_error                    = "4";
     const std::string desired_output = "results/classify_output-ba-ba_e4.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -129,10 +136,11 @@ SCENARIO( "Classify multi-hierarchy without errors allowed", "[ganon-classify]" 
     cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error                    = 0;
+    cfg.max_error                    = "0";
     cfg.filter_hierarchy             = "1,2";
     const std::string desired_output = "results/classify_output-ba-ba_e0c12.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -143,10 +151,11 @@ SCENARIO( "Classify multi-hierarchy with errors allowed", "[ganon-classify]" )
     cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error                    = 4;
+    cfg.max_error                    = "4";
     cfg.filter_hierarchy             = "1,2";
     const std::string desired_output = "results/classify_output-ba-ba_e4c12.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
@@ -160,7 +169,9 @@ SCENARIO( "Classify without matches", "[ganon-classify]" )
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/virus.simulated.1.fq" };
-    cfg.max_error          = 0;
+    cfg.max_error          = "0";
+
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_file ) );
 }
@@ -171,7 +182,9 @@ SCENARIO( "Classify multi-filter without matches", "[ganon-classify]" )
     cfg.bloom_filter_files = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files    = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads              = { "reads/virus.simulated.1.fq" };
-    cfg.max_error          = 0;
+    cfg.max_error          = "0";
+
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_file ) );
 }
@@ -182,8 +195,10 @@ SCENARIO( "Classify multi-hierarchy without matches", "[ganon-classify]" )
     cfg.bloom_filter_files = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files    = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads              = { "reads/virus.simulated.1.fq" };
-    cfg.max_error          = 0;
+    cfg.max_error          = "0";
     cfg.filter_hierarchy   = "1,2";
+
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_file ) );
 }
@@ -194,10 +209,11 @@ SCENARIO( "Classify forced failure with different max. errors allowed", "[ganon-
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error          = 0;
+    cfg.max_error          = "0";
 
     const std::string undesired_output = "results/classify_output-b-b_e3.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_file, undesired_output ) );
 }
@@ -208,10 +224,11 @@ SCENARIO( "Classify forced failure with different max. unique errors allowed", "
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error_unique   = 2;
+    cfg.max_error_unique   = "2";
 
     const std::string undesired_output = "results/classify_output-b-b_e3.txt";
 
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_file, undesired_output ) );
 }
@@ -225,16 +242,18 @@ SCENARIO( "Classify multi-filter with partial matching reads", "[ganon-classify]
     cfg1.bloom_filter_files = { "filters/archaea.filter" };
     cfg1.group_bin_files    = { "files/archaea.map" };
     cfg1.reads              = { "reads/archaea.simulated.1.fq" };
-    cfg1.max_error          = 0;
+    cfg1.max_error          = "0";
     cfg1.output_file        = "a-a_e0.txt";
 
     auto cfg2               = config_classify::defaultConfig();
     cfg2.bloom_filter_files = { "filters/bacteria.filter", "filters/archaea.filter", "filters/virus.filter" };
     cfg2.group_bin_files    = { "files/bacteria.map", "files/archaea.map", "files/virus.map" };
     cfg2.reads              = { "reads/archaea.simulated.1.fq" };
-    cfg2.max_error          = 0;
+    cfg2.max_error          = "0";
     cfg2.output_file        = "bav-a_e0.txt";
 
+    REQUIRE( cfg1.validate() );
+    REQUIRE( cfg2.validate() );
     REQUIRE( GanonClassify::run( cfg1 ) );
     REQUIRE( GanonClassify::run( cfg2 ) );
     REQUIRE( aux::filesAreEqual( cfg1.output_file, cfg2.output_file ) );
@@ -248,7 +267,7 @@ SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classi
     cfg1.bloom_filter_files = { "filters/virus.filter" };
     cfg1.group_bin_files    = { "files/virus.map" };
     cfg1.reads              = { "reads/virus.simulated.1.fq" };
-    cfg1.max_error          = 0;
+    cfg1.max_error          = "0";
     cfg1.output_file        = "v-v_e0.txt";
 
 
@@ -257,10 +276,12 @@ SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classi
     cfg2.bloom_filter_files = { "filters/bacteria.filter", "filters/archaea.filter", "filters/virus.filter" };
     cfg2.group_bin_files    = { "files/bacteria.map", "files/archaea.map", "files/virus.map" };
     cfg2.reads              = { "reads/virus.simulated.1.fq" };
-    cfg2.max_error          = 0;
+    cfg2.max_error          = "0";
     cfg2.filter_hierarchy   = "1,2,3";
     cfg2.output_file        = "bav-v_e0.txt";
 
+    REQUIRE( cfg1.validate() );
+    REQUIRE( cfg2.validate() );
     REQUIRE( GanonClassify::run( cfg1 ) );
     REQUIRE( GanonClassify::run( cfg2 ) );
     REQUIRE( aux::filesAreEqual( cfg1.output_file, cfg2.output_file ) );
@@ -273,7 +294,8 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     cfg.bloom_filter_files = { "filters/bacteria.filter" };
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/virus.simulated.1.fq" };
-    cfg.max_error          = 3;
+    cfg.max_error          = "3";
+    REQUIRE( cfg.validate() );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_file ) );
 
@@ -299,6 +321,7 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
 
     // Results of bacteria should be the same as without update (check if FP changed or filter was affected)
     cfg2.reads = { "reads/bacteria.simulated.1.fq" };
+    REQUIRE( cfg2.validate() );
     REQUIRE( GanonClassify::run( cfg2 ) );
     REQUIRE( aux::filesAreEqual( cfg2.output_file, "results/classify_output-b-b_e3.txt" ) );
 
