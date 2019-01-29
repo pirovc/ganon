@@ -143,7 +143,9 @@ public:
                           << std::endl;
 
                 std::vector< FilterConfig > fc;
-                fc.push_back( FilterConfig{ bloom_filter_files[h], group_bin_files[h], std::stoi( max_errors[h] ) } );
+                fc.push_back( FilterConfig{ bloom_filter_files[h],
+                                            group_bin_files[h],
+                                            static_cast< uint16_t >( std::stoi( max_errors[h] ) ) } );
 
                 std::string final_output_file;
                 if ( !split_output_file_hierarchy || ( !output_file.empty() && unique_hierarchy == 1 ) )
@@ -153,15 +155,16 @@ public:
                 else
                     final_output_file = "";
 
-                h_filters[hierarchy[h]] =
-                    HierarchyConfig{ fc, std::stoi( max_errors_unique[hierarchy_count] ), final_output_file };
+                h_filters[hierarchy[h]] = HierarchyConfig{
+                    fc, static_cast< int16_t >( std::stoi( max_errors_unique[hierarchy_count] ) ), final_output_file
+                };
 
                 ++hierarchy_count;
             }
             else
             { // found
-                h_filters[hierarchy[h]].filters.push_back(
-                    FilterConfig{ bloom_filter_files[h], group_bin_files[h], std::stoi( max_errors[h] ) } );
+                h_filters[hierarchy[h]].filters.push_back( FilterConfig{
+                    bloom_filter_files[h], group_bin_files[h], static_cast< uint16_t >( std::stoi( max_errors[h] ) ) } );
             }
         }
         return true;
