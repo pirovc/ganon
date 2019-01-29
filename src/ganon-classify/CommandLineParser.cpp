@@ -16,8 +16,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "b,bloom-filter", "Input filter file[s]", cxxopts::value< std::vector< std::string > >() )
         ( "g,group-bin", "Tab-separated file[s] linking classification groups and bin identifiers. The file should contain the following fields: Group Identifier <tab> Bin Id", cxxopts::value< std::vector< std::string > >() )
         ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< int >()->default_value( "3" ) )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< int >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< std::string >()->default_value( "3" ) )
+        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< std::string >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< int >()->default_value( "1" ) )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >()->default_value( "" ) )
         ( "output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
@@ -50,17 +50,28 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     Config config;
 
-    config.bloom_filter_files       = args["bloom-filter"].as< std::vector< std::string > >();
-    config.group_bin_files          = args["group-bin"].as< std::vector< std::string > >();
-    config.output_file              = args["output-file"].as< std::string >();
-    config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
-    config.max_error                = args["max-error"].as< int >();
-    config.offset                   = args["offset"].as< int >();
-    config.threads                  = args["threads"].as< int >();
-    config.reads                    = args["reads"].as< std::vector< std::string > >();
-    config.verbose                  = args["verbose"].as< bool >();
-    config.filter_hierarchy         = args["filter-hierarchy"].as< std::string >();
-    config.max_error_unique         = args.count( "max-error-unique" ) ? args["max-error-unique"].as< int >() : -1;
+    // Required
+    config.bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
+    config.group_bin_files    = args["group-bin"].as< std::vector< std::string > >();
+    config.reads              = args["reads"].as< std::vector< std::string > >();
+
+    // Default
+    if ( args.count( "output-file" ) )
+        config.output_file = args["output-file"].as< std::string >();
+    if ( args.count( "output-unclassified-file" ) )
+        config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
+    if ( args.count( "max-error" ) )
+        config.max_error = args["max-error"].as< std::string >();
+    if ( args.count( "offset" ) )
+        config.offset = args["offset"].as< int >();
+    if ( args.count( "threads" ) )
+        config.threads = args["threads"].as< int >();
+    if ( args.count( "verbose" ) )
+        config.verbose = args["verbose"].as< bool >();
+    if ( args.count( "filter-hierarchy" ) )
+        config.filter_hierarchy = args["filter-hierarchy"].as< std::string >();
+    if ( args.count( "max-error-unique" ) )
+        config.max_error_unique = args["max-error-unique"].as< std::string >();
 
     return config;
 }

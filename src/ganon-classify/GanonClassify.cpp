@@ -142,7 +142,7 @@ inline uint32_t filter_matches( ReadOut&                     read_out,
                                 uint16_t                     readLen,
                                 uint16_t                     maxKmerCountRead,
                                 GanonClassify::Config const& config,
-                                uint16_t                     max_error_unique )
+                                int16_t                      max_error_unique )
 {
 
 
@@ -182,7 +182,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                SafeQueue< ReadBatches >* pointer_helper,
                uint16_t                  hierarchy_id,
                uint16_t                  hierarchy_size,
-               uint16_t                  max_error_unique )
+               int16_t                   max_error_unique )
 {
     while ( true )
     {
