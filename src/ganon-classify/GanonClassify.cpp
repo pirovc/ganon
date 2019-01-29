@@ -347,15 +347,16 @@ bool run( Config config )
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_unclassified;
-    if ( !config.output_file.empty() )
-    { // output to a file
-        out.open( config.output_file );
-    }
-    else
+    // If there's no output file, redirect to STDOUT
+    if ( config.output_file.empty() )
     {
         out.copyfmt( std::cout ); // STDOUT
         out.clear( std::cout.rdstate() );
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
+    }
+    else if ( !config.split_output_file_hierarchy )
+    {
+        out.open( config.output_file );
     }
 
     // Queues for internal read handling
@@ -470,6 +471,9 @@ bool run( Config config )
         detail::load_filters( filter_hierarchy, hierarchy_name, config );
         timeLoadFilters.end();
 
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+            out.open( hierarchy.second.output_file );
+
         // Exchange queues instance pointers for each hierachy (if not first)
         if ( hierarchy_id > 1 )
         {
@@ -483,8 +487,6 @@ bool run( Config config )
         // pointer_helper << std::endl;
 
         std::vector< std::future< void > > tasks;
-
-
         // Threads for classification
         timeClass.start();
         for ( uint16_t taskNo = 0; taskNo < config.clas_threads; ++taskNo )
@@ -508,6 +510,10 @@ bool run( Config config )
         {
             task.get();
         }
+
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+            out.close();
+
         timeClass.end();
     }
     finished_classifying = true;
@@ -517,11 +523,10 @@ bool run( Config config )
         task.get();
     }
 
-    if ( config.output_file != "" )
-        out.close();
-
     if ( config.output_unclassified )
         out_unclassified.close();
+    if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
+        out.close();
 
     timeGanon.end();
 

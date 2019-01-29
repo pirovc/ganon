@@ -34,14 +34,15 @@ public:
     std::vector< std::string > group_bin_files;
     std::vector< std::string > reads;
 
-    std::string max_error                = "3";
-    std::string max_error_unique         = "-1";
-    std::string output_file              = "";
-    std::string output_unclassified_file = "";
-    std::string filter_hierarchy         = "1";
-    uint16_t    offset                   = 1;
-    uint16_t    threads                  = 3;
-    bool        verbose                  = false;
+    std::string max_error                   = "3";
+    std::string max_error_unique            = "-1";
+    std::string output_file                 = "";
+    std::string output_unclassified_file    = "";
+    std::string filter_hierarchy            = "1";
+    uint16_t    offset                      = 1;
+    uint16_t    threads                     = 3;
+    bool        verbose                     = false;
+    bool        split_output_file_hierarchy = false;
 
     // private:
     const uint16_t                           min_threads = 3;
@@ -144,9 +145,16 @@ public:
                 std::vector< FilterConfig > fc;
                 fc.push_back( FilterConfig{ bloom_filter_files[h], group_bin_files[h], std::stoi( max_errors[h] ) } );
 
-                h_filters[hierarchy[h]] = HierarchyConfig{ fc,
-                                                           std::stoi( max_errors_unique[hierarchy_count] ),
-                                                           output_file + "_" + hierarchy[h] };
+                std::string final_output_file;
+                if ( !split_output_file_hierarchy || ( !output_file.empty() && unique_hierarchy == 1 ) )
+                    final_output_file = output_file;
+                else if ( !output_file.empty() && unique_hierarchy > 1 )
+                    final_output_file = output_file + "_" + hierarchy[h];
+                else
+                    final_output_file = "";
+
+                h_filters[hierarchy[h]] =
+                    HierarchyConfig{ fc, std::stoi( max_errors_unique[hierarchy_count] ), final_output_file };
 
                 ++hierarchy_count;
             }

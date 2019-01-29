@@ -20,7 +20,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< std::string >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< int >()->default_value( "1" ) )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
+        ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
+        ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy", cxxopts::value< bool >()->default_value("false") )
         // option to skip filtering and work as a k-mer counter
         // option to output read len?
         ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
@@ -66,6 +67,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.offset = args["offset"].as< int >();
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< int >();
+    if ( args.count( "split-output-file-hierarchy" ) )
+        config.split_output_file_hierarchy = args["split-output-file-hierarchy"].as< bool >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "filter-hierarchy" ) )
