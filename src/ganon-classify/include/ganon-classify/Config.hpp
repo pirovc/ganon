@@ -139,9 +139,6 @@ public:
 
             if ( h_filters.find( hierarchy[h] ) == h_filters.end() )
             { // not found
-                std::cerr << hierarchy[h] << "," << max_errors[h] << "," << max_errors_unique[hierarchy_count]
-                          << std::endl;
-
                 std::vector< FilterConfig > fc;
                 fc.push_back( FilterConfig{ bloom_filter_files[h],
                                             group_bin_files[h],
