@@ -7,10 +7,9 @@ def main():
     version = '1.0'
 
     build_parser = argparse.ArgumentParser(description='Build options', add_help=False)
-
     default_build_group = build_parser.add_argument_group('general')
     default_build_group.add_argument('-i', '--input-files', required=True, nargs="*", type=str, help='Multi-fasta[.gz] file[s]')
-    default_build_group.add_argument('-db', '--db-prefix', required=True, type=str, help='Database output prefix (.filter, .nodes, .bins will be created)')
+    default_build_group.add_argument('-d', '--db-prefix', required=True, type=str, help='Database output prefix (.filter, .nodes, .bins will be created)')
     default_build_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
     ganon_build_group = build_parser.add_argument_group('ganon')
     ganon_build_group.add_argument('-k', '--kmer-size', type=int, default=19, help='The k-mer size for the bloom filter [14..32] (default: 19)')
@@ -33,7 +32,7 @@ def main():
     update_parser = argparse.ArgumentParser(description='Update options', add_help=False)
     default_update_group = update_parser.add_argument_group('general')
     default_update_group.add_argument('-i', '--input-files', required=True, nargs="*", type=str, help='Multi-fasta[.gz] file[s]')
-    default_update_group.add_argument('-db', '--db-prefix', required=True, type=str, help='Database prefix')
+    default_update_group.add_argument('-d', '--db-prefix', required=True, type=str, help='Database prefix')
     default_update_group.add_argument('-o', '--output-db-prefix', type=str, help='Output database prefix (default: overwrite db)')
     default_update_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
     ganon_update_group = update_parser.add_argument_group('ganon')
@@ -46,30 +45,40 @@ def main():
     taxsbp_update_group.add_argument('--merged-file', type=str, help='merged.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
     taxsbp_update_group.add_argument('--taxsbp-path', type=str, default='./', help='TaxSBP script path. Default: ./')
 
-    classify_parser = argparse.ArgumentParser(add_help=False)
-    classify_group = classify_parser.add_argument_group('Classification options')
-    classify_group.add_argument('-db', '--db-prefix', required=True, nargs="*", type=str, help='Database prefix[es]')
-    classify_group.add_argument('-c', '--db-hierarchy', type=str, help='Comma separated values to define the order the databases should be used (e.g. 1,1,2,3). Default: 1')
-    classify_group.add_argument('-r', '--reads', required=True, nargs="*", type=str, help='Multi-fastq[.gz] file[s] to classify')
-    classify_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
-    classify_group.add_argument('-e', '--max-error', type=int, default=1, help='Max. number of errors allowed (default: 3)')
-    classify_group.add_argument('-u', '--max-error-unique', type=int, default=None, help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will be assigned to parent taxonomic level.')
-    classify_group.add_argument('-f', '--offset', type=int, default=1, help='Number of k-mer to skip during clasification. Can reduce recall but speed up analysis. 1 = no skip (default: 1)')
-    classify_group.add_argument('-o', '--output-file', type=str, help='Output file (default: STDOUT)')
-    classify_group.add_argument('--skip-lca', default=False, action='store_true', help='Skip LCA step and output multiple matches (max-error-unique will not be applied)')
-    classify_group.add_argument('--output-unclassified-file', type=str, help='Output file for unclassified reads')
-    classify_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
-    classify_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
+    classify_parser = argparse.ArgumentParser(description='Classification options', add_help=False)
+    classify_group_required = classify_parser.add_argument_group('required arguments')
+    # Required
+    classify_group_required.add_argument('-d', '--db-prefix',    required=True, type=str,              nargs="*", metavar='db_prefix', help='Database prefix[es]')
+    classify_group_required.add_argument('-r', '--reads',        required=True, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
+    # Defaults
+    classify_group_optional = classify_parser.add_argument_group('optional arguments')
+    classify_group_optional.add_argument('-c', '--db-hierarchy',                type=str, default=["1"], nargs="*", metavar='int', help='Hierachy definition, one for each database input. Can also be string, but input will be sorted (e.g. 1 1 2 3). Default: 1')
+    classify_group_optional.add_argument('-e', '--max-error',                   type=int, default=[3],   nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0). Default: 3')
+    classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')
+    classify_group_optional.add_argument('-f', '--offset',                      type=int, default=1,              metavar='', help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1')
+    classify_group_optional.add_argument('-o', '--output-file',                 type=str, default="",             metavar='', help='Output file name. Empty to print to STDOUT. Default: ""')
+    classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
+    classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
+    # Flags
+    #classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
+    classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
+    # Extra
+    classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
+    classify_group_optional.add_argument('--ganon-path',                        type=str, default='./',            metavar='str', help='Path to ganon-classify binary file. Default: ./')
 
     parser = argparse.ArgumentParser(prog='ganon', description='ganon', conflict_handler='resolve')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version)
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version, help="Show program's version number and exit.")
     subparsers = parser.add_subparsers()
+    
     build = subparsers.add_parser('build', help='Build bloom filter and database', parents=[build_parser])
     build.set_defaults(which='build')
+
     update = subparsers.add_parser('update', help='Update bloom filter and databse', parents=[update_parser])
     update.set_defaults(which='update')
+
     classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
     classify.set_defaults(which='classify')
+
     args = parser.parse_args()
 
     if len(sys.argv[1:])==0: # Print help calling script without parameters
@@ -91,10 +100,7 @@ def main():
         db_prefix_map = db_prefix + ".map"
         db_prefix_bins = db_prefix + ".bins"
 
-    if args.which=='classify':
-        if not args.db_hierarchy:
-            args.db_hierarchy = ",".join("1"*len(args.db_prefix))
-    elif args.which=='build':
+    if args.which=='build':
         # if -1 set default, if not set value (0 deactivated)
         fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length
         if args.overlap_length > fragment_length:
@@ -323,16 +329,16 @@ def main():
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         sys.stderr.write("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -t {5} -f {6} {7} {8} {9} {10}'.format(
+        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -u {5} -t {6} -f {7} {8} {9} {10}'.format(
                                         args.ganon_path,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in dbs]),
                                         " ".join(["-g "+db_prefix+".map" for db_prefix in dbs]),
-                                        args.db_hierarchy,
-                                        args.max_error,
+                                        ",".join([str(h) for h in args.db_hierarchy]),
+                                        ",".join([str(me) for me in args.max_error]),
+                                        ",".join([str(meu) for meu in args.max_error_unique]),
                                         args.threads,
                                         args.offset,
-                                        "-u " + str(args.max_error_unique) if args.max_error_unique!=None else "",
-                                        "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
+                                        " -n " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         "--verbose" if args.verbose else "",
                                         " ".join(args.reads))
         p = subprocess.Popen(shlex.split(run_ganon_classify), shell=False, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
