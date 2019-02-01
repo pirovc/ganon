@@ -177,11 +177,8 @@ inline uint32_t filter_matches( ReadOut&                     read_out,
 void classify( std::vector< Filter >&    filter_hierarchy,
                SafeQueue< ReadOut >&     classified_reads_queue,
                SafeQueue< ReadOut >&     unclassified_reads_queue,
-               bool&                     finished_reading,
                Stats&                    stats,
                Config const&             config,
-               std::condition_variable&  cv,
-               std::mutex&  mtx,
                SafeQueue< ReadBatches >* pointer_current,
                SafeQueue< ReadBatches >* pointer_helper,
                uint16_t                  hierarchy_id,
@@ -189,24 +186,12 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                int16_t                   max_error_unique)
 {
     
-    bool over = false;
     while ( true )
     {
-
-        while ( pointer_current->empty() ){
-            if(finished_reading){
-              over = true;
-              break;
-            }
-            //std::cerr << "Waiting on thread "  << taskNo << std::endl;
-            std::unique_lock<std::mutex> lck(mtx);
-            cv.wait(lck);
-        }
-        if (over) break;
-
-        //std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print 0's)
+        
         ReadBatches rb = pointer_current->pop();
-        if ( rb.ids != "" )
+        //std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print 0's)
+        if ( seqan::length( rb.ids ) > 0 )
         {
             ReadBatches left_over_reads; // store unclassified reads for next iteration
             for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
@@ -250,6 +235,8 @@ void classify( std::vector< Filter >&    filter_hierarchy,
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
                 pointer_helper->push( left_over_reads );
+        }else{
+        	break;
         }
     }
 }
@@ -372,37 +359,29 @@ bool run( Config config )
         out.open( config.output_file );
     }
 
+    // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
+    unsigned num_of_batches         = 1000;
+    unsigned num_of_reads_per_batch = 400;
+
     // Queues for internal read handling
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
     // if hierachy == 3 queue1 is used for unclassified and so on
-    SafeQueue< detail::ReadBatches > queue1;
+    SafeQueue< detail::ReadBatches > queue1(num_of_batches);
     SafeQueue< detail::ReadBatches > queue2;
 
     // Queues for classified, unclassified reads (print)
     SafeQueue< detail::ReadOut > classified_reads_queue;
     SafeQueue< detail::ReadOut > unclassified_reads_queue;
 
-    // Control flags
-    bool finished_reading     = false;
-    bool finished_classifying = false;
-
     // Statistics values
     detail::Stats stats;
 
-    // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
-    int num_of_batches         = 1000;
-    int num_of_reads_per_batch = 400;
-
-    std::mutex mtx;
-    std::condition_variable cv;
-
-    std::vector< std::future< void > > read_write;
-
     // Thread for reading input files
-    timeLoadReads.start();
-    read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats, &cv] {
-        for ( auto const& reads_file : config.reads )
+	timeLoadReads.start();
+    std::future< void > read_task( std::async( std::launch::async, [=, &queue1, &timeLoadReads, &stats] {
+    	
+		for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -412,38 +391,33 @@ bool run( Config config )
             }
             while ( !seqan::atEnd( seqFileIn ) )
             {
-                // std::cerr << queue1->size() << std::endl;
-                while ( queue1.size() > num_of_batches )
-                {
-                    ; // spin
-                }
                 seqan::StringSet< seqan::CharString > ids;
                 seqan::StringSet< seqan::Dna5String > seqs;
                 seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
                 stats.totalReads += seqan::length( ids );
                 queue1.push( detail::ReadBatches{ ids, seqs } );
-                cv.notify_one();
             }
             seqan::close( seqFileIn );
         }
-        finished_reading = true;
-        cv.notify_all();
+        queue1.notify_over();
         timeLoadReads.end();
     } ) );
 
     // Thread for printing classified reads
     timePrintClass.start();
-    read_write.emplace_back(
-        std::async( std::launch::async, [=, &classified_reads_queue, &out, &finished_classifying, &timePrintClass] {
+    std::vector< std::future< void > > write_tasks;
+    write_tasks.emplace_back(
+        std::async( std::launch::async, [=, &classified_reads_queue, &out, &timePrintClass] {
             while ( true )
             {
                 detail::ReadOut ro = classified_reads_queue.pop();
-                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
-                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
-                if ( finished_classifying && classified_reads_queue.empty() )
-                {
-                    timePrintClass.end();
-                    break;
+                if(ro.readID != ""){
+                	for ( uint32_t i = 0; i < ro.matches.size(); ++i ){
+                    	out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+                    }
+                }else{
+                	timePrintClass.end();
+                	break;
                 }
             }
         } ) );
@@ -453,16 +427,15 @@ bool run( Config config )
     if ( config.output_unclassified )
     {
         out_unclassified.open( config.output_unclassified_file );
-        read_write.emplace_back(
+        write_tasks.emplace_back(
             std::async( std::launch::async,
-                        [=, &unclassified_reads_queue, &out_unclassified, &finished_classifying, &timePrintUnclass] {
+                        [=, &unclassified_reads_queue, &out_unclassified, &timePrintUnclass] {
                             while ( true )
                             {
                                 detail::ReadOut rou = unclassified_reads_queue.pop();
-                                if ( rou.readID != "" ) // if not empty
+                                if(rou.readID != ""){
                                     out_unclassified << rou.readID << '\n';
-                                if ( finished_classifying && unclassified_reads_queue.empty() )
-                                {
+                                }else{
                                     timePrintUnclass.end();
                                     break;
                                 }
@@ -498,6 +471,9 @@ bool run( Config config )
             pointer_extra   = pointer_current;
             pointer_current = pointer_helper;
             pointer_helper  = pointer_extra;
+
+            // Remove size limit from reading (now can have as many reads as possible)
+            queue1.set_max_size(-1);
         }
         // std::cerr << hierarchy_id << " - queue1 address: " << &queue1 << std::endl;
         // std::cerr << hierarchy_id << " - queue2 address: " << &queue2 << std::endl;
@@ -514,11 +490,8 @@ bool run( Config config )
                                             std::ref( filter_hierarchy ),
                                             std::ref( classified_reads_queue ),
                                             std::ref( unclassified_reads_queue ),
-                                            std::ref( finished_reading ),
                                             std::ref( stats ),
                                             std::ref( config ),
-                                            std::ref( cv ),
-                                            std::ref( mtx ),
                                             pointer_current,
                                             pointer_helper,
                                             hierarchy_id,
@@ -530,15 +503,22 @@ bool run( Config config )
         {
             task.get();
         }
+        if(hierarchy_id==1)  // get reading tasks at the end of the first hierarchy
+        	read_task.get();
+
+
+        classified_reads_queue.notify_over();
+    	unclassified_reads_queue.notify_over();
+    	//pointer_current->notify_over();
+    	pointer_helper->notify_over();
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.close();
 
         timeClass.end();
     }
-    finished_classifying = true;
 
-    for ( auto&& task : read_write )
+    for ( auto&& task : write_tasks )
     {
         task.get();
     }
