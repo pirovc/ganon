@@ -8,10 +8,12 @@
 #include <atomic>
 #include <cinttypes>
 #include <cmath>
+#include <condition_variable> 
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
+#include <mutex>              
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -178,15 +180,31 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                bool&                     finished_reading,
                Stats&                    stats,
                Config const&             config,
+               std::condition_variable&  cv,
+               std::mutex&  mtx,
                SafeQueue< ReadBatches >* pointer_current,
                SafeQueue< ReadBatches >* pointer_helper,
                uint16_t                  hierarchy_id,
                uint16_t                  hierarchy_size,
-               int16_t                   max_error_unique )
+               int16_t                   max_error_unique)
 {
+    
+    bool over = false;
     while ( true )
     {
-        // std::cerr << pointer_current.size() << std::endl; //check if queue is getting empty (print 0's)
+
+        while ( pointer_current->empty() ){
+            if(finished_reading){
+              over = true;
+              break;
+            }
+            //std::cerr << "Waiting on thread "  << taskNo << std::endl;
+            std::unique_lock<std::mutex> lck(mtx);
+            cv.wait(lck);
+        }
+        if (over) break;
+
+        //std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print 0's)
         ReadBatches rb = pointer_current->pop();
         if ( rb.ids != "" )
         {
@@ -232,11 +250,6 @@ void classify( std::vector< Filter >&    filter_hierarchy,
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
                 pointer_helper->push( left_over_reads );
-        }
-
-        if ( finished_reading && pointer_current->empty() )
-        { // if finished reading from file (first iter) and current queue is empty
-            break;
         }
     }
 }
@@ -381,11 +394,14 @@ bool run( Config config )
     int num_of_batches         = 1000;
     int num_of_reads_per_batch = 400;
 
+    std::mutex mtx;
+    std::condition_variable cv;
+
     std::vector< std::future< void > > read_write;
 
     // Thread for reading input files
     timeLoadReads.start();
-    read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats] {
+    read_write.emplace_back( std::async( std::launch::async, [=, &queue1, &finished_reading, &timeLoadReads, &stats, &cv] {
         for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
@@ -406,10 +422,12 @@ bool run( Config config )
                 seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
                 stats.totalReads += seqan::length( ids );
                 queue1.push( detail::ReadBatches{ ids, seqs } );
+                cv.notify_one();
             }
             seqan::close( seqFileIn );
         }
         finished_reading = true;
+        cv.notify_all();
         timeLoadReads.end();
     } ) );
 
@@ -499,6 +517,8 @@ bool run( Config config )
                                             std::ref( finished_reading ),
                                             std::ref( stats ),
                                             std::ref( config ),
+                                            std::ref( cv ),
+                                            std::ref( mtx ),
                                             pointer_current,
                                             pointer_helper,
                                             hierarchy_id,
