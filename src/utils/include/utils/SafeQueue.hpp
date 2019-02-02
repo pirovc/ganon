@@ -21,13 +21,13 @@ private:
 
 public:
     SafeQueue()
+    : max_size( -1 ) // size_t overflow
     {
-        max_size = -1; // no limit
     }
 
     SafeQueue( int max )
+    : max_size( max )
     {
-        max_size = max;
     }
 
     void set_max_size( int max )
@@ -39,7 +39,7 @@ public:
     void push( T t )
     {
         std::unique_lock< std::mutex > lock( m );
-        while ( q.size() >= max_size )
+        while ( q.size() >= max_size ) // never true if max_size=-1 (intended)
             cv_push.wait( lock );
         q.push( t );
         cv_pop.notify_one();
