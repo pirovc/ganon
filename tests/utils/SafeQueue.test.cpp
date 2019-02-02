@@ -14,6 +14,7 @@ SCENARIO( "Pushing an element into an empty queue", "[utils][safequeue]" )
         WHEN( "one element is pushed" )
         {
             queue.push( 13 );
+            queue.notify_push_over();
 
             THEN( "the queue size is one and the queue is not empty anymore" )
             {
@@ -29,6 +30,7 @@ SCENARIO( "Popping from an empty queue", "[utils][safequeue]" )
     GIVEN( "An empty queue" )
     {
         SafeQueue< int > queue;
+        queue.notify_push_over();
 
         REQUIRE( queue.size() == 0 );
         REQUIRE( queue.empty() );
@@ -63,6 +65,7 @@ SCENARIO( "FIFO property", "[utils][safequeue]" )
         queue.push( firstPushedValue );
         queue.push( secondPushedValue );
         queue.push( thirdPushedValue );
+        queue.notify_push_over();
 
         REQUIRE( queue.size() == 3 );
         REQUIRE_FALSE( queue.empty() );

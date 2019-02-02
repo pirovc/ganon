@@ -8,12 +8,12 @@
 #include <atomic>
 #include <cinttypes>
 #include <cmath>
-#include <condition_variable> 
+#include <condition_variable>
 #include <fstream>
 #include <future>
 #include <iostream>
 #include <map>
-#include <mutex>              
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -183,14 +183,14 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                SafeQueue< ReadBatches >* pointer_helper,
                uint16_t                  hierarchy_id,
                uint16_t                  hierarchy_size,
-               int16_t                   max_error_unique)
+               int16_t                   max_error_unique )
 {
-    
+
     while ( true )
     {
-        
         ReadBatches rb = pointer_current->pop();
-        //std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print 0's)
+        // std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print
+        // 0's)
         if ( seqan::length( rb.ids ) > 0 )
         {
             ReadBatches left_over_reads; // store unclassified reads for next iteration
@@ -235,8 +235,10 @@ void classify( std::vector< Filter >&    filter_hierarchy,
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
                 pointer_helper->push( left_over_reads );
-        }else{
-        	break;
+        }
+        else
+        {
+            break;
         }
     }
 }
@@ -367,7 +369,7 @@ bool run( Config config )
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
     // if hierachy == 3 queue1 is used for unclassified and so on
-    SafeQueue< detail::ReadBatches > queue1(num_of_batches);
+    SafeQueue< detail::ReadBatches > queue1( num_of_batches );
     SafeQueue< detail::ReadBatches > queue2;
 
     // Queues for classified, unclassified reads (print)
@@ -378,10 +380,10 @@ bool run( Config config )
     detail::Stats stats;
 
     // Thread for reading input files
-	timeLoadReads.start();
+    timeLoadReads.start();
     std::future< void > read_task( std::async( std::launch::async, [=, &queue1, &timeLoadReads, &stats] {
-    	
-		for ( auto const& reads_file : config.reads )
+
+        for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -399,28 +401,31 @@ bool run( Config config )
             }
             seqan::close( seqFileIn );
         }
-        queue1.notify_over();
+        queue1.notify_push_over();
         timeLoadReads.end();
     } ) );
 
     // Thread for printing classified reads
     timePrintClass.start();
     std::vector< std::future< void > > write_tasks;
-    write_tasks.emplace_back(
-        std::async( std::launch::async, [=, &classified_reads_queue, &out, &timePrintClass] {
-            while ( true )
+    write_tasks.emplace_back( std::async( std::launch::async, [=, &classified_reads_queue, &out, &timePrintClass] {
+        while ( true )
+        {
+            detail::ReadOut ro = classified_reads_queue.pop();
+            if ( ro.readID != "" )
             {
-                detail::ReadOut ro = classified_reads_queue.pop();
-                if(ro.readID != ""){
-                	for ( uint32_t i = 0; i < ro.matches.size(); ++i ){
-                    	out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
-                    }
-                }else{
-                	timePrintClass.end();
-                	break;
+                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
+                {
+                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
                 }
             }
-        } ) );
+            else
+            {
+                timePrintClass.end();
+                break;
+            }
+        }
+    } ) );
 
     // Thread for printing unclassified reads
     timePrintUnclass.start();
@@ -428,19 +433,21 @@ bool run( Config config )
     {
         out_unclassified.open( config.output_unclassified_file );
         write_tasks.emplace_back(
-            std::async( std::launch::async,
-                        [=, &unclassified_reads_queue, &out_unclassified, &timePrintUnclass] {
-                            while ( true )
-                            {
-                                detail::ReadOut rou = unclassified_reads_queue.pop();
-                                if(rou.readID != ""){
-                                    out_unclassified << rou.readID << '\n';
-                                }else{
-                                    timePrintUnclass.end();
-                                    break;
-                                }
-                            }
-                        } ) );
+            std::async( std::launch::async, [=, &unclassified_reads_queue, &out_unclassified, &timePrintUnclass] {
+                while ( true )
+                {
+                    detail::ReadOut rou = unclassified_reads_queue.pop();
+                    if ( rou.readID != "" )
+                    {
+                        out_unclassified << rou.readID << '\n';
+                    }
+                    else
+                    {
+                        timePrintUnclass.end();
+                        break;
+                    }
+                }
+            } ) );
     }
 
 
@@ -465,6 +472,12 @@ bool run( Config config )
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.open( hierarchy.second.output_file );
 
+        // hierarchy_id = 1
+        //  pointer_current=queue1, data comes from file in a limited size queue
+        //  pointer_helper=queue2, empty
+        // hierarchy_id > 1
+        //  pointer_current=queue2, with all data already in from last iteration
+        //  pointer_helper=queue1, empty
         // Exchange queues instance pointers for each hierachy (if not first)
         if ( hierarchy_id > 1 )
         {
@@ -472,8 +485,9 @@ bool run( Config config )
             pointer_current = pointer_helper;
             pointer_helper  = pointer_extra;
 
-            // Remove size limit from reading (now can have as many reads as possible)
-            queue1.set_max_size(-1);
+            // Remove size limit from reading since it's always already loaded
+            if ( hierarchy_id == 2 )
+                queue1.set_max_size( -1 );
         }
         // std::cerr << hierarchy_id << " - queue1 address: " << &queue1 << std::endl;
         // std::cerr << hierarchy_id << " - queue2 address: " << &queue2 << std::endl;
@@ -503,14 +517,14 @@ bool run( Config config )
         {
             task.get();
         }
-        if(hierarchy_id==1)  // get reading tasks at the end of the first hierarchy
-        	read_task.get();
 
 
-        classified_reads_queue.notify_over();
-    	unclassified_reads_queue.notify_over();
-    	//pointer_current->notify_over();
-    	pointer_helper->notify_over();
+        if ( hierarchy_id == 1 )
+        {
+            read_task.get();                    // get reading tasks at the end of the first hierarchy
+            pointer_helper->notify_push_over(); // notify push is over
+        }
+
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.close();
@@ -518,6 +532,8 @@ bool run( Config config )
         timeClass.end();
     }
 
+    classified_reads_queue.notify_push_over();
+    unclassified_reads_queue.notify_push_over();
     for ( auto&& task : write_tasks )
     {
         task.get();
