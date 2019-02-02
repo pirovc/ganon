@@ -74,8 +74,7 @@ endif()
 
 # seqan specific flags:
 
-#add_compile_options( -static -msse4.2 -march=native )
-add_compile_options( -static -march=native )
+add_compile_options( -static -msse4.2 -march=native )
 
 # -----------------------------------------------------------------------------
 # dependencies and 3rd party libraries

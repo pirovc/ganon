@@ -3,8 +3,11 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
+#include <type_traits>
 
-template < class T >
+template < class T,
+           class Enabled = std::enable_if_t< std::is_move_assignable< T >::value && //
+                                             std::is_move_constructible< T >::value > >
 class SafeQueue
 {
 
@@ -51,7 +54,7 @@ public:
                 return T();
             cv_pop.wait( lock );
         }
-        T val = q.front();
+        T val = std::move( q.front() );
         q.pop();
         cv_push.notify_one();
         return val;
