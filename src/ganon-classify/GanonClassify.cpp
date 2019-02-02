@@ -216,7 +216,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 {
                     stats.classifiedReads += 1;
                     stats.matches += count_filtered_matches;
-                    classified_reads_queue.push( read_out );
+                    classified_reads_queue.push( std::move( read_out ) );
                 }
                 else if ( hierarchy_id < hierarchy_size ) // if there is more levels, store read
                 {
@@ -226,13 +226,13 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                        // unclassified printing queue
                 {
-                    unclassified_reads_queue.push( read_out );
+                    unclassified_reads_queue.push( std::move( read_out ) );
                 }
             }
 
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
-                pointer_helper->push( left_over_reads );
+                pointer_helper->push( std::move( left_over_reads ) );
         }
         else
         {
