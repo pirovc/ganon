@@ -59,8 +59,8 @@ def main():
     classify_group_optional.add_argument('-o', '--output-file',                 type=str, default="",             metavar='', help='Output file name. Empty to print to STDOUT. Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
-    classify_group_optional.add_argument('--n-reads', type=int)
-    classify_group_optional.add_argument('--n-batches', type=int)
+    classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
+    classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
     # Flags
     #classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
     classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
@@ -345,7 +345,6 @@ def main():
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
-        print(run_ganon_classify)
         p = subprocess.Popen(shlex.split(run_ganon_classify), shell=False, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
         # redirect output
