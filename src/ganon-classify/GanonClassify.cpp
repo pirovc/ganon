@@ -216,7 +216,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 {
                     stats.classifiedReads += 1;
                     stats.matches += count_filtered_matches;
-                    classified_reads_queue.push( std::move( read_out ) );
+                    classified_reads_queue.push( read_out );
                 }
                 else if ( hierarchy_id < hierarchy_size ) // if there is more levels, store read
                 {
@@ -226,13 +226,13 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                        // unclassified printing queue
                 {
-                    unclassified_reads_queue.push( std::move( read_out ) );
+                    unclassified_reads_queue.push( read_out );
                 }
             }
 
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
-                pointer_helper->push( std::move( left_over_reads ) );
+                pointer_helper->push( left_over_reads );
         }
         else
         {
@@ -359,15 +359,12 @@ bool run( Config config )
         out.open( config.output_file );
     }
 
-    // num_of_batches*num_of_reads_per_batch = max. amount of reads in memory
-    unsigned num_of_batches         = 1000;
-    unsigned num_of_reads_per_batch = 400;
-
     // Queues for internal read handling
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
     // if hierachy == 3 queue1 is used for unclassified and so on
-    SafeQueue< detail::ReadBatches > queue1( num_of_batches );
+    SafeQueue< detail::ReadBatches > queue1(
+        config.n_batches ); // config.n_batches*config.n_reads = max. amount of reads in memory
     SafeQueue< detail::ReadBatches > queue2;
 
     // Queues for classified, unclassified reads (print)
@@ -393,7 +390,7 @@ bool run( Config config )
             {
                 seqan::StringSet< seqan::CharString > ids;
                 seqan::StringSet< seqan::Dna5String > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, num_of_reads_per_batch );
+                seqan::readRecords( ids, seqs, seqFileIn, config.n_reads );
                 stats.totalReads += seqan::length( ids );
                 queue1.push( detail::ReadBatches{ ids, seqs } );
             }
@@ -487,10 +484,6 @@ bool run( Config config )
             if ( hierarchy_id == 2 )
                 queue1.set_max_size( -1 );
         }
-        // std::cerr << hierarchy_id << " - queue1 address: " << &queue1 << std::endl;
-        // std::cerr << hierarchy_id << " - queue2 address: " << &queue2 << std::endl;
-        // std::cerr << hierarchy_id << " - pointer_current: " << pointer_current << " - pointer_helper: " <<
-        // pointer_helper << std::endl;
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
@@ -516,13 +509,12 @@ bool run( Config config )
             task.get();
         }
 
-
         if ( hierarchy_id == 1 )
         {
             read_task.get();                    // get reading tasks at the end of the first hierarchy
-            pointer_helper->notify_push_over(); // notify push is over
+            pointer_helper->notify_push_over(); // notify push is over, only on first time (will be always set over for
+                                                // next iterations)
         }
-
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.close();
@@ -530,6 +522,7 @@ bool run( Config config )
         timeClass.end();
     }
 
+    // notify that classification stoped adding new items, can exit when finished
     classified_reads_queue.notify_push_over();
     unclassified_reads_queue.notify_push_over();
     for ( auto&& task : write_tasks )
