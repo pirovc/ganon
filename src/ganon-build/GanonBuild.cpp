@@ -200,13 +200,13 @@ bool run( Config config )
     timeLoadFiles.end();
     //////////////////////////////
 
+    int                       max_size_queue_refs = config.threads * 10;
     std::mutex                mtx;
-    SafeQueue< detail::Seqs > q_Seqs;
-    bool                      finished = false;
+    SafeQueue< detail::Seqs > queue_refs( max_size_queue_refs );
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
+    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &queue_refs, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
@@ -217,10 +217,7 @@ bool run( Config config )
             }
             while ( !seqan::atEnd( seqFileIn ) )
             {
-                while ( q_Seqs.size() > ( config.threads * 10 ) )
-                {
-                    ; // spin
-                }
+
                 seqan::StringSet< seqan::CharString >  ids;
                 seqan::StringSet< seqan::IupacString > seqs;
                 seqan::readRecords( ids, seqs, seqFileIn, config.threads * 5 );
@@ -246,12 +243,12 @@ bool run( Config config )
                         continue;
                     }
                     stats.sumSeqLen += seqan::length( seqs[i] );
-                    q_Seqs.push( detail::Seqs{ seqid, seqs[i] } );
+                    queue_refs.push( detail::Seqs{ seqid, seqs[i] } );
                 }
             }
             seqan::close( seqFileIn );
         }
-        finished = true;
+        queue_refs.notify_push_over();
     } ) );
 
     // Start execution threads to add kmers
@@ -259,15 +256,15 @@ bool run( Config config )
     std::vector< std::future< void > > tasks;
     for ( int taskNo = 0; taskNo < config.build_threads; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs, &mtx, &config] {
             while ( true )
             {
-                detail::Seqs val = q_Seqs.pop();
+                detail::Seqs val = queue_refs.pop();
                 if ( val.seqid != "" )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
                     {
-                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        auto[fragstart, fragend, binid] = seq_bin[val.seqid][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
@@ -284,8 +281,10 @@ bool run( Config config )
                         }
                     }
                 }
-                if ( finished && q_Seqs.empty() )
+                else
+                {
                     break;
+                }
             }
         } ) );
     }

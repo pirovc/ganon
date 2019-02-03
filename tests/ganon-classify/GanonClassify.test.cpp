@@ -350,7 +350,6 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     GanonBuild::Config cfg_build;
     cfg_build.update_filter_file = "filters/bacteria.filter";
     cfg_build.seqid_bin_file     = "files/bacteria_upd_virus_acc_bin.txt";
-    ;
     cfg_build.output_filter_file = "bacteria_virus.filter";
     cfg_build.reference_files    = { "sequences/virus_NC_003676.1.fasta.gz",
                                   "sequences/virus_NC_011646.1.fasta.gz",

@@ -24,6 +24,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy", cxxopts::value< bool >()->default_value("false") )
         // option to skip filtering and work as a k-mer counter
         // option to output read len?
+        ( "n-batches", "Number of batches of n-reads to hold in memory", cxxopts::value< int >()->default_value( "1000" ) )
+        ( "n-reads", "Number of reads for each batch", cxxopts::value< int >()->default_value("400") )
+ 
         ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
         ( "verbose", "Verbose output mode", cxxopts::value< bool >()->default_value("false"))
         ( "h,help", "Print help" )
@@ -75,6 +78,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.filter_hierarchy = args["filter-hierarchy"].as< std::string >();
     if ( args.count( "max-error-unique" ) )
         config.max_error_unique = args["max-error-unique"].as< std::string >();
+    if ( args.count( "n-batches" ) )
+        config.n_batches = args["n-batches"].as< int >();
+    if ( args.count( "n-reads" ) )
+        config.n_reads = args["n-reads"].as< int >();
 
     return config;
 }

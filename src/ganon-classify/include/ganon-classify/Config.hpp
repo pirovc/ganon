@@ -44,6 +44,10 @@ public:
     bool        verbose                     = false;
     bool        split_output_file_hierarchy = false;
 
+    // hidden
+    uint16_t n_batches = 1000;
+    uint16_t n_reads   = 400;
+
     // private:
     const uint16_t                           min_threads = 3;
     uint16_t                                 clas_threads;
