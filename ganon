@@ -504,12 +504,13 @@ def get_taxdump(tmp_output_folder):
 
 def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
     tx = time.time()
+    accessions_file = tmp_output_folder + 'accessions.txt'
     sys.stderr.write("Extracting accessions... ")
     ids = []
     for file in files:
         handler = gzip.open(file, 'rt') if file.endswith(".gz") else open(file,'r')
         ids.extend([header for header in fasta_header_generator(handler)])
-    f=open(tmp_output_folder + 'accessions.txt','w')
+    f=open(accessions_file,'w')
     f.write('\n'.join(ids))
     f.close()
     sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
@@ -517,11 +518,10 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
     tx = time.time()
     sys.stderr.write("Retrieving data from NCBI... ")
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
-    run_get_len_taxid_cmd = 'parallel --gnu -j {0} -a {1} {2}{3} {{}}'.format(
-                            threads,
-                            tmp_output_folder + 'accessions.txt',
+    run_get_len_taxid_cmd = '{0}get_len_taxid.sh -i {1} {2}'.format(
                             taxsbp_path+"/scripts/",
-                            "get_len_taxid_assembly.sh" if use_assembly else "get_len_taxid.sh")
+                            accessions_file,
+                            "-a" if use_assembly else "")
     _, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
     sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
     return taxsbp_input_file
