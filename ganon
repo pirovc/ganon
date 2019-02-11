@@ -104,7 +104,7 @@ def main():
 
     if args.which=='build':
         # if -1 set default, if not set value (0 deactivated)
-        fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length
+        fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length - args.overlap_length 
         if args.overlap_length > fragment_length:
             sys.stderr.write("--overlap_length cannot be bigger than --fragment_length")
             return 1
