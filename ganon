@@ -21,8 +21,8 @@ def main():
     taxsbp_build_group = build_parser.add_argument_group('taxsbp')
     taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
     taxsbp_build_group.add_argument('-l', '--bin-length', type=int, default=3000000, help='Maximum length (in bp) for each bin (default: 3000000')
-    taxsbp_build_group.add_argument('--fragment-length', type=int, default=-1, help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
-    taxsbp_build_group.add_argument('--overlap-length', type=int, default=500, help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton (default: 500)')
+    taxsbp_build_group.add_argument('-a', '--fragment-length', type=int, default=-1, help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
+    taxsbp_build_group.add_argument('-o', '--overlap-length', type=int, default=500, help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton (default: 500)')
     taxsbp_build_group.add_argument('--retrieve-ncbi', default=False, action='store_true', help='Retrieve taxdump (--nodes-file, --merged-file) and TaxSBP information (--len-taxid-file) automatically from NCBI')
     taxsbp_build_group.add_argument('--len-taxid-file', type=str, help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen [Mutually exclusive --retrieve-ncbi]')
     taxsbp_build_group.add_argument('--nodes-file', type=str, help='nodes.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
@@ -481,7 +481,7 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
                 frag_start = 1
                 frag_end = length
 
-            bin_length[binno]=+int(length)
+            bin_length[binno]+=int(length)
             unique_taxids.add(int(taxid))
             print(line, file=bins) 
             print(acc, frag_start, frag_end, binno, sep="\t", file=acc_bin)
