@@ -106,8 +106,8 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
         // uint16_t threshold = get_threshold(seqan::length(read_seq), filter.bloom_filter.kmerSize,
         // filter.filter_config.max_error, filter.bloom_filter.offset); should match threshold
         uint32_t                threshold       = filter.filter_config.max_error;
-        std::vector< uint64_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
-        std::vector< uint64_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
+        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
 
         // select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
 
