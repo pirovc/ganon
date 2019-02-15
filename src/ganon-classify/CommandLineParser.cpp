@@ -15,20 +15,17 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     options.add_options()
         ( "b,bloom-filter", "Input filter file[s]", cxxopts::value< std::vector< std::string > >() )
         ( "g,group-bin", "Tab-separated file[s] linking classification groups and bin identifiers. The file should contain the following fields: Group Identifier <tab> Bin Id", cxxopts::value< std::vector< std::string > >() )
-        ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< std::string >()->default_value( "3" ) )
+        ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< std::string >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< std::string >() )
-        ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< int >()->default_value( "1" ) )
-        ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy", cxxopts::value< bool >()->default_value("false") )
-        // option to skip filtering and work as a k-mer counter
-        // option to output read len?
-        ( "n-batches", "Number of batches of n-reads to hold in memory", cxxopts::value< int >()->default_value( "1000" ) )
-        ( "n-reads", "Number of reads for each batch", cxxopts::value< int >()->default_value("400") )
- 
-        ( "t,threads", "Number of threads", cxxopts::value< int >()->default_value( "3" ) )
-        ( "verbose", "Verbose output mode", cxxopts::value< bool >()->default_value("false"))
+        ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint16_t >() )
+        ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >() )
+        ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >() )
+        ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy", cxxopts::value< bool >() )
+        ( "n-batches", "Number of batches of n-reads to hold in memory", cxxopts::value< uint32_t >())
+        ( "n-reads", "Number of reads for each batch", cxxopts::value< uint32_t >())
+        ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
+        ( "verbose", "Verbose output mode", cxxopts::value< bool >())
         ( "h,help", "Print help" )
         ( "v,version", "Show version" )
         ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
@@ -67,9 +64,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "max-error" ) )
         config.max_error = args["max-error"].as< std::string >();
     if ( args.count( "offset" ) )
-        config.offset = args["offset"].as< int >();
+        config.offset = args["offset"].as< uint16_t >();
     if ( args.count( "threads" ) )
-        config.threads = args["threads"].as< int >();
+        config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "split-output-file-hierarchy" ) )
         config.split_output_file_hierarchy = args["split-output-file-hierarchy"].as< bool >();
     if ( args.count( "verbose" ) )
@@ -79,9 +76,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "max-error-unique" ) )
         config.max_error_unique = args["max-error-unique"].as< std::string >();
     if ( args.count( "n-batches" ) )
-        config.n_batches = args["n-batches"].as< int >();
+        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "n-reads" ) )
-        config.n_reads = args["n-reads"].as< int >();
+        config.n_reads = args["n-reads"].as< uint32_t >();
 
     return config;
 }

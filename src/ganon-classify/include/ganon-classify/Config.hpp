@@ -30,10 +30,12 @@ struct Config
 {
 
 public:
+    // Required
     std::vector< std::string > bloom_filter_files;
     std::vector< std::string > group_bin_files;
     std::vector< std::string > reads;
 
+    // Default
     std::string max_error                   = "3";
     std::string max_error_unique            = "-1";
     std::string output_file                 = "";
@@ -45,8 +47,8 @@ public:
     bool        split_output_file_hierarchy = false;
 
     // hidden
-    uint16_t n_batches = 1000;
-    uint16_t n_reads   = 400;
+    uint32_t n_batches = 1000;
+    uint32_t n_reads   = 400;
 
     // private:
     const uint16_t                           min_threads = 3;
@@ -58,6 +60,12 @@ public:
 
     bool validate()
     {
+        if ( bloom_filter_files.size() == 0 || group_bin_files.size() == 0 || reads.size() == 0 )
+        {
+            std::cerr << "--bloom-filter, --group-bin and positional reads are mandatory" << std::endl;
+            return false;
+        }
+
         output_unclassified    = !output_unclassified_file.empty() ? true : false;
         uint16_t extra_threads = output_unclassified ? 1 : 0;
         if ( threads <= min_threads )
@@ -184,6 +192,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     for ( const auto& s : config.group_bin_files )
         stream << "                            " << s << newl;
     stream << "--filter-hierarchy          " << config.filter_hierarchy << newl;
+    stream << "--n-batches                 " << config.n_batches << newl;
+    stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--max-error                 " << config.max_error << newl;
     stream << "--max-error-unique          " << config.max_error_unique << newl;
     stream << "--offset                    " << config.offset << newl;
