@@ -53,23 +53,6 @@ public:
 
         build_threads = threads - 1; // -1 reading files
 
-        if ( filter_size_bits == 0 )
-        {
-            if ( filter_size == 0 )
-            {
-                std::cerr << "--filter-size or --filter-size-bits are required" << std::endl;
-                return false;
-            }
-            else
-            {
-                filter_size_bits = filter_size * MBinBits;
-            }
-        }
-        else
-        {
-            filter_size = filter_size_bits / MBinBits;
-        }
-
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
@@ -80,6 +63,25 @@ public:
             hash_functions   = 0;
             filter_size      = 0;
             filter_size_bits = 0;
+        }
+        else
+        {
+            if ( filter_size_bits == 0 )
+            {
+                if ( filter_size == 0 )
+                {
+                    std::cerr << "--filter-size or --filter-size-bits are required" << std::endl;
+                    return false;
+                }
+                else
+                {
+                    filter_size_bits = filter_size * MBinBits;
+                }
+            }
+            else
+            {
+                filter_size = filter_size_bits / MBinBits;
+            }
         }
 
         return true;
@@ -97,6 +99,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--filter-size-bits    " << config.filter_size_bits << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
     stream << "--kmer-size           " << config.kmer_size << newl;
+    stream << "--n-batches           " << config.n_batches << newl;
+    stream << "--n-refs              " << config.n_refs << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;

@@ -192,6 +192,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     for ( const auto& s : config.group_bin_files )
         stream << "                            " << s << newl;
     stream << "--filter-hierarchy          " << config.filter_hierarchy << newl;
+    stream << "--n-batches                 " << config.n_batches << newl;
+    stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--max-error                 " << config.max_error << newl;
     stream << "--max-error-unique          " << config.max_error_unique << newl;
     stream << "--offset                    " << config.offset << newl;

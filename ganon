@@ -6,50 +6,69 @@ from collections import defaultdict
 def main():
     version = '1.0'
 
+    ####################################################################################################
+
     build_parser = argparse.ArgumentParser(description='Build options', add_help=False)
-    default_build_group = build_parser.add_argument_group('general')
-    default_build_group.add_argument('-i', '--input-files', required=True, nargs="*", type=str, help='Multi-fasta[.gz] file[s]')
-    default_build_group.add_argument('-d', '--db-prefix', required=True, type=str, help='Database output prefix (.filter, .nodes, .bins will be created)')
-    default_build_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
-    ganon_build_group = build_parser.add_argument_group('ganon')
-    ganon_build_group.add_argument('-k', '--kmer-size', type=int, default=19, help='The k-mer size for the bloom filter [14..32] (default: 19)')
-    ganon_build_group.add_argument('-n', '--hash-functions', type=int, default=3, help='The number of hash functions to use for the bloom filter [2..5] (default: 3)')
-    ganon_build_group.add_argument('-f', '--max-fp', type=float, default=0.05, help='Max. false positive rate for k-mer classification. Filter size will be defined base on this value by the estimated number of unique k-mers [Mutually exclusive --bloom-size] (default: 0.05)')
-    ganon_build_group.add_argument('-s', '--bloom-size', type=int, help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --min-fp] ')
-    ganon_build_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
-    ganon_build_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
-    taxsbp_build_group = build_parser.add_argument_group('taxsbp')
-    taxsbp_build_group.add_argument('-r', '--rank', type=str, default='taxid', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...] (Default: taxid)')
-    taxsbp_build_group.add_argument('-l', '--bin-length', type=int, default=3000000, help='Maximum length (in bp) for each bin (default: 3000000')
-    taxsbp_build_group.add_argument('-a', '--fragment-length', type=int, default=-1, help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
-    taxsbp_build_group.add_argument('-o', '--overlap-length', type=int, default=500, help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton (default: 500)')
-    taxsbp_build_group.add_argument('--retrieve-ncbi', default=False, action='store_true', help='Retrieve taxdump (--nodes-file, --merged-file) and TaxSBP information (--len-taxid-file) automatically from NCBI')
-    taxsbp_build_group.add_argument('--len-taxid-file', type=str, help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_build_group.add_argument('--nodes-file', type=str, help='nodes.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_build_group.add_argument('--merged-file', type=str, help='merged.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_build_group.add_argument('--taxsbp-path', type=str, default='./', help='TaxSBP script path. Default: ./')
+    
+    # Required
+    build_group_required = build_parser.add_argument_group('required arguments')
+    build_group_required.add_argument('-d', '--db-prefix',      required=True, type=str,                    metavar='db_prefix',        help='Database output prefix (.filter, .nodes, .bins. .map will be created)')
+    build_group_required.add_argument('-i', '--input-files',    required=True, type=str, nargs="*",         metavar='refs.fasta[.gz]',  help='Multi-fasta[.gz] file[s]')
+
+    # Defaults
+    build_group_optional = build_parser.add_argument_group('optional arguments')
+    build_group_optional.add_argument('-k', '--kmer-size',                      type=int,   default=19,     metavar='', help='The k-mer size for the bloom filter [14..32]. Default: 19')
+    build_group_optional.add_argument('-n', '--hash-functions',                 type=int,   default=3,      metavar='', help='The number of hash functions to use for the bloom filter [2..5]. Default: 3')
+    build_group_optional.add_argument('-f', '--max-fp',                         type=float, default=0.05,   metavar='', help='Max. false positive rate for k-mer classification. Filter size will be defined base on this value by the estimated number of unique k-mers [Mutually exclusive --bloom-size]. Default: 0.05')
+    build_group_optional.add_argument('-s', '--bloom-size',                     type=int,                   metavar='', help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --min-fp] ')
+    build_group_optional.add_argument('-t', '--threads',                        type=int,   default=2,      metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
+    build_group_optional.add_argument('-r', '--rank',                           type=str,   default='taxid', metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: taxid')
+    build_group_optional.add_argument('-l', '--bin-length',                     type=int,   default=6000000, metavar='', help='Maximum length (in bp) for each bin. Default: 6000000')
+    build_group_optional.add_argument('-a', '--fragment-length',                type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
+    build_group_optional.add_argument('-o', '--overlap-length',                 type=int,   default=500,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton. Default: 500')
+    build_group_optional.add_argument('--len-taxid-file',                       type=str,                   metavar='', help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen')
+    build_group_optional.add_argument('--nodes-file',                           type=str,                   metavar='', help='nodes.dmp from NCBI Taxonomy')
+    build_group_optional.add_argument('--merged-file',                          type=str,                   metavar='', help='merged.dmp from NCBI Taxonomy')
+    # Extra
+    build_group_optional.add_argument('--verbose',                                          default=False, action='store_true', help='Verbose mode for ganon')
+    build_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
+    build_group_optional.add_argument('--taxsbp-path', type=str, default="./", help=argparse.SUPPRESS)
+    build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
+    build_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
+
+    ####################################################################################################
 
     update_parser = argparse.ArgumentParser(description='Update options', add_help=False)
-    default_update_group = update_parser.add_argument_group('general')
-    default_update_group.add_argument('-i', '--input-files', required=True, nargs="*", type=str, help='Multi-fasta[.gz] file[s]')
-    default_update_group.add_argument('-d', '--db-prefix', required=True, type=str, help='Database prefix')
-    default_update_group.add_argument('-o', '--output-db-prefix', type=str, help='Output database prefix (default: overwrite db)')
-    default_update_group.add_argument('-t', '--threads', type=int, default=1, help='set the number of subprocesses/threads to use for calculations (default: 1)')
-    ganon_update_group = update_parser.add_argument_group('ganon')
-    ganon_update_group.add_argument('--ganon-path', type=str, default='./', help='ganon binaries path. Default: ./')
-    ganon_update_group.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
-    taxsbp_update_group = update_parser.add_argument_group('taxsbp')  
-    taxsbp_update_group.add_argument('--retrieve-ncbi', default=False, action='store_true', help='Retrieve taxdump (--nodes-file, --merged-file) and TaxSBP information (--len-taxid-file) automatically from NCBI')
-    taxsbp_update_group.add_argument('--len-taxid-file', type=str, help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_update_group.add_argument('--nodes-file', type=str, help='nodes.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_update_group.add_argument('--merged-file', type=str, help='merged.dmp from NCBI Taxonomy [Mutually exclusive --retrieve-ncbi]')
-    taxsbp_update_group.add_argument('--taxsbp-path', type=str, default='./', help='TaxSBP script path. Default: ./')
+
+    # Required
+    update_group_required = update_parser.add_argument_group('required arguments')
+    update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database prefix')
+    update_group_required.add_argument('-i', '--input-files',       required=True,  type=str, nargs="*",    metavar='refs.fasta[.gz]',  help='Multi-fasta[.gz] file[s]')
+    
+    # Defaults
+    update_group_optional = update_parser.add_argument_group('optional arguments')
+    update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,               metavar='', help='Alternative output database prefix. Default: overwrite current --db-prefix')
+    #update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update complete bins, removing sequences. Input file should be complete, not only new sequences.')
+    update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,    metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
+    update_group_optional.add_argument('--len-taxid-file',                          type=str,               metavar='', help='Tab-separated file with the sequence ids, sequence length, taxonomic id and optionally the assembly accession in case of assembly level classification is chosen')
+    update_group_optional.add_argument('--nodes-file',                              type=str,               metavar='', help='nodes.dmp from NCBI Taxonomy')
+    update_group_optional.add_argument('--merged-file',                             type=str,               metavar='', help='merged.dmp from NCBI Taxonomy')
+    # Extra
+    update_group_optional.add_argument('--verbose',                                           default=False, action='store_true', help='Verbose mode for ganon')
+    update_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
+    update_group_optional.add_argument('--taxsbp-path', type=str, default="./", help=argparse.SUPPRESS)
+    update_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
+    update_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
+
+    ####################################################################################################
 
     classify_parser = argparse.ArgumentParser(description='Classification options', add_help=False)
-    classify_group_required = classify_parser.add_argument_group('required arguments')
+    
     # Required
+    classify_group_required = classify_parser.add_argument_group('required arguments')
     classify_group_required.add_argument('-d', '--db-prefix',    required=True, type=str,              nargs="*", metavar='db_prefix', help='Database prefix[es]')
     classify_group_required.add_argument('-r', '--reads',        required=True, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
+
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
     classify_group_optional.add_argument('-c', '--db-hierarchy',                type=str, default=["1"], nargs="*", metavar='int', help='Hierachy definition, one for each database input. Can also be string, but input will be sorted (e.g. 1 1 2 3). Default: 1')
@@ -59,14 +78,15 @@ def main():
     classify_group_optional.add_argument('-o', '--output-file',                 type=str, default="",             metavar='', help='Output file name. Empty to print to STDOUT. Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
-    classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
-    classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
-    # Flags
     #classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
     classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
     # Extra
     classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
-    classify_group_optional.add_argument('--ganon-path',                        type=str, default='./',            metavar='str', help='Path to ganon-classify binary file. Default: ./')
+    classify_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
+    classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
+    classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
+
+    ####################################################################################################
 
     parser = argparse.ArgumentParser(prog='ganon', description='ganon', conflict_handler='resolve')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version, help="Show program's version number and exit.")
@@ -90,10 +110,15 @@ def main():
     tx_total = time.time()
 
     # Validations
+    if not os.path.isfile(args.ganon_path + "/ganon-classify") or not os.path.isfile(args.ganon_path + "/ganon-build"):
+        print("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path")
+        return 0
+
+    if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
+        print("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path")
+        return 0
+
     if args.which=='build' or args.which=='update':
-        if not args.retrieve_ncbi and (not args.len_taxid_file or not args.nodes_file or not args.merged_file):
-            sys.stderr.write("--len-taxid-file --nodes-file --merged-file should be provided or --retrieve-ncbi activated")
-            return 1
         db_prefix = args.db_prefix
         output_folder = os.path.abspath(os.path.dirname(db_prefix)) + "/"
         tmp_output_folder = db_prefix + "_tmp/"
@@ -116,11 +141,11 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} -m {3} -l {4} -r {5} {6} {7} {8}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
                             args.taxsbp_path,
                             taxsbp_input_file,
                             taxsbp_nodes_file,
-                            taxspb_merged_file,
+                            "-m " + taxspb_merged_file if taxspb_merged_file else "",
                             args.bin_length,
                             "assembly" if use_assembly else args.rank,
                             "-z assembly" if use_assembly else "",
@@ -150,7 +175,7 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Building index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9}'.format(
+        run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9} {10} {11}'.format(
                                         args.ganon_path,
                                         acc_bin_file,
                                         "--filter-size-bits" if args.max_fp else "--filter-size",
@@ -160,6 +185,8 @@ def main():
                                         args.threads,
                                         db_prefix_filter,
                                         "--verbose" if args.verbose else "",
+                                        "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
+                                        "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
@@ -206,12 +233,12 @@ def main():
         taxsbp_input_file, taxsbp_nodes_file, taxspb_merged_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -u {1} -f {2} -n {3} -m {4} -l {5} -r {6} {7} {8} {9}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
                             args.taxsbp_path,
                             db_prefix_bins,
                             taxsbp_input_file,
                             taxsbp_nodes_file,
-                            taxspb_merged_file,
+                            "-m " + taxspb_merged_file if taxspb_merged_file else "",
                             bin_length,
                             "assembly" if use_assembly else rank,
                             "-z assembly" if use_assembly else "",
@@ -226,13 +253,15 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Updating index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5} {6}'.format(
+        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5} {6} {7} {8}'.format(
                                         args.ganon_path,
                                         db_prefix_filter,
                                         acc_bin_file,
                                         tmp_db_prefix_filter,
                                         args.threads,
                                         "--verbose" if args.verbose else "",
+                                        "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
+                                        "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
@@ -418,11 +447,14 @@ def prepare_taxsbp_files(args, tmp_output_folder, use_assembly):
     os.makedirs(tmp_output_folder)
     
     # Prepare TaxSBP files
-    if args.retrieve_ncbi:
+    if not args.len_taxid_file:
         taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, args.taxsbp_path, use_assembly)
-        taxsbp_nodes_file, taxspb_merged_file = get_taxdump(tmp_output_folder)
     else:
         taxsbp_input_file = args.len_taxid_file
+
+    if not args.nodes_file:
+        taxsbp_nodes_file, taxspb_merged_file = get_taxdump(tmp_output_folder)
+    else:
         taxsbp_nodes_file = args.nodes_file 
         taxspb_merged_file = args.merged_file
 
