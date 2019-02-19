@@ -92,10 +92,10 @@ def main():
     parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version, help="Show program's version number and exit.")
     subparsers = parser.add_subparsers()
     
-    build = subparsers.add_parser('build', help='Build bloom filter and database', parents=[build_parser])
+    build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
     build.set_defaults(which='build')
 
-    update = subparsers.add_parser('update', help='Update bloom filter and databse', parents=[update_parser])
+    update = subparsers.add_parser('update', help='Update ganon database', parents=[update_parser])
     update.set_defaults(which='update')
 
     classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
@@ -113,8 +113,6 @@ def main():
     if not os.path.isfile(args.ganon_path + "/ganon-classify") or not os.path.isfile(args.ganon_path + "/ganon-build"):
         print("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path")
         return 0
-
-
 
     if args.which=='build' or args.which=='update':
         db_prefix = args.db_prefix
@@ -362,7 +360,7 @@ def main():
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         sys.stderr.write("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -u {5} -t {6} -f {7} {8} {9} {10} {11} {12}'.format(
+        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13}'.format(
                                         args.ganon_path,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in dbs]),
                                         " ".join(["-g "+db_prefix+".map" for db_prefix in dbs]),
@@ -371,78 +369,61 @@ def main():
                                         ",".join([str(meu) for meu in args.max_error_unique]),
                                         args.threads,
                                         args.offset,
+                                        args.output_file,
                                         " -n " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         "--verbose" if args.verbose else "",
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
-        p = subprocess.Popen(shlex.split(run_ganon_classify), shell=False, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
-        # redirect output
-        if args.output_file: sys.stdout = open(args.output_file,'w')
-        
-        if args.skip_lca:
-            done=False
-            while not done:
+        stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
+
+        if not args.skip_lca:
+            with open(args.output_file) as file:
                 try:
-                    readid, group, kmer_count = read_classified_entry(p)
-                    print(readid, group, merged_groupTaxid[group], abs(int(kmer_count)), sep="\t")
+                    old_readid, cl, kc = file.readline().rstrip().split("\t")
+                    assignments = set([cl])
+                    max_kmer_count = int(kc)
+                    done = False
                 except (ValueError, IndexError): # last line -> empty, no reads classified
-                    done=True
-        else:
-            # read first line
-            taxids = set()
-            kmer_counts = set()
-            try:
-                old_readid, old_group, kmer_count = read_classified_entry(p)
-                taxids.add(merged_groupTaxid[old_group])
-                kmer_counts.add(int(kmer_count))
-                count=1
-                done=False
-            except (ValueError, IndexError): # last line -> empty, no reads classified
-                done=True # do not start
+                    done=True # do not start
 
-            while not done:
-                try:
-                    readid, group, kmer_count = read_classified_entry(p)
-                    taxid = merged_groupTaxid[group]
-                except (ValueError, IndexError): # last line -> empty
-                    readid=group="" # clear variable to print last entry on this iteration
-                    taxid=kmer_count=0
-                    done=True # exit on next iteration
+                while not done:
+                    try:
+                        readid, cl, kc = file.readline().rstrip().split("\t")
+                    except (ValueError, IndexError): # last line -> empty
+                        readid="" # clear variable to print last entry on this iteration
+                        done=True # exit on next iteration
+                        
+                    # next read matches, print old
+                    if readid != old_readid: 
+                        print_classified_read(old_readid, assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly)
+                        assignments.clear()
+                        max_kmer_count=0
                 
-                # next read matches, print old
-                if readid != old_readid: 
-                    if count==1: #unique match
-                        kc = kmer_counts.pop()
-                        tx = taxids.pop()
-                        # negative means it was filtered by unique matches in ganon-classify
-                        if kc<0: 
-                            old_group = "0"
-                            if not use_assembly: tx = merged_filtered_nodes[tx] #If classifying at taxonomic level, get parent
-                        print(old_readid, old_group, tx, abs(kc), sep="\t")
-                    elif len(taxids)==1: # same taxid (but different group) for the matches, manual LCA to save time
-                        print(old_readid, "0", taxids.pop(), max(kmer_counts), sep="\t")
-                    else: #LCA for multiple matches
-                        tmp_lca = L(taxids.pop(),taxids.pop())
-                        for i in range(len(taxids)): tmp_lca = L(tmp_lca, taxids.pop())
-                        print(old_readid, "0", tmp_lca, max(kmer_counts), sep="\t")
-                    kmer_counts.clear()
-                    count=0
-                
-                taxids.add(taxid)
-                kmer_counts.add(int(kmer_count))
-                count+=1
-                old_readid = readid
-                old_group = group
-
-        # print stderr
-        sys.stderr.write("".join([l for l in p.stderr.readlines()]))
+                    if not done: 
+                        assignments.add(cl)
+                        kc = int(kc)
+                        max_kmer_count = kc if abs(kc) > max_kmer_count else max_kmer_count # account for unique filtering with abs
+                        old_readid = readid
 
     sys.stderr.write("Total elapsed time: " + str(time.time() - tx_total) + " seconds.\n")
     sys.stdout.close()
 
-
+def print_classified_read(readid, assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly):
+    taxids = set(map(lambda x: merged_groupTaxid[x], assignments))
+    if len(assignments)==1: # unique match or same taxid (but one or more assemblies) 
+        taxid = taxids.pop()
+        # negative means it was filtered by unique matches in ganon-classify 
+        # only when not assembly (taxid was already obtained for assemblies with merged_groupTaxid)    
+        if not use_assembly and max_kmer_count<0: 
+            taxid = merged_filtered_nodes[taxid] # Classifying at taxonomic level, get parent taxid
+        print(readid, taxid, max_kmer_count, sep="\t")
+    else: #LCA for multiple matches
+        tmp_lca = L(taxids.pop(),taxids.pop())
+        for i in range(len(taxids)): tmp_lca = L(tmp_lca, taxids.pop())
+        print(readid, tmp_lca, max_kmer_count, sep="\t")
+    # all taxids should be poped here
+             
 def prepare_taxsbp_files(args, tmp_output_folder, use_assembly):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
@@ -461,9 +442,6 @@ def prepare_taxsbp_files(args, tmp_output_folder, use_assembly):
         taxspb_merged_file = args.merged_file
 
     return taxsbp_input_file, taxsbp_nodes_file, taxspb_merged_file
-
-def read_classified_entry(p):
-    if p: return p.stdout.readline().rstrip().split("\t")
 
 def run(cmd, output_file=None, print_stderr=False):
     try:
@@ -579,7 +557,7 @@ def parse_db_prefix_bins(file, use_assembly):
             else:
                 acc, length, taxid, binno = line.split("\t")
                 group = taxid # taxid is the classification group
-            groupTaxid[group] = int(taxid)
+            groupTaxid[group] = int(taxid) # this is done in case multiple databases are used, some with assembly others without
     return groupTaxid
 
 def parse_db_prefix_nodes(file):
