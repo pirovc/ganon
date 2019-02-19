@@ -114,9 +114,7 @@ def main():
         print("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path")
         return 0
 
-    if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
-        print("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path")
-        return 0
+
 
     if args.which=='build' or args.which=='update':
         db_prefix = args.db_prefix
@@ -126,6 +124,10 @@ def main():
         db_prefix_nodes = db_prefix + ".nodes"
         db_prefix_map = db_prefix + ".map"
         db_prefix_bins = db_prefix + ".bins"
+        
+        if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
+            print("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path")
+            return 0
 
     if args.which=='build':
         # if -1 set default, if not set value (0 deactivated)
