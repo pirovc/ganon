@@ -434,7 +434,7 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_g
         # negative means it was filtered by unique matches in ganon-classify 
         # only when not assembly (taxid was already obtained for assemblies with merged_groupTaxid)    
         if not use_assembly and max_kmer_count<0 : 
-            return merged_filtered_nodes[assignments.pop()] # Classifying at taxonomic level, get parent taxid
+            return merged_filtered_nodes[int(assignments.pop())] # Classifying at taxonomic level, get parent taxid
         else:
             return assignments.pop()
     else:
