@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 def main():
     version = '1.0'
