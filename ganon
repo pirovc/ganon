@@ -75,7 +75,7 @@ def main():
     classify_group_optional.add_argument('-e', '--max-error',                   type=int, default=[3],   nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0). Default: 3')
     classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')
     classify_group_optional.add_argument('-f', '--offset',                      type=int, default=1,              metavar='', help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1')
-    classify_group_optional.add_argument('-o', '--output-file',                 type=str, default="",             metavar='', help='Output file name. Empty to print to STDOUT. Default: ""')
+    classify_group_optional.add_argument('-o', '--output-file-prefix',          type=str, default="",             metavar='', help='Output file name prefix. .out for complete results and .lca for LCA results. Empty to print to STDOUT. Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     #classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
@@ -359,6 +359,9 @@ def main():
             L = LCA(merged_filtered_nodes)
             sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
+
+        ganon_classify_output_file = "ganon-classify-tmp.out" if not args.output_file_prefix else args.output_file_prefix+".out"
+        tx = time.time()
         sys.stderr.write("Classifying reads (ganon-classify)... \n")
         run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13}'.format(
                                         args.ganon_path,
@@ -369,16 +372,24 @@ def main():
                                         ",".join([str(meu) for meu in args.max_error_unique]),
                                         args.threads,
                                         args.offset,
-                                        args.output_file,
-                                        " -n " + args.output_unclassified_file if args.output_unclassified_file else "",
+                                        ganon_classify_output_file,
+                                        "-n " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         "--verbose" if args.verbose else "",
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
         stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
+        sys.stderr.write("\nDone. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
         if not args.skip_lca:
-            with open(args.output_file) as file:
+
+            tx = time.time()
+            sys.stderr.write("Generating LCA results... ")
+
+            # redirect output for lca
+            if args.output_file_prefix: sys.stdout = open(args.output_file_prefix+".lca",'w')
+
+            with open(ganon_classify_output_file) as file:
                 try:
                     old_readid, cl, kc = file.readline().rstrip().split("\t")
                     assignments = set([cl])
@@ -396,7 +407,8 @@ def main():
                         
                     # next read matches, print old
                     if readid != old_readid: 
-                        print_classified_read(old_readid, assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly)
+                        taxid_lca = get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly)
+                        print(old_readid, taxid_lca, max_kmer_count, sep="\t")
                         assignments.clear()
                         max_kmer_count=0
                 
@@ -405,25 +417,32 @@ def main():
                         kc = int(kc)
                         max_kmer_count = kc if abs(kc) > max_kmer_count else max_kmer_count # account for unique filtering with abs
                         old_readid = readid
+            sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
+
+        # Rm file if tmp
+        if not args.output_file_prefix: os.remove(ganon_classify_output_file) 
+        sys.stdout.close()
 
     sys.stderr.write("Total elapsed time: " + str(time.time() - tx_total) + " seconds.\n")
-    sys.stdout.close()
-
-def print_classified_read(readid, assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly):
-    taxids = set(map(lambda x: merged_groupTaxid[x], assignments))
+   
+def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_groupTaxid, use_assembly):
     if len(assignments)==1: # unique match or same taxid (but one or more assemblies) 
-        taxid = taxids.pop()
         # negative means it was filtered by unique matches in ganon-classify 
         # only when not assembly (taxid was already obtained for assemblies with merged_groupTaxid)    
-        if not use_assembly and max_kmer_count<0: 
-            taxid = merged_filtered_nodes[taxid] # Classifying at taxonomic level, get parent taxid
-        print(readid, taxid, max_kmer_count, sep="\t")
-    else: #LCA for multiple matches
-        tmp_lca = L(taxids.pop(),taxids.pop())
-        for i in range(len(taxids)): tmp_lca = L(tmp_lca, taxids.pop())
-        print(readid, tmp_lca, max_kmer_count, sep="\t")
-    # all taxids should be poped here
-             
+        if not use_assembly and max_kmer_count<0 : 
+            return merged_filtered_nodes[assignments.pop()] # Classifying at taxonomic level, get parent taxid
+        else:
+            return assignments.pop()
+    else:
+        if use_assembly: # Recover taxids from assignments only when using assembly classification
+            assignments = set(map(lambda x: merged_groupTaxid[x], assignments)) 
+            if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
+                return assignments.pop()
+
+        taxid_lca = L(assignments.pop(),assignments.pop())
+        for i in range(len(assignments)): taxid_lca = L(taxid_lca, assignments.pop())
+        return taxid_lca
+
 def prepare_taxsbp_files(args, tmp_output_folder, use_assembly):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
