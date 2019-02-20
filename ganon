@@ -446,7 +446,7 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_g
         taxid_lca = L(assignments.pop(),assignments.pop())
         for i in range(len(assignments)): 
             taxid_lca = L(taxid_lca, assignments.pop())
-            if merged_filtered_nodes[taxid_lca] = 0: break #if lca is already root node, no point in continue
+            if merged_filtered_nodes[taxid_lca] == 0: break #if lca is already root node, no point in continue
 
         return taxid_lca
 
