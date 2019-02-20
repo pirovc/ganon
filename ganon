@@ -75,7 +75,7 @@ def main():
     classify_group_optional.add_argument('-e', '--max-error',                   type=int, default=[3],   nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0). Default: 3')
     classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')
     classify_group_optional.add_argument('-f', '--offset',                      type=int, default=1,              metavar='', help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1')
-    classify_group_optional.add_argument('-o', '--output-file-prefix',          type=str, default="",             metavar='', help='Output file name prefix. .out for complete results and .lca for LCA results. Empty to print to STDOUT. Default: ""')
+    classify_group_optional.add_argument('-o', '--output-file-prefix',          type=str, default="",             metavar='', help='Output file name prefix. .out for complete results and .lca for LCA results. Empty to print to STDOUT (only with lca). Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     #classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
@@ -111,8 +111,8 @@ def main():
 
     # Validations
     if not os.path.isfile(args.ganon_path + "/ganon-classify") or not os.path.isfile(args.ganon_path + "/ganon-build"):
-        print("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path")
-        return 0
+        sys.stderr.write("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path\n")
+        return 1
 
     if args.which=='build' or args.which=='update':
         db_prefix = args.db_prefix
@@ -124,16 +124,20 @@ def main():
         db_prefix_bins = db_prefix + ".bins"
         
         if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
-            print("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path")
-            return 0
+            sys.stderr.write("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path\n")
+            return 1
 
     if args.which=='build':
         # if -1 set default, if not set value (0 deactivated)
         fragment_length = args.bin_length - args.overlap_length if args.fragment_length==-1 else args.fragment_length - args.overlap_length 
         if args.overlap_length > fragment_length:
-            sys.stderr.write("--overlap_length cannot be bigger than --fragment_length")
+            sys.stderr.write("--overlap_length cannot be bigger than --fragment_length\n")
             return 1
 
+    if args.which=='classify':
+        if args.skip_lca and not args.output_file_prefix:
+            sys.stderr.write("--output-file-prefix is mandatory without LCA\n")
+            return 1
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
@@ -434,13 +438,13 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_g
         else:
             return assignments.pop()
     else:
-        if use_assembly: # Recover taxids from assignments only when using assembly classification
-            assignments = set(map(lambda x: merged_groupTaxid[x], assignments)) 
-            if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
-                return assignments.pop()
+        # Recover taxids from assignments (assembly) or convert them to int (taxid) on the lookup
+        assignments = set(map(lambda x: merged_groupTaxid[x], assignments)) 
+        if use_assembly and len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
+            return assignments.pop()
 
         taxid_lca = L(assignments.pop(),assignments.pop())
-        for i in range(len(assignments)): taxid_lca = L(taxid_lca, assignments.pop())
+        for i in range(len(assignments)): taxid_lca = L(taxid_lca, assignments.pop())            
         return taxid_lca
 
 def prepare_taxsbp_files(args, tmp_output_folder, use_assembly):
