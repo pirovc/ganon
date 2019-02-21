@@ -421,6 +421,7 @@ def main():
                 	os.remove(ganon_classify_output_file+h_prefix) 
                	else: # close open file if not
                	    sys.stdout.close()
+            sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
     sys.stderr.write("Total elapsed time: " + str(time.time() - tx_total) + " seconds.\n")
    
