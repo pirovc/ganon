@@ -426,11 +426,9 @@ def main():
     sys.stderr.write("Total elapsed time: " + str(time.time() - tx_total) + " seconds.\n")
    
 def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, merged_group_taxid, use_assembly):
-    if len(assignments)==1: # unique match or same taxid (but one or more assemblies) 
-        # negative means it was filtered by unique matches in ganon-classify 
-        # only when not assembly (taxid was already obtained for assemblies with merged_group_taxid)    
-        if not use_assembly and max_kmer_count<0 : 
-            return merged_filtered_nodes[int(assignments.pop())] # Classifying at taxonomic level, get parent taxid
+    if len(assignments)==1: # unique match or same taxid (but one or more assemblies)  
+        if max_kmer_count<0: # unique matches in ganon-classify, get leaf taxid (assembly) or parent taxid
+            return merged_group_taxid[assignments.pop()] if use_assembly else merged_filtered_nodes[int(assignments.pop())]
         else:
             return assignments.pop()
     else:
