@@ -23,12 +23,17 @@ namespace GanonClassify
 namespace detail
 {
 
-
+#ifdef GANON_OFFSET
 // Filter is created with seqan::Offset<1>
 // when using seqan::count it acts like seqan::Normal if offset=1
 typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
                                  seqan::BDConfig< seqan::Dna5, seqan::Offset< 1 >, seqan::Uncompressed > >
     Tfilter;
+#else
+typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
+                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
+    Tfilter;
+#endif
 
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
     reversedRead;

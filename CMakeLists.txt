@@ -22,6 +22,7 @@ if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
 endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
+option( GANON_OFFSET "Enable offset for ganon-classify" OFF )
 
 # -----------------------------------------------------------------------------
 # build types
@@ -75,6 +76,12 @@ endif()
 # seqan specific flags:
 
 add_compile_options( -static -msse4.2 -march=native )
+
+# Enable offset:
+
+if( GANON_OFFSET )
+	add_compile_options(-DGANON_OFFSET) 
+endif()
 
 # -----------------------------------------------------------------------------
 # dependencies and 3rd party libraries
