@@ -45,6 +45,7 @@ SCENARIO( "Classify", "[ganon-classify]" )
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
 
+#ifdef GANON_OFFSET
 SCENARIO( "Classify with offset", "[ganon-classify]" )
 {
     auto cfg                         = config_classify::defaultConfig();
@@ -57,6 +58,7 @@ SCENARIO( "Classify with offset", "[ganon-classify]" )
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
+#endif
 
 SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
 {
@@ -85,6 +87,7 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
 
+#ifdef GANON_OFFSET
 SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
 {
     auto cfg               = config_classify::defaultConfig();
@@ -100,6 +103,7 @@ SCENARIO( "Classify with offset and different max. unique errors allowed", "[gan
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
+#endif
 
 SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
 {
