@@ -481,14 +481,6 @@ def run(cmd, output_file=None, print_stderr=False):
         sys.stderr.write("Error: "+stderr+"\n")
         raise
 
-def fasta_header_generator(file_handler):
-    name = ''
-    for line in file_handler:
-        if line[0] == '>':
-            name = line.rstrip()[1:].split(' ', 1)[0]  # omitting the leading > until first space
-            yield name
-
-
 def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length):
     bins = open(db_prefix_bins,'w')
     acc_bin = open(acc_bin_file,'w') #.temp for build
@@ -538,13 +530,8 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
     tx = time.time()
     accessions_file = tmp_output_folder + 'accessions.txt'
     sys.stderr.write("Extracting accessions... ")
-    ids = []
-    for file in files:
-        handler = gzip.open(file, 'rt') if file.endswith(".gz") else open(file,'r')
-        ids.extend([header for header in fasta_header_generator(handler)])
-    f=open(accessions_file,'w')
-    f.write('\n'.join(ids))
-    f.close()
+    run_get_header = 'zgrep -hoP "(?<=^>)[^ ]+" {0}'.format(" ".join(files))
+    stdout, stderr, errcode = run(run_get_header, output_file=accessions_file, print_stderr=False)
     sys.stderr.write("Done. Elapsed time: " + str(time.time() - tx) + " seconds.\n")
 
     tx = time.time()
