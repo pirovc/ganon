@@ -33,6 +33,26 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+## Output
+
+ganon-classify:
+
+.out (all matches)
+
+	readid <tab> assignment <tab> k-mer count
+
+.lca (one match / read)
+	
+	readid <tab> lca assignment <tab> max k-mer count
+
+.rep (detailed report for lca matches)
+	
+	lca assignment <tab> # reads assigned (lca) <tab> % reads assigned <tab> # reads assigned (total) <tab> # reads uniquely assigned <tab> sum of k-mers matched <tab> taxonomic rank <tab> name
+
+.tre (cummulative counts on the taxonomy tree)
+	
+	rank <tab> lca assignment <tab> lineage <tab> name <tab> cummulative # reads assigned <tab> cummulative % reads assigned
+
 ## Usage
 
 ```shh

@@ -82,7 +82,7 @@ def main():
     classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
     classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
     classify_group_optional.add_argument('-p', '--skip-reports',                default=False, action='store_true',               help='Skip reports')
-    classify_group_optional.add_argument('-k', '--ranks',                       type=str, default=[],   nargs="*",                help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom, phylum, class, order, family, genus, species, species+, assembly')
+    classify_group_optional.add_argument('-k', '--ranks',                       type=str, default=[],   nargs="*",                help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     # Extra
     classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
@@ -461,12 +461,12 @@ def main():
                 if not args.skip_reports: 
                     with open(args.output_file_prefix+".rep"+h_prefix, 'w') as rfile:
                         rfile.write("unclassified" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) +"\t"+ "0" +"\t"+ "0" +"\t"+ "0" +"\t"+ "-" +"\t"+ "-" + "\n")
-                        for assignment in rep.keys():
+                        for assignment in sorted(rep, key=lambda k: rep[k]['count'], reverse=True):
                             rfile.write(assignment +"\t"+ str(rep[assignment]['count']) +"\t"+ str("%.5f" % ((rep[assignment]['count']/total_reads)*100)) +"\t"+ str(rep[assignment]['assignments']) +"\t"+ str(rep[assignment]['unique']) +"\t"+ str(rep[assignment]['sum_kmer_count']) +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][2] +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][1] + "\n")
                 reports[hierarchy_name] = rep
 
             if not args.skip_reports:
-                final_report_file = args.output_file_prefix+".report"
+                final_report_file = args.output_file_prefix+".tre"
                 print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
 
             sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
