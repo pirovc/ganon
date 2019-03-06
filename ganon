@@ -82,7 +82,7 @@ def main():
     classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
     classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
     classify_group_optional.add_argument('-p', '--skip-reports',                default=False, action='store_true',               help='Skip reports')
-    classify_group_optional.add_argument('-a', '--all-ranks',                   default=False, action='store_true',               help='Use all ranks for final report. Use fixed ranks by default: superkingdom, phylum, class, order, family, genus, species, species+, assembly')
+    classify_group_optional.add_argument('-k', '--ranks',                       type=str, default=[],   nargs="*",                help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom, phylum, class, order, family, genus, species, species+, assembly')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     # Extra
     classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
@@ -435,7 +435,7 @@ def main():
                             if not args.skip_reports:
                                 rep[taxid_lca]['count'] += 1
                                 rep[taxid_lca]['assignments'] += len_assignments
-                                if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1
+                                if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
                                 rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
 
                             #assignments.clear() -> should be empty here
@@ -467,7 +467,7 @@ def main():
 
             if not args.skip_reports:
                 final_report_file = args.output_file_prefix+".report"
-                print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.all_ranks)
+                print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
 
             sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     sys.stderr.write("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
@@ -649,7 +649,7 @@ def taxid_rank_up_to(taxid, filtered_nodes, fixed_ranks):
         while taxid!="0":
             if(filtered_nodes[taxid][2] in fixed_ranks):
                 #everything below species (not being assembly) is counted as species+
-                if original_rank!="species" and original_rank!="assembly" and filtered_nodes[taxid][2]=="species":
+                if "species+" in fixed_ranks and original_rank!="species" and original_rank!="assembly" and filtered_nodes[taxid][2]=="species":
                     return original_taxid, "species+"
                 else:
                     return taxid, filtered_nodes[taxid][2]
@@ -670,10 +670,18 @@ def parse_db_prefix_nodes(file):
     filtered_nodes = info['filtered_nodes']
     return kmer_size, hash_functions, number_of_bins, rank, bin_length, fragment_length, overlap_length, filtered_nodes
 
-def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, all_ranks):
+def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, ranks):
 
-    fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
-    
+    if not ranks:  
+        all_ranks = False
+        fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
+    elif ranks[0]=="all":
+        all_ranks = True  
+        fixed_ranks = []
+    else:
+        all_ranks = False
+        fixed_ranks = ['root'] + ranks
+
     # merge nodes
     all_filtered_nodes = {}
     for m in merged_filtered_nodes.values():
@@ -705,20 +713,31 @@ def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, fin
             else:
                 t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
 
-    # build lineage
+    # build lineage after all entries were defined
     lineage = {}
     for assignment in final_rep.keys():
-        t = assignment
         lineage[assignment]=[]
-        while t!="0":
-            lineage[assignment].insert(0,t)
-            if all_ranks:
+        if all_ranks:
+            t=assignment
+            while t!="0":
+                lineage[assignment].insert(0,t)
                 t = all_filtered_nodes[t][0]
-            else:
-                t, _ = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
+        else:
+            t, r = taxid_rank_up_to(assignment, all_filtered_nodes, fixed_ranks)
+            max_rank_idx = fixed_ranks.index(r) # get index of current rank
+            while t!="0":
+                # Add empty || if fixed rank is missing
+                for i in range(max_rank_idx-fixed_ranks.index(r)):
+                    lineage[assignment].insert(0,"")
+                    max_rank_idx-=1
+
+                lineage[assignment].insert(0,t)
+                max_rank_idx-=1
+
+                t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
 
     with open(final_report_file, 'w') as frfile:
-        frfile.write("unclassified" +"\t"+ "0" +"\t"+ "0" +"\t"+ "-" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) + "\n")
+        frfile.write("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) + "\n")
         if all_ranks:
             for assignment in sorted(lineage, key=lambda k: len(lineage[k]), reverse=False):
                 frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
