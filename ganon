@@ -733,18 +733,16 @@ def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, fin
 
                 lineage[assignment].insert(0,t)
                 max_rank_idx-=1
-
                 t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
 
     with open(final_report_file, 'w') as frfile:
         frfile.write("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) + "\n")
         if all_ranks:
-            for assignment in sorted(lineage, key=lambda k: len(lineage[k]), reverse=False):
+            for assignment in sorted(lineage, key=lineage.get):
                 frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
         else:
-            for assignment in sorted(lineage, key=lambda k: fixed_ranks.index(final_rep[k]['rank']), reverse=False):
+            for assignment in sorted(lineage, key=lambda k: (fixed_ranks.index(final_rep[k]['rank']), -final_rep[k]['count']), reverse=False):
                 frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
-
 
 if __name__ == '__main__':
     main()
