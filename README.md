@@ -38,12 +38,12 @@ make
 ### build
 
 ```shh
-./ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fna.gz     # --ganon-path build/ --taxsbp-path taxsbp/.
+./ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fasta.gz     # --ganon-path build/ --taxsbp-path taxsbp/
 ```
 
-* it may be necessary to set-up the path for the ganon binaries and taxsbp
+* it may be necessary to set-up the path for the ganon binaries `--ganon-path` and taxsbp `--taxsbp-path`
 
-* ganon will automatically retrieve taxonomic information from NCBI web services and ftp (it may take a while for many sequences). To speed-up such process it is possible to manually provide the `--len-taxid-file` which is a tab separated file containing `sequence identifiers <tab> sequence lenght <tab> taxonomic id [<tab> assembly/strain id]`
+* ganon will automatically retrieve taxonomic information from NCBI web services and ftp (it may take a while if you have too many sequences). To speed-up such process it is possible to manually provide the `--len-taxid-file` which is a tab separated file containing `sequence identifier <tab> sequence length <tab> taxonomic id [<tab> assembly/strain id]`
 
 ### classify
 
@@ -108,6 +108,12 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406    
 no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|1052684  Paenibacillus polymyxa M1                      57  57.00000
 ```
 
+### update
+
+```
+./ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files build/data/sequences/virus*.fasta.gz        # --ganon-path build/ --taxsbp-path taxsbp/
+```
+
 ## Output files
 
 ### classify
@@ -117,6 +123,8 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 all matches (one per hierarchy)
 
 	readid <tab> assignment <tab> k-mer count
+
+* a negative k-mer count work a flag to show that such read did not have the minimum amount of matches to pass the `--max-error-unique` threshold
 
 #### .lca
 
@@ -166,7 +174,7 @@ conda create -n gcc7 -c quantstack gcc-7 libgcc-7
 source activate gcc7
 ```
 
-If you are getting the following error `ganon-classify: /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version `CXXABI_1.3.11` not found` you have to set the `LD_LIBRARY_PATH`
+If you are getting the following error `ganon-classify: /usr/lib/x86_64-linux-gnu/libstdc++.so.6: version 'CXXABI_1.3.11' not found` you have to set the `LD_LIBRARY_PATH`
 
 
 ```shh
