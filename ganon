@@ -438,7 +438,7 @@ def main():
                                 if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
                                 rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
 
-                            #assignments.clear() -> should be empty here
+                            assignments.clear() # in case got re-assigned in get_lca_read
                             max_kmer_count=0
                             sum_kmer_count=0
                     
@@ -479,7 +479,7 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, use_asse
         else:
             return assignments.pop()
     else:
-        if use_assembly: # get taxids from assembly (could be done on the LCA, but is done here for speed-up)
+        if use_assembly: # get taxids from assembly (reduce number of entries, could be done on the LCA, but is done here for speed-up)
             assignments = set(map(lambda x: merged_filtered_nodes[x][0], assignments))  # Recover taxids from assignments (assembly)
             if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
                 return assignments.pop()
