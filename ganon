@@ -155,7 +155,7 @@ def main():
 
         tx = time.time()
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
                             args.taxsbp_path,
                             taxsbp_input_file,
                             ncbi_nodes_file,
@@ -240,7 +240,7 @@ def main():
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py cluster -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
+        run_taxsbp_cmd = 'python3 {0}TaxSBP.py -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
                             args.taxsbp_path,
                             db_prefix_bins,
                             taxsbp_input_file,
