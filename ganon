@@ -4,7 +4,7 @@ import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, mat
 from collections import defaultdict
 
 def main():
-    version = '1.0'
+    version = '0.1.0'
 
     ####################################################################################################
 
@@ -93,7 +93,7 @@ def main():
     ####################################################################################################
 
     parser = argparse.ArgumentParser(prog='ganon', description='ganon', conflict_handler='resolve')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + version, help="Show program's version number and exit.")
+    parser.add_argument('-v', '--version', action='version', version='version: %(prog)s ' + version, help="Show program's version number and exit.")
     subparsers = parser.add_subparsers()
     
     build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
