@@ -115,7 +115,7 @@ def main():
 
     # Validations
     if not os.path.isfile(args.ganon_path + "/ganon-classify") or not os.path.isfile(args.ganon_path + "/ganon-build"):
-        sys.stderr.write("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path\n")
+        print_log("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path\n")
         return 1
 
     if args.which=='build' or args.which=='update':
@@ -128,7 +128,7 @@ def main():
         db_prefix_bins = db_prefix + ".bins"
         
         if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
-            sys.stderr.write("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path\n")
+            print_log("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path\n")
             return 1
 
     if args.which=='build':
@@ -141,12 +141,12 @@ def main():
             fragment_length = args.fragment_length - args.overlap_length 
 
         if fragment_length and args.overlap_length > fragment_length:
-            sys.stderr.write("--overlap_length cannot be bigger than --fragment_length\n")
+            print_log("--overlap_length cannot be bigger than --fragment_length\n")
             return 1
 
     if args.which=='classify':
         if args.skip_lca and not args.output_file_prefix:
-            sys.stderr.write("--output-file-prefix is mandatory without LCA\n")
+            print_log("--output-file-prefix is mandatory without LCA\n")
             return 1
 
     if args.which=='build':     
@@ -154,7 +154,7 @@ def main():
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         tx = time.time()
-        sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
+        print_log("Running taxonomic clustering (TaxSBP.py)... \n")
         run_taxsbp_cmd = 'python3 {0}TaxSBP.py -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
                             args.taxsbp_path,
                             taxsbp_input_file,
@@ -168,12 +168,12 @@ def main():
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         actual_number_of_bins, unique_taxids, max_length_bin, group_taxid = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
-        sys.stderr.write(str(actual_number_of_bins) + " bins created. ")
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(str(actual_number_of_bins) + " bins created. ")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # aproximate number of unique k-mers by just considering that they are all unique
         max_kmer_count = max_length_bin-args.kmer_size+1
-        sys.stderr.write("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
+        print_log("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
         # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
         optimal_number_of_bins = math.ceil(actual_number_of_bins/64)*64
 
@@ -181,14 +181,14 @@ def main():
         MBinBits = 8388608
         if not args.bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
-            sys.stderr.write("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
+            print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
         else:
             bin_size_bits = math.ceil((args.bloom_size * MBinBits)/optimal_number_of_bins);
             estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
-            sys.stderr.write("Bloom filter calculated max. fp with size=" + str(args.bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
+            print_log("Bloom filter calculated max. fp with size=" + str(args.bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
 
         tx = time.time()
-        sys.stderr.write("Building index (ganon-build)... \n")
+        print_log("Building index (ganon-build)... \n")
         run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9} {10} {11}'.format(
                                         args.ganon_path,
                                         acc_bin_file,
@@ -203,10 +203,10 @@ def main():
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
-        sys.stderr.write("Building database files... ")
+        print_log("Building database files... ")
 
         info = {'kmer_size':args.kmer_size, 
                 'hash_functions': args.hash_functions, 
@@ -222,7 +222,7 @@ def main():
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
 
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
         
     elif args.which=='update':  
@@ -239,7 +239,7 @@ def main():
 
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
-        sys.stderr.write("Running taxonomic clustering (TaxSBP.py)... \n")
+        print_log("Running taxonomic clustering (TaxSBP.py)... \n")
         run_taxsbp_cmd = 'python3 {0}TaxSBP.py -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
                             args.taxsbp_path,
                             db_prefix_bins,
@@ -255,11 +255,11 @@ def main():
     
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         updated_bins, unique_taxids, _, group_taxid = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly, fragment_length)
-        sys.stderr.write(str(updated_bins) + " bins updated. ")
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(str(updated_bins) + " bins updated. ")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
-        sys.stderr.write("Updating index (ganon-build)... \n")
+        print_log("Updating index (ganon-build)... \n")
         run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5} {6} {7} {8}'.format(
                                         args.ganon_path,
                                         db_prefix_filter,
@@ -271,10 +271,10 @@ def main():
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join([file for file in args.input_files]))
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
-        sys.stderr.write("Updating database files ... ")
+        print_log("Updating database files ... ")
 
         # generate new nodes and names
         new_filtered_nodes = build_filtered_nodes(unique_taxids, group_taxid, ncbi_nodes_file, ncbi_names_file, use_assembly)
@@ -324,7 +324,7 @@ def main():
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
 
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
     elif args.which=='classify':
 
@@ -335,7 +335,7 @@ def main():
             ganon_classify_output_file = args.output_file_prefix+".out"
 
         tx = time.time()
-        sys.stderr.write("Classifying reads (ganon-classify)... \n")
+        print_log("Classifying reads (ganon-classify)... \n")
         run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} -e {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13} {14}'.format(
                                         args.ganon_path,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in args.db_prefix]),
@@ -353,11 +353,11 @@ def main():
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
         stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
-        sys.stderr.write("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         if not args.skip_lca:
             from scripts.LCA import LCA
-            sys.stderr.write("Generating LCA and reports... ")
+            print_log("Generating LCA and reports... ")
             tx = time.time()
 
             if not args.skip_reports:
@@ -399,7 +399,7 @@ def main():
                     merged_filtered_nodes[hierarchy_name] = new_filtered_nodes
                     if not args.skip_reports:
                         args.skip_reports=True
-                        sys.stderr.write("\n\n ------- \n It was not possible to generate reports because you are using an outdate database version \n Please re-create your indices with this version to be able to generate reports \n ------- \n\n")
+                        print_log("\n\n ------- \n It was not possible to generate reports because you are using an outdate database version \n Please re-create your indices with this version to be able to generate reports \n ------- \n\n")
                 #### to remove - compability with older dbs ###
 
                 # pre build LCA with used nodes
@@ -452,9 +452,9 @@ def main():
                     
                 # Rm file if tmp
                 if not args.output_file_prefix: 
-                	os.remove(ganon_classify_output_file+h_prefix) 
-               	else: # close open file if not
-               	    sys.stdout.close()
+                    os.remove(ganon_classify_output_file+h_prefix) 
+                else: # close open file if not
+                    sys.stdout.close()
                     sys.stdout = sys.__stdout__ #return to stdout
 
                 # print single report file
@@ -469,8 +469,8 @@ def main():
                 final_report_file = args.output_file_prefix+".tre"
                 print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
 
-            sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-    sys.stderr.write("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+    print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
    
 def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, use_assembly):
     if len(assignments)==1: # unique match or same taxid (but one or more assemblies)  
@@ -520,15 +520,15 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         stdout, stderr = process.communicate() # wait for the process to terminate
         errcode = process.returncode
         if errcode!=0: raise Exception()
-        if print_stderr: sys.stderr.write(stderr)
+        if print_stderr: print_log(stderr)
         return stdout, stderr, errcode
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
-        sys.stderr.write('The following command failed to execute:\n'+cmd)
-        sys.stderr.write(str(e)+"\n")
-        sys.stderr.write("Errorcode: "+str(errcode)+"\n")
-        sys.stderr.write("Error: "+stderr+"\n")
+        print_log('The following command failed to execute:\n'+cmd)
+        print_log(str(e)+"\n")
+        print_log("Errorcode: "+str(errcode)+"\n")
+        print_log("Error: "+stderr+"\n")
         raise
 
 def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length):
@@ -570,74 +570,84 @@ def taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use
 
 def get_taxdump(tmp_output_folder):
     tx = time.time()
-    sys.stderr.write("Downloading taxdump... ")
+    print_log("Downloading taxdump... ")
     taxdump_file = tmp_output_folder+'taxdump.tar.gz'
     run_wget_taxdump_cmd = 'wget -qO {0} ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz'.format(taxdump_file)
     stdout, stderr, errcode = run(run_wget_taxdump_cmd, print_stderr=True)
     unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
     stdout, stderr, errcode = run(unpack_taxdump_cmd, print_stderr=True)
-    sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+    print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'merged.dmp', tmp_output_folder+'names.dmp'
 
-def get_accession2taxid(tmp_output_folder):
-    acc2txid_files = []
-    acc2txid_urls = ["ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz"]
-    #,"ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz"]
-    for acc2txid in acc2txid_urls:
-        tx = time.time()
-        sys.stderr.write("Downloading " + acc2txid + "... ")
-        acc2txid_file = tmp_output_folder + acc2txid.split("/")[-1]
-        run_wget_acc2txid_file_cmd = 'wget -qO {0} {1}'.format(acc2txid_file, acc2txid)
-        stdout, stderr, errcode = run(run_wget_acc2txid_file_cmd, print_stderr=True)
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        acc2txid_files.append(acc2txid_file)
-
-    return acc2txid_files
+def get_accession2taxid(acc2txid_url, tmp_output_folder):
+    tx = time.time()
+    acc2txid_file = acc2txid_url.split("/")[-1]
+    print_log("Downloading " + acc2txid_file + "... ")
+    acc2txid_file = tmp_output_folder + acc2txid_file
+    run_wget_acc2txid_file_cmd = 'wget -qO {0} {1}'.format(acc2txid_file, acc2txid_url)
+    stdout, stderr, errcode = run(run_wget_acc2txid_file_cmd, print_stderr=True)
+    print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+    return acc2txid_file
 
 def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
     tx = time.time()
     accessions_file = tmp_output_folder + 'accessions.txt'
-    sys.stderr.write("Extracting accessions... ")
+    print_log("Extracting accessions... ")
     run_get_header = 'zgrep -hoP "(?<=^>)[^ ]+" {0}'.format(" ".join(files))
     stdout, stderr, errcode = run(run_get_header, print_stderr=False)
-    sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
     acc_count = stdout.count('\n')
+    print_log(str(acc_count) + " accessions retrieved. ")
+    print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
-    if acc_count>1:
+    if acc_count>500000 and use_assembly==False:
+        del stdout
         import pandas as pd
-        import numpy as np
 
-        sys.stderr.write("Extracting sequence lengths... ")
-        accessions_lengths = {} # todo - do not hold in memory the accessions 3 times (run_get_header, run_get_length and taxids)
+        print_log("Extracting sequence lengths... ")
+        accessions_lengths = {}
         for file in files:
-            # todo, how to run without shell=True
+            # todo, run without shell=True
             run_get_length = "{0} | awk -F\" \" '/^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format("zcat " + file if file.endswith(".gz") else "cat " + file)
             stdout, stderr, errcode = run(run_get_length, print_stderr=False, shell=True)
             for line in stdout.rstrip().split("\n"):
                 a, l = line.split("\t")
                 accessions_lengths[a] = l
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(str(len(accessions_lengths)) + " sequence lenghts retrieved. ")
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        del stdout
 
-        #accession2taxids_files = get_accession2taxid(tmp_output_folder)
-        stdout, stderr, errcode = run("ln -s ../nucl_gb.accession2taxid.gz " + tmp_output_folder, print_stderr=True)
-        accession2taxids_files = [tmp_output_folder + "nucl_gb.accession2taxid.gz"]
-        sys.stderr.write("Extracting taxids... ")
-        accessions_taxids = []
-        for file in accession2taxids_files:
-            accessions_taxids.append(np.array(pd.read_csv(file, compression='gzip' if file.endswith(".gz") else None, sep='\t', header=None, skiprows=1, usecols=[1,2], converters={1:lambda x: x if x in accessions_lengths.keys() else np.nan}, dtype=str).dropna(how='any')))
-        
-        # Concatenate files together
-        accessions_taxids = np.concatenate(accessions_taxids, axis=0)
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log("Extracting taxids... ")
+        accessions_taxids = pd.DataFrame(columns=['acc','taxid'])
+        acc2txid_urls = ["ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
+                        "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz"]
+
+        for acc2txid_url in acc2txid_urls:
+            acc2txid_file = get_accession2taxid(acc2txid_url, tmp_output_folder)
+            #stdout, stderr, errcode = run("ln -s ../nucl_gb.accession2taxid.gz " + tmp_output_folder, print_stderr=True)
+            #acc2txid_file = tmp_output_folder + "nucl_gb.accession2taxid.gz"
+
+            tmp_accessions_taxids = pd.read_csv(acc2txid_file, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['acc','taxid'], converters={'acc':lambda x: x if x in accessions_lengths.keys() else ""}, dtype={'taxid': str})
+            tmp_accessions_taxids = tmp_accessions_taxids[tmp_accessions_taxids['acc']!=""]
+            print_log(str(tmp_accessions_taxids.shape[0]) + " entries found. ")
+            accessions_taxids = pd.concat([accessions_taxids,tmp_accessions_taxids])
+            if accessions_taxids.shape[0] == acc_count: #if already found all taxid for hte accessions (no need to parse all files)
+                break
+
+        if accessions_taxids.shape[0] < acc_count:
+            print_log("Could not retrieve taxid for " + str(acc_count - accessions_taxids.shape[0]) + " accessions")
+
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # write file
+        print_log("Writing acc_len_taxid file... ")
         taxsbp_input = open(taxsbp_input_file,"w")
-        for acc_txid in accessions_taxids:
-            taxsbp_input.write(acc_txid[0] + "\t" + acc_txid[1] + "\t" + accessions_taxids[accessions_lengths[0]])
+        for index, row in accessions_taxids.iterrows():
+            taxsbp_input.write(row["acc"] + "\t" + accessions_lengths[row["acc"]] + "\t" + row["taxid"])
         taxsbp_input.close()
+
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
     else:
         tx = time.time()
@@ -645,14 +655,14 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
         with open(accessions_file, "w") as af:
             af.write(stdout)
 
-        sys.stderr.write("Retrieving data from NCBI E-utils... ")
+        print_log("Retrieving sequence lengths and taxid from NCBI E-utils... ")
         
         run_get_len_taxid_cmd = '{0}get_len_taxid.sh -i {1} {2}'.format(
                                 taxsbp_path+"/scripts/",
                                 accessions_file,
                                 "-a" if use_assembly else "")
-        _, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
-        sys.stderr.write("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        stdout, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     
     return taxsbp_input_file
 
@@ -801,6 +811,10 @@ def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, fin
         else:
             for assignment in sorted(lineage, key=lambda k: (fixed_ranks.index(final_rep[k]['rank']), -final_rep[k]['count']), reverse=False):
                 frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
+
+def print_log(text):
+    sys.stderr.write(text)
+    sys.stderr.flush()
 
 if __name__ == '__main__':
     main()
