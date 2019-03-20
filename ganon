@@ -626,10 +626,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
                         "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz"]
 
         for acc2txid_url in acc2txid_urls:
-            #acc2txid_file = get_accession2taxid(acc2txid_url, tmp_output_folder)
-            stdout, stderr, errcode = run("ln -s ../nucl_gb.accession2taxid.gz " + tmp_output_folder, print_stderr=True)
-            acc2txid_file = tmp_output_folder + "nucl_gb.accession2taxid.gz"
-
+            acc2txid_file = get_accession2taxid(acc2txid_url, tmp_output_folder)
             print_log("Extracting taxids from " + acc2txid_file.split("/")[-1] + "... ")
             tmp_accessions_taxids = pd.read_csv(acc2txid_file, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['acc','taxid'], converters={'acc':lambda x: x if x in accessions_lengths.keys() else ""}, dtype={'taxid': str})
             tmp_accessions_taxids = tmp_accessions_taxids[tmp_accessions_taxids['acc']!=""]
