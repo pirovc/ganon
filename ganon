@@ -154,7 +154,7 @@ def main():
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_taxsbp_files(args, tmp_output_folder, use_assembly)
 
         tx = time.time()
-        print_log("Running taxonomic clustering (TaxSBP.py)... \n")
+        print_log("Running taxonomic clustering (TaxSBP.py)... ")
         run_taxsbp_cmd = 'python3 {0}TaxSBP.py -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
                             args.taxsbp_path,
                             taxsbp_input_file,
@@ -601,7 +601,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
-    if acc_count>500000 and use_assembly==False:
+    if acc_count>1 and use_assembly==False:
         del stdout
         import pandas as pd
 
@@ -613,40 +613,41 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, use_assembly):
             stdout, stderr, errcode = run(run_get_length, print_stderr=False, shell=True)
             for line in stdout.rstrip().split("\n"):
                 a, l = line.split("\t")
-                accessions_lengths[a] = l
-        print_log(str(len(accessions_lengths)) + " sequence lenghts retrieved. ")
+                if l != "0": accessions_lengths[a] = l
+        print_log(str(len(accessions_lengths)) + " entries retrieved. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         del stdout
 
-        print_log("Extracting taxids... ")
+        if len(accessions_lengths) < acc_count:
+            print_log("Could not retrieve lenght for " + str(acc_count - len(accessions_lengths)) + " accessions\n")
+
         accessions_taxids = pd.DataFrame(columns=['acc','taxid'])
         acc2txid_urls = ["ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
                         "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/nucl_wgs.accession2taxid.gz"]
 
         for acc2txid_url in acc2txid_urls:
-            acc2txid_file = get_accession2taxid(acc2txid_url, tmp_output_folder)
-            #stdout, stderr, errcode = run("ln -s ../nucl_gb.accession2taxid.gz " + tmp_output_folder, print_stderr=True)
-            #acc2txid_file = tmp_output_folder + "nucl_gb.accession2taxid.gz"
+            #acc2txid_file = get_accession2taxid(acc2txid_url, tmp_output_folder)
+            stdout, stderr, errcode = run("ln -s ../nucl_gb.accession2taxid.gz " + tmp_output_folder, print_stderr=True)
+            acc2txid_file = tmp_output_folder + "nucl_gb.accession2taxid.gz"
 
+            print_log("Extracting taxids from " + acc2txid_file.split("/")[-1] + "... ")
             tmp_accessions_taxids = pd.read_csv(acc2txid_file, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['acc','taxid'], converters={'acc':lambda x: x if x in accessions_lengths.keys() else ""}, dtype={'taxid': str})
             tmp_accessions_taxids = tmp_accessions_taxids[tmp_accessions_taxids['acc']!=""]
             print_log(str(tmp_accessions_taxids.shape[0]) + " entries found. ")
             accessions_taxids = pd.concat([accessions_taxids,tmp_accessions_taxids])
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
             if accessions_taxids.shape[0] == acc_count: #if already found all taxid for hte accessions (no need to parse all files)
                 break
 
         if accessions_taxids.shape[0] < acc_count:
-            print_log("Could not retrieve taxid for " + str(acc_count - accessions_taxids.shape[0]) + " accessions")
-
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+            print_log("Could not retrieve taxid for " + str(acc_count - accessions_taxids.shape[0]) + " accessions\n")
 
         # write file
         print_log("Writing acc_len_taxid file... ")
         taxsbp_input = open(taxsbp_input_file,"w")
         for index, row in accessions_taxids.iterrows():
-            taxsbp_input.write(row["acc"] + "\t" + accessions_lengths[row["acc"]] + "\t" + row["taxid"])
+            taxsbp_input.write(row["acc"] + "\t" + accessions_lengths[row["acc"]] + "\t" + row["taxid"] + "\n")
         taxsbp_input.close()
-
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
     else:
