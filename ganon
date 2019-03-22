@@ -4,7 +4,7 @@ import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, mat
 from collections import defaultdict
 
 def main():
-    version = '0.1.0'
+    version = '0.1.1'
 
     ####################################################################################################
 
