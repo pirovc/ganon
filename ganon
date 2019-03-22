@@ -4,8 +4,9 @@ import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, mat
 from collections import defaultdict
 
 def main():
-    version = '0.1.1'
 
+    version = '0.1.1'
+    
     ####################################################################################################
 
     build_parser = argparse.ArgumentParser(description='Build options', add_help=False)
