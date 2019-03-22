@@ -26,10 +26,9 @@ def main():
     build_group_optional.add_argument('-l', '--bin-length',      type=int,   default=6000000, metavar='', help='Maximum length (in bp) for each bin. Default: 6000000')
     build_group_optional.add_argument('-a', '--fragment-length', type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
     build_group_optional.add_argument('-o', '--overlap-length',  type=int,   default=500,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton. Default: 500')
-    build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<500000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     build_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
-    build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Use this option to use a specific version of the [taxdump.tar.gz] or [nodes.dmp merged.dmp names.dmp] file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
-
+    build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
     # Extra
     build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
     build_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
@@ -51,9 +50,9 @@ def main():
     update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Alternative output database prefix. Default: overwrite current --db-prefix')
     #update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update complete bins, removing sequences. Input file should be complete, not only new sequences.')
     update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
-    update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<500000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     update_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
-    update_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Use this option to use a specific version of the [taxdump.tar.gz] or [nodes.dmp merged.dmp names.dmp] file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
+    update_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
 
     # Extra
     update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
@@ -129,6 +128,10 @@ def main():
         
         if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
             print_log("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path\n")
+            return 1
+
+        if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
+            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
             return 1
 
     if args.which=='build':
@@ -252,7 +255,7 @@ def main():
                             "-a " + str(fragment_length) if fragment_length else "",
                             "-o " + str(overlap_length) if fragment_length else "")
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
-    
+
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         updated_bins, unique_taxids, _, group_taxid = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_bins, tmp_db_prefix_map, use_assembly, fragment_length)
         print_log(str(updated_bins) + " bins updated. ")
@@ -505,13 +508,13 @@ def prepare_files(args, tmp_output_folder, use_assembly):
         taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, args.taxsbp_path, args.seq_info, use_assembly)
 
     if not args.taxdump_file:
-        ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
+        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
     elif args.taxdump_file[0].endswith(".tar.gz"):
-        ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = unpack_taxdump(args.taxdump_file[0], tmp_output_folder)
+        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(args.taxdump_file[0], tmp_output_folder)
     else:
         ncbi_nodes_file = args.taxdump_file[0]
-        ncbi_merged_file = args.taxdump_file[1]
-        ncbi_names_file = args.taxdump_file[2]
+        ncbi_names_file = args.taxdump_file[1]
+        ncbi_merged_file =  args.taxdump_file[2] if len(args.taxdump_file)==3 else ""
 
     return taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
 
@@ -574,7 +577,7 @@ def get_taxdump(tmp_output_folder):
     tx = time.time()
     print_log("Downloading taxdump... ")
     taxdump_file = tmp_output_folder+'taxdump.tar.gz'
-    run_wget_taxdump_cmd = 'wget -qO {0} ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz'.format(taxdump_file)
+    run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
     stdout, stderr, errcode = run(run_wget_taxdump_cmd, print_stderr=True)
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return taxdump_file
@@ -582,14 +585,14 @@ def get_taxdump(tmp_output_folder):
 def unpack_taxdump(taxdump_file, tmp_output_folder):
     unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
     stdout, stderr, errcode = run(unpack_taxdump_cmd, print_stderr=True)
-    return tmp_output_folder+'nodes.dmp', tmp_output_folder+'merged.dmp', tmp_output_folder+'names.dmp'
+    return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
 def get_accession2taxid(acc2txid, tmp_output_folder):
     tx = time.time()
     acc2txid_file = acc2txid + ".accession2taxid.gz"
     print_log("Downloading " + acc2txid_file + "... ")
     acc2txid_file = tmp_output_folder + acc2txid_file
-    run_wget_acc2txid_file_cmd = 'wget -qO {0} ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/{1}.accession2taxid.gz'.format(acc2txid_file, acc2txid)
+    run_wget_acc2txid_file_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/{1}.accession2taxid.gz"'.format(acc2txid_file, acc2txid)
     stdout, stderr, errcode = run(run_wget_acc2txid_file_cmd, print_stderr=True)
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return acc2txid_file
@@ -613,7 +616,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, seq_info, use_
         count = stdout.count('\n')
         print_log(str(count) + " accessions retrieved. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        if seq_info[0]=="auto" and count>500000: 
+        if seq_info[0]=="auto" and count>50000: 
             seq_info = default_acc2txid
         else:
             seq_info = ["eutils"]
@@ -660,7 +663,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, seq_info, use_
         accessions_taxids = pd.DataFrame(columns=['acc','taxid'])
         for acc2txid in seq_info:
             if acc2txid not in acc2txid_options:
-                print_log(acc2txid +  " is not valid option \n")
+                print_log(acc2txid +  " is not a valid option \n")
                 break
             acc2txid_file = get_accession2taxid(acc2txid, tmp_output_folder)
             tx = time.time()
@@ -673,6 +676,8 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, seq_info, use_
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
             if accessions_taxids.shape[0] == acc_count: #if already found all taxid for hte accessions (no need to parse all files)
                 break
+        
+        del tmp_accessions_taxids
 
         if accessions_taxids.shape[0] < acc_count:
             print_log("Could not retrieve taxid for " + str(acc_count - accessions_taxids.shape[0]) + " accessions\n")
