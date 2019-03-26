@@ -108,10 +108,17 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
     uint16_t maxKmerCountRead = 0;
     for ( Filter& filter : filter_hierarchy )
     {
-        // uint16_t threshold = get_threshold(seqan::length(read_seq), filter.bloom_filter.kmerSize,
-        // filter.filter_config.max_error, filter.bloom_filter.offset); should match threshold
-        uint32_t                threshold       = filter.filter_config.max_error;
-        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        // should match threshold from lib:
+        // uint32_t                threshold       = filter.filter_config.max_error;
+        // std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        uint16_t threshold = get_threshold( seqan::length( read_seq ),
+                                            filter.bloom_filter.kmerSize,
+                                            filter.filter_config.max_error,
+                                            filter.bloom_filter.offset );
+        if ( threshold == 0 )
+            continue;
+
+        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq );
         std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
 
         // select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
@@ -382,7 +389,6 @@ bool run( Config config )
     // Thread for reading input files
     timeLoadReads.start();
     std::future< void > read_task( std::async( std::launch::async, [=, &queue1, &timeLoadReads, &stats] {
-
         for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
