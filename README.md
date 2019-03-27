@@ -58,6 +58,13 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+### Testing the build
+
+```shh
+ctest -VV .
+```
+It should run in a few seconds and output `100% tests passed, 0 tests failed out of 1`
+
 ## Running ganon with sample data
 
 ### build
