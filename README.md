@@ -4,15 +4,39 @@
 ## Dependencies
 
 - gcc7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
+- cmake3 
 - python3.5
-- cmake3
+- pandas
 
-## Cloning
+## Downloading
+
+### Cloning
 
 Make sure to clone the repository with its submodules. One way to do this is as follows:
 
 ```shh
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
+```
+
+### From release
+
+```shh
+
+# download and unpack release
+wget https://github.com/pirovc/ganon/archive/0.1.0.tar.gz
+tar xf 0.1.0.tar.gz
+cd ganon-0.1.0
+
+# get submodules
+rm -r libs/*
+git init
+git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | 
+  while read path_key path; do
+    url=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.url/')")
+    branch=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.branch/')")
+    if [[ ! -z $branch ]]; then branch="-b ${branch}"; fi
+    git submodule add $branch $url $path
+  done
 ```
 
 ## Installation
