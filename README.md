@@ -8,7 +8,9 @@
 - python3.5
 - pandas
 
-## Downloading
+## Downloading ganon and submodules
+
+You can install ganon by cloning the repository or downloading a release:
 
 ### Cloning
 
@@ -18,10 +20,9 @@ Make sure to clone the repository with its submodules. One way to do this is as 
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
 ```
 
-### From release
+### Release
 
 ```shh
-
 # download and unpack release
 wget https://github.com/pirovc/ganon/archive/0.1.0.tar.gz
 tar xf 0.1.0.tar.gz
@@ -39,7 +40,7 @@ git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
   done
 ```
 
-## Installation
+## Taxsbp installation
 
 Installing *binpacking* and *taxsbp*:
 
