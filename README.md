@@ -57,7 +57,7 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-## Runnin ganon with sample data
+## Running ganon with sample data
 
 ### build
 
