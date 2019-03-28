@@ -94,6 +94,12 @@ struct Filter
     FilterConfig                      filter_config;
 };
 
+inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
+{
+    // (offset-1) -> to correct for the floor left overs
+    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
+}
+
 inline uint16_t get_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
 {
     return readLen + 1u > kmerSize * ( 1u + max_error )
@@ -113,10 +119,24 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
         // std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
         // if (threshold==0) threshold = 1;
 
-        uint16_t threshold = get_threshold( seqan::length( read_seq ),
-                                            filter.bloom_filter.kmerSize,
-                                            filter.filter_config.max_error,
-                                            filter.bloom_filter.offset );
+        uint16_t threshold = ( filter.filter_config.min_cov > 0 )
+                                 ? std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
+                                              * filter.filter_config.min_cov )
+                                 : get_threshold( seqan::length( read_seq ),
+                                                  filter.bloom_filter.kmerSize,
+                                                  filter.filter_config.max_error,
+                                                  filter.bloom_filter.offset );
+
+        // using min_cov to find lowest error rate
+        // uint16_t readLen = seqan::length( read_seq );
+        // uint16_t threshold = get_threshold( readLen,
+        //                                     filter.bloom_filter.kmerSize,
+        //                                     (filter.filter_config.min_cov > 0) // find lowest error rate to achieve
+        //                                     min_cov provided
+        //                                      ? get_error( readLen, filter.bloom_filter.kmerSize,
+        //                                      std::ceil((readLen-filter.bloom_filter.kmerSize+1)*filter.filter_config.min_cov),
+        //                                      1 ) : filter.filter_config.max_error,
+        //                                     filter.bloom_filter.offset );
 
         std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq );
         std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
@@ -155,9 +175,7 @@ inline uint32_t filter_matches( ReadOut&                     read_out,
 
 
     // get maximum possible number of error for this read
-    // (config.offset-1) -> to correct for the floor left overs
-    uint16_t max_errorRead = std::ceil(
-        ( -kmerSize + readLen - ( maxKmerCountRead * config.offset + ( config.offset - 1 ) ) + 1 ) / (float) kmerSize );
+    uint16_t max_errorRead = get_error( readLen, kmerSize, maxKmerCountRead, config.offset );
 
     // get min kmer count necesary to achieve the calculated number of errors
     uint16_t threshold_strata = get_threshold( readLen, kmerSize, max_errorRead, config.offset );

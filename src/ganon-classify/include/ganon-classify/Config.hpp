@@ -17,6 +17,7 @@ struct FilterConfig
     std::string bloom_filter_file;
     std::string group_bin_file;
     uint16_t    max_error;
+    float       min_cov;
 };
 
 struct HierarchyConfig
@@ -38,6 +39,7 @@ public:
     // Default
     std::string max_error                   = "3";
     std::string max_error_unique            = "-1";
+    std::string min_coverage                = "0";
     std::string output_file                 = "";
     std::string output_unclassified_file    = "";
     std::string filter_hierarchy            = "1";
@@ -96,6 +98,7 @@ public:
         }
 
         std::vector< std::string > max_errors        = split( max_error, ',' );
+        std::vector< std::string > min_coverages     = split( min_coverage, ',' );
         std::vector< std::string > max_errors_unique = split( max_error_unique, ',' );
         std::vector< std::string > hierarchy         = split( filter_hierarchy, ',' );
 
@@ -112,18 +115,39 @@ public:
             return false;
         }
 
-        // If only one max error was given, repeat it for every filter
-        if ( max_errors.size() == 1 && bloom_filter_files.size() > 1 )
+        if ( min_coverage != "0" )
         {
-            for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
+            max_error = "";
+            // If only one max error was given, repeat it for every filter
+            if ( min_coverages.size() == 1 && bloom_filter_files.size() > 1 )
             {
-                max_errors.push_back( max_errors[0] );
+                for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
+                {
+                    min_coverages.push_back( min_coverages[0] );
+                }
+            }
+            else if ( min_coverages.size() != bloom_filter_files.size() )
+            {
+                std::cerr << "Please give a single min coverage value or one-per-filter value" << std::endl;
+                return false;
             }
         }
-        else if ( max_errors.size() != bloom_filter_files.size() )
+        else
         {
-            std::cerr << "Please give a single max error value or one-per-filter value" << std::endl;
-            return false;
+            min_coverage = "0";
+            // If only one max error was given, repeat it for every filter
+            if ( max_errors.size() == 1 && bloom_filter_files.size() > 1 )
+            {
+                for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
+                {
+                    max_errors.push_back( max_errors[0] );
+                }
+            }
+            else if ( max_errors.size() != bloom_filter_files.size() )
+            {
+                std::cerr << "Please give a single max error value or one-per-filter value" << std::endl;
+                return false;
+            }
         }
 
         // If only one max error was given, repeat it for every filter
@@ -149,12 +173,16 @@ public:
         for ( uint16_t h = 0; h < hierarchy.size(); ++h )
         {
 
+            auto filter_cfg =
+                FilterConfig{ bloom_filter_files[h],
+                              group_bin_files[h],
+                              min_coverage == "0" ? static_cast< uint16_t >( std::stoi( max_errors[h] ) ) : 0,
+                              min_coverage != "0" ? static_cast< float >( std::stof( min_coverages[h] ) ) : 0 };
+
             if ( h_filters.find( hierarchy[h] ) == h_filters.end() )
             { // not found
                 std::vector< FilterConfig > fc;
-                fc.push_back( FilterConfig{ bloom_filter_files[h],
-                                            group_bin_files[h],
-                                            static_cast< uint16_t >( std::stoi( max_errors[h] ) ) } );
+                fc.push_back( filter_cfg );
 
                 std::string final_output_file;
                 if ( !split_output_file_hierarchy || ( !output_file.empty() && unique_hierarchy == 1 ) )
@@ -172,8 +200,7 @@ public:
             }
             else
             { // found
-                h_filters[hierarchy[h]].filters.push_back( FilterConfig{
-                    bloom_filter_files[h], group_bin_files[h], static_cast< uint16_t >( std::stoi( max_errors[h] ) ) } );
+                h_filters[hierarchy[h]].filters.push_back( filter_cfg );
             }
         }
         return true;
@@ -196,6 +223,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--max-error                 " << config.max_error << newl;
     stream << "--max-error-unique          " << config.max_error_unique << newl;
+    stream << "--min-coverage              " << config.min_coverage << newl;
     stream << "--offset                    " << config.offset << newl;
     stream << "--output-file               " << config.output_file << newl;
     stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
@@ -213,8 +241,9 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         for ( auto const& filter_config : hierarchy_config.second.filters )
         {
             stream << "  bloom-filter: " << filter_config.bloom_filter_file
-                   << ", group-bin: " << filter_config.group_bin_file << ", max-error: " << filter_config.max_error
-                   << newl;
+                   << ", group-bin: " << filter_config.group_bin_file
+                   << ( ( config.min_coverage != "0" ) ? ", min-coverage: " : ", max-error: " )
+                   << ( ( config.min_coverage != "0" ) ? filter_config.min_cov : filter_config.max_error ) << newl;
         }
     }
     stream << newl;

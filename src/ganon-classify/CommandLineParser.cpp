@@ -18,6 +18,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed for a match to be considered", cxxopts::value< std::string >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will have negative k-mer counts.", cxxopts::value< std::string >() )
+        ( "m,min-coverage", "Approximate minimum coverage of the read required for a match to be considered [muttualy exclusive --max-error]", cxxopts::value< std::string >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint16_t >() )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >() )
         ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >() )
@@ -63,6 +64,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
     if ( args.count( "max-error" ) )
         config.max_error = args["max-error"].as< std::string >();
+    if ( args.count( "min-coverage" ) )
+        config.min_coverage = args["min-coverage"].as< std::string >();
     if ( args.count( "offset" ) )
         config.offset = args["offset"].as< uint16_t >();
     if ( args.count( "threads" ) )
