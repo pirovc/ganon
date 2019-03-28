@@ -1,16 +1,22 @@
 # ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon)
 
+ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
+
+> **ganon: continuously up-to-date with database growth for precise short read classification in metagenomics**
+> Vitor C. Piro, Temesgen H. Dadi, Enrico Seiler, Knut Reinert, Bernhard Y. Renard
+> bioRxiv 406017; doi: [10.1101/406017](https://doi.org/10.1101/406017)
 
 ## Dependencies
 
 - gcc7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
 - cmake3 
 - python3.5
-- pandas
+- TaxSBP and binpacking (check [taxsbp installation](#taxsbp-installation))
+- pandas (only when --seq-info != eutils)
 
-## Downloading ganon and submodules
+## Downloading ganon
 
-You can install ganon by cloning the repository or downloading a release:
+You can download ganon by **cloning** the repository or downloading a **release**:
 
 ### Cloning
 
@@ -40,9 +46,9 @@ git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
   done
 ```
 
-## Taxsbp installation
+## TaxSBP installation
 
-Installing *binpacking* and *taxsbp*:
+Installing *binpacking* and *TaxSBP*:
 
 ```shh
 pip install binpacking==1.3
@@ -70,12 +76,12 @@ It should run in a few seconds and output `100% tests passed, 0 tests failed out
 ### build
 
 ```shh
-./ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fasta.gz     # --ganon-path build/ --taxsbp-path taxsbp/
+./ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fasta.gz # --ganon-path build/ --taxsbp-path taxsbp/
 ```
 
 * it may be necessary to set-up the path for the ganon binaries `--ganon-path` and taxsbp `--taxsbp-path`
 
-* ganon will automatically retrieve taxonomic information from NCBI web services and ftp (it may take a while if you have too many sequences). To speed-up such process it is possible to manually provide the `--len-taxid-file` which is a tab separated file containing `sequence identifier <tab> sequence length <tab> taxonomic id [<tab> assembly/strain id]`
+* ganon will automatically retrieve taxonomic information from NCBI web services (eutils) or ftp (it may take a while if you have too many sequences). To speed-up such process it is possible to manually provide the `--seq-info-file` which is a tab separated file containing `sequence identifier <tab> sequence length <tab> taxonomic id [<tab> assembly/strain id]`
 
 ### classify
 
@@ -143,7 +149,7 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 ### update
 
 ```
-./ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files build/data/sequences/virus*.fasta.gz        # --ganon-path build/ --taxsbp-path taxsbp/
+./ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files build/data/sequences/virus*.fasta.gz  # --ganon-path build/ --taxsbp-path taxsbp/
 ```
 
 ## Output files
@@ -156,7 +162,7 @@ all matches (one per hierarchy)
 
 	readid <tab> assignment <tab> k-mer count
 
-* a negative k-mer count work a flag to show that such read did not have the minimum amount of matches to pass the `--max-error-unique` threshold
+* a negative k-mer count work as a flag to show that such read did not have the minimum amount of matches to pass the `--max-error-unique` threshold
 
 #### .lca
 
