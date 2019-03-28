@@ -115,6 +115,9 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
                                             filter.bloom_filter.kmerSize,
                                             filter.filter_config.max_error,
                                             filter.bloom_filter.offset );
+
+        // if threshold == 0 it is not possible to confidently classify read given kmerSize and max_errors values
+        // TODO add warning to user
         if ( threshold == 0 )
             continue;
 

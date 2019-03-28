@@ -29,7 +29,6 @@ GanonClassify::Config defaultConfig()
 
 } // namespace config_classify
 
-
 // Static results
 
 SCENARIO( "Classify", "[ganon-classify]" )
@@ -137,8 +136,8 @@ SCENARIO( "Classify multi-filter with multiple errors", "[ganon-classify]" )
     cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
     cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
     cfg.reads                        = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error                    = "0,5";
-    const std::string desired_output = "results/classify_output-ba-ba_e05.txt";
+    cfg.max_error                    = "0,4";
+    const std::string desired_output = "results/classify_output-ba-ba_e04.txt";
 
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
