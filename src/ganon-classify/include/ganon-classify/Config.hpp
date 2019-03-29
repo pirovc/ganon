@@ -17,7 +17,7 @@ struct FilterConfig
     std::string bloom_filter_file;
     std::string group_bin_file;
     uint16_t    max_error;
-    float       min_cov;
+    float       min_kmers;
 };
 
 struct HierarchyConfig
@@ -39,7 +39,7 @@ public:
     // Default
     std::string max_error                   = "3";
     std::string max_error_unique            = "-1";
-    std::string min_coverage                = "0";
+    std::string min_kmers                   = "0";
     std::string output_file                 = "";
     std::string output_unclassified_file    = "";
     std::string filter_hierarchy            = "1";
@@ -56,7 +56,6 @@ public:
     const uint16_t                           min_threads = 3;
     uint16_t                                 clas_threads;
     bool                                     output_unclassified = false;
-    bool                                     unique_filtering    = false;
     std::map< std::string, HierarchyConfig > h_filters;
 
 
@@ -98,7 +97,7 @@ public:
         }
 
         std::vector< std::string > max_errors        = split( max_error, ',' );
-        std::vector< std::string > min_coverages     = split( min_coverage, ',' );
+        std::vector< std::string > min_kmerss        = split( min_kmers, ',' );
         std::vector< std::string > max_errors_unique = split( max_error_unique, ',' );
         std::vector< std::string > hierarchy         = split( filter_hierarchy, ',' );
 
@@ -115,26 +114,26 @@ public:
             return false;
         }
 
-        if ( min_coverage != "0" )
+        if ( min_kmers != "0" )
         {
             max_error = "";
             // If only one max error was given, repeat it for every filter
-            if ( min_coverages.size() == 1 && bloom_filter_files.size() > 1 )
+            if ( min_kmerss.size() == 1 && bloom_filter_files.size() > 1 )
             {
                 for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
                 {
-                    min_coverages.push_back( min_coverages[0] );
+                    min_kmerss.push_back( min_kmerss[0] );
                 }
             }
-            else if ( min_coverages.size() != bloom_filter_files.size() )
+            else if ( min_kmerss.size() != bloom_filter_files.size() )
             {
-                std::cerr << "Please give a single min coverage value or one-per-filter value" << std::endl;
+                std::cerr << "Please give a single min kmers value or one-per-filter value" << std::endl;
                 return false;
             }
         }
         else
         {
-            min_coverage = "0";
+            min_kmers = "0";
             // If only one max error was given, repeat it for every filter
             if ( max_errors.size() == 1 && bloom_filter_files.size() > 1 )
             {
@@ -172,12 +171,11 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy.size(); ++h )
         {
-
             auto filter_cfg =
                 FilterConfig{ bloom_filter_files[h],
                               group_bin_files[h],
-                              min_coverage == "0" ? static_cast< uint16_t >( std::stoi( max_errors[h] ) ) : 0,
-                              min_coverage != "0" ? static_cast< float >( std::stof( min_coverages[h] ) ) : 0 };
+                              static_cast< uint16_t >( min_kmers == "0" ? std::stoi( max_errors[h] ) : 0 ),
+                              static_cast< float >( min_kmers != "0" ? std::stof( min_kmerss[h] ) : 0 ) };
 
             if ( h_filters.find( hierarchy[h] ) == h_filters.end() )
             { // not found
@@ -223,7 +221,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--max-error                 " << config.max_error << newl;
     stream << "--max-error-unique          " << config.max_error_unique << newl;
-    stream << "--min-coverage              " << config.min_coverage << newl;
+    stream << "--min-kmers                 " << config.min_kmers << newl;
     stream << "--offset                    " << config.offset << newl;
     stream << "--output-file               " << config.output_file << newl;
     stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
@@ -242,8 +240,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         {
             stream << "  bloom-filter: " << filter_config.bloom_filter_file
                    << ", group-bin: " << filter_config.group_bin_file
-                   << ( ( config.min_coverage != "0" ) ? ", min-coverage: " : ", max-error: " )
-                   << ( ( config.min_coverage != "0" ) ? filter_config.min_cov : filter_config.max_error ) << newl;
+                   << ( ( config.min_kmers != "0" ) ? ", min-kmers: " : ", max-error: " )
+                   << ( ( config.min_kmers != "0" ) ? filter_config.min_kmers : filter_config.max_error ) << newl;
         }
     }
     stream << newl;

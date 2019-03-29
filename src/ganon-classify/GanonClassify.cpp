@@ -119,22 +119,24 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
         // std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
         // if (threshold==0) threshold = 1;
 
-        uint16_t threshold = ( filter.filter_config.min_cov > 0 )
-                                 ? std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
-                                              * filter.filter_config.min_cov )
-                                 : get_threshold( seqan::length( read_seq ),
-                                                  filter.bloom_filter.kmerSize,
-                                                  filter.filter_config.max_error,
-                                                  filter.bloom_filter.offset );
+        uint16_t threshold =
+            ( filter.filter_config.min_kmers > 0 )
+                ? std::floor( std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
+                                         * filter.filter_config.min_kmers )
+                              / filter.bloom_filter.offset )
+                : get_threshold( seqan::length( read_seq ),
+                                 filter.bloom_filter.kmerSize,
+                                 filter.filter_config.max_error,
+                                 filter.bloom_filter.offset );
 
-        // using min_cov to find lowest error rate
+        // using min_kmers to find lowest error rate
         // uint16_t readLen = seqan::length( read_seq );
         // uint16_t threshold = get_threshold( readLen,
         //                                     filter.bloom_filter.kmerSize,
-        //                                     (filter.filter_config.min_cov > 0) // find lowest error rate to achieve
-        //                                     min_cov provided
+        //                                     (filter.filter_config.min_kmers > 0) // find lowest error rate to achieve
+        //                                     min_kmers provided
         //                                      ? get_error( readLen, filter.bloom_filter.kmerSize,
-        //                                      std::ceil((readLen-filter.bloom_filter.kmerSize+1)*filter.filter_config.min_cov),
+        //                                      std::ceil((readLen-filter.bloom_filter.kmerSize+1)*filter.filter_config.min_kmers),
         //                                      1 ) : filter.filter_config.max_error,
         //                                     filter.bloom_filter.offset );
 
