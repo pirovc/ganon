@@ -121,9 +121,10 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
 
         uint16_t threshold =
             ( filter.filter_config.min_kmers > 0 )
-                ? std::floor( std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
-                                         * filter.filter_config.min_kmers )
-                              / filter.bloom_filter.offset )
+                ? std::floor(
+                      std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
+                                 * filter.filter_config.min_kmers )
+                      / filter.bloom_filter.offset ) // ceil -> round-up min # k-mers, floor -> round-down for offset
                 : get_threshold( seqan::length( read_seq ),
                                  filter.bloom_filter.kmerSize,
                                  filter.filter_config.max_error,
