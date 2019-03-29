@@ -72,6 +72,20 @@ SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
 
+SCENARIO( "Classify with min kmers", "[ganon-classify]" )
+{
+    auto cfg                         = config_classify::defaultConfig();
+    cfg.bloom_filter_files           = { "filters/bacteria.filter" };
+    cfg.group_bin_files              = { "files/bacteria.map" };
+    cfg.reads                        = { "reads/bacteria.simulated.1.fq" };
+    cfg.max_error                    = "";
+    cfg.min_kmers                    = "0.3"; // should work the same as -e 3, threshold = 25 19-mers
+    const std::string desired_output = "results/classify_output-b-b_e3.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
+}
+
 SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify]" )
 {
     auto cfg               = config_classify::defaultConfig();
@@ -94,6 +108,23 @@ SCENARIO( "Classify with offset and different max. unique errors allowed", "[gan
     cfg.group_bin_files    = { "files/bacteria.map" };
     cfg.reads              = { "reads/bacteria.simulated.1.fq" };
     cfg.max_error          = "2";
+    cfg.max_error_unique   = "0";
+    cfg.offset             = 6;
+
+    const std::string desired_output = "results/classify_output-b-b_e2u0f6.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
+}
+
+SCENARIO( "Classify with offset, min kmers and different max. unique errors allowed", "[ganon-classify]" )
+{
+    auto cfg               = config_classify::defaultConfig();
+    cfg.bloom_filter_files = { "filters/bacteria.filter" };
+    cfg.group_bin_files    = { "files/bacteria.map" };
+    cfg.reads              = { "reads/bacteria.simulated.1.fq" };
+    cfg.max_error          = "";
+    cfg.min_kmers          = "0.53"; // ceil((100-19+1)*0.53) = 44 = ((100-19+1)-(2*19)) [2 errors allowed]
     cfg.max_error_unique   = "0";
     cfg.offset             = 6;
 
