@@ -1,30 +1,50 @@
 # ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon)
 
+ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
 
-## Dependencies
-
-- gcc7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
-- python3.5
-- cmake3
-
-## Cloning
-
-Make sure to clone the repository with its submodules. One way to do this is as follows:
-
-```shh
-git clone --recurse-submodules https://github.com/pirovc/ganon.git
-```
+> **ganon: continuously up-to-date with database growth for precise short read classification in metagenomics**
+> Vitor C. Piro, Temesgen H. Dadi, Enrico Seiler, Knut Reinert, Bernhard Y. Renard
+> bioRxiv 406017; doi: [10.1101/406017](https://doi.org/10.1101/406017)
 
 ## Installation
 
-Installing *binpacking* and *taxsbp*:
-
 ```shh
-pip install binpacking==1.3
-git clone https://github.com/pirovc/taxsbp/
+conda install -c bioconda ganon
 ```
 
-## Building
+## Manual Installation
+
+### Dependencies
+
+#### build
+
+- gcc7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
+- cmake >=3
+- libs: Catch2, cxxopts, sdsl-lite, seqan
+
+#### run
+
+- python >=3.5
+- taxsbp >=0.1.1
+- binpacking ==1.4.1
+- pandas
+
+### Cloning ganon and taxsbp
+
+```shh
+git clone --recurse-submodules https://github.com/pirovc/ganon.git
+git clone https://github.com/pirovc/taxsbp.git
+```
+
+### Installing taxsbp (and binpacking)
+
+```shh
+cd taxsbp
+python setup.py install
+taxsbp -h
+```
+
+### Building (ganon-build and ganon-classify)
 	
 ```shh
 mkdir build
@@ -33,22 +53,22 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
-## Runnin ganon with sample data
+## Running with sample data
 
 ### build
 
 ```shh
-./ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fasta.gz     # --ganon-path build/ --taxsbp-path taxsbp/
+ganon build --db-prefix sample_bacteria --input-files build/data/sequences/bacteria*.fasta.gz     # --ganon-path build/ --taxsbp-path taxsbp/
 ```
 
 * it may be necessary to set-up the path for the ganon binaries `--ganon-path` and taxsbp `--taxsbp-path`
 
-* ganon will automatically retrieve taxonomic information from NCBI web services and ftp (it may take a while if you have too many sequences). To speed-up such process it is possible to manually provide the `--len-taxid-file` which is a tab separated file containing `sequence identifier <tab> sequence length <tab> taxonomic id [<tab> assembly/strain id]`
+* ganon will automatically retrieve taxonomic information from NCBI web services (eutils) or ftp (it may take a while if you have too many sequences). To speed-up such process it is possible to manually provide the --seq-info-file which is a tab separated file containing `sequence identifier <tab> sequence length <tab> taxonomic id [<tab> assembly/strain id]`
 
 ### classify
 
 ```shh
-./ganon classify --db-prefix sample_bacteria --reads build/data/reads/bacteria.simulated.1.fq -o sample_results      # --ganon-path build/
+ganon classify --db-prefix sample_bacteria --reads build/data/reads/bacteria.simulated.1.fq -o sample_results      # --ganon-path build/
 ```
 
 `sample_results.tre` will sumarize the results (with fixed ranks):
@@ -111,7 +131,7 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 ### update
 
 ```
-./ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files build/data/sequences/virus*.fasta.gz        # --ganon-path build/ --taxsbp-path taxsbp/
+ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files build/data/sequences/virus*.fasta.gz        # --ganon-path build/ --taxsbp-path taxsbp/
 ```
 
 ## Output files
@@ -170,7 +190,7 @@ taxonomic information required for LCA and reports
 ## Installing GCC7 in a separate environment with conda
 
 ```shh
-conda create -n gcc7 -c quantstack gcc-7 libgcc-7
+conda create -n gcc7 -c quantstack gcc-7 libgcc-7 cmake>=3.8.2
 source activate gcc7
 ```
 
@@ -179,4 +199,23 @@ If you are getting the following error `ganon-classify: /usr/lib/x86_64-linux-gn
 
 ```shh
 export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
+```
+## Using a specific ganon release
+
+```shh
+# download and unpack release
+wget https://github.com/pirovc/ganon/archive/0.1.0.tar.gz
+tar xf 0.1.0.tar.gz
+cd ganon-0.1.0
+
+# get submodules
+rm -r libs/*
+git init
+git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | 
+  while read path_key path; do
+    url=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.url/')")
+    branch=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.branch/')")
+    if [[ ! -z $branch ]]; then branch="-b ${branch}"; fi
+    git submodule add $branch $url $path
+  done
 ```

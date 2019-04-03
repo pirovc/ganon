@@ -23,6 +23,7 @@ endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 option( GANON_OFFSET "Enable offset for ganon-classify" OFF )
+option( USE_MODULES "Enable use of system modules" OFF )
 
 # -----------------------------------------------------------------------------
 # build types
@@ -93,14 +94,17 @@ find_package( Threads REQUIRED )
 
 # 2. cxxopts:
 
-add_library( cxxopts INTERFACE )
-target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
+if( USE_MODULES )
+    find_package( cxxopts REQUIRED )
+else()
+    add_library( cxxopts INTERFACE )
+    target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
+endif()
 
 # 3. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
-target_include_directories( sdsl-lite
-    SYSTEM INTERFACE libs/sdsl-lite/include )
+target_include_directories( sdsl-lite SYSTEM INTERFACE libs/sdsl-lite/include )
 
 # 4. Zlib (optional for SeqAn):
 
@@ -120,9 +124,12 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # 6. Catch2:
 
-add_library( catch2 INTERFACE )
-target_include_directories( catch2
-    SYSTEM INTERFACE libs/Catch2/single_include )
+if( USE_MODULES )
+    find_package( catch2 REQUIRED )
+else()
+    add_library( catch2 INTERFACE )
+    target_include_directories( catch2 SYSTEM INTERFACE libs/Catch2/single_include )
+endif()
 
 # -----------------------------------------------------------------------------
 # verbose log
