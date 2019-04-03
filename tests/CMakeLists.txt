@@ -15,7 +15,7 @@ add_executable( ganon-tests
 target_link_libraries( ganon-tests
     PRIVATE
     utils
-    catch2
+    Catch2
     ganon-build-lib
     ganon-classify-lib )
 

@@ -125,10 +125,10 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 # 6. Catch2:
 
 if( USE_MODULES )
-    find_package( catch2 REQUIRED )
+    find_package( Catch2 REQUIRED )
 else()
-    add_library( catch2 INTERFACE )
-    target_include_directories( catch2 SYSTEM INTERFACE libs/Catch2/single_include )
+    add_library( Catch2 INTERFACE )
+    target_include_directories( Catch2 SYSTEM INTERFACE libs/Catch2/single_include )
 endif()
 
 # -----------------------------------------------------------------------------
