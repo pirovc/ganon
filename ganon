@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
 from collections import defaultdict
