@@ -94,29 +94,56 @@ struct Filter
     FilterConfig                      filter_config;
 };
 
+inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
+{
+    // (offset-1) -> to correct for the floor left overs
+    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
+}
+
 inline uint16_t get_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
 {
     return readLen + 1u > kmerSize * ( 1u + max_error )
                ? std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
-               : 0u;
+               : 1u; // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
+                     // just one kmer match (0 would match every read everywhere)
 }
 
 inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_hierarchy, seqan::Dna5String& read_seq )
 {
-    // std::chrono::time_point< std::chrono::high_resolution_clock > filter_start;
     // for every filter in this level
     uint16_t maxKmerCountRead = 0;
     for ( Filter& filter : filter_hierarchy )
     {
-        // uint16_t threshold = get_threshold(seqan::length(read_seq), filter.bloom_filter.kmerSize,
-        // filter.filter_config.max_error, filter.bloom_filter.offset); should match threshold
-        uint32_t                threshold       = filter.filter_config.max_error;
-        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        // should match threshold from lib (besides that it returns 1 instead of 0 if threshold cannot be calculated)
+        // uint32_t                threshold       = filter.filter_config.max_error;
+        // std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq, threshold );
+        // if (threshold==0) threshold = 1;
+
+        uint16_t threshold =
+            ( filter.filter_config.min_kmers > 0 )
+                ? std::floor(
+                      std::ceil( ( seqan::length( read_seq ) - filter.bloom_filter.kmerSize + 1 )
+                                 * filter.filter_config.min_kmers )
+                      / filter.bloom_filter.offset ) // ceil -> round-up min # k-mers, floor -> round-down for offset
+                : get_threshold( seqan::length( read_seq ),
+                                 filter.bloom_filter.kmerSize,
+                                 filter.filter_config.max_error,
+                                 filter.bloom_filter.offset );
+
+        // using min_kmers to find lowest error rate
+        // uint16_t readLen = seqan::length( read_seq );
+        // uint16_t threshold = get_threshold( readLen,
+        //                                     filter.bloom_filter.kmerSize,
+        //                                     (filter.filter_config.min_kmers > 0) // find lowest error rate to achieve
+        //                                     min_kmers provided
+        //                                      ? get_error( readLen, filter.bloom_filter.kmerSize,
+        //                                      std::ceil((readLen-filter.bloom_filter.kmerSize+1)*filter.filter_config.min_kmers),
+        //                                      1 ) : filter.filter_config.max_error,
+        //                                     filter.bloom_filter.offset );
+
+        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq );
         std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
 
-        // select_elapsed += std::chrono::high_resolution_clock::now() - select_start;
-
-        // filter_start = std::chrono::high_resolution_clock::now();
         for ( uint32_t binNo = 0; binNo < filter.numberOfBins; ++binNo )
         {
             if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
@@ -135,7 +162,6 @@ inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_
                 }
             }
         }
-        // filter_elapsed += std::chrono::high_resolution_clock::now() - filter_start;
     }
 
     return maxKmerCountRead;
@@ -152,9 +178,7 @@ inline uint32_t filter_matches( ReadOut&                     read_out,
 
 
     // get maximum possible number of error for this read
-    // (config.offset-1) -> to correct for the floor left overs
-    uint16_t max_errorRead = std::ceil(
-        ( -kmerSize + readLen - ( maxKmerCountRead * config.offset + ( config.offset - 1 ) ) + 1 ) / (float) kmerSize );
+    uint16_t max_errorRead = get_error( readLen, kmerSize, maxKmerCountRead, config.offset );
 
     // get min kmer count necesary to achieve the calculated number of errors
     uint16_t threshold_strata = get_threshold( readLen, kmerSize, max_errorRead, config.offset );
@@ -207,14 +231,20 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 // k-mer sizes should be the same among filters, groups should not overlap
                 uint16_t kmerSize = filter_hierarchy[0].kmerSize;
 
-                // Classify reads, returing matches and max kmer count achieved for the read
                 Tmatches matches;
-                uint16_t maxKmerCountRead = classify_read( matches, filter_hierarchy, rb.seqs[readID] );
-
-                // Filter reads by number of errors, special filtering for unique matches
+                uint16_t maxKmerCountRead       = 0;
+                uint32_t count_filtered_matches = 0;
                 ReadOut  read_out( rb.ids[readID] );
-                uint32_t count_filtered_matches =
-                    filter_matches( read_out, matches, kmerSize, readLen, maxKmerCountRead, config, max_error_unique );
+
+                if ( readLen >= kmerSize )
+                { // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
+                    maxKmerCountRead = classify_read(
+                        matches,
+                        filter_hierarchy,
+                        rb.seqs[readID] ); // Classify reads, returing matches and max kmer count achieved for the read
+                    count_filtered_matches = filter_matches(
+                        read_out, matches, kmerSize, readLen, maxKmerCountRead, config, max_error_unique );
+                }
 
                 // If there are matches, add to printing queue
                 if ( count_filtered_matches > 0 )
@@ -382,7 +412,6 @@ bool run( Config config )
     // Thread for reading input files
     timeLoadReads.start();
     std::future< void > read_task( std::async( std::launch::async, [=, &queue1, &timeLoadReads, &stats] {
-
         for ( auto const& reads_file : config.reads )
         {
             seqan::SeqFileIn seqFileIn;
