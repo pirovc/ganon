@@ -190,11 +190,14 @@ taxsbp -h
 ### Building (ganon-build and ganon-classify)
 	
 ```shh
+cd ganon
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
+
+in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality. use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 
 ## Installing GCC7 in a separate environment with conda
 
@@ -228,4 +231,11 @@ git config -f .gitmodules --get-regexp '^submodule\..*\.path$' |
   done
 ```
 
-Make sure you commit the sdsl-lite and seqan libs in the required commits
+Make sure you checkout the `sdsl-lite` and `seqan` repositories in the tested commits:
+
+```shh
+cd libs/seqan
+git checkout c308e99f10d942382d4c7ed6fc91be1a889e644c
+cd libs/sdsl-lite
+git checkout d6ed14d5d731ed4a4ec12627c1ed7154b396af48
+```
