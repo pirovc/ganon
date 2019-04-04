@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
 from collections import defaultdict
@@ -114,12 +114,44 @@ def main():
     
     tx_total = time.time()
 
-    # Validations
-    if not os.path.isfile(args.ganon_path + "/ganon-classify") or not os.path.isfile(args.ganon_path + "/ganon-build"):
-        print_log("ganon binaries (ganon-classify and ganon-build) were not found. Please inform the path of the binaries with --ganon-path\n")
-        return 1
-
+    args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
     if args.which=='build' or args.which=='update':
+        
+        args.taxsbp_path = args.taxsbp_path + "/" if args.taxsbp_path else ""
+
+        ganon_build_exec = shutil.which("ganon-build")
+        if ganon_build_exec is None:
+            ganon_build_exec = shutil.which("ganon-build", path=args.ganon_path)
+            if ganon_build_exec is None:
+                ganon_build_exec = shutil.which("build/ganon-build", path=args.ganon_path)
+                if ganon_build_exec is None:
+                    print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
+                    return 1
+
+        ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh")
+        if ganon_get_len_taxid_exec is None:
+            ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=args.ganon_path)
+            if ganon_get_len_taxid_exec is None:
+                ganon_get_len_taxid_exec = shutil.which("scripts/ganon-get-len-taxid.sh", path=args.ganon_path)
+                if ganon_get_len_taxid_exec is None:
+                    ganon_get_len_taxid_exec = shutil.which("../scripts/ganon-get-len-taxid.sh", path=args.ganon_path)
+                    if ganon_get_len_taxid_exec is None:
+                        print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
+                        return 1
+
+        taxsbp_exec = shutil.which("taxsbp")
+        if taxsbp_exec is None:
+            taxsbp_exec = shutil.which("taxsbp", path=args.taxsbp_path)
+            if taxsbp_exec is None:
+                taxsbp_exec = shutil.which("TaxSBP.py", path=args.taxsbp_path)
+                if taxsbp_exec is None:
+                    print_log("TaxSBP executable (TaxSBP.py or taxsbp) were not found. Please inform the path of the scripts with --taxsbp-path\n")
+                    return 1
+                     
+        if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
+            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
+            return 1
+
         db_prefix = args.db_prefix
         output_folder = os.path.abspath(os.path.dirname(db_prefix)) + "/"
         tmp_output_folder = db_prefix + "_tmp/"
@@ -127,41 +159,45 @@ def main():
         db_prefix_nodes = db_prefix + ".nodes"
         db_prefix_map = db_prefix + ".map"
         db_prefix_bins = db_prefix + ".bins"
-        
-        if not os.path.isfile(args.taxsbp_path + "/TaxSBP.py") or not os.path.isfile(args.taxsbp_path + "/scripts/get_len_taxid.sh"):
-            print_log("TaxSBP files (TaxSBP.py and scripts/get_len_taxid.sh) were not found. Please inform the path of the files with --taxsbp-path\n")
-            return 1
 
-        if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
-            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
-            return 1
+        if args.which=='build':
+            # if -1 set default, if not set value (0 deactivated)
+            if args.fragment_length==-1:
+                fragment_length = args.bin_length - args.overlap_length
+            elif args.fragment_length==0:
+                fragment_length = 0
+            else:
+                fragment_length = args.fragment_length - args.overlap_length 
 
-    if args.which=='build':
-        # if -1 set default, if not set value (0 deactivated)
-        if args.fragment_length==-1:
-            fragment_length = args.bin_length - args.overlap_length
-        elif args.fragment_length==0:
-            fragment_length = 0
-        else:
-            fragment_length = args.fragment_length - args.overlap_length 
-
-        if fragment_length and args.overlap_length > fragment_length:
-            print_log("--overlap_length cannot be bigger than --fragment_length\n")
-            return 1
+            if fragment_length and args.overlap_length > fragment_length:
+                print_log("--overlap_length cannot be bigger than --fragment_length\n")
+                return 1
 
     if args.which=='classify':
+
+        ganon_classify_exec = shutil.which("ganon-classify")
+        if ganon_classify_exec is None:
+            ganon_classify_exec = shutil.which("ganon-classify", path=args.ganon_path)
+            if ganon_classify_exec is None:
+                ganon_classify_exec = shutil.which("build/ganon-classify", path=args.ganon_path)
+                if ganon_classify_exec is None:
+                    print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
+                    return 1
+
         if args.skip_lca and not args.output_file_prefix:
             print_log("--output-file-prefix is mandatory without LCA\n")
             return 1
 
+    ##########################################################################################################
+
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
         tx = time.time()
-        print_log("Running taxonomic clustering (TaxSBP.py)... ")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
-                            args.taxsbp_path,
+        print_log("Running taxonomic clustering (TaxSBP)... ")
+        run_taxsbp_cmd = '{0} -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
+                            taxsbp_exec,
                             taxsbp_input_file,
                             ncbi_nodes_file,
                             "-m " + ncbi_merged_file if ncbi_merged_file else "",
@@ -194,8 +230,8 @@ def main():
 
         tx = time.time()
         print_log("Building index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9} {10} {11}'.format(
-                                        args.ganon_path,
+        run_ganon_build_cmd = '{0} -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9} {10} {11}'.format(
+                                        ganon_build_exec,
                                         acc_bin_file,
                                         "--filter-size-bits" if args.max_fp else "--filter-size",
                                         bin_size_bits*optimal_number_of_bins if args.max_fp else args.bloom_size,
@@ -242,11 +278,11 @@ def main():
         kmer_size, hash_functions, number_of_bins, rank, bin_length, fragment_length, overlap_length, filtered_nodes = parse_db_prefix_nodes(db_prefix_nodes)
         use_assembly=True if rank=="assembly" else False
 
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
-        print_log("Running taxonomic clustering (TaxSBP.py)... \n")
-        run_taxsbp_cmd = 'python3 {0}TaxSBP.py -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
-                            args.taxsbp_path,
+        print_log("Running taxonomic clustering (TaxSBP)... \n")
+        run_taxsbp_cmd = '{0} -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
+                            taxsbp_exec,
                             db_prefix_bins,
                             taxsbp_input_file,
                             ncbi_nodes_file,
@@ -265,8 +301,8 @@ def main():
 
         tx = time.time()
         print_log("Updating index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0}ganon-build -u {1} -e {2} -o {3} -t {4} {5} {6} {7} {8}'.format(
-                                        args.ganon_path,
+        run_ganon_build_cmd = '{0} -u {1} -e {2} -o {3} -t {4} {5} {6} {7} {8}'.format(
+                                        ganon_build_exec,
                                         db_prefix_filter,
                                         acc_bin_file,
                                         tmp_db_prefix_filter,
@@ -341,8 +377,8 @@ def main():
 
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0}ganon-classify {1} {2} -c {3} {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13} {14}'.format(
-                                        args.ganon_path,
+        run_ganon_classify = '{0} {1} {2} -c {3} {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13} {14}'.format(
+                                        ganon_classify_exec,
                                         " ".join(["-b "+db_prefix+".filter" for db_prefix in args.db_prefix]),
                                         " ".join(["-g "+db_prefix+".map" for db_prefix in args.db_prefix]),
                                         ",".join([str(h) for h in args.db_hierarchy]),
@@ -362,7 +398,11 @@ def main():
         print_log("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         if not args.skip_lca:
-            from scripts.LCA import LCA
+            try:
+                from scripts.LCA import LCA
+            except ModuleNotFoundError:
+                from taxsbp.LCA import LCA
+            
             print_log("Generating LCA and reports... ")
             tx = time.time()
 
@@ -499,7 +539,7 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, use_asse
 
         return taxid_lca
 
-def prepare_files(args, tmp_output_folder, use_assembly):
+def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
@@ -508,7 +548,7 @@ def prepare_files(args, tmp_output_folder, use_assembly):
     if args.seq_info_file: # file already provided 
         taxsbp_input_file = args.seq_info_file
     else: # retrieve info
-        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, args.taxsbp_path, args.seq_info, use_assembly)
+        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, ganon_get_len_taxid_exec, args.seq_info, use_assembly)
 
     if not args.taxdump_file:
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
@@ -600,7 +640,7 @@ def get_accession2taxid(acc2txid, tmp_output_folder):
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return acc2txid_file
 
-def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, seq_info, use_assembly):
+def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, seq_info, use_assembly):
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
@@ -630,8 +670,8 @@ def retrieve_ncbi(tmp_output_folder, files, threads, taxsbp_path, seq_info, use_
     if seq_info[0]=="eutils":
         tx = time.time()
         print_log("Retrieving sequence lengths and taxid from NCBI E-utils... ")
-        run_get_len_taxid_cmd = '{0}get_len_taxid.sh -i {1} {2}'.format(
-                                taxsbp_path+"/scripts/",
+        run_get_len_taxid_cmd = '{0} -i {1} {2}'.format(
+                                ganon_get_len_taxid_exec,
                                 accessions_file,
                                 "-a" if use_assembly else "")
         stdout, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
