@@ -398,7 +398,11 @@ def main():
         print_log("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         if not args.skip_lca:
-            from scripts.LCA import LCA
+            try:
+                from scripts.LCA import LCA
+            except ModuleNotFoundError:
+                from taxsbp.LCA import LCA
+            
             print_log("Generating LCA and reports... ")
             tx = time.time()
 
