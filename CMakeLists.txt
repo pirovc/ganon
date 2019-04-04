@@ -23,7 +23,7 @@ endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 option( GANON_OFFSET "Enable offset for ganon-classify" OFF )
-option( USE_MODULES "Enable use of system modules" OFF )
+option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
 # -----------------------------------------------------------------------------
 # build types
@@ -94,10 +94,10 @@ find_package( Threads REQUIRED )
 
 # 2. cxxopts:
 
-if( USE_MODULES )
-    find_package( cxxopts REQUIRED )
+add_library( cxxopts INTERFACE )
+if( INCLUDE_DIRS )
+    target_include_directories( cxxopts SYSTEM INTERFACE ${INCLUDE_DIRS} )
 else()
-    add_library( cxxopts INTERFACE )
     target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
 endif()
 
@@ -124,10 +124,10 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # 6. Catch2:
 
-if( USE_MODULES )
-    find_package( Catch2 REQUIRED )
+add_library( Catch2 INTERFACE )
+if( INCLUDE_DIRS )
+    target_include_directories( Catch2 SYSTEM INTERFACE ${INCLUDE_DIRS} )
 else()
-    add_library( Catch2 INTERFACE )
     target_include_directories( Catch2 SYSTEM INTERFACE libs/Catch2/single_include )
 endif()
 
@@ -144,6 +144,7 @@ if( VERBOSE_CONFIG )
     message( STATUS "Misc symbols")
     message( STATUS "  Build type        : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
+    message( STATUS "  INCLUDE_DIRS      : ${INCLUDE_DIRS}" )
 
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
