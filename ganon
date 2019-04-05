@@ -393,7 +393,6 @@ def main():
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
-        print(run_ganon_classify)
         stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
         print_log("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
