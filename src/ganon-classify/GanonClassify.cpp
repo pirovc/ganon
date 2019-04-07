@@ -86,7 +86,10 @@ struct Filter
 inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
 {
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
+    const auto error = static_cast< float >( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 )
+                       / static_cast< float >( kmerSize );
+
+    return static_cast< u_int16_t >( std::ceil( error ) );
 }
 
 inline uint16_t get_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
