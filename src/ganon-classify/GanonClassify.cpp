@@ -55,13 +55,11 @@ struct ReadMatch
 
 struct ReadOut
 {
-    ReadOut()
-    {
-    }
+    ReadOut() = default;
 
     ReadOut( seqan::CharString _readID )
+    : readID{ std::move( _readID ) }
     {
-        readID = _readID;
     }
 
     seqan::CharString        readID;
