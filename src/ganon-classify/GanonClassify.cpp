@@ -68,20 +68,11 @@ struct ReadOut
 
 struct Stats
 {
-    Stats()
-    : sumReadLen{ 0 }
-    , classifiedReads{ 0 }
-    , matches{ 0 }
-    , totalReads{ 0 }
-    {
-    }
-
-    std::atomic< uint64_t > sumReadLen;
-    std::atomic< uint64_t > classifiedReads;
-    std::atomic< uint64_t > matches;
-    uint64_t                totalReads;
+    std::atomic< uint64_t > sumReadLen{ 0 };
+    std::atomic< uint64_t > classifiedReads{ 0 };
+    std::atomic< uint64_t > matches{ 0 };
+    uint64_t                totalReads{ 0 };
 };
-
 
 struct Filter
 {
