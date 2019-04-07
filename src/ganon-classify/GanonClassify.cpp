@@ -94,10 +94,11 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 
 inline uint16_t get_threshold( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
 {
-    return readLen + 1u > kmerSize * ( 1u + max_error )
-               ? std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
-               : 1u; // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
-                     // just one kmer match (0 would match every read everywhere)
+    // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
+    // just one kmer match (0 would match every read everywhere)
+    return ( readLen + 1u > kmerSize * ( 1u + max_error ) )
+               ? static_cast< uint16_t >( readLen - kmerSize + 1 - ( max_error * kmerSize ) / offset )
+               : 1u;
 }
 
 inline uint16_t classify_read( Tmatches& matches, std::vector< Filter >& filter_hierarchy, seqan::Dna5String& read_seq )
