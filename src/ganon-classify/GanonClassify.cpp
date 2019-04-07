@@ -83,7 +83,7 @@ struct Filter
     FilterConfig                      filter_config;
 };
 
-inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
+inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset ) noexcept
 {
     // (offset-1) -> to correct for the floor left overs
     const auto error = static_cast< float >( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 )
