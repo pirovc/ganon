@@ -7,12 +7,13 @@
 class StopClock
 {
 public:
-    using TimePoint = std::chrono::time_point< std::chrono::high_resolution_clock >;
+    using Clock     = std::chrono::high_resolution_clock;
+    using TimePoint = std::chrono::time_point< Clock >;
     using Seconds   = double;
 
     void start()
     {
-        m_beginRound = std::chrono::high_resolution_clock::now();
+        m_beginRound = Clock::now();
 
         if ( m_firstStart )
         {
@@ -23,7 +24,7 @@ public:
 
     void stop()
     {
-        m_end = std::chrono::high_resolution_clock::now();
+        m_end = Clock::now();
         m_runTime += m_end - m_beginRound;
     }
 
