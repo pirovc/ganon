@@ -1,7 +1,7 @@
 #include "GanonBuild.hpp"
 
 #include <utils/SafeQueue.hpp>
-#include <utils/Time.hpp>
+#include <utils/StopClock.hpp>
 
 #include <seqan/binning_directory.h>
 
@@ -124,38 +124,40 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
 }
 
 void print_time( const GanonBuild::Config& config,
-                 Time&                     timeGanon,
-                 Time&                     timeLoadFiles,
-                 Time&                     timeLoadSeq,
-                 Time&                     timeBuild,
-                 Time&                     timeLoadFilter,
-                 Time&                     timeSaveFilter )
+                 const StopClock&          timeGanon,
+                 const StopClock&          timeLoadFiles,
+                 const StopClock&          timeLoadSeq,
+                 const StopClock&          timeBuild,
+                 const StopClock&          timeLoadFilter,
+                 const StopClock&          timeSaveFilter )
 {
-    std::cerr << "ganon-build       start time: " << timeGanon.get_start_ctime();
-    std::cerr << "Loading files     start time: " << timeLoadFiles.get_start_ctime();
-    std::cerr << "Loading files       end time: " << timeLoadFiles.get_end_ctime();
-    std::cerr << "Loading sequences start time: " << timeLoadSeq.get_start_ctime();
-    std::cerr << "Loading filter    start time: " << timeLoadFilter.get_start_ctime();
-    std::cerr << "Loading filter      end time: " << timeLoadFilter.get_end_ctime();
-    std::cerr << "Building filter   start time: " << timeBuild.get_start_ctime();
-    std::cerr << "Loading sequences   end time: " << timeLoadSeq.get_end_ctime();
-    std::cerr << "Building filter     end time: " << timeBuild.get_end_ctime();
-    std::cerr << "Saving filter     start time: " << timeSaveFilter.get_start_ctime();
-    std::cerr << "Saving filter       end time: " << timeSaveFilter.get_end_ctime();
-    std::cerr << "ganon-build         end time: " << timeGanon.get_end_ctime();
+    using ::operator<<;
+
+    std::cerr << "ganon-build       start time: " << timeGanon.begin();
+    std::cerr << "Loading files     start time: " << timeLoadFiles.begin();
+    std::cerr << "Loading files       end time: " << timeLoadFiles.end();
+    std::cerr << "Loading sequences start time: " << timeLoadSeq.begin();
+    std::cerr << "Loading filter    start time: " << timeLoadFilter.begin();
+    std::cerr << "Loading filter      end time: " << timeLoadFilter.end();
+    std::cerr << "Building filter   start time: " << timeBuild.begin();
+    std::cerr << "Loading sequences   end time: " << timeLoadSeq.end();
+    std::cerr << "Building filter     end time: " << timeBuild.end();
+    std::cerr << "Saving filter     start time: " << timeSaveFilter.begin();
+    std::cerr << "Saving filter       end time: " << timeSaveFilter.end();
+    std::cerr << "ganon-build         end time: " << timeGanon.end();
     std::cerr << std::endl;
-    std::cerr << " - loading files: " << timeLoadFiles.get_elapsed() << std::endl;
-    std::cerr << " - loading filter: " << timeLoadFilter.get_elapsed() << std::endl;
-    std::cerr << " - loading sequences (1t): " << timeLoadSeq.get_elapsed() << std::endl;
-    std::cerr << " - building filter (" << config.build_threads << "t): " << timeBuild.get_elapsed() << std::endl;
-    std::cerr << " - saving filter: " << timeSaveFilter.get_elapsed() << std::endl;
-    std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
+    std::cerr << " - loading files: " << timeLoadFiles.elapsed() << std::endl;
+    std::cerr << " - loading filter: " << timeLoadFilter.elapsed() << std::endl;
+    std::cerr << " - loading sequences (1t): " << timeLoadSeq.elapsed() << std::endl;
+    std::cerr << " - building filter (" << config.build_threads << "t): " << timeBuild.elapsed() << std::endl;
+    std::cerr << " - saving filter: " << timeSaveFilter.elapsed() << std::endl;
+    std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const GanonBuild::Config& config, Time& timeBuild )
+void print_stats( Stats& stats, const GanonBuild::Config& config, const StopClock& timeBuild )
 {
-    double   elapsed_build = timeBuild.get_elapsed();
+    double   elapsed_build = timeBuild.elapsed();
     uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
@@ -179,13 +181,13 @@ bool run( Config config )
     if ( !config.validate() )
         return false;
 
-    Time timeGanon;
+    StopClock timeGanon;
     timeGanon.start();
-    Time timeLoadFiles;
-    Time timeLoadFilter;
-    Time timeLoadSeq;
-    Time timeBuild;
-    Time timeSaveFilter;
+    StopClock timeLoadFiles;
+    StopClock timeLoadFilter;
+    StopClock timeLoadSeq;
+    StopClock timeBuild;
+    StopClock timeSaveFilter;
 
     if ( config.verbose )
         std::cerr << config;
@@ -201,7 +203,7 @@ bool run( Config config )
     parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids );
     stats.totalSeqsBinId = seq_bin.size();
     stats.totalBinsBinId = bin_ids.size();
-    timeLoadFiles.end();
+    timeLoadFiles.stop();
 
     //////////////////////////////
 
@@ -259,7 +261,7 @@ bool run( Config config )
     // load new or given filter
     timeLoadFilter.start();
     detail::Tfilter filter = load_filter( config, bin_ids, stats );
-    timeLoadFilter.end();
+    timeLoadFilter.stop();
 
     // Start execution threads to add kmers
     timeBuild.start();
@@ -301,22 +303,22 @@ bool run( Config config )
     //////////////////////////////
 
     read_task.get();
-    timeLoadSeq.end();
+    timeLoadSeq.stop();
 
     for ( auto&& task : tasks )
     {
         task.get();
     }
-    timeBuild.end();
+    timeBuild.stop();
     //////////////////////////////
 
     // Store filter
     timeSaveFilter.start();
     seqan::store( filter, seqan::toCString( config.output_filter_file ) );
-    timeSaveFilter.end();
+    timeSaveFilter.stop();
     //////////////////////////////
 
-    timeGanon.end();
+    timeGanon.stop();
 
     std::cerr << std::endl;
     if ( config.verbose )
