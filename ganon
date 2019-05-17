@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
 from collections import defaultdict
@@ -18,18 +18,20 @@ def main():
 
     # Defaults
     build_group_optional = build_parser.add_argument_group('optional arguments')
+    build_group_optional.add_argument('-r', '--rank',            type=str,   default='species',metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
     build_group_optional.add_argument('-k', '--kmer-size',       type=int,   default=19,      metavar='', help='The k-mer size for the bloom filter [14..32]. Default: 19')
     build_group_optional.add_argument('-n', '--hash-functions',  type=int,   default=3,       metavar='', help='The number of hash functions to use for the bloom filter [2..5]. Default: 3')
-    build_group_optional.add_argument('-f', '--max-fp',          type=float, default=0.05,    metavar='', help='Max. false positive rate for k-mer classification. Filter size will be defined base on this value by the estimated number of unique k-mers [Mutually exclusive --bloom-size]. Default: 0.05')
-    build_group_optional.add_argument('-s', '--bloom-size',      type=int,                    metavar='', help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --min-fp] ')
-    build_group_optional.add_argument('-t', '--threads',         type=int,   default=2,       metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
-    build_group_optional.add_argument('-r', '--rank',            type=str,   default='taxid', metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: taxid')
-    build_group_optional.add_argument('-l', '--bin-length',      type=int,   default=6000000, metavar='', help='Maximum length (in bp) for each bin. Default: 6000000')
-    build_group_optional.add_argument('-a', '--fragment-length', type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. (default: bin-length - overlap-length)')
-    build_group_optional.add_argument('-o', '--overlap-length',  type=int,   default=500,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classificaiton. Default: 500')
+    build_group_optional.add_argument('-f', '--max-fp',          type=float, default=0.05,    metavar='', help='Max. false positive rate for k-mer classification. Default: 0.05')
+    build_group_optional.add_argument('-m', '--max-bloom-size',  type=int,                    metavar='', help='Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-size, --hash-functions and --max-fp  [Mutually exclusive --fixed-bloom-size]')
+    build_group_optional.add_argument('-s', '--fixed-bloom-size',type=int,                    metavar='', help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
+    build_group_optional.add_argument('-l', '--bin-length',      type=int,                    metavar='', help='Maximum length (in bp) for each bin. Default: auto')
+    build_group_optional.add_argument('-t', '--threads',         type=int,   default=2,       metavar='', help='Number of subprocesses/threads to use for calculations. Default: 2')
+    build_group_optional.add_argument('--fragment-length',       type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
+    build_group_optional.add_argument('--overlap-length',        type=int,   default=300,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
     build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     build_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
+    
     # Extra
     build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
     build_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
@@ -160,18 +162,10 @@ def main():
         db_prefix_map = db_prefix + ".map"
         db_prefix_bins = db_prefix + ".bins"
 
-        if args.which=='build':
-            # if -1 set default, if not set value (0 deactivated)
-            if args.fragment_length==-1:
-                fragment_length = args.bin_length - args.overlap_length
-            elif args.fragment_length==0:
-                fragment_length = 0
-            else:
-                fragment_length = args.fragment_length - args.overlap_length 
-
-            if fragment_length and args.overlap_length > fragment_length:
-                print_log("--overlap_length cannot be bigger than --fragment_length\n")
-                return 1
+    if args.which=='build': #If set (!=0), should be smaller than fragment
+        if args.fragment_length>0 and args.overlap_length > args.fragment_length:
+            print_log("--overlap_length cannot be bigger than --fragment_length\n")
+            return 1
 
     if args.which=='classify':
 
@@ -194,6 +188,24 @@ def main():
         use_assembly=True if args.rank=="assembly" else False
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
+        #taxsbp_input_file = tmp_output_folder+"/acc_len_taxid.txt"
+        #ncbi_nodes_file = tmp_output_folder+"/nodes.dmp"
+
+        # Set bin length
+        if args.bin_length: # user defined
+            bin_length = args.bin_length
+        else:
+            bin_length = estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly)
+            if bin_length==0: return 1
+
+        # Set fragment length
+        if args.fragment_length==-1: # if ==-1 set default
+            fragment_length = bin_length - args.overlap_length
+        elif args.fragment_length==0: # if ==0 deactivate
+            fragment_length = 0
+        else: # user input
+            fragment_length = args.fragment_length - args.overlap_length 
+
         tx = time.time()
         print_log("Running taxonomic clustering (TaxSBP)... ")
         run_taxsbp_cmd = '{0} -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
@@ -201,11 +213,12 @@ def main():
                             taxsbp_input_file,
                             ncbi_nodes_file,
                             "-m " + ncbi_merged_file if ncbi_merged_file else "",
-                            args.bin_length,
+                            bin_length,
                             "assembly" if use_assembly else args.rank,
                             "-z assembly" if use_assembly else "",
                             "-a " + str(fragment_length) if fragment_length else "",
                             "-o " + str(args.overlap_length) if fragment_length else "")
+        print(run_taxsbp_cmd)
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         actual_number_of_bins, unique_taxids, max_length_bin, group_taxid = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
@@ -220,13 +233,13 @@ def main():
 
         # define bloom filter size based on given false positive
         MBinBits = 8388608
-        if not args.bloom_size:
+        if not args.fixed_bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
             print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
         else:
-            bin_size_bits = math.ceil((args.bloom_size * MBinBits)/optimal_number_of_bins);
+            bin_size_bits = math.ceil((args.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
             estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
-            print_log("Bloom filter calculated max. fp with size=" + str(args.bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
+            print_log("Bloom filter calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
 
         tx = time.time()
         print_log("Building index (ganon-build)... \n")
@@ -234,7 +247,7 @@ def main():
                                         ganon_build_exec,
                                         acc_bin_file,
                                         "--filter-size-bits" if args.max_fp else "--filter-size",
-                                        bin_size_bits*optimal_number_of_bins if args.max_fp else args.bloom_size,
+                                        bin_size_bits*optimal_number_of_bins if args.max_fp else args.fixed_bloom_size,
                                         args.kmer_size,
                                         args.hash_functions,
                                         args.threads,
@@ -253,7 +266,7 @@ def main():
                 'hash_functions': args.hash_functions, 
                 'number_of_bins': actual_number_of_bins, 
                 'rank': args.rank,
-                'bin_length': args.bin_length,
+                'bin_length': bin_length,
                 'fragment_length': fragment_length,
                 'overlap_length': args.overlap_length,
                 'filtered_nodes': build_filtered_nodes(unique_taxids, group_taxid, ncbi_nodes_file, ncbi_names_file, use_assembly)}
@@ -778,6 +791,105 @@ def read_names(names_file):
             if name_class.replace('\t|\n','')=="scientific name":
                 names[taxid] = name
     return names
+
+def ibf_size_mb(args, bp, bins):
+    return (math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*(bp-args.kmer_size+1)))-1)))*bins)/8388608
+
+def optimal_bins(nbins):
+    return (math.floor(nbins/64)+1)*64
+
+def get_rank_node(nodes, ranks, taxid, rank):
+    t = taxid
+    try:
+        while ranks[t]!=rank and t!="1": t = nodes[t]
+    except:
+        #sys.stderr.write(str(t) + " at rank " + rank + " not found\n")
+        return taxid
+    return t
+
+def bins_group(groups_len, fragment_size):
+    group_nbins = {}
+    for group, group_len in groups_len.items():
+        group_nbins[group] = math.ceil(group_len/fragment_size)
+    return group_nbins
+
+def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
+
+    # overlap_length is not considered, it will increase final number of bins, but not size
+    ncbi_nodes, ncbi_ranks = read_nodes(ncbi_nodes_file)
+    
+    groups_len = defaultdict(int)
+    for line in open(taxsbp_input_file, "r"):
+        if use_assembly:
+            _, seqlen, _, assembly = line.rstrip().split("\t")
+            group = assembly
+        else:
+            fields = line.rstrip().split("\t") # slip by fields in case file has more
+            seqlen = fields[1]
+            taxid = fields[2]
+            group = taxid if args.rank=="taxid" else get_rank_node(ncbi_nodes, ncbi_ranks, taxid, args.rank) # convert taxid into rank taxid
+
+        sl = int(seqlen)
+        if sl<args.kmer_size: continue
+        groups_len[group]+= sl
+    
+    ngroups = len(groups_len)
+    
+    min_group_len = min(groups_len.values())
+    max_group_len = max(groups_len.values())
+    sum_group_len = sum(groups_len.values())
+
+    min_bins_optimal = optimal_bins(ngroups)
+    max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len).values()))
+
+    min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
+
+    if args.verbose:
+        print_log("Minimum number of bins %d / optimal %d\n" % (ngroups, min_bins_optimal))
+        print_log("Minimum estimated size %.2fMB in 1 bin\n" % ibf_size_mb(args, sum_group_len, 1))
+        print_log("Group sizes for %s in bp: min %d, max %d, avg %d, sum %d\n" % (args.rank, min_group_len, max_group_len, math.ceil(sum_group_len/min_bins_optimal), sum_group_len))
+        print_log("%d bins necessary to achieve %.2fMB (%dbp per bin)\n" % (max_bins_optimal, min_size_possible, min_group_len))
+        print_log("%.2fMB necessary to achieve %d bins (%dbp per bin)\n" % (ibf_size_mb(args, max_group_len, min_bins_optimal), min_bins_optimal, max_group_len))
+
+    # define maximum size based on an user input
+    if args.max_bloom_size:
+        if args.max_bloom_size < math.ceil(min_size_possible):
+            print("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
+            return 0
+        max_bloom_size = args.max_bloom_size
+        max_nbins = 0
+    else:
+        max_bloom_size = 0
+        max_nbins = optimal_bins(min_bins_optimal*1.5)
+
+    bin_length = min_group_len  # start length on the minimun
+    bin_increment = math.ceil(sum_group_len/min_bins_optimal) # guess first increment based on the avg.
+    attempts=30
+    cont=0
+    nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
+    while cont<attempts:
+        size_mb = ibf_size_mb(args, bin_length, nbins)
+        
+        if args.verbose: print_log("%d bins -> %.2fMB (%dbp per bin)\n" % (nbins, size_mb , bin_length))
+
+        if nbins==min_bins_optimal: #if achieved minimum bins, best scenario
+             break
+        elif max_bloom_size: # has size limit
+            if math.ceil(size_mb)==max_bloom_size: # if achieved in the goal range(<1GB)
+                break
+            elif size_mb>max_bloom_size: # index too big, step back and reduce increment
+                bin_length-=bin_increment
+                bin_increment=bin_increment/2 # decrease fragment increment by 2 and attempt to get a smaller filter
+        elif nbins<=max_nbins: # max_nbins as limit
+            break
+
+        cont+=1
+        bin_length+=bin_increment
+        nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
+    
+    if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- \n" % (nbins, size_mb , bin_length))
+
+    return bin_length
 
 def taxid_rank_up_to(taxid, filtered_nodes, fixed_ranks):
     if taxid!="0":
