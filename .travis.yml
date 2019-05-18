@@ -1,4 +1,5 @@
 language: cpp
+dist: trusty
 
 matrix:
   include:
@@ -36,7 +37,7 @@ matrix:
     - name: "linux clang-6"
       os: linux
       addons:
-        apt: { packages: [clang-6.0, libjsoncpp-dev, libstdc++-7-dev],
+        apt: { packages: [clang-6.0, libstdc++-7-dev],
                sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0" BUILD_TYPE=Release
 
