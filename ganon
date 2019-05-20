@@ -188,9 +188,6 @@ def main():
         use_assembly=True if args.rank=="assembly" else False
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
-        #taxsbp_input_file = tmp_output_folder+"/acc_len_taxid.txt"
-        #ncbi_nodes_file = tmp_output_folder+"/nodes.dmp"
-
         # Set bin length
         if args.bin_length: # user defined
             bin_length = args.bin_length
@@ -229,7 +226,7 @@ def main():
         max_kmer_count = max_length_bin-args.kmer_size+1
         print_log("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
         # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
-        optimal_number_of_bins = math.ceil(actual_number_of_bins/64)*64
+        optimal_number_of_bins = optimal_bins(actual_number_of_bins)
 
         # define bloom filter size based on given false positive
         MBinBits = 8388608
@@ -814,8 +811,8 @@ def bins_group(groups_len, fragment_size):
     return group_nbins
 
 def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
+    # overlap_length is not beign considered for the estimation
 
-    # overlap_length is not considered, it will increase final number of bins, but not size
     ncbi_nodes, ncbi_ranks = read_nodes(ncbi_nodes_file)
     
     groups_len = defaultdict(int)
@@ -833,21 +830,23 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
         if sl<args.kmer_size: continue
         groups_len[group]+= sl
     
+    # number of groups and aux. variables
     ngroups = len(groups_len)
-    
     min_group_len = min(groups_len.values())
     max_group_len = max(groups_len.values())
     sum_group_len = sum(groups_len.values())
 
+    # minimum number of bins possible (= number of groups) will generate a big and sparse IBF
     min_bins_optimal = optimal_bins(ngroups)
+    # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
     max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len).values()))
-
+    # Minimul possible size based on the maxium number of bins
     min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
 
     if args.verbose:
-        print_log("Minimum number of bins %d / optimal %d\n" % (ngroups, min_bins_optimal))
-        print_log("Minimum estimated size %.2fMB in 1 bin\n" % ibf_size_mb(args, sum_group_len, 1))
         print_log("Group sizes for %s in bp: min %d, max %d, avg %d, sum %d\n" % (args.rank, min_group_len, max_group_len, math.ceil(sum_group_len/min_bins_optimal), sum_group_len))
+        print_log("Minimum optimal number of bins %d (from %d bins)\n" % (min_bins_optimal,ngroups))
+        print_log("Minimum estimated size %.2fMB in 1 bin\n" % ibf_size_mb(args, sum_group_len, 1))
         print_log("%d bins necessary to achieve %.2fMB (%dbp per bin)\n" % (max_bins_optimal, min_size_possible, min_group_len))
         print_log("%.2fMB necessary to achieve %d bins (%dbp per bin)\n" % (ibf_size_mb(args, max_group_len, min_bins_optimal), min_bins_optimal, max_group_len))
 
@@ -856,15 +855,16 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
         if args.max_bloom_size < math.ceil(min_size_possible):
             print("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
             return 0
-        max_bloom_size = args.max_bloom_size
+        max_bloom_size = args.max_bloom_size # user provided size limit
         max_nbins = 0
     else:
-        max_bloom_size = 0
-        max_nbins = optimal_bins(min_bins_optimal*1.5)
+        max_bloom_size = 0 # no size limit
+        max_nbins = optimal_bins(min_bins_optimal*1.5) # define a threshold for stoping
 
-    bin_length = min_group_len  # start length on the minimun
-    bin_increment = math.ceil(sum_group_len/min_bins_optimal) # guess first increment based on the avg.
-    attempts=30
+    # Try to estimate best fit for size and number of bins
+    bin_length = min_group_len  # start length on the minimun possible (biggest filter)
+    bin_increment = math.ceil(sum_group_len/min_bins_optimal) # increment filter based on the avg.
+    attempts=30 # number of iterations
     cont=0
     nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
     while cont<attempts:
@@ -872,17 +872,15 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
         
         if args.verbose: print_log("%d bins -> %.2fMB (%dbp per bin)\n" % (nbins, size_mb , bin_length))
 
-        if nbins==min_bins_optimal: #if achieved minimum bins, best scenario
+        if nbins==min_bins_optimal or nbins<=max_nbins: #if achieved minimum bins or pre-set threshold
              break
         elif max_bloom_size: # has size limit
-            if math.ceil(size_mb)==max_bloom_size: # if achieved in the goal range(<1GB)
+            if math.ceil(size_mb)==max_bloom_size: # if achieved in the goal range
                 break
             elif size_mb>max_bloom_size: # index too big, step back and reduce increment
                 bin_length-=bin_increment
-                bin_increment=bin_increment/2 # decrease fragment increment by 2 and attempt to get a smaller filter
-        elif nbins<=max_nbins: # max_nbins as limit
-            break
-
+                bin_increment=math.ceil(bin_increment/2) # decrease fragment increment by 2 and attempt to get a smaller filter
+        
         cont+=1
         bin_length+=bin_increment
         nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
