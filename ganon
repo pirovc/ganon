@@ -856,34 +856,51 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
             print("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
             return 0
         max_bloom_size = args.max_bloom_size # user provided size limit
-        max_nbins = 0
+        min_nbins = min_bins_optimal # use the optimal
     else:
         max_bloom_size = 0 # no size limit
-        max_nbins = optimal_bins(min_bins_optimal*1.5) # define a threshold for stoping
+        min_nbins = min_bins_optimal*2 # define a threshold for stoping
 
     # Try to estimate best fit for size and number of bins
     bin_length = min_group_len  # start length on the minimun possible (biggest filter)
     bin_increment = math.ceil(sum_group_len/min_bins_optimal) # increment filter based on the avg.
     attempts=30 # number of iterations
-    cont=0
-    nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
-    while cont<attempts:
-        size_mb = ibf_size_mb(args, bin_length, nbins)
-        
-        if args.verbose: print_log("%d bins -> %.2fMB (%dbp per bin)\n" % (nbins, size_mb , bin_length))
+    att_cont=0
+    
+    if args.verbose: print_log("\nmax_bloom_size %d, min_nbins %d\n" % (max_bloom_size, min_nbins))
+    while att_cont<=attempts:
+        att_cont+=1
 
-        if nbins==min_bins_optimal or nbins<=max_nbins: #if achieved minimum bins or pre-set threshold
-             break
-        elif max_bloom_size: # has size limit
-            if math.ceil(size_mb)==max_bloom_size: # if achieved in the goal range
+        nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
+        size_mb = ibf_size_mb(args, bin_length, nbins)
+        #if args.verbose: print_log("%d bins -> %.2fMB (%dbp per bin)\n" % (nbins, size_mb , bin_length))
+        
+        if args.verbose: print_log("bin_length %d will generate %d bins with %.2fMB\n" % (bin_length, nbins, size_mb))
+
+        if max_bloom_size: # has user input size limit
+            if math.ceil(size_mb)>=max_bloom_size*0.99 and math.floor(size_mb)<=max_bloom_size*1.01: # if achieved in the goal range
                 break
             elif size_mb>max_bloom_size: # index too big, step back and reduce increment
-                bin_length-=bin_increment
-                bin_increment=math.ceil(bin_increment/2) # decrease fragment increment by 2 and attempt to get a smaller filter
-        
-        cont+=1
+                bin_increment = -abs(math.ceil(bin_increment/2))
+            elif size_mb<max_bloom_size:
+                bin_increment = abs(math.ceil(bin_increment/2))
+        else:
+            if nbins>=min_nbins-64 and nbins<=min_nbins+64: # achieved low number of bins
+                break
+            elif nbins>min_nbins:
+                bin_increment = abs(math.ceil(bin_increment/2))
+            elif nbins<min_nbins:
+                bin_increment = -abs(math.ceil(bin_increment/2))
+
+        if bin_increment==0: break
+
+        print(bin_increment)
         bin_length+=bin_increment
-        nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
+
+        # if bin_length is growing bigger than the max group len.
+        if bin_length>=max_group_len: 
+            bin_length=max_group_len
+            break
     
     if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- \n" % (nbins, size_mb , bin_length))
 
