@@ -97,6 +97,16 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406    
 no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|1052684  Paenibacillus polymyxa M1                      57  57.00000
 ```
 
+### Index size
+
+The file db_prefix.filter is the main and biggest database file for ganon and it stores the interleaved bloom filter. Its size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters: `--bin-length` `--max-fp` `--kmer-size` `--hash-functions`.
+
+Ganon will try to find the best `--bin-length` given `--max-fp` `--kmer-size` `--hash-functions`. If you have a limited amount of resources available, you can set the `--max-bloom-size` to put an approximate limit on the size of the filter (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters). Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step.
+
+`--bin-length` is the size in bp of each group for the taxonomic clustering (with TaxSBP). By default,  `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
+
+Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
+
 ### classify
 
 #### .out
