@@ -164,7 +164,11 @@ def main():
 
     if args.which=='build': #If set (!=0), should be smaller than fragment
         if args.fragment_length>0 and args.overlap_length > args.fragment_length:
-            print_log("--overlap_length cannot be bigger than --fragment_length\n")
+            print_log("--overlap-length cannot be bigger than --fragment-length\n")
+            return 1
+
+        if args.fixed_bloom_size and not args.bin_length:
+            print_log("please set the --bin-length to use --fixed-bloom-size\n")
             return 1
 
     if args.which=='classify':
@@ -192,8 +196,12 @@ def main():
         if args.bin_length: # user defined
             bin_length = args.bin_length
         else:
+            tx = time.time()
+            print_log("Estimating best bin lenght... ")
             bin_length = estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly)
             if bin_length==0: return 1
+            print_log(str(bin_length) + "bp. ")
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Set fragment length
         if args.fragment_length==-1: # if ==-1 set default
@@ -215,7 +223,6 @@ def main():
                             "-z assembly" if use_assembly else "",
                             "-a " + str(fragment_length) if fragment_length else "",
                             "-o " + str(args.overlap_length) if fragment_length else "")
-        print(run_taxsbp_cmd)
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         actual_number_of_bins, unique_taxids, max_length_bin, group_taxid = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
@@ -800,19 +807,20 @@ def get_rank_node(nodes, ranks, taxid, rank):
     try:
         while ranks[t]!=rank and t!="1": t = nodes[t]
     except:
-        #sys.stderr.write(str(t) + " at rank " + rank + " not found\n")
         return taxid
-    return t
+    
+    return t if t!="1" else taxid
 
-def bins_group(groups_len, fragment_size):
+def bins_group(groups_len, fragment_size, overlap_length):
     group_nbins = {}
+    if fragment_size<=overlap_length: overlap_length=0
     for group, group_len in groups_len.items():
-        group_nbins[group] = math.ceil(group_len/fragment_size)
+        # approximate extension in size with overlap_length (should be done by each sequence for the group)
+        g_len = group_len + (math.floor(group_len/fragment_size)*overlap_length)
+        group_nbins[group] = math.ceil(g_len/(fragment_size-overlap_length))
     return group_nbins
 
 def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
-    # overlap_length is not beign considered for the estimation
-
     ncbi_nodes, ncbi_ranks = read_nodes(ncbi_nodes_file)
     
     groups_len = defaultdict(int)
@@ -829,7 +837,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
         sl = int(seqlen)
         if sl<args.kmer_size: continue
         groups_len[group]+= sl
-    
+
     # number of groups and aux. variables
     ngroups = len(groups_len)
     min_group_len = min(groups_len.values())
@@ -839,7 +847,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
     # minimum number of bins possible (= number of groups) will generate a big and sparse IBF
     min_bins_optimal = optimal_bins(ngroups)
     # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
-    max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len).values()))
+    max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len, args.overlap_length).values()))
     # Minimul possible size based on the maxium number of bins
     min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
 
@@ -862,44 +870,47 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
         min_nbins = min_bins_optimal*2 # define a threshold for stoping
 
     # Try to estimate best fit for size and number of bins
-    bin_length = min_group_len  # start length on the minimun possible (biggest filter)
+    bin_length = min_group_len  # start length on the minimun possible, max bins (biggest filter)
     bin_increment = math.ceil(sum_group_len/min_bins_optimal) # increment filter based on the avg.
     attempts=30 # number of iterations
     att_cont=0
-    
+    decrease_iter = 1 
     if args.verbose: print_log("\nmax_bloom_size %d, min_nbins %d\n" % (max_bloom_size, min_nbins))
     while att_cont<=attempts:
         att_cont+=1
 
-        nbins = optimal_bins(sum(bins_group(groups_len, bin_length).values()))
+        nbins = optimal_bins(sum(bins_group(groups_len, bin_length, args.overlap_length).values()))
         size_mb = ibf_size_mb(args, bin_length, nbins)
-        #if args.verbose: print_log("%d bins -> %.2fMB (%dbp per bin)\n" % (nbins, size_mb , bin_length))
-        
+  
         if args.verbose: print_log("bin_length %d will generate %d bins with %.2fMB\n" % (bin_length, nbins, size_mb))
 
         if max_bloom_size: # has user input size limit
             if math.ceil(size_mb)>=max_bloom_size*0.99 and math.floor(size_mb)<=max_bloom_size*1.01: # if achieved in the goal range
                 break
             elif size_mb>max_bloom_size: # index too big, step back and reduce increment
-                bin_increment = -abs(math.ceil(bin_increment/2))
+                decrease_iter=2 # on first time passing max_bloom_size start to decrease increment on every iteration
+                bin_increment = -abs(math.floor(bin_increment/decrease_iter))
             elif size_mb<max_bloom_size:
-                bin_increment = abs(math.ceil(bin_increment/2))
+                bin_increment = abs(math.floor(bin_increment/decrease_iter))
         else:
             if nbins>=min_nbins-64 and nbins<=min_nbins+64: # achieved low number of bins
                 break
             elif nbins>min_nbins:
-                bin_increment = abs(math.ceil(bin_increment/2))
+                bin_increment = abs(math.floor(bin_increment/decrease_iter))
             elif nbins<min_nbins:
-                bin_increment = -abs(math.ceil(bin_increment/2))
+                decrease_iter=2  # on first time below min_nbins start to decrease increment on every iteration
+                bin_increment = -abs(math.floor(bin_increment/decrease_iter))
 
         if bin_increment==0: break
 
-        print(bin_increment)
         bin_length+=bin_increment
 
-        # if bin_length is growing bigger than the max group len.
+        # if bin_length is growing bigger than the max group len. or smaller than overlap
         if bin_length>=max_group_len: 
             bin_length=max_group_len
+            break
+        elif bin_length<=args.overlap_length:
+            bin_length=args.overlap_length+1
             break
     
     if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- \n" % (nbins, size_mb , bin_length))
