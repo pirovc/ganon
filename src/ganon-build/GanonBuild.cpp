@@ -133,18 +133,18 @@ void print_time( const GanonBuild::Config& config,
 {
     using ::operator<<;
 
-    std::cerr << "ganon-build       start time: " << timeGanon.begin();
-    std::cerr << "Loading files     start time: " << timeLoadFiles.begin();
-    std::cerr << "Loading files       end time: " << timeLoadFiles.end();
-    std::cerr << "Loading sequences start time: " << timeLoadSeq.begin();
-    std::cerr << "Loading filter    start time: " << timeLoadFilter.begin();
-    std::cerr << "Loading filter      end time: " << timeLoadFilter.end();
-    std::cerr << "Building filter   start time: " << timeBuild.begin();
-    std::cerr << "Loading sequences   end time: " << timeLoadSeq.end();
-    std::cerr << "Building filter     end time: " << timeBuild.end();
-    std::cerr << "Saving filter     start time: " << timeSaveFilter.begin();
-    std::cerr << "Saving filter       end time: " << timeSaveFilter.end();
-    std::cerr << "ganon-build         end time: " << timeGanon.end();
+    std::cerr << "ganon-build       start time: " << timeGanon.begin() << std::endl;
+    std::cerr << "Loading files     start time: " << timeLoadFiles.begin() << std::endl;
+    std::cerr << "Loading files       end time: " << timeLoadFiles.end() << std::endl;
+    std::cerr << "Loading sequences start time: " << timeLoadSeq.begin() << std::endl;
+    std::cerr << "Loading filter    start time: " << timeLoadFilter.begin() << std::endl;
+    std::cerr << "Loading filter      end time: " << timeLoadFilter.end() << std::endl;
+    std::cerr << "Building filter   start time: " << timeBuild.begin() << std::endl;
+    std::cerr << "Loading sequences   end time: " << timeLoadSeq.end() << std::endl;
+    std::cerr << "Building filter     end time: " << timeBuild.end() << std::endl;
+    std::cerr << "Saving filter     start time: " << timeSaveFilter.begin() << std::endl;
+    std::cerr << "Saving filter       end time: " << timeSaveFilter.end() << std::endl;
+    std::cerr << "ganon-build         end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
     std::cerr << " - loading files: " << timeLoadFiles.elapsed() << std::endl;
     std::cerr << " - loading filter: " << timeLoadFilter.elapsed() << std::endl;

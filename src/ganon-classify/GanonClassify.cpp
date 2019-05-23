@@ -319,15 +319,15 @@ void print_time( GanonClassify::Config& config,
 {
     using ::operator<<;
 
-    std::cerr << "ganon-classify start time: " << timeGanon.begin();
-    std::cerr << "Loading reads  start time: " << timeLoadReads.begin();
-    std::cerr << "Class./ Print. start time: " << timeClass.begin();
-    std::cerr << "Loading reads    end time: " << timeLoadReads.end();
-    std::cerr << "Classifying      end time: " << timeClass.end();
-    std::cerr << "Printing clas.   end time: " << timePrintClass.end();
+    std::cerr << "ganon-classify start time: " << timeGanon.begin() << std::endl;
+    std::cerr << "Loading reads  start time: " << timeLoadReads.begin() << std::endl;
+    std::cerr << "Class./ Print. start time: " << timeClass.begin() << std::endl;
+    std::cerr << "Loading reads    end time: " << timeLoadReads.end() << std::endl;
+    std::cerr << "Classifying      end time: " << timeClass.end() << std::endl;
+    std::cerr << "Printing clas.   end time: " << timePrintClass.end() << std::endl;
     if ( config.output_unclassified )
-        std::cerr << "Printing unclas. end time: " << timePrintUnclass.end();
-    std::cerr << "ganon-classify   end time: " << timeGanon.end();
+        std::cerr << "Printing unclas. end time: " << timePrintUnclass.end() << std::endl;
+    std::cerr << "ganon-classify   end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
     std::cerr << " - loading filters: " << timeLoadFilters.elapsed() << std::endl;
     std::cerr << " - classifying (" << config.clas_threads << "t): " << timeClass.elapsed() << std::endl;
