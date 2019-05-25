@@ -1,24 +1,24 @@
 language: cpp
-dist: trusty
+dist: xenial
 
 matrix:
   include:
-    - name: "osx gcc-7"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+#    - name: "osx gcc-7"
+#      os: osx
+#      osx_image: xcode10
+#      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
+#    - name: "osx gcc-8"
+#      os: osx
+#      osx_image: xcode10
+#      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
 
-    - name: "linux gcc-7"
-      os: linux
-      addons:
-        apt: { packages: [g++-7],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+#    - name: "linux gcc-7"
+#      os: linux
+#      addons:
+#        apt: { packages: [g++-7],
+#               sources:  [ubuntu-toolchain-r-test] }
+#      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
 
     - name: "linux gcc-8"
       os: linux
@@ -27,19 +27,19 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
 
-    - name: "linux gcc-7 (coverage)"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, lcov],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Coverage GCOV=gcov-7
+#    - name: "linux gcc-7 (coverage)"
+#      os: linux
+#      addons:
+#        apt: { packages: [g++-7, lcov],
+#               sources:  [ubuntu-toolchain-r-test] }
+#      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Coverage GCOV=gcov-7
 
-    - name: "linux clang-6"
-      os: linux
-      addons:
-        apt: { packages: [clang-6.0, libstdc++-7-dev],
-               sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0" BUILD_TYPE=Release
+#    - name: "linux clang-6"
+#      os: linux
+#      addons:
+#        apt: { packages: [clang-6.0, libstdc++-7-dev],
+#               sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
+#      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0" BUILD_TYPE=Release
 
 before_install:
   - eval "${MATRIX_EVAL}"
