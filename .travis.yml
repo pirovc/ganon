@@ -3,15 +3,15 @@ dist: xenial
 
 matrix:
   include:
-#    - name: "osx gcc-7"
-#      os: osx
-#      osx_image: xcode10
-#      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+    - name: "osx gcc-7"
+      os: osx
+      osx_image: xcode10
+      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-#    - name: "osx gcc-8"
-#      os: osx
-#      osx_image: xcode10
-#      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
+    - name: "osx gcc-8"
+      os: osx
+      osx_image: xcode10
+      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8"
       os: linux
