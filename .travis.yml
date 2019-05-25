@@ -27,6 +27,13 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
 
+    - name: "linux gcc-9"
+      os: linux
+      addons:
+        apt: { packages: [g++-9],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9" BUILD_TYPE=Release
+
 #    - name: "linux gcc-7 (coverage)"
 #      os: linux
 #      addons:
@@ -40,6 +47,13 @@ matrix:
         apt: { packages: [clang-7, g++-7],
                sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7" BUILD_TYPE=Release
+
+    - name: "linux clang-8"
+      os: linux
+      addons:
+        apt: { packages: [clang-8, g++-8],
+               sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8" BUILD_TYPE=Release
 
 before_install:
   - eval "${MATRIX_EVAL}"
