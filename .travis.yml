@@ -13,13 +13,6 @@ matrix:
 #      osx_image: xcode10
 #      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8" BUILD_TYPE=Release
 
-#    - name: "linux gcc-7"
-#      os: linux
-#      addons:
-#        apt: { packages: [g++-7],
-#               sources:  [ubuntu-toolchain-r-test] }
-#      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
-
     - name: "linux gcc-8"
       os: linux
       addons:
@@ -34,12 +27,12 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9" BUILD_TYPE=Release
 
-#    - name: "linux gcc-7 (coverage)"
-#      os: linux
-#      addons:
-#        apt: { packages: [g++-7, lcov],
-#               sources:  [ubuntu-toolchain-r-test] }
-#      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Coverage GCOV=gcov-7
+    - name: "linux gcc-9 (coverage)"
+      os: linux
+      addons:
+        apt: { packages: [g++-9, lcov],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9" BUILD_TYPE=Coverage GCOV=gcov-9
 
     - name: "linux clang-7"
       os: linux
