@@ -37,7 +37,7 @@ matrix:
     - name: "linux clang-7"
       os: linux
       addons:
-        apt: { packages: [clang-7, libc++-7-dev],
+        apt: { packages: [clang-7, g++-7],
                sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7" BUILD_TYPE=Release
 
