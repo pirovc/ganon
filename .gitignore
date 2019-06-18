@@ -28,6 +28,9 @@
 *.out
 *.app
 
+# Python byte code
+*.pyc
+
 # Build
 **/build
 
