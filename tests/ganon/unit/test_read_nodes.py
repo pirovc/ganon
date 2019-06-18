@@ -9,8 +9,8 @@ class TestReadNodes(unittest.TestCase):
         """
         nodes_file = ("tests/ganon/unit/data/mini_nodes.dmp")
         nodes, ranks = read_nodes(nodes_file)
-        self.assertEqual(len(nodes), 101)
-        self.assertEqual(len(ranks), 101)
+        self.assertEqual(len(nodes), 24)
+        self.assertEqual(len(ranks), 24)
         self.assertEqual(nodes["1"], "0")
 
 if __name__ == '__main__':

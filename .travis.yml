@@ -49,6 +49,9 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
+  - python -m unittest discover -s tests/ganon/unit/
+  - python -m unittest discover -s tests/ganon/integration/
+
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
