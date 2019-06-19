@@ -3,15 +3,22 @@ dist: xenial
 
 matrix:
   include:
-    - name: "osx gcc-7"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "osx gcc-7"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     # - name: "osx gcc-8"
     #   os: osx
     #   osx_image: xcode10
     #   env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+
+    - name: "linux gcc-7"
+      os: linux
+      addons:
+        apt: { packages: [g++-7],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     # - name: "linux gcc-8"
     #   os: linux
@@ -50,6 +57,7 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
+  - pwd
   - pip install binpacking==1.4.1
   - git clone https://github.com/pirovc/taxsbp.git
 
@@ -59,9 +67,9 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
-  - python -m unittest discover -s tests/ganon/unit/
-  - python -m unittest discover -s tests/ganon/integration/
-  
+  - python3 -m unittest discover -s tests/ganon/unit/
+  - python3 -m unittest discover -s tests/ganon/integration/
+
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
