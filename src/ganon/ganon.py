@@ -3,12 +3,15 @@
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
 from collections import defaultdict
 
-def main():
+def main(arguments=None):
 
     version = '0.1.3'
     
     ####################################################################################################
-
+	
+    # Arguments from testing
+    if arguments is not None: sys.argv=arguments
+	
     build_parser = argparse.ArgumentParser(description='Build options', add_help=False)
     
     # Required
