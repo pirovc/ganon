@@ -66,6 +66,7 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
+  - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/
   - python3 -m unittest discover -s tests/ganon/integration/
 
