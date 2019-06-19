@@ -150,8 +150,12 @@ def main(arguments=None):
             if taxsbp_exec is None:
                 taxsbp_exec = shutil.which("TaxSBP.py", path=args.taxsbp_path)
                 if taxsbp_exec is None:
-                    print_log("TaxSBP executable (TaxSBP.py or taxsbp) were not found. Please inform the path of the scripts with --taxsbp-path\n")
-                    return 1
+                    taxsbp_exec = shutil.which("taxsbp", path="taxsbp/")
+                    if taxsbp_exec is None:
+                        taxsbp_exec = shutil.which("TaxSBP.py", path="taxsbp/")
+                        if taxsbp_exec is None:
+                            print_log("TaxSBP executable (TaxSBP.py or taxsbp) were not found. Please inform the path of the scripts with --taxsbp-path\n")
+                            return 1
                      
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
             print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
