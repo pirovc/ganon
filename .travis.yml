@@ -16,7 +16,7 @@ matrix:
     - name: "linux gcc-7"
       os: linux
       addons:
-        apt: { packages: [g++-7],
+        apt: { packages: [g++-7, python3.7],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
@@ -57,6 +57,7 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
+  - whereis python
   - pip install --user binpacking==1.4.1
   - git clone https://github.com/pirovc/taxsbp.git
 
