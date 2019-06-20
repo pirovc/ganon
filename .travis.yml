@@ -57,10 +57,7 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - whereis pip
   - python3 -m pip install --user --upgrade pip
-  - python3 -m pip --version
-  - which pip
   - python3 -m pip install --user binpacking==1.4.1
   - git clone https://github.com/pirovc/taxsbp.git
 
