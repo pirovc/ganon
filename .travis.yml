@@ -6,54 +6,54 @@ matrix:
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@7 grep && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "osx gcc-8"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@8 && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "linux gcc-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-8"
-      os: linux
-      addons:
-        apt: { packages: [g++-8, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "linux gcc-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-8, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
-      os: linux
-      addons:
-        apt: { packages: [g++-9, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    # - name: "linux gcc-9"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9 (coverage)"
-      os: linux
-      addons:
-        apt: { packages: [g++-9, lcov, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Coverage && GCOV=gcov-9"
+    # - name: "linux gcc-9 (coverage)"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9, lcov, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Coverage && GCOV=gcov-9"
 
-    - name: "linux clang-7"
-      os: linux
-      addons:
-        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
+    # - name: "linux clang-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+    #            sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
 
-    - name: "linux clang-8"
-      os: linux
-      addons:
-        apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
+    # - name: "linux clang-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
+    #            sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
