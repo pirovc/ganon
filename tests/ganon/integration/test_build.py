@@ -8,17 +8,16 @@ class TestBuild(unittest.TestCase):
         """
         Test if build on sample data is working
         """
-        prefix = "test_output"
-        ret = ganon.main(shlex.split("ganon build --db-prefix " + prefix + " --taxdump-file tests/ganon/integration/data/mini_nodes.dmp tests/ganon/integration/data/mini_names.dmp --input-files tests/ganon-build/data/sequences/bacteria_NC_010333.1.fasta.gz tests/ganon-build/data/sequences/bacteria_NC_017164.1.fasta.gz tests/ganon-build/data/sequences/bacteria_NC_017163.1.fasta.gz tests/ganon-build/data/sequences/bacteria_NC_017543.1.fasta.gz"))
+        path_data = "tests/ganon/integration/data/"
+        prefix = "test_build"
+        ret = ganon.main(shlex.split("ganon build --db-prefix "+prefix+" --taxdump-file "+path_data+"mini_nodes.dmp "+path_data+"mini_names.dmp --input-files "+path_data+"bacteria_NC_010333.1.fasta.gz "+path_data+"bacteria_NC_017164.1.fasta.gz "+path_data+"bacteria_NC_017163.1.fasta.gz "+path_data+"bacteria_NC_017543.1.fasta.gz"))
         
         # check if ran okay
         self.assertFalse(ret, "ganon build finish with an error")
        
         # check if files were created
         for ext in ["filter", "map", "bins", "nodes"]:
-            self.assertTrue(Path(prefix+"."+ext).is_file() , "File (" + ext +") was not created")
-
-        # TODO open pickle .nodes and compare variables, compare number of bins, etc...
+            self.assertTrue(Path(prefix+"."+ext).is_file() , "File (" + ext +") was not created") # TODO check file contents
 
 if __name__ == '__main__':
     unittest.main()
