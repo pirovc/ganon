@@ -6,12 +6,12 @@ matrix:
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 grep && PATH="/usr/local/opt/grep/libexec/gnubin:$PATH" && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@7 grep && PATH=\"/usr/local/opt/grep/libexec/gnubin:$PATH\" && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 && brew install grep --with-default-names && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "osx gcc-8"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@8 grep && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     # - name: "linux gcc-7"
     #   os: linux
