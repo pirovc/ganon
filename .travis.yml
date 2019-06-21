@@ -6,12 +6,12 @@ matrix:
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@7 coreutils gawk && alias zcat=gzcat && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "osx gcc-8"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@8 coreutils gawk && alias zcat=gzcat && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-7"
       os: linux
