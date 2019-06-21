@@ -6,6 +6,9 @@
 10239	|	Viridae	|		|	synonym	|
 10239	|	Viruses	|		|	scientific name	|
 10239	|	viruses	|	viruses <blast10239>	|	blast name	|
+1052684	|	Paenibacillus polymyxa M1	|		|	scientific name	|
+1052684	|	Paenibacillus polymyxa strain M1	|		|	equivalent name	|
+1052684	|	Paenibacillus polymyxa str. M1	|		|	equivalent name	|
 11050	|	Flaviviridae	|		|	scientific name	|
 11050	|	Flavivirus (arbovirus group B)	|		|	equivalent name	|
 11051	|	arboviruses group B	|		|	genbank common name	|
@@ -52,16 +55,32 @@
 1385	|	Bacillus/Staphylococcus group	|		|	synonym	|
 1406	|	"Aerobacillus polymyxa" (Prazmowski 1880) Donker 1926	|		|	authority	|
 1406	|	Aerobacillus polymyxa	|		|	synonym	|
+1406	|	ATCC 842	|	ATCC 842 <type strain>	|	type material	|
 1406	|	Bacillus polymyxa (Prazmowski 1880) Mace 1889 (Approved Lists 1980)	|		|	authority	|
 1406	|	Bacillus polymyxa	|		|	synonym	|
 1406	|	Bacillus sp. NCIM 2538	|		|	includes	|
 1406	|	Bacillus sp. NCIM 2540	|		|	includes	|
 1406	|	Bacillus sp. NCIM 2726	|		|	includes	|
 1406	|	Bacillus sp. RP 2.2	|		|	includes	|
+1406	|	CCUG 7426	|	CCUG 7426 <type strain>	|	type material	|
+1406	|	CFBP 4258	|	CFBP 4258 <type strain>	|	type material	|
+1406	|	CIP 66.22	|	CIP 66.22 <type strain>	|	type material	|
 1406	|	"Clostridium polymyxa" Prazmowski 1880	|		|	authority	|
 1406	|	Clostridium polymyxa	|		|	synonym	|
+1406	|	DSM 36	|	DSM 36 <type strain>	|	type material	|
 1406	|	"Granulobacter polymyxa" (Prazmowski 1880) Beijerinck 1893	|		|	authority	|
 1406	|	Granulobacter polymyxa	|		|	synonym	|
+1406	|	HAMBI 1897	|	HAMBI 1897 <type strain>	|	type material	|
+1406	|	HAMBI 635	|	HAMBI 635 <type strain>	|	type material	|
+1406	|	IAM 13419	|	IAM 13419 <type strain>	|	type material	|
+1406	|	IFO 15309	|	IFO 15309 <type strain>	|	type material	|
+1406	|	JCM 2507	|	JCM 2507 <type strain>	|	type material	|
+1406	|	LMG 13294	|	LMG 13294 <type strain>	|	type material	|
+1406	|	LMG:13294	|	LMG:13294 <type strain>	|	type material	|
+1406	|	NBRC 15309	|	NBRC 15309 <type strain>	|	type material	|
+1406	|	NCCB 24016	|	NCCB 24016 <type strain>	|	type material	|
+1406	|	NCTC 10343	|	NCTC 10343 <type strain>	|	type material	|
+1406	|	NRRL B-4317	|	NRRL B-4317 <type strain>	|	type material	|
 1406	|	Paenibacillus polymyxa (Prazmowski 1880) Ash et al. 1994	|		|	authority	|
 1406	|	Paenibacillus polymyxa	|		|	scientific name	|
 1406	|	Paenibacillus sp. JCM 8035	|		|	includes	|
@@ -70,10 +89,10 @@
 1406	|	Paenibacillus sp. JCM 8038	|		|	includes	|
 1406	|	Paenibacillus sp. JCM 8039	|		|	includes	|
 1406	|	Paenibacillus sp. WLY78	|		|	includes	|
+1406	|	VKM B-514	|	VKM B-514 <type strain>	|	type material	|
 1783272	|	Terrabacteria group	|		|	scientific name	|
 186822	|	Paenibacillaceae De Vos et al. 2010	|		|	authority	|
 186822	|	Paenibacillaceae	|		|	scientific name	|
-1922347	|	unclassified RNA viruses	|		|	scientific name	|
 1930510	|	Posavirus sp.	|		|	scientific name	|
 2	|	bacteria	|	bacteria <blast2>	|	blast name	|
 2	|	Bacteria	|	Bacteria <prokaryotes>	|	scientific name	|
@@ -91,6 +110,8 @@
 2559587	|	Riboviria	|		|	scientific name	|
 2559587	|	RNA viruses and viroids	|		|	common name	|
 2559587	|	RNA viruses	|		|	common name	|
+2585030	|	unclassified Riboviria	|		|	scientific name	|
+2585030	|	unclassified RNA viruses	|		|	synonym	|
 28211	|	"Alphabacteria" Cavalier-Smith 1992	|		|	authority	|
 28211	|	Alphabacteria Cavalier-Smith 2002	|		|	authority	|
 28211	|	Alphabacteria	|		|	synonym	|
@@ -123,11 +144,23 @@
 470	|	Acinetobacter baumannii	|		|	scientific name	|
 470	|	Acinetobacter genomosp. 2	|		|	synonym	|
 470	|	Acinetobacter genomospecies 2	|		|	synonym	|
+470	|	ATCC 19606	|	ATCC 19606 <type strain>	|	type material	|
 470	|	Bacterium anitratum	|		|	synonym	|
+470	|	CCUG 19096	|	CCUG 19096 <type strain>	|	type material	|
+470	|	CIP 70.34	|	CIP 70.34 <type strain>	|	type material	|
+470	|	DSM 30007	|	DSM 30007 <type strain>	|	type material	|
+470	|	JCM 6841	|	JCM 6841 <type strain>	|	type material	|
+470	|	LMG 1041	|	LMG 1041 <type strain>	|	type material	|
+470	|	LMG:1041	|	LMG:1041 <type strain>	|	type material	|
+470	|	NCCB 85021	|	NCCB 85021 <type strain>	|	type material	|
+470	|	NCTC 12156	|	NCTC 12156 <type strain>	|	type material	|
 491893	|	Abalone muscle atrophy virus	|		|	synonym	|
 491893	|	Abalone shriveling syndrome-associated virus	|		|	scientific name	|
 64280	|	APOIV	|		|	acronym	|
 64280	|	Apoi virus	|		|	scientific name	|
+696749	|	Acinetobacter baumannii 1656-2	|		|	scientific name	|
+696749	|	Acinetobacter baumannii str. 1656-2	|		|	equivalent name	|
+696749	|	Acinetobacter baumannii strain 1656-2	|		|	equivalent name	|
 72274	|	gamma-3 proteobacteria	|	gamma-3 proteobacteria <#4>	|	in-part	|
 72274	|	Pseudomonaceae/Moraxellaceae group	|		|	synonym	|
 72274	|	Pseudomonadales Orla-Jensen 1921	|		|	authority	|
