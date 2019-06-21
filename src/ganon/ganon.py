@@ -677,8 +677,8 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         tx = time.time()
         accessions_file = tmp_output_folder + 'accessions.txt'
         print_log("Extracting accessions... ")
+        # cat | zcat | gawk -> compability with osx
         run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(" ".join(files), "| zcat" if files[0].endswith(".gz") else "")
-        print(run_get_header)
         stdout, stderr, errcode = run(run_get_header, print_stderr=False, shell=True)
         count = stdout.count('\n')
         print_log(str(count) + " accessions retrieved. ")
@@ -711,7 +711,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         accessions_lengths = {}
         acc_count = 0
         for file in files:
-            # todo, run without shell=True
+            # cat | zcat | gawk -> compability with osx
             run_get_length = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr, errcode = run(run_get_length, print_stderr=False, shell=True)
             for line in stdout.rstrip().split("\n"):
