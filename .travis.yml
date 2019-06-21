@@ -76,10 +76,11 @@ script:
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      coverage run -m unittest discover -s tests/ganon/unit/;
-      coverage run -m unittest discover -s tests/ganon/integration/;
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
+      coverage run -m unittest discover -s tests/ganon/unit/;
+      coverage run -m unittest discover -s tests/ganon/integration/;
+      codecov
     fi
 
 notifications:
