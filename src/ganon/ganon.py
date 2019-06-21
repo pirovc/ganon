@@ -677,8 +677,8 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         tx = time.time()
         accessions_file = tmp_output_folder + 'accessions.txt'
         print_log("Extracting accessions... ")
-        run_get_header = 'zgrep -hoP "(?<=^>)[^ ]+" {0}'.format(" ".join(files))
-        stdout, stderr, errcode = run(run_get_header, print_stderr=False)
+        run_get_header = "{0} {1} | awk -F\" \" '/^>/ {{print substr($1,2)}}'".format("zcat" if files[0].endswith(".gz") else "cat", " ".join(files))
+        stdout, stderr, errcode = run(run_get_header, print_stderr=False, shell=True)
         count = stdout.count('\n')
         print_log(str(count) + " accessions retrieved. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
