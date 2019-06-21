@@ -175,10 +175,14 @@ taxonomic information required for LCA and reports
 
 #### run
 
-- python >=3.5
+- python >=3.4
 - taxsbp >=0.1.1
-- binpacking ==1.4.1
+- binpacking >=1.4.1
 - pandas
+- wget
+- curl
+- tar
+- GNU core utilities (gawk, zcat)
 
 ### Cloning ganon and taxsbp
 
