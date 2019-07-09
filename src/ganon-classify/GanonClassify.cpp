@@ -1,7 +1,7 @@
 #include "GanonClassify.hpp"
 
 #include <utils/SafeQueue.hpp>
-#include <utils/Time.hpp>
+#include <utils/StopClock.hpp>
 
 #include <seqan/binning_directory.h>
 
@@ -310,35 +310,37 @@ void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarch
 }
 
 void print_time( GanonClassify::Config& config,
-                 Time&                  timeGanon,
-                 Time&                  timeLoadReads,
-                 Time&                  timeLoadFilters,
-                 Time&                  timeClass,
-                 Time&                  timePrintClass,
-                 Time&                  timePrintUnclass )
+                 const StopClock&       timeGanon,
+                 const StopClock&       timeLoadReads,
+                 const StopClock&       timeLoadFilters,
+                 const StopClock&       timeClass,
+                 const StopClock&       timePrintClass,
+                 const StopClock&       timePrintUnclass )
 {
-    std::cerr << "ganon-classify start time: " << timeGanon.get_start_ctime();
-    std::cerr << "Loading reads  start time: " << timeLoadReads.get_start_ctime();
-    std::cerr << "Class./ Print. start time: " << timeClass.get_start_ctime();
-    std::cerr << "Loading reads    end time: " << timeLoadReads.get_end_ctime();
-    std::cerr << "Classifying      end time: " << timeClass.get_end_ctime();
-    std::cerr << "Printing clas.   end time: " << timePrintClass.get_end_ctime();
+    using ::operator<<;
+
+    std::cerr << "ganon-classify start time: " << timeGanon.begin() << std::endl;
+    std::cerr << "Loading reads  start time: " << timeLoadReads.begin() << std::endl;
+    std::cerr << "Class./ Print. start time: " << timeClass.begin() << std::endl;
+    std::cerr << "Loading reads    end time: " << timeLoadReads.end() << std::endl;
+    std::cerr << "Classifying      end time: " << timeClass.end() << std::endl;
+    std::cerr << "Printing clas.   end time: " << timePrintClass.end() << std::endl;
     if ( config.output_unclassified )
-        std::cerr << "Printing unclas. end time: " << timePrintUnclass.get_end_ctime();
-    std::cerr << "ganon-classify   end time: " << timeGanon.get_end_ctime();
+        std::cerr << "Printing unclas. end time: " << timePrintUnclass.end() << std::endl;
+    std::cerr << "ganon-classify   end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
-    std::cerr << " - loading filters: " << timeLoadFilters.get_elapsed() << std::endl;
-    std::cerr << " - classifying (" << config.clas_threads << "t): " << timeClass.get_elapsed() << std::endl;
-    std::cerr << " - printing (1t): " << timePrintClass.get_elapsed() << std::endl;
+    std::cerr << " - loading filters: " << timeLoadFilters.elapsed() << std::endl;
+    std::cerr << " - classifying (" << config.clas_threads << "t): " << timeClass.elapsed() << std::endl;
+    std::cerr << " - printing (1t): " << timePrintClass.elapsed() << std::endl;
     if ( config.output_unclassified )
-        std::cerr << " - printing unclassified (1t) " << timePrintUnclass.get_elapsed() << std::endl;
-    std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
+        std::cerr << " - printing unclassified (1t) " << timePrintUnclass.elapsed() << std::endl;
+    std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, Time& timeClass )
+void print_stats( Stats& stats, const StopClock& timeClass )
 {
-    const double elapsed_classification = timeClass.get_elapsed();
+    const double elapsed_classification = timeClass.elapsed();
     std::cerr << "ganon-classify processed " << stats.totalReads << " sequences (" << stats.sumReadLen / 1000000.0
               << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
@@ -364,13 +366,13 @@ bool run( Config config )
         return false;
 
     // Time control
-    Time timeGanon;
+    StopClock timeGanon;
     timeGanon.start();
-    Time timeLoadReads;
-    Time timeLoadFilters;
-    Time timeClass;
-    Time timePrintClass;
-    Time timePrintUnclass;
+    StopClock timeLoadReads;
+    StopClock timeLoadFilters;
+    StopClock timeClass;
+    StopClock timePrintClass;
+    StopClock timePrintUnclass;
 
     if ( config.verbose )
     {
@@ -431,7 +433,7 @@ bool run( Config config )
             seqan::close( seqFileIn );
         }
         queue1.notify_push_over();
-        timeLoadReads.end();
+        timeLoadReads.stop();
     } ) );
 
     // Thread for printing classified reads
@@ -450,7 +452,7 @@ bool run( Config config )
             }
             else
             {
-                timePrintClass.end();
+                timePrintClass.stop();
                 break;
             }
         }
@@ -472,7 +474,7 @@ bool run( Config config )
                     }
                     else
                     {
-                        timePrintUnclass.end();
+                        timePrintUnclass.stop();
                         break;
                     }
                 }
@@ -496,7 +498,7 @@ bool run( Config config )
         timeLoadFilters.start();
         std::vector< detail::Filter > filter_hierarchy;
         detail::load_filters( filter_hierarchy, hierarchy_name, config );
-        timeLoadFilters.end();
+        timeLoadFilters.stop();
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.open( hierarchy.second.output_file );
@@ -553,7 +555,7 @@ bool run( Config config )
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
             out.close();
 
-        timeClass.end();
+        timeClass.stop();
     }
 
     // notify that classification stoped adding new items, can exit when finished
@@ -569,7 +571,7 @@ bool run( Config config )
     if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
         out.close();
 
-    timeGanon.end();
+    timeGanon.stop();
 
     std::cerr << std::endl;
     if ( config.verbose )

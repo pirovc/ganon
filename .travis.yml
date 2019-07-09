@@ -1,35 +1,68 @@
 language: cpp
+dist: xenial
 
 matrix:
   include:
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 && CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+      env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+
+    - name: "osx gcc-8"
+      os: osx
+      osx_image: xcode10
+      env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-7"
       os: linux
       addons:
-        apt: { packages: [g++-7],
+        apt: { packages: [g++-7, python3-pip, python3-setuptools],
                sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Release
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "linux gcc-7 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-7, lcov],
+        apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
                sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7" BUILD_TYPE=Coverage GCOV=gcov-7
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
 
-    - name: "linux clang-6"
+    - name: "linux gcc-8"
       os: linux
       addons:
-        apt: { packages: [clang-6.0, libstdc++-7-dev],
-               sources:  [llvm-toolchain-trusty-6.0, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-6.0 && CXX=clang++-6.0" BUILD_TYPE=Release
+        apt: { packages: [g++-8, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+
+    - name: "linux gcc-9"
+      os: linux
+      addons:
+        apt: { packages: [g++-9, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+
+    - name: "linux clang-7"
+      os: linux
+      addons:
+        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+               sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
+
+    - name: "linux clang-8"
+      os: linux
+      addons:
+        apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
+               sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
+  - python3 -m pip install --user --upgrade pip
+  - python3 -m pip install --user binpacking==1.4.1
+  - git clone https://github.com/pirovc/taxsbp.git
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m pip install --user coverage;
+    fi
 
 script:
   - mkdir build && cd build
@@ -37,10 +70,15 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
+  - cd ..
+  - python3 -m unittest discover -s tests/ganon/unit/
+  - python3 -m unittest discover -s tests/ganon/integration/
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
+      coverage run --append -m unittest discover -s tests/ganon/unit/;
+      coverage run --append -m unittest discover -s tests/ganon/integration/;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
     fi
 

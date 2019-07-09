@@ -36,3 +36,6 @@
 
 # Python folder
 **/__pycache__
+
+# Python byte code
+*.pyc
