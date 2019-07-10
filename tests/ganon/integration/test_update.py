@@ -3,7 +3,7 @@ import shlex, pickle
 from pathlib import Path
 from src.ganon import ganon
 
-class TestBuild(unittest.TestCase):
+class TestUpdate(unittest.TestCase):
     def test_build(self):
         """
         Test if update on sample data is working

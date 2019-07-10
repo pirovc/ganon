@@ -124,39 +124,29 @@ def main(arguments=None):
         
         args.taxsbp_path = args.taxsbp_path + "/" if args.taxsbp_path else ""
         
-        ganon_build_exec = shutil.which("ganon-build")
+        for p in [None, args.ganon_path, args.ganon_path+"build/"]:
+            ganon_build_exec = shutil.which("ganon-build", path=p)
+            if ganon_build_exec is not None: break
         if ganon_build_exec is None:
-            ganon_build_exec = shutil.which("ganon-build", path=args.ganon_path)
-            if ganon_build_exec is None:
-                ganon_build_exec = shutil.which("ganon-build", path=args.ganon_path+"build/")
-                if ganon_build_exec is None:
-                    print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
-                    return 1
+            print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
+            return 1
 
-        ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh")
+        for p in [None, args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"]:
+            ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=p)
+            if ganon_get_len_taxid_exec is not None: break
         if ganon_get_len_taxid_exec is None:
-            ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=args.ganon_path)
-            if ganon_get_len_taxid_exec is None:
-                ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=args.ganon_path+"scripts/")
-                if ganon_get_len_taxid_exec is None:
-                    ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=args.ganon_path+"../scripts/")
-                    if ganon_get_len_taxid_exec is None:
-                        print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
-                        return 1
+            print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
+            return 1
 
-        taxsbp_exec = shutil.which("taxsbp")
+        for p in [None, args.taxsbp_path, "taxsbp/"]:
+            taxsbp_exec = shutil.which("taxsbp", path=p)
+            if taxsbp_exec is not None: break
+            taxsbp_exec = shutil.which("taxsbp.py", path=p)
+            if taxsbp_exec is not None: break
         if taxsbp_exec is None:
-            taxsbp_exec = shutil.which("taxsbp", path=args.taxsbp_path)
-            if taxsbp_exec is None:
-                taxsbp_exec = shutil.which("TaxSBP.py", path=args.taxsbp_path)
-                if taxsbp_exec is None:
-                    taxsbp_exec = shutil.which("taxsbp", path="taxsbp/")
-                    if taxsbp_exec is None:
-                        taxsbp_exec = shutil.which("TaxSBP.py", path="taxsbp/")
-                        if taxsbp_exec is None:
-                            print_log("TaxSBP executable (TaxSBP.py or taxsbp) were not found. Please inform the path of the scripts with --taxsbp-path\n")
-                            return 1
-                     
+            print_log("TaxSBP script (taxsbp or taxsbp.py) were not found. Please inform the path of the scripts with --taxsbp-path\n")
+            return 1
+
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
             print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
             return 1
@@ -180,14 +170,12 @@ def main(arguments=None):
 
     if args.which=='classify':
 
-        ganon_classify_exec = shutil.which("ganon-classify")
+        for p in [None, args.ganon_path, args.ganon_path+"build/"]:
+            ganon_classify_exec = shutil.which("ganon-classify", path=p)
+            if ganon_classify_exec is not None: break
         if ganon_classify_exec is None:
-            ganon_classify_exec = shutil.which("ganon-classify", path=args.ganon_path)
-            if ganon_classify_exec is None:
-                ganon_classify_exec = shutil.which("ganon-classify", path=args.ganon_path+"build/")
-                if ganon_classify_exec is None:
-                    print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
-                    return 1
+            print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
+            return 1
 
         if args.skip_lca and not args.output_file_prefix:
             print_log("--output-file-prefix is mandatory without LCA\n")
