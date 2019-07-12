@@ -23,6 +23,7 @@ endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 option( GANON_OFFSET "Enable offset for ganon-classify" OFF )
+option( CONDA "Flag for compilation in conda env." OFF )
 option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
 # -----------------------------------------------------------------------------
@@ -76,7 +77,9 @@ endif()
 
 # seqan specific flags:
 
-add_compile_options( -static -march=native )
+if ( NOT CONDA )
+	add_compile_options( -static -march=native )
+endif()
 
 # Enable offset:
 
@@ -145,8 +148,6 @@ if( VERBOSE_CONFIG )
     message( STATUS "  Build type        : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
     message( STATUS "  INCLUDE_DIRS      : ${INCLUDE_DIRS}" )
-    cmake_host_system_information(RESULT HAS_SSE42 QUERY HAS_SSE2)
-    message( STATUS "  HAS_SSE42         : ${HAS_SSE42}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 endif()
