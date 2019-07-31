@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
+import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re, copy
 from collections import defaultdict, OrderedDict
+import multiprocessing as mp
 
 def main(arguments=None):
 
@@ -481,7 +482,11 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
     # sort it to output in the same order as ganon-classify
     output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
 
+
     for hierarchy_name, db_prefixes in output_hierarchy.items():
+
+        pool = mp.Pool(args.threads)
+        pool_res = []
 
         # check if prefix for multiple files is necessary
         h_prefix = "_"+hierarchy_name if hierarchy_name is not None else ""
@@ -519,16 +524,8 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
                 # next read matches, print old
                 # if done=True, readid=="" to print last entries
                 if readid != old_readid: 
-                    len_assignments = len(assignments)
-                    taxid_lca = get_lca_read(assignments, max_kmer_count, merged_filtered_nodes[hierarchy_name], L, use_assembly)
-                    print(old_readid, taxid_lca, max_kmer_count, sep="\t")
-                    if not args.skip_reports:
-                        rep[taxid_lca]['count'] += 1
-                        rep[taxid_lca]['assignments'] += len_assignments
-                        if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
-                        rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
-
-                    assignments.clear() # in case got re-assigned in get_lca_read
+                    pool_res.append(pool.apply_async(get_lca_read, args=(copy.copy(assignments), max_kmer_count, old_readid, merged_filtered_nodes[hierarchy_name], L, use_assembly, )))
+                    assignments.clear()
                     max_kmer_count=0
                     sum_kmer_count=0
             
@@ -540,7 +537,18 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
                     sum_kmer_count+=abs(kc)
                     old_readid = readid
         
-        if not args.skip_reports: reports[hierarchy_name] = rep # save report structure
+        # collect result threads
+        for res in pool_res:
+            taxid_lca, readid, max_kmer_count, len_assignments = res.get()
+            print(readid, taxid_lca, max_kmer_count, sep="\t")
+            if not args.skip_reports:
+                rep[taxid_lca]['count'] += 1
+                rep[taxid_lca]['assignments'] += len_assignments
+                if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
+                rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
+
+        pool.close()
+        pool.join()
 
         # Rm file if tmp
         if not args.output_file_prefix: 
@@ -548,29 +556,30 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
         else: # close open file if not
             sys.stdout.close()
             sys.stdout = sys.__stdout__ #return to stdout
- 
+
+        if not args.skip_reports: reports[hierarchy_name] = rep # save report structure
+
+
     return reports, merged_filtered_nodes, output_hierarchy
 
-def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, use_assembly):
+def get_lca_read(assignments, max_kmer_count, readid, merged_filtered_nodes, L, use_assembly):
+    len_assignments = len(assignments) #save assignment before
     if len(assignments)==1: # unique match or same taxid (but one or more assemblies)  
         if max_kmer_count<0: # unique matches in ganon-classify, get leaf taxid (assembly) or parent taxid
-            return merged_filtered_nodes[assignments.pop()][0]
+            return merged_filtered_nodes[assignments.pop()][0], readid, max_kmer_count, readid, max_kmer_count, len_assignments
         else:
-            return assignments.pop()
+            return assignments.pop(), readid, max_kmer_count, len_assignments
     else:
         if use_assembly: # get taxids from assembly (reduce number of entries, could be done on the LCA, but is done here for speed-up)
             assignments = set(map(lambda x: merged_filtered_nodes[x][0], assignments))  # Recover taxids from assignments (assembly)
             if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
-                return assignments.pop()
-
+                return assignments.pop(), readid, max_kmer_count, len_assignments
+                
         taxid_lca = L(assignments.pop(),assignments.pop())
         for i in range(len(assignments)): 
             taxid_lca = L(taxid_lca, assignments.pop())
-            if taxid_lca == 1: 
-                assignments.clear()
-                break #if lca is already root node, no point in continue
-
-        return taxid_lca
+            if taxid_lca == "1": break #if lca is already root node, no point in continue #assignments.clear() assignments should be cleared
+        return taxid_lca, readid, max_kmer_count, len_assignments
 
 def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec):
     # Create temporary working directory
