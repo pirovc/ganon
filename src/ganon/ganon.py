@@ -501,7 +501,6 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
 
         rep = defaultdict(lambda: {'count': 0, 'assignments': 0, 'unique': 0, 'sum_kmer_count': 0})
 
-        time.sleep(10)
         with open(ganon_classify_output_file+h_prefix) as file:
             # read first line
             old_readid, cl, kc, done = get_output_line(file, process_ganon_classify)
