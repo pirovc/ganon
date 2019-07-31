@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 def main(arguments=None):
 
-    version = '0.1.3'
+    version = '0.1.4'
     
     ####################################################################################################
 	
@@ -78,7 +78,7 @@ def main(arguments=None):
 
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
-    classify_group_optional.add_argument('-c', '--db-hierarchy',                type=str, default=["1"], nargs="*", metavar='int', help='Hierachy definition, one for each database input. Can also be string, but input will be sorted (e.g. 1 1 2 3). Default: 1')
+    classify_group_optional.add_argument('-c', '--db-hierarchy',                type=str, default=["1"], nargs="*", metavar='int', help='Hierachy definition, one for each database input. Can also be string, but input will be always sorted (e.g. 1 1 2 3). Default: 1')
     classify_group_optional.add_argument('-e', '--max-error',                   type=int, default=[3],   nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0). Default: 3')
     classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')
     classify_group_optional.add_argument('-m', '--min-kmers',                   type=float,              nargs="*", metavar='int', help='Min. percentage of k-mers matching to consider a read assigned. Can be used alternatively to --max-error for reads of variable size. Single value or one per database (e.g. 0.5 0.7 1 0.25). [Mutually exclusive --max-error] ')
@@ -181,7 +181,10 @@ def main(arguments=None):
             print_log("--output-file-prefix is mandatory without LCA\n")
             return 1
 
-    ##########################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
@@ -277,7 +280,12 @@ def main(arguments=None):
 
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
-        
+ 
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+
     elif args.which=='update':  
         tx = time.time()
 
@@ -379,6 +387,11 @@ def main(arguments=None):
 
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+
     elif args.which=='classify':
 
         if not args.output_file_prefix:
@@ -405,130 +418,139 @@ def main(arguments=None):
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         " ".join(args.reads))
-        stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
-        print_log("\nDone. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        #stdout, stderr, errcode = run(run_ganon_classify, print_stderr=True)
+        process_ganon_classify = run(run_ganon_classify, blocking=False)
 
-        if not args.skip_lca:
-            try:
-                from scripts.LCA import LCA
-            except ModuleNotFoundError:
-                from taxsbp.LCA import LCA
-            
-            print_log("Generating LCA and reports... ")
+        if not args.skip_lca: reports, merged_filtered_nodes, output_hierarchy = generate_lca(args, ganon_classify_output_file, process_ganon_classify)
+
+        stdout, stderr = process_ganon_classify.communicate()
+        print_log(stderr)
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
+        if not args.skip_lca and not args.skip_reports:
             tx = time.time()
+            print_log("Generating reports... ")
 
-            if not args.skip_reports:
-                # get reads classified and unclassified from strerr
-                re_out = re.search(r"\d+\ssequences classified", stderr)
-                seq_cla = int(re_out.group().split(" ")[0]) if re_out is not None else 0
-                re_out = re.search(r"\d+\ssequences unclassified", stderr)
-                seq_unc = int(re_out.group().split(" ")[0]) if re_out is not None else 0
-                total_reads = seq_cla+seq_unc
+            # get reads classified and unclassified from strerr
+            re_out = re.search(r"\d+\ssequences classified", stderr)
+            seq_cla = int(re_out.group().split(" ")[0]) if re_out is not None else 0
+            re_out = re.search(r"\d+\ssequences unclassified", stderr)
+            seq_unc = int(re_out.group().split(" ")[0]) if re_out is not None else 0
+            total_reads = seq_cla+seq_unc
 
-            reports = {}
-            merged_filtered_nodes = {}
-
-            # build hierarchy structure for output lca files
-            output_hierarchy = defaultdict(list)
-            if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
-                for dbid,dbp in enumerate(args.db_prefix):
-                    output_hierarchy[args.db_hierarchy[dbid]].append(dbp)
-            else:
-                output_hierarchy[None] = args.db_prefix # no slit or no hierarchy, output together
- 
             for hierarchy_name, db_prefixes in output_hierarchy.items():
-
                 # check if prefix for multiple files is necessary
-                h_prefix = "_"+hierarchy_name if hierarchy_name is not None else ""
-                
-                # Merge group-taxid information and nodes from multiple databases
-                merged_filtered_nodes[hierarchy_name] = {}
-                for db_prefix in db_prefixes:
-                    _, _, _, rank, _, _, _, filtered_nodes = parse_db_prefix_nodes(db_prefix+".nodes")
-                    use_assembly=True if rank=="assembly" else False # if one of them uses assembly should be True
-                    merged_filtered_nodes[hierarchy_name].update(filtered_nodes)
+                h_prefix = "_"+hierarchy_name if hierarchy_name is not None else ""    
+                with open(args.output_file_prefix+".rep"+h_prefix, 'w') as rfile:
+                    rfile.write("unclassified" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) +"\t"+ "0" +"\t"+ "0" +"\t"+ "0" +"\t"+ "-" +"\t"+ "-" + "\n")
+                    for assignment in sorted(reports[hierarchy_name], key=lambda k: reports[hierarchy_name][k]['count'], reverse=True):
+                        rfile.write(assignment +"\t"+ str(reports[hierarchy_name][assignment]['count']) +"\t"+ str("%.5f" % ((reports[hierarchy_name][assignment]['count']/total_reads)*100)) +"\t"+ str(reports[hierarchy_name][assignment]['assignments']) +"\t"+ str(reports[hierarchy_name][assignment]['unique']) +"\t"+ str(reports[hierarchy_name][assignment]['sum_kmer_count']) +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][2] +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][1] + "\n")
 
-                #### to remove - compability with older dbs ###
-                if 1 in merged_filtered_nodes[hierarchy_name]:
-                    new_filtered_nodes = {}
-                    for t,p in merged_filtered_nodes[hierarchy_name].items():
-                        new_filtered_nodes[str(t)] = (str(p),"","")
-                    merged_filtered_nodes[hierarchy_name] = new_filtered_nodes
-                    if not args.skip_reports:
-                        args.skip_reports=True
-                        print_log("\n\n ------- \n It was not possible to generate reports because you are using an outdate database version \n Please re-create your indices with this version to be able to generate reports \n ------- \n\n")
-                #### to remove - compability with older dbs ###
-
-                # pre build LCA with used nodes
-                L = LCA({tx:parent for tx,(parent,_,_) in merged_filtered_nodes[hierarchy_name].items()})
-
-                # redirect output for lca
-                if args.output_file_prefix: sys.stdout = open(args.output_file_prefix+".lca"+h_prefix,'w')
-
-                rep = defaultdict(lambda: {'count': 0, 'assignments': 0, 'unique': 0, 'sum_kmer_count': 0})
-
-                with open(ganon_classify_output_file+h_prefix) as file:
-                    try: # read first entry
-                        old_readid, cl, kc = file.readline().rstrip().split("\t")
-                        assignments = set([cl])
-                        max_kmer_count = int(kc)
-                        sum_kmer_count = max_kmer_count
-                        done = False
-                    except (ValueError, IndexError): # last line -> empty, no reads classified
-                        done=True # do not start
-                    
-                    while not done:
-                        try:
-                            readid, cl, kc = file.readline().rstrip().split("\t")
-                        except (ValueError, IndexError): # last line -> empty
-                            readid="" # clear variable to print last entry on this iteration
-                            done=True # exit on next iteration
-                            
-                        # next read matches, print old
-                        if readid != old_readid: 
-                            len_assignments = len(assignments)
-                            taxid_lca = get_lca_read(assignments, max_kmer_count, merged_filtered_nodes[hierarchy_name], L, use_assembly)
-                            print(old_readid, taxid_lca, max_kmer_count, sep="\t")
-                            if not args.skip_reports:
-                                rep[taxid_lca]['count'] += 1
-                                rep[taxid_lca]['assignments'] += len_assignments
-                                if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
-                                rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
-
-                            assignments.clear() # in case got re-assigned in get_lca_read
-                            max_kmer_count=0
-                            sum_kmer_count=0
-                    
-                        if not done: #if not last line
-                            assignments.add(cl)
-                            kc = int(kc)
-                            # account for unique filtering with abs but keep it negative to retain information on output
-                            max_kmer_count = kc if abs(kc) > abs(max_kmer_count) else max_kmer_count 
-                            sum_kmer_count+=abs(kc)
-                            old_readid = readid
-                    
-                # Rm file if tmp
-                if not args.output_file_prefix: 
-                    os.remove(ganon_classify_output_file+h_prefix) 
-                else: # close open file if not
-                    sys.stdout.close()
-                    sys.stdout = sys.__stdout__ #return to stdout
-
-                # print single report file
-                if not args.skip_reports: 
-                    with open(args.output_file_prefix+".rep"+h_prefix, 'w') as rfile:
-                        rfile.write("unclassified" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) +"\t"+ "0" +"\t"+ "0" +"\t"+ "0" +"\t"+ "-" +"\t"+ "-" + "\n")
-                        for assignment in sorted(rep, key=lambda k: rep[k]['count'], reverse=True):
-                            rfile.write(assignment +"\t"+ str(rep[assignment]['count']) +"\t"+ str("%.5f" % ((rep[assignment]['count']/total_reads)*100)) +"\t"+ str(rep[assignment]['assignments']) +"\t"+ str(rep[assignment]['unique']) +"\t"+ str(rep[assignment]['sum_kmer_count']) +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][2] +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][1] + "\n")
-                reports[hierarchy_name] = rep
-
-            if not args.skip_reports:
-                final_report_file = args.output_file_prefix+".tre"
-                print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
-
+            final_report_file = args.output_file_prefix+".tre"
+            print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        
     print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
-   
+
+
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+
+def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
+
+    try:
+        from scripts.LCA import LCA
+    except ModuleNotFoundError:
+        from taxsbp.LCA import LCA
+    
+    reports = {}
+    merged_filtered_nodes = {}
+
+    # build hierarchy structure for output lca files
+    output_hierarchy = {}
+    if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
+        for dbid,dbp in enumerate(args.db_prefix):
+            if args.db_hierarchy[dbid] not in output_hierarchy: output_hierarchy[args.db_hierarchy[dbid]] = []
+            output_hierarchy[args.db_hierarchy[dbid]].append(dbp)
+    else:
+        output_hierarchy[None] = args.db_prefix # no slit or no hierarchy, output together
+
+    # sort it to output in the same order as ganon-classify
+    output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
+
+    for hierarchy_name, db_prefixes in output_hierarchy.items():
+
+        # check if prefix for multiple files is necessary
+        h_prefix = "_"+hierarchy_name if hierarchy_name is not None else ""
+        
+        # Merge group-taxid information and nodes from multiple databases
+        merged_filtered_nodes[hierarchy_name] = {}
+        for db_prefix in db_prefixes:
+            _, _, _, rank, _, _, _, filtered_nodes = parse_db_prefix_nodes(db_prefix+".nodes")
+            use_assembly=True if rank=="assembly" else False # if one of them uses assembly should be True
+            merged_filtered_nodes[hierarchy_name].update(filtered_nodes)
+
+        # pre build LCA with used nodes
+        L = LCA({tx:parent for tx,(parent,_,_) in merged_filtered_nodes[hierarchy_name].items()})
+
+        # redirect output for lca
+        if args.output_file_prefix: sys.stdout = open(args.output_file_prefix+".lca"+h_prefix,'w')
+
+        rep = defaultdict(lambda: {'count': 0, 'assignments': 0, 'unique': 0, 'sum_kmer_count': 0})
+
+        # wait ganon-classify to create the file
+        while not os.path.isfile(ganon_classify_output_file+h_prefix): time.sleep(1)
+
+        current_output_file = ganon_classify_output_file+h_prefix
+        with open(current_output_file, "r") as file:
+            # read first line
+            old_readid, cl, kc, done = get_output_line(file, process_ganon_classify)
+            if not done:
+                assignments = set([cl])
+                max_kmer_count = int(kc)
+                sum_kmer_count = max_kmer_count
+
+            while not done:
+                readid, cl, kc, done = get_output_line(file, process_ganon_classify)
+
+                # next read matches, print old
+                # if done=True, readid=="" to print last entries
+                if readid != old_readid: 
+                    len_assignments = len(assignments)
+                    taxid_lca = get_lca_read(assignments, max_kmer_count, merged_filtered_nodes[hierarchy_name], L, use_assembly)
+                    print(old_readid, taxid_lca, max_kmer_count, sep="\t")
+                    if not args.skip_reports:
+                        rep[taxid_lca]['count'] += 1
+                        rep[taxid_lca]['assignments'] += len_assignments
+                        if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
+                        rep[taxid_lca]['sum_kmer_count'] += sum_kmer_count
+
+                    assignments.clear() # in case got re-assigned in get_lca_read
+                    max_kmer_count=0
+                    sum_kmer_count=0
+            
+                if not done: #if not last line
+                    assignments.add(cl)
+                    kc = int(kc)
+                    # account for unique filtering with abs but keep it negative to retain information on output
+                    max_kmer_count = kc if abs(kc) > abs(max_kmer_count) else max_kmer_count 
+                    sum_kmer_count+=abs(kc)
+                    old_readid = readid
+        
+        if not args.skip_reports: reports[hierarchy_name] = rep # save report structure
+
+        # Rm file if tmp
+        if not args.output_file_prefix: 
+            os.remove(ganon_classify_output_file+h_prefix) 
+        else: # close open file if not
+            sys.stdout.close()
+            sys.stdout = sys.__stdout__ #return to stdout
+ 
+    return reports, merged_filtered_nodes, output_hierarchy
+
 def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes, L, use_assembly):
     if len(assignments)==1: # unique match or same taxid (but one or more assemblies)  
         if max_kmer_count<0: # unique matches in ganon-classify, get leaf taxid (assembly) or parent taxid
@@ -572,15 +594,18 @@ def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exe
 
     return taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
 
-def run(cmd, output_file=None, print_stderr=False, shell=False):
+def run(cmd, output_file=None, print_stderr=False, shell=False, blocking=True):
     try:
         errcode=0
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, shell=shell, universal_newlines=True, stdout=subprocess.PIPE if output_file is None else open(output_file, 'w'), stderr=subprocess.PIPE)   
-        stdout, stderr = process.communicate() # wait for the process to terminate
-        errcode = process.returncode
-        if errcode!=0: raise Exception()
-        if print_stderr: print_log(stderr)
-        return stdout, stderr, errcode
+        if blocking:
+            stdout, stderr = process.communicate() # wait for the process to terminate
+            errcode = process.returncode
+            if errcode!=0: raise Exception()
+            if print_stderr: print_log(stderr)
+            return stdout, stderr, errcode
+        else:
+            return process
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
@@ -1018,6 +1043,38 @@ def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, fin
 def print_log(text):
     sys.stderr.write(text)
     sys.stderr.flush()
+
+def get_output_line(file, process_ganon_classify):
+    readid=""
+    classification=""
+    kmercount=""
+    done=False
+
+    while True:
+        try: # read first entry
+            running_stats = process_ganon_classify.poll() # copy stats before to be safe when checking
+
+            last_pos = file.tell() # save position in case of incomplete buffer
+            line = file.readline() 
+            if line[-1]!="\n": # incomplete line (buffer)
+                file.seek(last_pos) # return the pointer to the beginning of the line
+                raise ValueError # raise error
+
+            readid, classification, kmercount = line.rstrip().split("\t") # may raise ValueError when it the last line of splited files (added '\n')
+            break
+        except (ValueError, IndexError): # last line -> empty, no reads classified, broken line
+            #print_log(file.name + " " + str(running_stats) + " " + str(last_pos) + " " + line + "\n")
+            # running_stats is not None -> main classification is finished finished 
+            # line=="\n" -> only when writing multiple output files, extra single "\n" to tell the file is over
+            # if there are no results, running_stats will be not None
+            if running_stats is not None or line=="\n": 
+                done = True # do not start over
+                break                
+            else:
+                time.sleep(1) # wait and try again
+                continue
+
+    return readid, classification, kmercount, done
 
 if __name__ == '__main__':
     main()
