@@ -495,13 +495,14 @@ bool run( Config config )
         ++hierarchy_id;
         std::string hierarchy_name = hierarchy.first;
 
+        // open hierarchy output file (before filter, ganon wrapper is watching)
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+            out.open( hierarchy.second.output_file );
+
         timeLoadFilters.start();
         std::vector< detail::Filter > filter_hierarchy;
         detail::load_filters( filter_hierarchy, hierarchy_name, config );
         timeLoadFilters.stop();
-
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
-            out.open( hierarchy.second.output_file );
 
         // hierarchy_id = 1
         //  pointer_current=queue1, data comes from file in a limited size queue
