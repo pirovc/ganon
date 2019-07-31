@@ -504,7 +504,8 @@ def generate_lca(args, ganon_classify_output_file, process_ganon_classify):
         # wait ganon-classify to create the file
         while not os.path.isfile(ganon_classify_output_file+h_prefix): time.sleep(1)
 
-        with open(ganon_classify_output_file+h_prefix, "r") as file:
+        current_output_file = ganon_classify_output_file+h_prefix
+        with open(current_output_file, "r") as file:
             # read first line
             old_readid, cl, kc, done = get_output_line(file, process_ganon_classify)
             if not done:
@@ -1059,14 +1060,14 @@ def get_output_line(file, process_ganon_classify):
                 file.seek(last_pos) # return the pointer to the beginning of the line
                 raise ValueError # raise error
 
-            readid, classification, kmercount = line.rstrip().split("\t") # may raise ValueError (empty last line)
+            readid, classification, kmercount = line.rstrip().split("\t") # may raise ValueError when it the last line of splited files (added '\n')
             break
         except (ValueError, IndexError): # last line -> empty, no reads classified, broken line
             #print_log(file.name + " " + str(running_stats) + " " + str(last_pos) + " " + line + "\n")
             # running_stats is not None -> main classification is finished finished 
-            # (last_pos>0 and not line) -> file write is over - in case of multiple output files
+            # line=="\n" -> only when writing multiple output files, extra single "\n" to tell the file is over
             # if there are no results, running_stats will be not None
-            if running_stats is not None or (last_pos>0 and not line): 
+            if running_stats is not None or line=="\n": 
                 done = True # do not start over
                 break                
             else:
