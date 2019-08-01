@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re, copy
+import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re, copy, queue
 from collections import defaultdict, OrderedDict
 import multiprocessing as mp
 
@@ -421,7 +421,6 @@ def main(arguments=None):
                                         " ".join(args.reads))
         process_ganon_classify = run(run_ganon_classify, blocking=False) # start ganon-classify and continue
         
-
         if not args.skip_lca:
 
             # build hierarchy structure for output files
@@ -451,8 +450,48 @@ def main(arguments=None):
 
                 # wait ganon-classify to create the file
                 while not os.path.isfile(ganon_classify_output_file+h_prefix): time.sleep(1)
+                
                 reports = {}
-                reports[hierarchy_name] = generate_lca(args, ganon_classify_output_file+h_prefix, args.output_file_prefix+".lca"+h_prefix, merged_filtered_nodes[hierarchy_name], process_ganon_classify, use_assembly)
+                #reports[hierarchy_name] = generate_lca(args, ganon_classify_output_file+h_prefix, args.output_file_prefix+".lca"+h_prefix, merged_filtered_nodes[hierarchy_name], process_ganon_classify, use_assembly)
+
+                manager = mp.Manager()
+                assignments_queue = manager.JoinableQueue()
+
+                #try:
+                from scripts.LCA import LCA
+                #except ModuleNotFoundError:
+                #from taxsbp.LCA import LCA
+                # pre build LCA with used nodes
+                L = LCA({tx:parent for tx,(parent,_,_) in merged_filtered_nodes[hierarchy_name].items()})
+
+                # redirect output for lca
+                if args.output_file_prefix: sys.stdout = open(args.output_file_prefix+".lca"+h_prefix,'w')
+
+                # single process reading output
+                parse_proc = mp.Process(target=parse_ganon_classify_output, args=(ganon_classify_output_file, process_ganon_classify, assignments_queue, ))
+                parse_proc.start()
+
+                # LCA multi processing consumer
+                lca_procs = []
+                for t in range(args.threads):
+                    p = mp.Process(target=generate_lca_rep, args=(t, assignments_queue, merged_filtered_nodes, L, use_assembly, args,))
+                    p.start()
+                    lca_procs.append(p)
+
+
+                assignments_queue.join()
+
+                parse_proc.join()
+                for p in lca_procs: p.join()
+                
+                
+                
+                # Rm file if tmp
+                if not args.output_file_prefix: 
+                    os.remove(ganon_classify_output_file) 
+                else: # close open file if not
+                    sys.stdout.close()
+                    sys.stdout = sys.__stdout__ #return to stdout
 
         stdout, stderr = process_ganon_classify.communicate()
         print_log(stderr)
@@ -490,26 +529,7 @@ def main(arguments=None):
 #################################################################################################################################
 #################################################################################################################################
 
-def generate_lca(args, ganon_classify_output_file, ganon_classify_lca_file, filtered_nodes, process_ganon_classify, use_assembly):
-
-    #try:
-    from scripts.LCA import LCA
-    #except ModuleNotFoundError:
-    #from taxsbp.LCA import LCA
-
-    rep = {}
-
-    pool = mp.Pool(args.threads)
-
-    # pre build LCA with used nodes
-    L = LCA({tx:parent for tx,(parent,_,_) in filtered_nodes.items()})
-
-    pool_res = []
-
-    # redirect output for lca
-    print(ganon_classify_lca_file)
-    if args.output_file_prefix: sys.stdout = open(ganon_classify_lca_file,'w')
-
+def parse_ganon_classify_output(ganon_classify_output_file, process_ganon_classify, assignments_queue):
     with open(ganon_classify_output_file, "r") as file:
         # read first line
         old_readid, cl, kc, done = get_output_line(file, process_ganon_classify)
@@ -519,12 +539,10 @@ def generate_lca(args, ganon_classify_output_file, ganon_classify_lca_file, filt
 
         while not done:
             readid, cl, kc, done = get_output_line(file, process_ganon_classify)
-
             # next read matches, print old
             # if done=True, readid=="" to print last entries
             if readid != old_readid: 
-                #assignments_queue.put([old_readid, assignments, max_kmer_count])
-                pool_res.append(pool.apply_async(get_lca_read, args=(copy.copy(assignments), max_kmer_count, old_readid, filtered_nodes, L, use_assembly, )))
+                assignments_queue.put([old_readid, assignments, max_kmer_count])
                 assignments.clear()
                 max_kmer_count=0
         
@@ -533,36 +551,32 @@ def generate_lca(args, ganon_classify_output_file, ganon_classify_lca_file, filt
                 kc = int(kc)
                 # account for unique filtering with abs but keep it negative to retain information on output
                 max_kmer_count = kc if abs(kc) > abs(max_kmer_count) else max_kmer_count 
-                old_readid = readid
-    
-    # close threads
-    pool.close()
+                old_readid = readid 
 
-    # report
-    if not args.skip_reports: rep = defaultdict(lambda: {'count': 0, 'assignments': 0, 'unique': 0})
-    # collect result threads
-    #for res in pool_res:
-        #taxid_lca, readid, max_kmer_count, len_assignments = res.get()
-        #print(readid, taxid_lca, max_kmer_count, sep="\t")
-        #if not args.skip_reports:
-        #    rep[taxid_lca]['count'] += 1
-        #    rep[taxid_lca]['assignments'] += len_assignments
-        #    if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
 
-    # wait for all to be finished
-    pool.join()
+def generate_lca_rep(t, assignments_queue, merged_filtered_nodes, L, use_assembly, args):
+    while True:
+        try:
+            print_log("waiting "+ str(t) + "\n")
+            readid, assignments, max_kmer_count = assignments_queue.get()
+            
+            len_assignments = len(assignments) #save assignment before
+            taxid_lca = get_lca_read(readid, assignments, max_kmer_count, merged_filtered_nodes, L, use_assembly)
+            if not args.skip_reports: rep = defaultdict(lambda: {'count': 0, 'assignments': 0, 'unique': 0})
+            print(readid, taxid_lca, max_kmer_count, sep="\t")
+            if not args.skip_reports:
+                rep[taxid_lca]['count'] += 1
+                rep[taxid_lca]['assignments'] += len_assignments
+                if len_assignments==1 and max_kmer_count>0: rep[taxid_lca]['unique'] += 1 # only count as unique if was not negative (meaning it didn't pass unique error filter)
+            
+            assignments_queue.task_done()
+            print_log("task done "+ str(t) + "(" + str(readid) + ")\n")
+        except queue.Empty:
+            print_log("empty "+ str(t) + "\n")
+            break
 
-    # Rm file if tmp
-    if not args.output_file_prefix: 
-        os.remove(ganon_classify_output_file) 
-    else: # close open file if not
-        sys.stdout.close()
-        sys.stdout = sys.__stdout__ #return to stdout
 
-    return rep
-
-def get_lca_read(assignments, max_kmer_count, readid, merged_filtered_nodes, L, use_assembly):
-    #len_assignments = len(assignments) #save assignment before
+def get_lca_read(readid, assignments, max_kmer_count, merged_filtered_nodes, L, use_assembly):
     lca_taxid=""
     if len(assignments)==1: # unique match or same taxid (but one or more assemblies)  
         if max_kmer_count<0: # unique matches in ganon-classify, get leaf taxid (assembly) or parent taxid
@@ -575,7 +589,7 @@ def get_lca_read(assignments, max_kmer_count, readid, merged_filtered_nodes, L, 
             if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
                 lca_taxid = assignments.pop()
 
-    print(readid, lca_taxid if lca_taxid else L(*assignments), max_kmer_count, sep="\t")
+    return lca_taxid if lca_taxid else L(*assignments)
 
 
 def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec):
