@@ -482,7 +482,7 @@ def main(arguments=None):
                 # LCA multi processing consumer
                 lca_procs = []
                 for t in range(args.threads):
-                    p = mp.Process(target=generate_lca_rep, args=(t, assignments_queue, merged_filtered_nodes, L, use_assembly, args, rep_count, rep_assignments, rep_unique, ))
+                    p = mp.Process(target=generate_lca_rep, args=(t, assignments_queue, merged_filtered_nodes[hierarchy_name], L, use_assembly, args, rep_count, rep_assignments, rep_unique, ))
                     p.start()
                     lca_procs.append(p)
 
