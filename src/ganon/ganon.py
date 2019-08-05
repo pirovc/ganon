@@ -416,7 +416,7 @@ def main(arguments=None):
                         if os.path.exists(output_hierarchy[hierarchy_name]['rep_file']): os.remove(output_hierarchy[hierarchy_name]['rep_file'])
                     output_hierarchy[hierarchy_name]['db_prefixes'].append(dbp)
             else: # no split or no hierarchy, output together
-                output_hierarchy[None] = {'db_prefixes': [args.db_prefix], 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
+                output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
             
             # sort it to output in the same order as ganon-classify
             output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
