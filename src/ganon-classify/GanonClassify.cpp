@@ -553,8 +553,8 @@ bool run( Config config )
                                                 // next iterations)
         }
 
+        out << '\n'; //write line break at the end, signal to ganon wrapper that file is over
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() ){
-            out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
             out.close();
         }
 
