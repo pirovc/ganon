@@ -177,6 +177,7 @@ taxonomic information required for LCA and reports
 - python >=3.4
 - taxsbp >=0.1.1
 - binpacking >=1.4.1
+- pylca >= 1.0.0
 - pandas
 - wget
 - curl

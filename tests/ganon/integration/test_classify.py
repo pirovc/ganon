@@ -4,7 +4,7 @@ from pathlib import Path
 from src.ganon import ganon
 
 class TestClassify(unittest.TestCase):
-    def test_build(self):
+    def test_classify(self):
         """
         Test if classify on sample data is working
         """

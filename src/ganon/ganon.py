@@ -120,25 +120,30 @@ def main(arguments=None):
     tx_total = time.time()
 
     args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
+
     if args.which=='build' or args.which=='update':
         
         args.taxsbp_path = args.taxsbp_path + "/" if args.taxsbp_path else ""
         
-        for p in [None, args.ganon_path, args.ganon_path+"build/"]:
+        # if path is given, look for binaries only there
+        ganon_build_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None]
+        for p in ganon_build_paths:
             ganon_build_exec = shutil.which("ganon-build", path=p)
             if ganon_build_exec is not None: break
         if ganon_build_exec is None:
             print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
             return 1
 
-        for p in [None, args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"]:
+        ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None]
+        for p in ganon_get_len_taxid_paths:
             ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=p)
             if ganon_get_len_taxid_exec is not None: break
         if ganon_get_len_taxid_exec is None:
             print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
             return 1
 
-        for p in [None, args.taxsbp_path, "taxsbp/"]:
+        taxsbp_paths = [args.taxsbp_path] if args.taxsbp_path else [None, "taxsbp/"]
+        for p in taxsbp_paths:
             taxsbp_exec = shutil.which("taxsbp", path=p)
             if taxsbp_exec is not None: break
             taxsbp_exec = shutil.which("taxsbp.py", path=p)
@@ -170,7 +175,8 @@ def main(arguments=None):
 
     if args.which=='classify':
 
-        for p in [None, args.ganon_path, args.ganon_path+"build/"]:
+        ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None]
+        for p in :
             ganon_classify_exec = shutil.which("ganon-classify", path=p)
             if ganon_classify_exec is not None: break
         if ganon_classify_exec is None:
@@ -441,12 +447,13 @@ def main(arguments=None):
         process_ganon_classify = run(run_ganon_classify, blocking=False)
 
         if not args.skip_lca:
-            #try:
-            from scripts.LCA import LCA
-            #except ModuleNotFoundError:
-            #from taxsbp.LCA import LCA
-            # pre build LCA with used nodes
+            try:
+                from pylca.pylca import LCA
+            except ImportError:
+                print_log("LCA module not found (pylca)")
+                args.skip_lca=True
 
+        if not args.skip_lca:
             reports = {}
             merged_filtered_nodes = {}
 

@@ -59,7 +59,10 @@ before_install:
   - eval "${MATRIX_EVAL}"
   - python3 -m pip install --user --upgrade pip
   - python3 -m pip install --user binpacking==1.4.1
-  - git clone https://github.com/pirovc/taxsbp.git
+  - git clone https://github.com/pirovc/taxsbp.git taxsbp_repo
+  - mv taxsbp_repo/taxsbp/ .
+  - git clone https://github.com/pirovc/pylca.git pylca_repo
+  - mv pylca_repo/pylca/ .
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install --user coverage;
     fi
