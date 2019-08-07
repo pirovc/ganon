@@ -176,7 +176,7 @@ def main(arguments=None):
     if args.which=='classify':
 
         ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None]
-        for p in :
+        for p in ganon_classify_paths:
             ganon_classify_exec = shutil.which("ganon-classify", path=p)
             if ganon_classify_exec is not None: break
         if ganon_classify_exec is None:
