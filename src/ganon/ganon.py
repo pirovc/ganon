@@ -37,8 +37,8 @@ def main(arguments=None):
     
     # Extra
     build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
-    build_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
-    build_group_optional.add_argument('--taxsbp-path', type=str, default="./", help=argparse.SUPPRESS)
+    build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
+    build_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
     build_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -62,8 +62,8 @@ def main(arguments=None):
 
     # Extra
     update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
-    update_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
-    update_group_optional.add_argument('--taxsbp-path', type=str, default="./", help=argparse.SUPPRESS)
+    update_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
+    update_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     update_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
     update_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -122,11 +122,8 @@ def main(arguments=None):
     args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
 
     if args.which=='build' or args.which=='update':
-        
-        args.taxsbp_path = args.taxsbp_path + "/" if args.taxsbp_path else ""
-        
         # if path is given, look for binaries only there
-        ganon_build_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None]
+        ganon_build_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
         for p in ganon_build_paths:
             ganon_build_exec = shutil.which("ganon-build", path=p)
             if ganon_build_exec is not None: break
@@ -134,7 +131,7 @@ def main(arguments=None):
             print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
             return 1
 
-        ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None]
+        ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None, "scripts/"]
         for p in ganon_get_len_taxid_paths:
             ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=p)
             if ganon_get_len_taxid_exec is not None: break
@@ -142,7 +139,7 @@ def main(arguments=None):
             print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
             return 1
 
-        taxsbp_paths = [args.taxsbp_path] if args.taxsbp_path else [None, "taxsbp/"]
+        taxsbp_paths = [args.taxsbp_path + "/"] if args.taxsbp_path else [None, "taxsbp/"]
         for p in taxsbp_paths:
             taxsbp_exec = shutil.which("taxsbp", path=p)
             if taxsbp_exec is not None: break
@@ -175,7 +172,7 @@ def main(arguments=None):
 
     if args.which=='classify':
 
-        ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None]
+        ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
         for p in ganon_classify_paths:
             ganon_classify_exec = shutil.which("ganon-classify", path=p)
             if ganon_classify_exec is not None: break
