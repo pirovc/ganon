@@ -134,9 +134,8 @@ detailed report for lca matches (one per hierarchy)
 	3) % reads assigned <tab>
 	4) # reads assigned (total) <tab>
 	5) # reads uniquely assigned <tab>
-	6) sum of k-mers matched <tab>
-	7) taxonomic rank <tab>
-	8) name
+	6) taxonomic rank <tab>
+	7) name
 
 #### .tre
 
@@ -178,6 +177,7 @@ taxonomic information required for LCA and reports
 - python >=3.4
 - taxsbp >=0.1.1
 - binpacking >=1.4.1
+- pylca >= 1.0.0
 - pandas
 - wget
 - curl

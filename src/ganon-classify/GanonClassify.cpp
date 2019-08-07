@@ -571,8 +571,10 @@ bool run( Config config )
 
     if ( config.output_unclassified )
         out_unclassified.close();
-    if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
+    if ( !config.split_output_file_hierarchy && !config.output_file.empty() ){
+        out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
         out.close();
+    }
 
     timeGanon.stop();
 

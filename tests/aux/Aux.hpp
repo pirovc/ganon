@@ -27,10 +27,15 @@ inline bool filesAreEqual( const std::string& file1, const std::string& file2 )
     return data1 == data2;
 }
 
+
 inline bool fileIsEmpty( const std::string& file )
 {
     std::ifstream stream{ file };
-    return stream.peek() == std::ifstream::traits_type::eof();
+    if (stream.peek() == std::ifstream::traits_type::eof() || stream.peek() == '\n')
+    	return true;
+    else
+    	return false;
 }
+
 
 } // namespace aux

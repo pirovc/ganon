@@ -4,7 +4,7 @@ from pathlib import Path
 from src.ganon import ganon
 
 class TestUpdate(unittest.TestCase):
-    def test_build(self):
+    def test_update(self):
         """
         Test if update on sample data is working
         """
