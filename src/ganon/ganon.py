@@ -403,25 +403,28 @@ def main(arguments=None):
         else:
             ganon_classify_output_file = args.output_file_prefix+".out"
         
+        output_hierarchy = {}
         # if there's LCA and output files generate hierarchy
-        if not args.skip_lca and args.output_file_prefix:
-            # build hierarchy structure for output files
-            output_hierarchy = {}
-            if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
-                for dbid,dbp in enumerate(args.db_prefix):
-                    hierarchy_name = args.db_hierarchy[dbid]
-                    h_prefix = "_"+hierarchy_name
-                    if hierarchy_name not in output_hierarchy: 
-                        output_hierarchy[hierarchy_name] = {'db_prefixes': [], 'out_file': args.output_file_prefix+".out"+h_prefix, 'lca_file': args.output_file_prefix+".lca"+h_prefix, 'rep_file': args.output_file_prefix+".rep"+h_prefix}
-                        if os.path.exists(output_hierarchy[hierarchy_name]['out_file']): os.remove(output_hierarchy[hierarchy_name]['out_file'])
-                        if os.path.exists(output_hierarchy[hierarchy_name]['lca_file']): os.remove(output_hierarchy[hierarchy_name]['lca_file'])
-                        if os.path.exists(output_hierarchy[hierarchy_name]['rep_file']): os.remove(output_hierarchy[hierarchy_name]['rep_file'])
-                    output_hierarchy[hierarchy_name]['db_prefixes'].append(dbp)
-            else: # no split or no hierarchy, output together
-                output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
-            
-            # sort it to output in the same order as ganon-classify
-            output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
+        if not args.skip_lca:
+            if not args.output_file_prefix:
+                output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': ganon_classify_output_file, 'lca_file': "", 'rep_file': ""}
+            else:
+                # build hierarchy structure for output files
+                if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
+                    for dbid,dbp in enumerate(args.db_prefix):
+                        hierarchy_name = args.db_hierarchy[dbid]
+                        h_prefix = "_"+hierarchy_name
+                        if hierarchy_name not in output_hierarchy: 
+                            output_hierarchy[hierarchy_name] = {'db_prefixes': [], 'out_file': args.output_file_prefix+".out"+h_prefix, 'lca_file': args.output_file_prefix+".lca"+h_prefix, 'rep_file': args.output_file_prefix+".rep"+h_prefix}
+                            if os.path.exists(output_hierarchy[hierarchy_name]['out_file']): os.remove(output_hierarchy[hierarchy_name]['out_file'])
+                            if os.path.exists(output_hierarchy[hierarchy_name]['lca_file']): os.remove(output_hierarchy[hierarchy_name]['lca_file'])
+                            if os.path.exists(output_hierarchy[hierarchy_name]['rep_file']): os.remove(output_hierarchy[hierarchy_name]['rep_file'])
+                        output_hierarchy[hierarchy_name]['db_prefixes'].append(dbp)
+                else: # no split or no hierarchy, output together
+                    output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
+                
+                # sort it to output in the same order as ganon-classify
+                output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
         
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
@@ -826,7 +829,8 @@ def get_rank_node(nodes, ranks, taxid, rank):
 
 def bins_group(groups_len, fragment_size, overlap_length):
     group_nbins = {}
-    if fragment_size<=overlap_length: overlap_length=0
+    # ignore overlap_length if too close to the size of the fragment size (*2) to avoid extreme numbers
+    if fragment_size<=overlap_length*2: overlap_length=0
     for group, group_len in groups_len.items():
         # approximate extension in size with overlap_length (should be done by each sequence for the group)
         g_len = group_len + (math.floor(group_len/fragment_size)*overlap_length)
@@ -861,7 +865,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
     min_bins_optimal = optimal_bins(ngroups)
     # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
     max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len, args.overlap_length).values()))
-    # Minimul possible size based on the maxium number of bins
+    # Min. possible size based on the maxium number of bins
     min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
 
     if args.verbose:
