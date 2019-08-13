@@ -92,7 +92,7 @@ def main(arguments=None):
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     # Extra
     classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
-    classify_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
+    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
