@@ -79,10 +79,10 @@ def main(arguments=None):
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
     classify_group_optional.add_argument('-c', '--db-hierarchy',                type=str, default=["1"], nargs="*", metavar='int', help='Hierachy definition, one for each database input. Can also be string, but input will be always sorted (e.g. 1 1 2 3). Default: 1')
-    classify_group_optional.add_argument('-e', '--max-error',                   type=int, default=[3],   nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0). Default: 3')
-    classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')
-    classify_group_optional.add_argument('-m', '--min-kmers',                   type=float,              nargs="*", metavar='int', help='Min. percentage of k-mers matching to consider a read assigned. Can be used alternatively to --max-error for reads of variable size. Single value or one per database (e.g. 0.5 0.7 1 0.25). [Mutually exclusive --max-error] ')
-    classify_group_optional.add_argument('-f', '--offset',                      type=int, default=1,              metavar='', help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1')
+    classify_group_optional.add_argument('-m', '--min-kmers',                   type=float, default=[0.25], nargs="*", metavar='int', help='Min. percentage of k-mers matching to consider a read assigned. Can be used alternatively to --max-error for reads of variable size. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 ')
+    classify_group_optional.add_argument('-e', '--max-error',                   type=int,                nargs="*", metavar='int', help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
+    classify_group_optional.add_argument('-u', '--max-error-unique',            type=int, default=[-1],  nargs="*", metavar='int', help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')    
+    classify_group_optional.add_argument('-f', '--offset',                      type=int, default=2,              metavar='', help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 2')
     classify_group_optional.add_argument('-o', '--output-file-prefix',          type=str, default="",             metavar='', help='Output file name prefix: .out for complete results / .lca for LCA results / .rep for report. Empty to print to STDOUT (only with lca). Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
@@ -92,7 +92,7 @@ def main(arguments=None):
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     # Extra
     classify_group_optional.add_argument('--verbose',                           default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
-    classify_group_optional.add_argument('--ganon-path', type=str, default="./", help=argparse.SUPPRESS)
+    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -403,25 +403,28 @@ def main(arguments=None):
         else:
             ganon_classify_output_file = args.output_file_prefix+".out"
         
+        output_hierarchy = {}
         # if there's LCA and output files generate hierarchy
-        if not args.skip_lca and args.output_file_prefix:
-            # build hierarchy structure for output files
-            output_hierarchy = {}
-            if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
-                for dbid,dbp in enumerate(args.db_prefix):
-                    hierarchy_name = args.db_hierarchy[dbid]
-                    h_prefix = "_"+hierarchy_name
-                    if hierarchy_name not in output_hierarchy: 
-                        output_hierarchy[hierarchy_name] = {'db_prefixes': [], 'out_file': args.output_file_prefix+".out"+h_prefix, 'lca_file': args.output_file_prefix+".lca"+h_prefix, 'rep_file': args.output_file_prefix+".rep"+h_prefix}
-                        if os.path.exists(output_hierarchy[hierarchy_name]['out_file']): os.remove(output_hierarchy[hierarchy_name]['out_file'])
-                        if os.path.exists(output_hierarchy[hierarchy_name]['lca_file']): os.remove(output_hierarchy[hierarchy_name]['lca_file'])
-                        if os.path.exists(output_hierarchy[hierarchy_name]['rep_file']): os.remove(output_hierarchy[hierarchy_name]['rep_file'])
-                    output_hierarchy[hierarchy_name]['db_prefixes'].append(dbp)
-            else: # no split or no hierarchy, output together
-                output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
-            
-            # sort it to output in the same order as ganon-classify
-            output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
+        if not args.skip_lca:
+            if not args.output_file_prefix:
+                output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': ganon_classify_output_file, 'lca_file': "", 'rep_file': ""}
+            else:
+                # build hierarchy structure for output files
+                if len(args.db_hierarchy) > 1 and args.split_output_file_hierarchy:
+                    for dbid,dbp in enumerate(args.db_prefix):
+                        hierarchy_name = args.db_hierarchy[dbid]
+                        h_prefix = "_"+hierarchy_name
+                        if hierarchy_name not in output_hierarchy: 
+                            output_hierarchy[hierarchy_name] = {'db_prefixes': [], 'out_file': args.output_file_prefix+".out"+h_prefix, 'lca_file': args.output_file_prefix+".lca"+h_prefix, 'rep_file': args.output_file_prefix+".rep"+h_prefix}
+                            if os.path.exists(output_hierarchy[hierarchy_name]['out_file']): os.remove(output_hierarchy[hierarchy_name]['out_file'])
+                            if os.path.exists(output_hierarchy[hierarchy_name]['lca_file']): os.remove(output_hierarchy[hierarchy_name]['lca_file'])
+                            if os.path.exists(output_hierarchy[hierarchy_name]['rep_file']): os.remove(output_hierarchy[hierarchy_name]['rep_file'])
+                        output_hierarchy[hierarchy_name]['db_prefixes'].append(dbp)
+                else: # no split or no hierarchy, output together
+                    output_hierarchy[None] = {'db_prefixes': args.db_prefix, 'out_file': args.output_file_prefix+".out", 'lca_file': args.output_file_prefix+".lca", 'rep_file': args.output_file_prefix+".rep"}
+                
+                # sort it to output in the same order as ganon-classify
+                output_hierarchy = OrderedDict(sorted(output_hierarchy.items(), key=lambda t: t[0]))
         
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
@@ -826,7 +829,8 @@ def get_rank_node(nodes, ranks, taxid, rank):
 
 def bins_group(groups_len, fragment_size, overlap_length):
     group_nbins = {}
-    if fragment_size<=overlap_length: overlap_length=0
+    # ignore overlap_length if too close to the size of the fragment size (*2) to avoid extreme numbers
+    if fragment_size<=overlap_length*2: overlap_length=0
     for group, group_len in groups_len.items():
         # approximate extension in size with overlap_length (should be done by each sequence for the group)
         g_len = group_len + (math.floor(group_len/fragment_size)*overlap_length)
@@ -861,7 +865,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
     min_bins_optimal = optimal_bins(ngroups)
     # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
     max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len, args.overlap_length).values()))
-    # Minimul possible size based on the maxium number of bins
+    # Min. possible size based on the maxium number of bins
     min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
 
     if args.verbose:
