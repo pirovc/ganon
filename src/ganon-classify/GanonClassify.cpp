@@ -495,13 +495,14 @@ bool run( Config config )
         ++hierarchy_id;
         std::string hierarchy_name = hierarchy.first;
 
+        // open hierarchy output file (before filter, ganon wrapper is watching)
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+            out.open( hierarchy.second.output_file );
+
         timeLoadFilters.start();
         std::vector< detail::Filter > filter_hierarchy;
         detail::load_filters( filter_hierarchy, hierarchy_name, config );
         timeLoadFilters.stop();
-
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
-            out.open( hierarchy.second.output_file );
 
         // hierarchy_id = 1
         //  pointer_current=queue1, data comes from file in a limited size queue
@@ -552,8 +553,10 @@ bool run( Config config )
                                                 // next iterations)
         }
 
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() ){
+            out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
             out.close();
+        }
 
         timeClass.stop();
     }
@@ -568,8 +571,10 @@ bool run( Config config )
 
     if ( config.output_unclassified )
         out_unclassified.close();
-    if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
+    if ( !config.split_output_file_hierarchy && !config.output_file.empty() ){
+        out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
         out.close();
+    }
 
     timeGanon.stop();
 
