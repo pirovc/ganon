@@ -14,7 +14,9 @@ ganon is a k-mer based read classification tool which uses Interleaved Bloom Fil
 conda install -c bioconda ganon
 ```
 
-There are possible performance benefits compiling ganon from source rathen than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
+* There are possible performance benefits compiling ganon from source rathen than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
+
+* Ganon run on MacOS only with a [manual installation](#manual-installation). It was tested with gcc/clang 7 and 8, but conda does not support those compilers for mac yet.
 
 ## Running ganon with sample data
 
@@ -355,7 +357,7 @@ Specific packages:
 - pylca >= 1.0.0 ([d1474b](https://github.com/pirovc/pylca/commit/d1474b2ec2c028963bafce278ccb69cc21c061fa))
 - binpacking >=1.4.1 ([v1.4.1](https://pypi.org/project/binpacking/1.4.1/))
 
-* Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
+** Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
 
 ### Obtaining packages
 
