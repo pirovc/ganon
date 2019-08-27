@@ -16,7 +16,7 @@ conda install -c bioconda ganon
 
 * There are possible performance benefits compiling ganon from source rathen than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
 
-* Ganon run on MacOS only with a [manual installation](#manual-installation). It was tested with gcc/clang 7 and 8, but conda does not support those compilers for mac yet.
+* Ganon runs on MacOS only with a [manual installation](#manual-installation). It was tested with gcc 7 and 8, but conda does not support those compilers for mac yet.
 
 ## Running ganon with sample data
 
