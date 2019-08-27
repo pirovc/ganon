@@ -14,7 +14,7 @@ ganon is a k-mer based read classification tool which uses Interleaved Bloom Fil
 conda install -c bioconda ganon
 ```
 
-There are possible performance benefits compiling ganon from source rathen than using the conda version. To do so, please follow the instructions [manual installation](#manual-installation))
+There are possible performance benefits compiling ganon from source rathen than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
 
 ## Running ganon with sample data
 
@@ -268,7 +268,7 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 
 #### .out
 
-all matches (one per hierarchy with `-s` option)
+all matches (one per hierarchy with `-s, --split-output-file-hierarchy`)
 
 	readid <tab> assignment <tab> k-mer count
 
@@ -276,15 +276,13 @@ all matches (one per hierarchy with `-s` option)
 
 #### .lca
 
-only one match / read (one per hierarchy)
+only one match / read (one per hierarchy with `-s, --split-output-file-hierarchy`)
 	
 	readid <tab> lca assignment <tab> max k-mer count
 
-LCA script obtained from https://www.ics.uci.edu/~eppstein/
-
 #### .rep
 
-detailed report for lca matches (one per hierarchy)
+detailed report for lca matches (one per hierarchy with `-s, --split-output-file-hierarchy`)
 	
 	1) lca assignment <tab>
 	2) reads assigned (lca) <tab>
@@ -337,7 +335,7 @@ System packages:
 - cmake >=3.10
 
 Specific packages:
-- Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e)
+- Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
 - cxxopts >=2.1.2 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/a0de9f3ba1035a3c4f5ffcd960cb94e4e12d40c5))
 - sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
 - seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/c308e99f10d942382d4c7ed6fc91be1a889e644c))
