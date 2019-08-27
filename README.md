@@ -371,7 +371,7 @@ git clone https://github.com/pirovc/pylca.git # pylca
 
 ```shh
 cd taxsbp
-python setup.py install
+python3 setup.py install
 taxsbp -h
 ```
 
@@ -379,7 +379,7 @@ taxsbp -h
 
 ```shh
 cd pylca
-python setup.py install
+python3 setup.py install
 python3 -c 'from pylca.pylca import *; unittest.main();'
 ```
 
