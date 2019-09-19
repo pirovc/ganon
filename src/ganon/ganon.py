@@ -48,7 +48,7 @@ def main(arguments=None):
 
     # Required
     update_group_required = update_parser.add_argument_group('required arguments')
-    update_group_required.add_argument('-d', '--db-prefix',         required=True,  ype=str,               metavar='db_prefix',        help='Database prefix')
+    update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database prefix')
     update_group_required.add_argument('-i', '--input-files',       required=True,  type=str, nargs="*",    metavar='refs.fasta[.gz]',  help='Multi-fasta[.gz] file[s]')
     
     # Defaults
