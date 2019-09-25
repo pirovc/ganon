@@ -2,7 +2,7 @@
 
 ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
 
-> **ganon: continuously up-to-date with database growth for precise short read classification in metagenomics**
+> **ganon: precise metagenomics classification against large and up-to-date sets of reference sequences**
 > Vitor C. Piro, Temesgen H. Dadi, Enrico Seiler, Knut Reinert, Bernhard Y. Renard
 > bioRxiv 406017; doi: [10.1101/406017](https://doi.org/10.1101/406017)
 
