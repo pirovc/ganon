@@ -48,25 +48,37 @@ We suggest using [genome_updater](https://github.com/pirovc/genome_updater) (`co
 
 Downloading archaeal and bacterial complete genomes from RefSeq: 
 
-	genome_updater.sh -g "archaea,bacteria" -d "refseq" -l "Complete Genome" -f "genomic.fna.gz,assembly_report.txt" -a -m -u -r -p -t 24 -o RefSeqCG_arc_bac -b v1
+	genome_updater.sh -g "archaea,bacteria" \
+	                  -d "refseq" \
+	                  -l "Complete Genome" \
+	                  -f "genomic.fna.gz,assembly_report.txt" \
+                      -o "RefSeqCG_arc_bac" -b "v1" \
+	                  -a -m -u -r -p -t 24
 
 Where `-a` will additionaly download the taxdump.tar.gz, `-m` will force the MD5 check for every file downloaded, `-u -r -p` will generate reports which can be used later, `-t` set the number of parallel downloads, `-b` will name the version and `-o` set the output working directory. If you want to download a set of defined species instead of the whole organism group, use `-g "species:562,623"` or any taxonomic group(s) `-g "taxids:620,1643685"`.
 
 Building the index based on the files of the example above:
 
-	ganon build --db-prefix ganon_db --input-files RefSeqCG_arc_bac/v1/files/*.genomic.fna.gz
+	ganon build --db-prefix ganon_db \
+	            --input-files RefSeqCG_arc_bac/v1/files/*.genomic.fna.gz
 
 ### Updating sequences
 
 To update the folder with the most recent releases (after some days), just re-run the same download command:
 
-	genome_updater.sh -g "archaea,bacteria" -d "refseq" -l "Complete Genome" -f "genomic.fna.gz,assembly_report.txt" -a -m -u -r -p -t 24 -o RefSeqCG_arc_bac -b v2
+	genome_updater.sh -g "archaea,bacteria" \
+	                  -d "refseq" \
+	                  -l "Complete Genome" \
+	                  -f "genomic.fna.gz,assembly_report.txt" \
+                      -o "RefSeqCG_arc_bac" -b "v2" \
+	                  -a -m -u -r -p -t 24
 
 This is going to download the new files (and remove the outdated ones) into the new label `v2`. New log and report files with the current version will be generated. It also checks if the last downloaded version is complete and downloads any missing file.
 
 Updating the index based on the files of the example above:
 
-	ganon update --db-prefix ganon_db --output-db-prefix ganon_db_updated --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f)
+	ganon update --db-prefix ganon_db --output-db-prefix ganon_db_updated \
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f)
 
 If `--output-db-prefix` is not set, the database files `ganon_db.*` will be overwritten with the updated version. The `find` command will only look for files `-type f` inside the `v2/files/`, ignoring symbolic links from sequences which were not changing in this version.
 
