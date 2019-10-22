@@ -226,7 +226,7 @@ bool run( Config config )
             {
 
                 seqan::StringSet< seqan::CharString >  ids;
-                seqan::StringSet< seqan::IupacString > seqs;
+                seqan::StringSet< seqan::CharString > seqs;
                 seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
