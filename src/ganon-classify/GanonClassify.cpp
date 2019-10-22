@@ -354,8 +354,35 @@ void print_stats( Stats& stats, const StopClock& timeClass )
               << " match/read)" << std::endl;
 }
 
-} // namespace detail
 
+void parse_reads( SafeQueue< detail::ReadBatches >&     queue1,
+                   StopClock&     timeLoadReads,
+                   Stats&                    stats,
+                   Config const&             config )
+{
+    for ( auto const& reads_file : config.reads )
+    {
+        seqan::SeqFileIn seqFileIn;
+        if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
+        {
+            std::cerr << "Unable to open " << reads_file << std::endl;
+            continue;
+        }
+        while ( !seqan::atEnd( seqFileIn ) )
+        {
+            seqan::StringSet< seqan::CharString > ids;
+            seqan::StringSet< seqan::CharString > seqs;
+            seqan::readRecords( ids, seqs, seqFileIn, config.n_reads );
+            stats.totalReads += seqan::length( ids );
+            queue1.push( detail::ReadBatches{ ids, seqs } );
+        }
+        seqan::close( seqFileIn );
+    }
+    queue1.notify_push_over();
+    timeLoadReads.stop();
+}
+
+} // namespace detail
 
 bool run( Config config )
 {
@@ -413,28 +440,13 @@ bool run( Config config )
 
     // Thread for reading input files
     timeLoadReads.start();
-    std::future< void > read_task( std::async( std::launch::async, [=, &queue1, &timeLoadReads, &stats] {
-        for ( auto const& reads_file : config.reads )
-        {
-            seqan::SeqFileIn seqFileIn;
-            if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
-            {
-                std::cerr << "Unable to open " << reads_file << std::endl;
-                continue;
-            }
-            while ( !seqan::atEnd( seqFileIn ) )
-            {
-                seqan::StringSet< seqan::CharString > ids;
-                seqan::StringSet< seqan::Dna5String > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, config.n_reads );
-                stats.totalReads += seqan::length( ids );
-                queue1.push( detail::ReadBatches{ ids, seqs } );
-            }
-            seqan::close( seqFileIn );
-        }
-        queue1.notify_push_over();
-        timeLoadReads.stop();
-    } ) );
+    std::future< void > read_task = std::async( std::launch::async,
+                                                detail::parse_reads,
+                                                std::ref( queue1 ),
+                                                std::ref( timeLoadReads ),
+                                                std::ref( stats ),
+                                                std::ref( config ) );
+    
 
     // Thread for printing classified reads
     timePrintClass.start();
