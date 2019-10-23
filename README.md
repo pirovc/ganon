@@ -318,7 +318,7 @@ ctest -VV .
 ## Installing GCC7 in a separate environment with conda
 
 ```shh
-conda create -n gcc7 -c quantstack gcc-7 libgcc-7 cmake>=3.8.2
+conda create -n gcc7 -c gouarin gcc-7 libgcc-7 "cmake>=3.10"
 source activate gcc7
 ```
 

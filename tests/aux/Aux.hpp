@@ -9,6 +9,15 @@
 namespace aux
 {
 
+inline int fileLines( const std::string& file )
+{
+    int count = 0;
+    std::ifstream f(file);
+    std::string line;
+    while (getline(f, line))
+        count++;
+    return count;
+}
 
 inline int fileSize( const std::string& file )
 {
