@@ -225,9 +225,21 @@ bool run( Config config )
             while ( !seqan::atEnd( seqFileIn ) )
             {
 
-                seqan::StringSet< seqan::CharString >  ids;
-                seqan::StringSet< seqan::IupacString > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
+                seqan::StringSet< seqan::CharString > ids;
+                seqan::StringSet< seqan::CharString > seqs;
+
+                try
+                {
+                    seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
+                }
+                catch ( seqan::Exception const& e )
+                {
+                    mtx.lock();
+                    std::cerr << "ERROR: " << e.what() << std::endl;
+                    mtx.unlock();
+                }
+
+
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
@@ -276,7 +288,7 @@ bool run( Config config )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
                     {
-                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        auto[fragstart, fragend, binid] = seq_bin[val.seqid][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position

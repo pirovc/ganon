@@ -232,6 +232,18 @@ SCENARIO( "Classify multi-hierarchy with multiple errors and multiple unique err
 
 // Functionality
 
+SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
+{
+    auto cfg               = config_classify::defaultConfig();
+    cfg.bloom_filter_files = { "filters/bacteria.filter" };
+    cfg.group_bin_files    = { "files/bacteria.map" };
+    cfg.reads              = { "reads/problematic.fq" };
+    cfg.max_error          = "3";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::fileLines( cfg.output_file )==5 );
+}
+
 SCENARIO( "Classify without matches", "[ganon-classify]" )
 {
     auto cfg               = config_classify::defaultConfig();
