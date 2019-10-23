@@ -565,7 +565,24 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes_hierarchy, L
             assignments = set(map(lambda x: merged_filtered_nodes_hierarchy[x][0], assignments))  # Recover taxids from assignments (assembly)
             if len(assignments)==1: # If all assignments are on the same taxid, no need to lca and return it
                 lca_taxid = assignments.pop()
-    return lca_taxid if lca_taxid else L(*assignments)
+    
+    if lca_taxid:
+        return lca_taxid
+    else:
+        # Instead of return the LCA of all pairs L(*assignments), do it in pairs and saving in a set (no redudancy)
+        # reducing the number of calculations by 2 in the best case (around 25% less in some tests)
+        lca_taxid = set()
+        while(True):
+            if len(assignments)<=1: 
+                if len(assignments)==1: lca_taxid.add(assignments.pop()) #odd number of assignments
+                if len(lca_taxid)==1: 
+                    break
+                else:
+                    assignments = lca_taxid
+                    lca_taxid = set()
+            lca_count+=1
+            lca_taxid.add(L(assignments.pop(),assignments.pop()))
+        return lca_taxid.pop()
 
 def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec):
     # Create temporary working directory
