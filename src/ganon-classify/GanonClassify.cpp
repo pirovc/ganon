@@ -354,11 +354,57 @@ void print_stats( Stats& stats, const StopClock& timeClass )
               << " match/read)" << std::endl;
 }
 
+uint32_t parse_reads_single( seqan::SeqFileIn&                 seqFileIn,
+                             uint32_t                          pos_start,
+                             uint32_t                          n_reads,
+                             SafeQueue< detail::ReadBatches >& queue1 )
+{
 
-void parse_reads( SafeQueue< detail::ReadBatches >&     queue1,
-                   StopClock&     timeLoadReads,
-                   Stats&                    stats,
-                   Config const&             config )
+    seqan::setPosition( seqFileIn, pos_start ); // rewind the file to the last valid position without errors
+    seqan::CharString id;
+    seqan::CharString seq;
+
+    seqan::StringSet< seqan::CharString > ids;
+    seqan::StringSet< seqan::CharString > seqs;
+    uint32_t                              read_cnt    = 0;
+    uint32_t                              total_reads = 0;
+    while ( !seqan::atEnd( seqFileIn ) )
+    {
+        try
+        {
+            seqan::readRecord( id, seq, seqFileIn );
+            read_cnt++;
+
+            seqan::appendValue( seqs, seq );
+            seqan::appendValue( ids, id );
+            if ( read_cnt == n_reads )
+            {
+                queue1.push( detail::ReadBatches{ ids, seqs } );
+                seqan::clear( ids );
+                seqan::clear( seqs );
+                total_reads += read_cnt;
+                read_cnt = 0;
+            }
+        }
+        catch ( seqan::Exception const& e )
+        {
+            std::cerr << "ERROR: " << e.what() << " [@" << id << "]" << std::endl;
+        }
+    }
+    // left overs
+    if ( seqan::length( ids ) > 0 )
+    {
+        queue1.push( detail::ReadBatches{ ids, seqs } );
+        total_reads += read_cnt;
+    }
+
+    return total_reads;
+}
+
+void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
+                  StopClock&                        timeLoadReads,
+                  Stats&                            stats,
+                  Config const&                     config )
 {
     for ( auto const& reads_file : config.reads )
     {
@@ -368,13 +414,24 @@ void parse_reads( SafeQueue< detail::ReadBatches >&     queue1,
             std::cerr << "Unable to open " << reads_file << std::endl;
             continue;
         }
+        uint32_t pos = 0;
         while ( !seqan::atEnd( seqFileIn ) )
         {
+            pos = seqan::position( seqFileIn );
             seqan::StringSet< seqan::CharString > ids;
             seqan::StringSet< seqan::CharString > seqs;
-            seqan::readRecords( ids, seqs, seqFileIn, config.n_reads );
-            stats.totalReads += seqan::length( ids );
-            queue1.push( detail::ReadBatches{ ids, seqs } );
+            try
+            {
+                // Parse reads in batches
+                seqan::readRecords( ids, seqs, seqFileIn, config.n_reads );
+                stats.totalReads += seqan::length( ids );
+                queue1.push( detail::ReadBatches{ ids, seqs } );
+            }
+            catch ( seqan::Exception const& e )
+            {
+                // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
+                stats.totalReads += parse_reads_single( seqFileIn, pos, config.n_reads, queue1 );
+            }
         }
         seqan::close( seqFileIn );
     }
@@ -446,7 +503,7 @@ bool run( Config config )
                                                 std::ref( timeLoadReads ),
                                                 std::ref( stats ),
                                                 std::ref( config ) );
-    
+
 
     // Thread for printing classified reads
     timePrintClass.start();
@@ -565,8 +622,10 @@ bool run( Config config )
                                                 // next iterations)
         }
 
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() ){
-            out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
+        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+        {
+            out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple
+                         // files
             out.close();
         }
 
@@ -583,8 +642,9 @@ bool run( Config config )
 
     if ( config.output_unclassified )
         out_unclassified.close();
-    if ( !config.split_output_file_hierarchy && !config.output_file.empty() ){
-        out << '\n'; //write line break at the end, signal to ganon wrapper that file is over in case of multiple files
+    if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
+    {
+        out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple files
         out.close();
     }
 
