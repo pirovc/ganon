@@ -580,7 +580,6 @@ def get_lca_read(assignments, max_kmer_count, merged_filtered_nodes_hierarchy, L
                 else:
                     assignments = lca_taxid
                     lca_taxid = set()
-            lca_count+=1
             lca_taxid.add(L(assignments.pop(),assignments.pop()))
         return lca_taxid.pop()
 
