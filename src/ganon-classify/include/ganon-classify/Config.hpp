@@ -34,20 +34,24 @@ public:
     // Required
     std::vector< std::string > bloom_filter_files;
     std::vector< std::string > group_bin_files;
-    std::vector< std::string > reads;
+    std::vector< std::string > reads_single;
+    std::vector< std::string > reads_paired;
 
-    // Default
-    std::string max_error                   = "3";
-    std::string max_error_unique            = "-1";
-    std::string min_kmers                   = "0";
+    // Defaults
+    uint32_t default_max_error = 3
+    std::vector< uint32_t > max_error;
+    uint32_t default_max_error_unique = -1;
+    std::vector< int32_t > max_error_unique;
+
+    std::vector< float > min_kmers{0.25};
+    std::vector< std::string > filter_hierarchy{"1"};
     std::string output_file                 = "";
     std::string output_unclassified_file    = "";
-    std::string filter_hierarchy            = "1";
     uint16_t    offset                      = 1;
     uint16_t    threads                     = 3;
     bool        verbose                     = false;
     bool        split_output_file_hierarchy = false;
-
+    
     // hidden
     uint32_t n_batches = 1000;
     uint32_t n_reads   = 400;
@@ -61,9 +65,12 @@ public:
 
     bool validate()
     {
-        if ( bloom_filter_files.size() == 0 || group_bin_files.size() == 0 || reads.size() == 0 )
+        if ( bloom_filter_files.size() == 0 || group_bin_files.size() == 0 || ( reads_paired.size() == 0 && reads_single.size() == 0 ))
         {
-            std::cerr << "--bloom-filter, --group-bin and positional reads are mandatory" << std::endl;
+            std::cerr << "--bloom-filter, --group-bin, --[single|paired]-reads are mandatory" << std::endl;
+            return false;
+        }else if( reads_paired.size() % 2 != 0){
+            std::cerr << "--paired-reads should be pairs of files" << std::endl;
             return false;
         }
 
@@ -72,6 +79,12 @@ public:
         if ( threads <= min_threads )
             threads = min_threads + extra_threads;
         clas_threads = threads - 2 - extra_threads; //-1 reading, -1 printing clasified, -1 printing unclassified
+
+        if ( n_batches < 1 )
+            n_batches=1;
+        
+        if ( n_reads < 1 )
+            n_reads=1;
 
         return parse_hierarchy();
     }
@@ -97,35 +110,34 @@ public:
         }
 
         std::vector< std::string > max_errors        = split( max_error, ',' );
-        std::vector< std::string > min_kmerss        = split( min_kmers, ',' );
         std::vector< std::string > max_errors_unique = split( max_error_unique, ',' );
-        std::vector< std::string > hierarchy         = split( filter_hierarchy, ',' );
 
-        if ( hierarchy.size() == 1 && bloom_filter_files.size() > 1 )
+
+        if ( filter_hierarchy.size() == 1 && bloom_filter_files.size() > 1 )
         {
             for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
             {
-                hierarchy.push_back( hierarchy[0] );
+                filter_hierarchy.push_back( filter_hierarchy[0] );
             }
         }
-        else if ( hierarchy.size() != bloom_filter_files.size() )
+        else if ( filter_hierarchy.size() != bloom_filter_files.size() )
         {
             std::cerr << "Hierarchy does not match with the number of provided files" << std::endl;
             return false;
         }
 
-        if ( min_kmers != "0" )
+        if ( min_kmers.size() > 0 )
         {
             max_error = "";
             // If only one max error was given, repeat it for every filter
-            if ( min_kmerss.size() == 1 && bloom_filter_files.size() > 1 )
+            if ( min_kmers.size() == 1 && bloom_filter_files.size() > 1 )
             {
                 for ( uint16_t b = 1; b < bloom_filter_files.size(); ++b )
                 {
-                    min_kmerss.push_back( min_kmerss[0] );
+                    min_kmers.push_back( min_kmers[0] );
                 }
             }
-            else if ( min_kmerss.size() != bloom_filter_files.size() )
+            else if ( min_kmers.size() != bloom_filter_files.size() )
             {
                 std::cerr << "Please give a single min kmers value or one-per-filter value" << std::endl;
                 return false;
@@ -150,7 +162,7 @@ public:
         }
 
         // If only one max error was given, repeat it for every filter
-        std::vector< std::string > sorted_hierarchy = hierarchy;
+        std::vector< std::string > sorted_hierarchy = filter_hierarchy;
         std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
         uint16_t unique_hierarchy =
             std::unique( sorted_hierarchy.begin(), sorted_hierarchy.end() ) - sorted_hierarchy.begin();
@@ -169,15 +181,15 @@ public:
         }
 
         uint16_t hierarchy_count = 0;
-        for ( uint16_t h = 0; h < hierarchy.size(); ++h )
+        for ( uint16_t h = 0; h < filter_hierarchy.size(); ++h )
         {
             auto filter_cfg =
                 FilterConfig{ bloom_filter_files[h],
                               group_bin_files[h],
                               static_cast< uint16_t >( min_kmers == "0" ? std::stoi( max_errors[h] ) : 0 ),
-                              static_cast< float >( min_kmers != "0" ? std::stof( min_kmerss[h] ) : 0 ) };
+                              static_cast< float >( min_kmers != "0" ? std::stof( min_kmers[h] ) : 0 ) };
 
-            if ( h_filters.find( hierarchy[h] ) == h_filters.end() )
+            if ( h_filters.find( filter_hierarchy[h] ) == h_filters.end() )
             { // not found
                 std::vector< FilterConfig > fc;
                 fc.push_back( filter_cfg );
@@ -186,11 +198,11 @@ public:
                 if ( !split_output_file_hierarchy || ( !output_file.empty() && unique_hierarchy == 1 ) )
                     final_output_file = output_file;
                 else if ( !output_file.empty() && unique_hierarchy > 1 )
-                    final_output_file = output_file + "_" + hierarchy[h];
+                    final_output_file = output_file + "_" + filter_hierarchy[h];
                 else
                     final_output_file = "";
 
-                h_filters[hierarchy[h]] = HierarchyConfig{
+                h_filters[filter_hierarchy[h]] = HierarchyConfig{
                     fc, static_cast< int16_t >( std::stoi( max_errors_unique[hierarchy_count] ) ), final_output_file
                 };
 
@@ -198,7 +210,7 @@ public:
             }
             else
             { // found
-                h_filters[hierarchy[h]].filters.push_back( filter_cfg );
+                h_filters[filter_hierarchy[h]].filters.push_back( filter_cfg );
             }
         }
         return true;
@@ -227,8 +239,11 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
     stream << "--verbose                   " << config.verbose << newl;
     stream << "--threads                   " << config.threads << newl;
-    stream << "--reads                     " << newl;
-    for ( const auto& s : config.reads )
+    stream << "--reads-single              " << newl;
+    for ( const auto& s : config.reads_single )
+        stream << "                            " << s << newl;
+    stream << "--reads-paired                  " << newl;
+    for ( const auto& s : config.reads_paired )
         stream << "                            " << s << newl;
     stream << newl;
     stream << "(hierarchy)  " << newl;

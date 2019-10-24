@@ -15,10 +15,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     options.add_options()
         ( "b,bloom-filter", "Input filter file[s]", cxxopts::value< std::vector< std::string > >() )
         ( "g,group-bin", "Tab-separated file[s] linking classification groups and bin identifiers. The file should contain the following fields: Group Identifier <tab> Bin Id", cxxopts::value< std::vector< std::string > >() )
-        ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >() )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed", cxxopts::value< std::string >() )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::string >() )
-        ( "m,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]", cxxopts::value< std::string >() )
+        ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::vector< std::string > >() )
+        ( "m,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. Default: 0.25", cxxopts::value< std::vector< std::string > >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers", cxxopts::value< std::vector< std::string > >() )
+        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::vector< std::string > >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >() )
         ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >() )
@@ -29,12 +29,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
         ( "h,help", "Print help" )
         ( "v,version", "Show version" )
-        ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
+        ( "r,single-reads", "File[s] with single-end reads (e.g. file1.fastq[.gz] [file2.fastq[.gz] ... fileN.fastq[.gz]])", cxxopts::value< std::vector< std::string > >() )
+        ( "p,paired-reads", "Pairs of files with paired-end reads (e.g. file1.1.fastq[.gz] file1.2.fastq[.gz] [file2.1.fastq[.gz] file2.2.fastq[.gz]... fileN.1.fastq[.gz] fileN.2.fastq[.gz]])", cxxopts::value< std::vector< std::string > >() );
     // clang-format on
-
-
-    options.parse_positional( { "reads" } );
-    options.positional_help( "file1.fastq[.gz] [file2.fastq[.gz] ... fileN.fastq[.gz]]" );
 
     const auto argcCopy = argc;
     const auto args     = options.parse( argc, argv );
@@ -53,9 +50,14 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     Config config;
 
     // Required
-    config.bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
-    config.group_bin_files    = args["group-bin"].as< std::vector< std::string > >();
-    config.reads              = args["reads"].as< std::vector< std::string > >();
+    if ( args.count( "bloom-filter" ) )
+        config.bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
+    if ( args.count( "group-bin" ) )
+        config.group_bin_files    = args["group-bin"].as< std::vector< std::string > >();    
+    if ( args.count( "single-reads" ) )
+        config.reads_single = args["single-reads"].as< std::vector<std::string> >();
+    if ( args.count( "paired-reads" ) )
+        config.reads_paired = args["paired-reads"].as< std::vector<std::string> >();
 
     // Default
     if ( args.count( "output-file" ) )

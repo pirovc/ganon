@@ -406,7 +406,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                   Stats&                            stats,
                   Config const&                     config )
 {
-    for ( auto const& reads_file : config.reads )
+    for ( auto const& reads_file : config.reads_single )
     {
         seqan::SeqFileIn seqFileIn;
         if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )

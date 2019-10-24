@@ -74,7 +74,8 @@ def main(arguments=None):
     # Required
     classify_group_required = classify_parser.add_argument_group('required arguments')
     classify_group_required.add_argument('-d', '--db-prefix',    required=True, type=str,              nargs="*", metavar='db_prefix', help='Database prefix[es]')
-    classify_group_required.add_argument('-r', '--reads',        required=True, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
+    classify_group_required.add_argument('-r', '--reads-single',        required=True, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
+    classify_group_required.add_argument('-p', '--reads-paired',        required=True, type=str,              nargs="*", metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
 
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
@@ -86,8 +87,8 @@ def main(arguments=None):
     classify_group_optional.add_argument('-o', '--output-file-prefix',          type=str, default="",             metavar='', help='Output file name prefix: .out for complete results / .lca for LCA results / .rep for report. Empty to print to STDOUT (only with lca). Default: ""')
     classify_group_optional.add_argument('-n', '--output-unclassified-file',    type=str, default="",             metavar='', help='Output file for unclassified reads headers. Empty to not output. Default: ""')
     classify_group_optional.add_argument('-s', '--split-output-file-hierarchy', default=False, action='store_true',               help='Split output in multiple files by hierarchy. Appends "_hierachy" to the --output-file definiton.')
-    classify_group_optional.add_argument('-l', '--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
-    classify_group_optional.add_argument('-p', '--skip-reports',                default=False, action='store_true',               help='Skip reports')
+    classify_group_optional.add_argument('--skip-lca',                    default=False, action='store_true',               help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
+    classify_group_optional.add_argument('--skip-reports',                default=False, action='store_true',               help='Skip reports')
     classify_group_optional.add_argument('-k', '--ranks',                       type=str, default=[],   nargs="*",                help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
     classify_group_optional.add_argument('-t', '--threads',                     type=int, default=3,              metavar='', help='Number of subprocesses/threads. Default: 3)')
     # Extra
@@ -428,22 +429,23 @@ def main(arguments=None):
         
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0} {1} {2} -c {3} {4} -u {5} -t {6} -f {7} -o {8} {9} {10} {11} {12} {13} {14}'.format(
+        run_ganon_classify = '{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12} {13} {14} {15}'.format(
                                         ganon_classify_exec,
-                                        " ".join(["-b "+db_prefix+".filter" for db_prefix in args.db_prefix]),
-                                        " ".join(["-g "+db_prefix+".map" for db_prefix in args.db_prefix]),
-                                        ",".join([str(h) for h in args.db_hierarchy]),
-                                        "-e " + ",".join([str(me) for me in args.max_error]) if not args.min_kmers else "-m " + ",".join([str(mk) for mk in args.min_kmers]),
-                                        ",".join([str(meu) for meu in args.max_error_unique]),
-                                        args.threads,
-                                        args.offset,
-                                        ganon_classify_output_file,
-                                        "-s" if args.split_output_file_hierarchy else "",
-                                        "-n " + args.output_unclassified_file if args.output_unclassified_file else "",
+                                        "--bloom-filter " + ",".join([db_prefix+".filter" for db_prefix in args.db_prefix]),
+                                        "--group-bin " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]),
+                                        "--filter-hierarchy " + ",".join([str(h) for h in args.db_hierarchy]),
+                                        "--max-error " + ",".join([str(me) for me in args.max_error]) if not args.min_kmers else "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]),
+                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]),
+                                        "--threads " + args.threads,
+                                        "--offset " + args.offset,
+                                        "--output-file " + ganon_classify_output_file,
+                                        "--split-output-file-hierarchy " if args.split_output_file_hierarchy else "",
+                                        "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         "--verbose" if args.verbose else "",
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        " ".join(args.reads))
+                                        "--reads-single " +  ",".join(args.reads_single) if args.reads_single else "",
+                                        "--reads-paired " +  ",".join(args.reads_paired) if args.reads_paired else "")
         process_ganon_classify = run(run_ganon_classify, blocking=False)
 
         if not args.skip_lca:
