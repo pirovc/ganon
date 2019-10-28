@@ -16,7 +16,7 @@ struct FilterConfig
 {
     std::string bloom_filter_file;
     std::string group_bin_file;
-    uint16_t    max_error;
+    int16_t     max_error;
     float       min_kmers;
 };
 
@@ -43,6 +43,7 @@ public:
     std::vector< uint32_t >    max_error;
     std::vector< int32_t >     max_error_unique{ -1 };
     std::vector< std::string > filter_hierarchy{ "1" };
+    int16_t                    paired_mode                 = -1;
     std::string                output_file                 = "";
     std::string                output_unclassified_file    = "";
     uint16_t                   offset                      = 1;
@@ -80,7 +81,14 @@ public:
             std::cerr << "--min-kmers and --max-error are mutually exclusive, please use just one" << std::endl;
             return false;
         }
+        else if ( paired_mode > 1 )
+        {
+            std::cerr << "invalid --paired-mode" << std::endl;
+            return false;
+        }
 
+        if ( reads_paired.size() > 1 && paired_mode == -1 )
+            paired_mode = 1;
 
         output_unclassified    = !output_unclassified_file.empty() ? true : false;
         uint16_t extra_threads = output_unclassified ? 1 : 0;
@@ -180,8 +188,8 @@ public:
         {
             auto filter_cfg = FilterConfig{ bloom_filter_files[h],
                                             group_bin_files[h],
-                                            ( max_error.size() > 0 ? max_error[h] : 0 ),
-                                            ( min_kmers.size() > 0 ? min_kmers[h] : 0 ) };
+                                            ( max_error.size() > 0 ? max_error[h] : -1 ),
+                                            ( min_kmers.size() > 0 ? min_kmers[h] : -1 ) };
 
             if ( h_filters.find( filter_hierarchy[h] ) == h_filters.end() )
             { // not found
@@ -230,9 +238,10 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--n-batches                 " << config.n_batches << newl;
     stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--offset                    " << config.offset << newl;
-    stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
     stream << "--verbose                   " << config.verbose << newl;
     stream << "--threads                   " << config.threads << newl;
+    stream << "--paired-mode               " << config.paired_mode << newl;
+    stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;
     stream << "--reads-single              " << newl;
     for ( const auto& s : config.reads_single )
         stream << "                            " << s << newl;
