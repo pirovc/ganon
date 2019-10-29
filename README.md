@@ -213,7 +213,17 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 	5) cummulative # reads assigned <tab>
 	6) cummulative % reads assigned
 
-## IBF size
+## Options
+
+### Paired-end mode
+
+ganon can use paired-end information in several modes:
+
+1) concat: consider pairs together as if they are one big sequence (concatented witn an N). Max. number of k-mers are len(read1)+len(read2)+1-k
+2) sum:
+
+
+### IBF size
 
 The most useful variable to define the IBF size (.filter file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
 
