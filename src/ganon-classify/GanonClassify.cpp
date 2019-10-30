@@ -97,12 +97,14 @@ struct Filter
 
 inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
 {
+    // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
     return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
 }
 
 inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
 {
+    // Return threshold (number of kmers) based on an optimal number of errors
     // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
     // just one kmer match (0 would match every read everywhere)
     return readLen + 1u > kmerSize * ( 1u + max_error )
@@ -112,6 +114,7 @@ inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint1
 
 inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float min_kmers, uint16_t offset )
 {
+    // Return threshold (number of kmers) based on an percentage of kmers
     // ceil -> round-up min # k-mers, floor -> round-down for offset
     return std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset );
 }
@@ -237,18 +240,23 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                uint16_t                  hierarchy_size,
                int16_t                   max_error_unique )
 {
-
+    // This function runs on a consumer thread and waits for batches of reads from the SafeQueue on the pointer_current
     while ( true )
     {
+        // Wait here until reads are available or push is over and queue is empty
         ReadBatches rb = pointer_current->pop();
-        // std::cerr << "Queue size "  << pointer_current->size() << std::endl; //check if queue is getting empty (print
-        // 0's)
-        if ( seqan::length( rb.ids ) > 0 )
+        // If batch is empty
+        if ( seqan::length( rb.ids ) == 0 )
         {
-            ReadBatches left_over_reads; // store unclassified reads for next iteration
+            break;
+        }
+        else
+        {
+            // store unclassified reads for next iteration
+            ReadBatches left_over_reads;
+            bool        paired = seqan::length( rb.seqs2 ); // check if read batch has paired reads or single
             for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
             {
-
                 uint16_t readLen = seqan::length( rb.seqs[readID] );
                 // count lens just once
                 if ( hierarchy_id == 1 )
@@ -263,32 +271,35 @@ void classify( std::vector< Filter >&    filter_hierarchy,
 
                 if ( readLen >= kmerSize )
                 { // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
-                    if ( config.paired_mode == 1 )
-                    { // paired-mode: concat
-                        uint16_t maxKmerCountPair =
-                            classify_read_paired( matches, filter_hierarchy, rb.seqs[readID], rb.seqs2[readID] );
+                    if ( paired )
+                    {
+                        if ( config.paired_mode == 1 )
+                        { // paired-mode: concat
+                            uint16_t maxKmerCountPair =
+                                classify_read_paired( matches, filter_hierarchy, rb.seqs[readID], rb.seqs2[readID] );
 
-                        uint16_t readLen2 = seqan::length( rb.seqs2[readID] );
-                        // count lens just once
-                        if ( hierarchy_id == 1 )
-                            stats.sumReadLen += readLen2;
+                            // Pair Length to calculate threshold and errors
+                            uint16_t pairLen = readLen + seqan::length( rb.seqs2[readID] ) + 1 - kmerSize;
 
-                        // get maximum possible number of error for this read
-                        // ganon does not store the kmer count for each pair
-                        uint16_t max_errorRead =
-                            get_error( readLen + readLen2 + 1 - kmerSize, kmerSize, maxKmerCountPair, config.offset );
+                            // count lens just once
+                            if ( hierarchy_id == 1 )
+                                stats.sumReadLen += seqan::length( rb.seqs2[readID] );
 
-                        // get min kmer count necesary to achieve the calculated number of errors
-                        uint16_t threshold_strata = get_threshold_errors(
-                            readLen + readLen2 + 1 - kmerSize, kmerSize, max_errorRead, config.offset );
+                            // get maximum possible number of error for this read
+                            // ganon does not store the kmer count for each pair
+                            uint16_t max_errorRead = get_error( pairLen, kmerSize, maxKmerCountPair, config.offset );
 
-                        count_filtered_matches = filter_matches( read_out, matches, threshold_strata );
+                            // get min kmer count necesary to achieve the calculated number of errors
+                            uint16_t threshold_strata =
+                                get_threshold_errors( pairLen, kmerSize, max_errorRead, config.offset );
 
-                        if ( max_error_unique >= 0 && count_filtered_matches == 1 )
-                            flag_max_error_unique(
-                                read_out,
-                                get_threshold_errors(
-                                    readLen + readLen2 + 1 - kmerSize, kmerSize, max_error_unique, config.offset ) );
+                            count_filtered_matches = filter_matches( read_out, matches, threshold_strata );
+
+                            if ( max_error_unique >= 0 && count_filtered_matches == 1 )
+                                flag_max_error_unique(
+                                    read_out,
+                                    get_threshold_errors( pairLen, kmerSize, max_error_unique, config.offset ) );
+                        }
                     }
                     else
                     {
@@ -324,8 +335,8 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 {
                     seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                     seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
-                    // segfault - test
-                    // seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
+                    if ( paired )
+                        seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
                 }
                 else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                        // unclassified printing queue
@@ -337,10 +348,6 @@ void classify( std::vector< Filter >&    filter_hierarchy,
             // if there are more levels to classify and something was left, keep reads in memory
             if ( hierarchy_id < hierarchy_size && seqan::length( left_over_reads.ids ) > 0 )
                 pointer_helper->push( left_over_reads );
-        }
-        else
-        {
-            break;
         }
     }
 }
@@ -547,7 +554,6 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                 std::cerr << "Unable to open " << config.reads_paired[pair_cnt + 1] << std::endl;
                 continue;
             }
-            uint32_t pos = 0;
             while ( !seqan::atEnd( seqFileIn1 ) )
             {
                 try
@@ -612,19 +618,23 @@ bool run( Config config )
         out.open( config.output_file );
     }
 
-    // Queues for internal read handling
-    // queue1 get reads from file
-    // queue2 will get unclassified reads if hierachy == 2
-    // if hierachy == 3 queue1 is used for unclassified and so on
+    // Queues for handling reads in several threads and hierarchy levels
+    // hierachy == 1
+    //  - queue1 gets reads from input file (size limited by config.n_batches)
+    //  - queue2 gets unclassified reads from queue1 if more than one hierarchy level (no size limit - has to hold all
+    //  unclassified reads)
+    //  - unclassified_reads_queue gets unclassified reads from queue1 if last hierarchy level
+    //  - classified_reads_queue gets classified reads from queue1
+    // hierachy > 1
+    //  - queue1 and queue2 are swaped (with pointers)
     SafeQueue< detail::ReadBatches > queue1(
         config.n_batches ); // config.n_batches*config.n_reads = max. amount of reads in memory
     SafeQueue< detail::ReadBatches > queue2;
-
-    // Queues for classified, unclassified reads (print)
+    // Queues for output printing
     SafeQueue< detail::ReadOut > classified_reads_queue;
     SafeQueue< detail::ReadOut > unclassified_reads_queue;
 
-    // Statistics values
+    // Stats and report values
     detail::Stats stats;
 
     // Thread for reading input files
