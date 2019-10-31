@@ -217,11 +217,10 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 
 ### Paired-end mode
 
-ganon can use paired-end information in several modes:
+ganon accepts paired-end reads. In this mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads can be classified in the following modes:
 
-1) concat: consider pairs together as if they are one big sequence (concatented witn an N). Max. number of k-mers are len(read1)+len(read2)+1-k
-2) sum:
-
+1) concat: consider pairs together in a forward-reverse orientation. 
+2) sum: consider reads as single-end and sum their k-mers matches after filtration if they hit the same target, ignoring the orientation of the pair.
 
 ### IBF size
 
