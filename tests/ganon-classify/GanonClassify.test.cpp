@@ -41,6 +41,20 @@ SCENARIO( "Classify", "[ganon-classify]" )
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
 
+SCENARIO( "Classify paired-reads concat", "[ganon-classify]" )
+{
+    auto cfg                         = config_classify::defaultConfig();
+    cfg.bloom_filter_files           = { "filters/bacteria.filter" };
+    cfg.group_bin_files              = { "files/bacteria.map" };
+    cfg.reads_paired                 = { "reads/bacteria_id.1.fq", "reads/bacteria_id.2.fq" };
+    cfg.paired_mode                  = 1;
+    cfg.max_error                    = { 0 };
+    const std::string desired_output = "results/classify_output-b-b_e0p1.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
+}
+
 #ifdef GANON_OFFSET
 SCENARIO( "Classify with offset", "[ganon-classify]" )
 {
