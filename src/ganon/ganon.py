@@ -74,8 +74,8 @@ def main(arguments=None):
     # Required
     classify_group_required = classify_parser.add_argument_group('required arguments')
     classify_group_required.add_argument('-d', '--db-prefix',    required=True, type=str,              nargs="*", metavar='db_prefix', help='Database prefix[es]')
-    classify_group_required.add_argument('-r', '--reads-single',        required=True, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
-    classify_group_required.add_argument('-p', '--reads-paired',        required=True, type=str,              nargs="*", metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
+    classify_group_required.add_argument('-r', '--single-reads',        required=False, type=str,              nargs="*", metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
+    classify_group_required.add_argument('-p', '--paired-reads',        required=False, type=str,              nargs="*", metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
 
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
@@ -179,6 +179,9 @@ def main(arguments=None):
             if ganon_classify_exec is not None: break
         if ganon_classify_exec is None:
             print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
+            return 1
+        if not args.single_reads and not args.paired_reads:
+            print_log("Please provide reads with the paramenter -r/--single-reads and/or -p/--paired-reads\n")
             return 1
 
         if args.skip_lca and not args.output_file_prefix:
@@ -436,16 +439,16 @@ def main(arguments=None):
                                         "--filter-hierarchy " + ",".join([str(h) for h in args.db_hierarchy]),
                                         "--max-error " + ",".join([str(me) for me in args.max_error]) if not args.min_kmers else "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]),
                                         "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]),
-                                        "--threads " + args.threads,
-                                        "--offset " + args.offset,
+                                        "--threads " + str(args.threads),
+                                        "--offset " + str(args.offset),
                                         "--output-file " + ganon_classify_output_file,
                                         "--split-output-file-hierarchy " if args.split_output_file_hierarchy else "",
                                         "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
                                         "--verbose" if args.verbose else "",
                                         "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--reads-single " +  ",".join(args.reads_single) if args.reads_single else "",
-                                        "--reads-paired " +  ",".join(args.reads_paired) if args.reads_paired else "")
+                                        "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
+                                        "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else "")
         process_ganon_classify = run(run_ganon_classify, blocking=False)
 
         if not args.skip_lca:

@@ -81,7 +81,7 @@ public:
             std::cerr << "--min-kmers and --max-error are mutually exclusive, please use just one" << std::endl;
             return false;
         }
-        else if ( paired_mode > 2 )
+        else if ( paired_mode > 1 )
         {
             std::cerr << "invalid --paired-mode" << std::endl;
             return false;

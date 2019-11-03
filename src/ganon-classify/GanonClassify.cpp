@@ -232,20 +232,20 @@ inline uint32_t filter_matches(
     return matches.size();
 }
 
-inline uint32_t merge_matches( Tmatches& matches, Tmatches& matches2 )
-{
-    // merge Tmatches into the first, summing values when present in both
-    for ( auto& it : matches )
-    {
-        if ( matches2.count( it.first ) == 1 )
-        {
-            matches[it.first] += matches2[it.first]; // sum value
-            matches2.erase( it.first );              // delete element
-        }
-    }
-    matches.insert( matches2.begin(), matches2.end() ); // add left-overs into the first
-    return matches.size();
-}
+// inline uint32_t merge_matches( Tmatches& matches, Tmatches& matches2 )
+// {
+//     // merge Tmatches into the first, summing values when present in both
+//     for ( auto& it : matches )
+//     {
+//         if ( matches2.count( it.first ) == 1 )
+//         {
+//             matches[it.first] += matches2[it.first]; // sum value
+//             matches2.erase( it.first );              // delete element
+//         }
+//     }
+//     matches.insert( matches2.begin(), matches2.end() ); // add left-overs into the first
+//     return matches.size();
+// }
 
 void classify( std::vector< Filter >&    filter_hierarchy,
                SafeQueue< ReadOut >&     classified_reads_queue,
@@ -302,50 +302,25 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                         if ( hierarchy_first )
                             stats.sumReadLen += read2_len;
 
-                        if ( config.paired_mode == 1 ) // paired-mode: concat
+                        // if ( config.paired_mode == 1 ) // paired-mode: concat
+                        //{
+                        max_kmer_count_read = classify_read_paired(
+                            read_out.matches, filter_hierarchy, rb.seqs[read_id], rb.seqs2[read_id] );
+
+                        count_filtered_matches = filter_matches(
+                            read_out.matches, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
+
+                        if ( max_error_unique >= 0 && count_filtered_matches == 1 )
                         {
-
-                            max_kmer_count_read = classify_read_paired(
-                                read_out.matches, filter_hierarchy, rb.seqs[read_id], rb.seqs2[read_id] );
-
-                            count_filtered_matches = filter_matches(
-                                read_out.matches, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
-
-                            if ( max_error_unique >= 0 && count_filtered_matches == 1 )
-                            {
-                                flag_max_error_unique(
-                                    read_out.matches,
-                                    get_threshold_errors(
-                                        effective_read_len, kmer_size, max_error_unique, config.offset ) );
-                            }
+                            flag_max_error_unique(
+                                read_out.matches,
+                                get_threshold_errors(
+                                    effective_read_len, kmer_size, max_error_unique, config.offset ) );
                         }
-                        else if ( config.paired_mode == 2 ) // paired-mode: sum
-                        {
-
-                            max_kmer_count_read =
-                                classify_read_single( read_out.matches, filter_hierarchy, rb.seqs[read_id] );
-
-                            filter_matches(
-                                read_out.matches, read1_len, max_kmer_count_read, kmer_size, config.offset );
-
-                            // classify second pair separated
-                            ReadOut read_out2( rb.ids[read_id] );
-                            max_kmer_count_read =
-                                classify_read_single( read_out2.matches, filter_hierarchy, rb.seqs2[read_id] );
-                            filter_matches(
-                                read_out2.matches, read2_len, max_kmer_count_read, kmer_size, config.offset );
-
-                            // merge filtered matches from second pair into the first
-                            count_filtered_matches = merge_matches( read_out.matches, read_out2.matches );
-
-                            if ( max_error_unique >= 0 && count_filtered_matches == 1 )
-                            {
-                                flag_max_error_unique(
-                                    read_out.matches,
-                                    get_threshold_errors(
-                                        effective_read_len, kmer_size, max_error_unique, config.offset ) );
-                            }
-                        }
+                        //}
+                        // else if ( config.paired_mode == 2 ) // paired-mode: sum
+                        //{
+                        //}
                     }
                 }
                 else // single-end mode
