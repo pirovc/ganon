@@ -33,13 +33,12 @@ typedef seqan::Normal THashCount;
 
 typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
                                  seqan::BDConfig< seqan::Dna5, THashCount, seqan::Uncompressed > >
-    Tfilter;
+    TBloomFilter;
 
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
-    reversedRead;
+    TSeqRevComp;
 
-typedef std::unordered_map< std::string, int16_t > Tmatches;
-
+typedef std::unordered_map< std::string, int16_t > TMatches;
 
 struct ReadBatches
 {
@@ -60,7 +59,7 @@ struct ReadOut
     }
 
     seqan::CharString readID;
-    Tmatches          matches;
+    TMatches          matches;
 };
 
 struct Stats
@@ -82,7 +81,7 @@ struct Stats
 
 struct Filter
 {
-    Tfilter                           bloom_filter;
+    TBloomFilter                      bloom_filter;
     std::map< uint32_t, std::string > group_bin;
     uint32_t                          numberOfBins;
     uint16_t                          kmerSize;
@@ -123,7 +122,7 @@ inline uint16_t get_threshold( uint16_t readLen, Filter& filter )
             readLen, filter.bloom_filter.kmerSize, filter.filter_config.max_error, filter.bloom_filter.offset );
 }
 
-inline void select_matches( Tmatches&                matches,
+inline void select_matches( TMatches&                matches,
                             std::vector< uint16_t >& selectedBins,
                             std::vector< uint16_t >& selectedBinsRev,
                             Filter&                  filter,
@@ -151,7 +150,7 @@ inline void select_matches( Tmatches&                matches,
     }
 }
 
-inline uint16_t classify_read_single( Tmatches&              matches,
+inline uint16_t classify_read_single( TMatches&              matches,
                                       std::vector< Filter >& filter_hierarchy,
                                       seqan::Dna5String&     read_seq )
 {
@@ -161,7 +160,7 @@ inline uint16_t classify_read_single( Tmatches&              matches,
     {
         // IBF count
         std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq );
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
+        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, TSeqRevComp( read_seq ) );
 
         // select matches above chosen threshold
         select_matches( matches,
@@ -174,7 +173,7 @@ inline uint16_t classify_read_single( Tmatches&              matches,
     return max_kmer_count_read;
 }
 
-inline uint16_t classify_read_paired( Tmatches&              matches,
+inline uint16_t classify_read_paired( TMatches&              matches,
                                       std::vector< Filter >& filter_hierarchy,
                                       seqan::Dna5String&     read_seq,
                                       seqan::Dna5String&     read_seq2 )
@@ -186,9 +185,9 @@ inline uint16_t classify_read_paired( Tmatches&              matches,
         // IBF count
         // FR
         std::vector< uint16_t > selectedBins = seqan::count( filter.bloom_filter, read_seq );
-        filter.bloom_filter.count< THashCount >( selectedBins, reversedRead( read_seq2 ) );
+        filter.bloom_filter.count< THashCount >( selectedBins, TSeqRevComp( read_seq2 ) );
         // RF
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, reversedRead( read_seq ) );
+        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, TSeqRevComp( read_seq ) );
         filter.bloom_filter.count< THashCount >( selectedBinsRev, read_seq2 );
 
         // select matches above chosen threshold
@@ -204,7 +203,7 @@ inline uint16_t classify_read_paired( Tmatches&              matches,
     return max_kmer_count_read;
 }
 
-inline void flag_max_error_unique( Tmatches& matches, uint16_t threshold_error_unique )
+inline void flag_max_error_unique( TMatches& matches, uint16_t threshold_error_unique )
 {
     // set as negative for unique filtering
     // if kmer count is lower than expected
@@ -214,7 +213,7 @@ inline void flag_max_error_unique( Tmatches& matches, uint16_t threshold_error_u
 }
 
 inline uint32_t filter_matches(
-    Tmatches& matches, uint16_t len, uint16_t max_kmer_count_read, uint16_t kmer_size, uint16_t offset )
+    TMatches& matches, uint16_t len, uint16_t max_kmer_count_read, uint16_t kmer_size, uint16_t offset )
 {
 
     // get maximum possible number of error for this read
@@ -231,21 +230,6 @@ inline uint32_t filter_matches(
     }
     return matches.size();
 }
-
-// inline uint32_t merge_matches( Tmatches& matches, Tmatches& matches2 )
-// {
-//     // merge Tmatches into the first, summing values when present in both
-//     for ( auto& it : matches )
-//     {
-//         if ( matches2.count( it.first ) == 1 )
-//         {
-//             matches[it.first] += matches2[it.first]; // sum value
-//             matches2.erase( it.first );              // delete element
-//         }
-//     }
-//     matches.insert( matches2.begin(), matches2.end() ); // add left-overs into the first
-//     return matches.size();
-// }
 
 void classify( std::vector< Filter >&    filter_hierarchy,
                SafeQueue< ReadOut >&     classified_reads_queue,
@@ -384,7 +368,7 @@ void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarch
         }
 
         // bloom filter
-        Tfilter filter;
+        TBloomFilter filter;
         seqan::retrieve( filter, seqan::toCString( filter_config.bloom_filter_file ) );
         // set offset to user-defined value (1==no offset)
         filter.offset = config.offset;

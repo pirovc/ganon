@@ -40,8 +40,8 @@ public:
     // Defaults
     float                      default_min_kmers = 0.25;
     std::vector< float >       min_kmers;
-    std::vector< uint32_t >    max_error;
-    std::vector< int32_t >     max_error_unique{ -1 };
+    std::vector< uint16_t >    max_error;
+    std::vector< int16_t >     max_error_unique{ -1 };
     std::vector< std::string > filter_hierarchy{ "1" };
     int16_t                    paired_mode                 = -1;
     std::string                output_file                 = "";
