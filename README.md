@@ -26,10 +26,12 @@ conda install -c bioconda ganon
 ganon build --db-prefix sample_bacteria --input-files tests/ganon-build/data/sequences/bacteria*.fasta.gz
 ```
 
+Obs: `ganon build` (with a space in between) is different from the `ganon-build` command.
+
 ### classify
 
 ```shh
-ganon classify --db-prefix sample_bacteria --reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
+ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
 ```
 
 ### update
@@ -213,7 +215,19 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 	5) cummulative # reads assigned <tab>
 	6) cummulative % reads assigned
 
-## IBF size
+## Choosing parameters
+
+### --single-reads and --paired-reads
+
+ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads can be classified in the following modes:
+
+1) concat: consider pairs in a forward-reverse orientation (similar to merge them with an N in between)
+
+### --min-kmers and --max-error
+
+Both parameters are used to define the similarity threshold between reads and references. --max-error will work with fixed number of errors to calculate the amount of k-mers necessary to match. --min-kmers will directly tell how many k-mers (in %) are necessary to consider a match.
+
+### IBF size
 
 The most useful variable to define the IBF size (.filter file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
 
@@ -230,12 +244,12 @@ Such adjustment is necessary to equalize the size of each bin, since the IBF req
 #### build
 
 System packages:
-- gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
+- gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda)) or clang>=7
 - cmake >=3.10
 
 Specific packages:
 - Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
-- cxxopts >=2.1.2 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/a0de9f3ba1035a3c4f5ffcd960cb94e4e12d40c5))
+- cxxopts >=2.2.0 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
 - sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
 - seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/c308e99f10d942382d4c7ed6fc91be1a889e644c))
 

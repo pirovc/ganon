@@ -13,28 +13,26 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // clang-format off
     options.add_options()
-        ( "b,bloom-filter", "Input filter file[s]", cxxopts::value< std::vector< std::string > >() )
-        ( "g,group-bin", "Tab-separated file[s] linking classification groups and bin identifiers. The file should contain the following fields: Group Identifier <tab> Bin Id", cxxopts::value< std::vector< std::string > >() )
-        ( "c,filter-hierarchy", "Hierarchy of the given filter files (e.g. 1,1,2,3)", cxxopts::value< std::string >() )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed", cxxopts::value< std::string >() )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::string >() )
-        ( "m,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]", cxxopts::value< std::string >() )
+        ( "b,bloom-filter", "Input filter file[s] (e.g. a.filer,b.filter)", cxxopts::value< std::vector< std::string > >() )
+        ( "g,group-bin", "Tab-separated file[s] mapping classification groups and bin identifiers with the following fields: group_id <tab> bin_id (e.g. a.map,b.map)", cxxopts::value< std::vector< std::string > >() )
+        ( "c,filter-hierarchy", "Hierarchy of the given filter/group-bin files (e.g. 1,1,x,z)", cxxopts::value< std::vector< std::string > >() )
+        ( "m,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. Default: 0.25", cxxopts::value< std::vector< float > >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]", cxxopts::value< std::vector< int16_t > >() )
+        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::vector< int16_t > >() )
+        ( "i,paired-mode", "Paired-end mode [1: concat]. Default: 1", cxxopts::value< int16_t >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
         ( "o,output-file", "Output file with classification (omit for STDOUT). ", cxxopts::value< std::string >() )
         ( "n,output-unclassified-file", "Output file for unclassified reads", cxxopts::value< std::string >() )
-        ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy", cxxopts::value< bool >() )
+        ( "s,split-output-file-hierarchy", "Split output classification by hierarchy (filename will be outputfilename_hierachy)", cxxopts::value< bool >() )
         ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
+        ( "r,single-reads", "File[s] with single-end reads .fq .fastq .fasta .fa (e.g. file1.fq[.gz],[file2.fq[.gz] ... fileN.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
+        ( "p,paired-reads", "Pairs of files with paired-end reads .fq .fastq .fasta .fa (e.g. file1.1.fq[.gz],file1.2.fq[.gz],[file2.1.fq[.gz],file2.2.fq[.gz] ... fileN.1.fq[.gz],fileN.2.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         ( "h,help", "Print help" )
-        ( "v,version", "Show version" )
-        ( "reads", "reads", cxxopts::value< std::vector< std::string > >() );
+        ( "v,version", "Show version" );
     // clang-format on
-
-
-    options.parse_positional( { "reads" } );
-    options.positional_help( "file1.fastq[.gz] [file2.fastq[.gz] ... fileN.fastq[.gz]]" );
 
     const auto argcCopy = argc;
     const auto args     = options.parse( argc, argv );
@@ -53,19 +51,26 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     Config config;
 
     // Required
-    config.bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
-    config.group_bin_files    = args["group-bin"].as< std::vector< std::string > >();
-    config.reads              = args["reads"].as< std::vector< std::string > >();
+    if ( args.count( "bloom-filter" ) )
+        config.bloom_filter_files = args["bloom-filter"].as< std::vector< std::string > >();
+    if ( args.count( "group-bin" ) )
+        config.group_bin_files = args["group-bin"].as< std::vector< std::string > >();
+    if ( args.count( "single-reads" ) )
+        config.reads_single = args["single-reads"].as< std::vector< std::string > >();
+    if ( args.count( "paired-reads" ) )
+        config.reads_paired = args["paired-reads"].as< std::vector< std::string > >();
 
     // Default
+    if ( args.count( "paired-mode" ) )
+        config.paired_mode = args["paired-mode"].as< std::int16_t >();
     if ( args.count( "output-file" ) )
         config.output_file = args["output-file"].as< std::string >();
     if ( args.count( "output-unclassified-file" ) )
         config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
     if ( args.count( "max-error" ) )
-        config.max_error = args["max-error"].as< std::string >();
+        config.max_error = args["max-error"].as< std::vector< int16_t > >();
     if ( args.count( "min-kmers" ) )
-        config.min_kmers = args["min-kmers"].as< std::string >();
+        config.min_kmers = args["min-kmers"].as< std::vector< float > >();
     if ( args.count( "offset" ) )
     {
 #ifdef GANON_OFFSET
@@ -81,9 +86,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "filter-hierarchy" ) )
-        config.filter_hierarchy = args["filter-hierarchy"].as< std::string >();
+        config.filter_hierarchy = args["filter-hierarchy"].as< std::vector< std::string > >();
     if ( args.count( "max-error-unique" ) )
-        config.max_error_unique = args["max-error-unique"].as< std::string >();
+        config.max_error_unique = args["max-error-unique"].as< std::vector< int16_t > >();
     if ( args.count( "n-batches" ) )
         config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "n-reads" ) )

@@ -10,7 +10,7 @@ class TestClassify(unittest.TestCase):
         """
         path_data = "tests/ganon/integration/data/"
         prefix = "test_classify"
-        ret = ganon.main(shlex.split("ganon classify --db-prefix "+path_data+"sample_bacteria --reads "+path_data+"bacteria.simulated.1.fq -o "+prefix))
+        ret = ganon.main(shlex.split("./ganon classify --db-prefix "+path_data+"sample_bacteria --single-reads "+path_data+"bacteria.simulated.1.fq -o "+prefix))
         
         # check if ran okay
         self.assertFalse(ret, "ganon classify finish with an error")
