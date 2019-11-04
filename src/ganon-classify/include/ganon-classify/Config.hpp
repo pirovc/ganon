@@ -40,7 +40,7 @@ public:
     // Defaults
     float                      default_min_kmers = 0.25;
     std::vector< float >       min_kmers;
-    std::vector< uint16_t >    max_error;
+    std::vector< int16_t >     max_error;
     std::vector< int16_t >     max_error_unique{ -1 };
     std::vector< std::string > filter_hierarchy{ "1" };
     int16_t                    paired_mode                 = -1;
@@ -188,7 +188,7 @@ public:
         {
             auto filter_cfg = FilterConfig{ bloom_filter_files[h],
                                             group_bin_files[h],
-                                            ( max_error.size() > 0 ? max_error[h] : -1 ),
+                                            static_cast<int16_t>( max_error.size() > 0 ? max_error[h] : -1 ),
                                             ( min_kmers.size() > 0 ? min_kmers[h] : -1 ) };
 
             if ( h_filters.find( filter_hierarchy[h] ) == h_filters.end() )

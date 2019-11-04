@@ -17,7 +17,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "g,group-bin", "Tab-separated file[s] mapping classification groups and bin identifiers with the following fields: group_id <tab> bin_id (e.g. a.map,b.map)", cxxopts::value< std::vector< std::string > >() )
         ( "c,filter-hierarchy", "Hierarchy of the given filter/group-bin files (e.g. 1,1,x,z)", cxxopts::value< std::vector< std::string > >() )
         ( "m,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. Default: 0.25", cxxopts::value< std::vector< float > >() )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]", cxxopts::value< std::vector< uint16_t > >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]", cxxopts::value< std::vector< int16_t > >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::vector< int16_t > >() )
         ( "i,paired-mode", "Paired-end mode [1: concat]. Default: 1", cxxopts::value< int16_t >() )
         ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
@@ -68,7 +68,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "output-unclassified-file" ) )
         config.output_unclassified_file = args["output-unclassified-file"].as< std::string >();
     if ( args.count( "max-error" ) )
-        config.max_error = args["max-error"].as< std::vector< uint16_t > >();
+        config.max_error = args["max-error"].as< std::vector< int16_t > >();
     if ( args.count( "min-kmers" ) )
         config.min_kmers = args["min-kmers"].as< std::vector< float > >();
     if ( args.count( "offset" ) )
