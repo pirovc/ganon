@@ -218,16 +218,15 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Running taxonomic clustering (TaxSBP)... ")
-        run_taxsbp_cmd = '{0} -f {1} -n {2} {3} -l {4} -r {5} {6} {7} {8}'.format(
-                            taxsbp_exec,
-                            taxsbp_input_file,
-                            ncbi_nodes_file,
-                            "-m " + ncbi_merged_file if ncbi_merged_file else "",
-                            bin_length,
-                            "assembly" if use_assembly else args.rank,
-                            "-z assembly" if use_assembly else "",
-                            "-a " + str(fragment_length) if fragment_length else "",
-                            "-o " + str(args.overlap_length) if fragment_length else "")
+        run_taxsbp_cmd = " ".join([taxsbp_exec,
+                                   "-f " + taxsbp_input_file,
+                                   "-n " + ncbi_nodes_file,
+                                   "-m " + ncbi_merged_file if ncbi_merged_file else "",
+                                   "-l " + str(bin_length),
+                                   "-r " + ("assembly" if use_assembly else args.rank),
+                                   "-z " + "assembly" if use_assembly else "",
+                                   "-a " + str(fragment_length) if fragment_length else "",
+                                   "-o " + str(args.overlap_length) if fragment_length else ""])
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         actual_number_of_bins, unique_taxids, max_length_bin, group_taxid = taxsbp_output_files(stdout, acc_bin_file, db_prefix_bins, db_prefix_map, use_assembly, fragment_length)
@@ -252,19 +251,17 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Building index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0} -e {1} {2} {3} -k {4} -n {5} -t {6} -o {7} {8} {9} {10} {11}'.format(
-                                        ganon_build_exec,
-                                        acc_bin_file,
-                                        "--filter-size-bits" if args.max_fp else "--filter-size",
-                                        bin_size_bits*optimal_number_of_bins if args.max_fp else args.fixed_bloom_size,
-                                        args.kmer_size,
-                                        args.hash_functions,
-                                        args.threads,
-                                        db_prefix_filter,
+        run_ganon_build_cmd = " ".join([ganon_build_exec,
+                                        "--seqid-bin-file " + acc_bin_file,
+                                        "--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if args.max_fp else "--filter-size " + str(args.fixed_bloom_size),
+                                        "--kmer-size " + str(args.kmer_size),
+                                        "--hash-functions " + str(args.hash_functions),
+                                        "--threads " + str(args.threads),
+                                        "--output-filter-file " + db_prefix_filter,
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        " ".join([file for file in args.input_files]))
+                                        " ".join([file for file in args.input_files])])
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
@@ -308,17 +305,16 @@ def main(arguments=None):
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
         print_log("Running taxonomic clustering (TaxSBP)... \n")
-        run_taxsbp_cmd = '{0} -u {1} -f {2} -n {3} {4} -l {5} -r {6} {7} {8} {9}'.format(
-                            taxsbp_exec,
-                            db_prefix_bins,
-                            taxsbp_input_file,
-                            ncbi_nodes_file,
-                            "-m " + ncbi_merged_file if ncbi_merged_file else "",
-                            bin_length,
-                            "assembly" if use_assembly else rank,
-                            "-z assembly" if use_assembly else "",
-                            "-a " + str(fragment_length) if fragment_length else "",
-                            "-o " + str(overlap_length) if fragment_length else "")
+        run_taxsbp_cmd = " ".join([taxsbp_exec,
+                                   "-u " + db_prefix_bins,
+                                   "-f " + taxsbp_input_file,
+                                   "-n " + ncbi_nodes_file,
+                                   "-m " + ncbi_merged_file if ncbi_merged_file else "",
+                                   "-l " + str(bin_length),
+                                   "-r " + ("assembly" if use_assembly else rank),
+                                   "-z " + "assembly" if use_assembly else "",
+                                   "-a " + str(fragment_length) if fragment_length else "",
+                                   "-o " + str(overlap_length) if fragment_length else ""])
         stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
 
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
@@ -328,16 +324,16 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Updating index (ganon-build)... \n")
-        run_ganon_build_cmd = '{0} -u {1} -e {2} -o {3} -t {4} {5} {6} {7} {8}'.format(
-                                        ganon_build_exec,
-                                        db_prefix_filter,
-                                        acc_bin_file,
-                                        tmp_db_prefix_filter,
-                                        args.threads,
+        run_ganon_build_cmd = " ".join([ganon_build_exec,
+                                        "--update-filter-file " + db_prefix_filter,
+                                        "--seqid-bin-file " + acc_bin_file,
+                                        "--output-filter-file " + tmp_db_prefix_filter,
+                                        "--threads " + str(args.threads),                                
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        " ".join([file for file in args.input_files]))
+                                        " ".join([file for file in args.input_files])])
+
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
@@ -432,25 +428,24 @@ def main(arguments=None):
         
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = '{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12} {13} {14} {15}'.format(
-                                        ganon_classify_exec,
-                                        "--bloom-filter " + ",".join([db_prefix+".filter" for db_prefix in args.db_prefix]),
-                                        "--group-bin " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]),
-                                        "--filter-hierarchy " + ",".join([str(h) for h in args.db_hierarchy]),
-                                        "--max-error " + ",".join([str(me) for me in args.max_error]) if not args.min_kmers else "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]),
-                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]),
-                                        "--threads " + str(args.threads),
-                                        "--offset " + str(args.offset),
-                                        "--output-file " + ganon_classify_output_file,
-                                        "--split-output-file-hierarchy " if args.split_output_file_hierarchy else "",
-                                        "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
-                                        "--verbose" if args.verbose else "",
-                                        "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
-                                        "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
-                                        "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else "")
+        run_ganon_classify = " ".join([ganon_classify_exec,
+                                       "--bloom-filter " + ",".join([db_prefix+".filter" for db_prefix in args.db_prefix]),
+                                       "--group-bin " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]),
+                                       "--filter-hierarchy " + ",".join([str(h) for h in args.db_hierarchy]),
+                                       "--max-error " + ",".join([str(me) for me in args.max_error]) if not args.min_kmers else "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]),
+                                       "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]),
+                                       "--threads " + str(args.threads),
+                                       "--offset " + str(args.offset),
+                                       "--output-file " + ganon_classify_output_file,
+                                       "--split-output-file-hierarchy " if args.split_output_file_hierarchy else "",
+                                       "--output-unclassified-file " + args.output_unclassified_file if args.output_unclassified_file else "",
+                                       "--verbose" if args.verbose else "",
+                                       "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
+                                       "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
+                                       "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
+                                       "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else ""])
         process_ganon_classify = run(run_ganon_classify, blocking=False)
-
+        
         if not args.skip_lca:
             try:
                 from pylca.pylca import LCA
