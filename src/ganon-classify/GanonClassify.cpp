@@ -565,7 +565,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
 bool run( Config config )
 {
     // speed up output to STDOUT (allows buffering)
-    std::ios_base::sync_with_stdio( false );
+    //std::ios_base::sync_with_stdio( false );
 
     if ( !config.validate() )
         return false;
