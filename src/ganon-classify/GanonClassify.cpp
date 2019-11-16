@@ -6,6 +6,7 @@
 #include <seqan/binning_directory.h>
 
 #include <atomic>
+#include <chrono>
 #include <cinttypes>
 #include <cmath>
 #include <fstream>
@@ -749,9 +750,12 @@ bool run( Config config )
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
         {
-            while ( !classified_reads_queue.empty() ) // wait to have all writen before closing - may still fail for the
-                                                      // last pop - fix next version
-                ;                                     // spin
+            while ( !classified_reads_queue.empty() )
+                ; // spin
+            // wait to have all writen before closing - may still fail for the last entry (wait a second) - fix next
+            // version
+            std::chrono::microseconds ms( 500000 ); // half second
+            std::this_thread::sleep_for( ms );
             out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple
                          // files
             out.close();
