@@ -749,6 +749,9 @@ bool run( Config config )
 
         if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
         {
+            while ( !classified_reads_queue.empty() ) // wait to have all writen before closing - may still fail for the
+                                                      // last pop - fix next version
+                ;                                     // spin
             out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple
                          // files
             out.close();
