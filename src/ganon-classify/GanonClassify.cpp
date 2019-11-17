@@ -120,8 +120,6 @@ struct Filter
 {
     TBloomFilter                      bloom_filter;
     std::map< uint32_t, std::string > group_bin;
-    uint32_t                          numberOfBins;
-    uint16_t                          kmerSize;
     FilterConfig                      filter_config;
 };
 
@@ -167,7 +165,7 @@ void select_matches( TMatches&                matches,
                      uint16_t&                maxKmerCountRead )
 {
     // for each bin
-    for ( uint32_t binNo = 0; binNo < filter.numberOfBins; ++binNo )
+    for ( uint32_t binNo = 0; binNo < filter.bloom_filter.noOfBins; ++binNo )
     {
         // if kmer count is higher than threshold
         if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
@@ -285,7 +283,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
 {
 
     // k-mer sizes should be the same among filters
-    uint16_t kmer_size = filter_hierarchy[0].kmerSize;
+    uint16_t kmer_size = filter_hierarchy[0].bloom_filter.kmerSize;
 
     while ( true )
     {
@@ -381,8 +379,29 @@ void classify( std::vector< Filter >&    filter_hierarchy,
 
 void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarchy_name, Config& config )
 {
+    uint16_t first_kmer_size = 0;
     for ( auto const& filter_config : config.h_filters[hierarchy_name].filters )
     {
+
+
+        // bloom filter
+        TBloomFilter filter;
+        seqan::retrieve( filter, seqan::toCString( filter_config.bloom_filter_file ) );
+        // set offset to user-defined value (1==no offset)
+        filter.offset = config.offset;
+
+        if ( first_kmer_size == 0 )
+        {
+            first_kmer_size = seqan::getKmerSize( filter );
+        }
+        else if ( first_kmer_size != seqan::getKmerSize( filter ) )
+        {
+            std::cerr
+                << "ERROR: filters on the same hierarchy should have same k-mer size configuration. Ignoring filter: "
+                << filter_config.bloom_filter_file << std::endl;
+            continue;
+        }
+
         // group bin files
         std::map< uint32_t, std::string > group_bin;
         std::ifstream                     infile( filter_config.group_bin_file );
@@ -398,17 +417,7 @@ void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarch
             group_bin[std::stoul( fields[1] )] = fields[0];
         }
 
-        // bloom filter
-        TBloomFilter filter;
-        seqan::retrieve( filter, seqan::toCString( filter_config.bloom_filter_file ) );
-        // set offset to user-defined value (1==no offset)
-        filter.offset = config.offset;
-
-        filter_hierarchy.push_back( Filter{ std::move( filter ),
-                                            group_bin,
-                                            seqan::getNumberOfBins( filter ),
-                                            seqan::getKmerSize( filter ),
-                                            filter_config } );
+        filter_hierarchy.push_back( Filter{ std::move( filter ), group_bin, filter_config } );
     }
 }
 
