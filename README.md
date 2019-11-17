@@ -11,7 +11,7 @@ ganon is a k-mer based read classification tool which uses Interleaved Bloom Fil
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html)
 
 ```shh
-conda install -c bioconda ganon
+conda install -c bioconda -c conda-forge ganon
 ```
 
 * There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
@@ -44,6 +44,8 @@ ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus
 
 To build custom indices, ganon requires one (or multiple) fasta file(s) with the standard NCBI accession.version header (e.g. `>NC_009515.1`). For every sequence, taxonomic information will be automatically retrieved. Check the parameter `--seq-info` and `--taxdump-file` for more information. 
 
+If you want to re-create the indices used in the manuscript above, please follow the instructions https://github.com/pirovc/ganon_benchmark
+
 ### Downloading sequences
 
 We suggest using [genome_updater](https://github.com/pirovc/genome_updater) (`conda install -c bioconda genome_updater`) to download sequences from RefSeq/Genbank. genome_updater can download and keep a subset (organism or taxonomic groups) of those repositories updated. For example:
@@ -63,6 +65,8 @@ Building the index based on the files of the example above:
 
 	ganon build --db-prefix ganon_db \
 	            --input-files RefSeqCG_arc_bac/v1/files/*.genomic.fna.gz
+
+If you are getting the bash error `Argument list too long` use `--input-directory "RefSeqCG_arc_bac/v1/files/" --input-extension ".genomic.fna.gz"` instead of `--input-files`
 
 ### Updating sequences
 
@@ -219,13 +223,11 @@ no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|105
 
 ### --single-reads and --paired-reads
 
-ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads can be classified in the following modes:
-
-1) concat: consider pairs in a forward-reverse orientation (similar to merge them with an N in between)
+ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
 
 ### --min-kmers and --max-error
 
-Both parameters are used to define the similarity threshold between reads and references. --max-error will work with fixed number of errors to calculate the amount of k-mers necessary to match. --min-kmers will directly tell how many k-mers (in %) are necessary to consider a match.
+Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
 
 ### IBF size
 
@@ -347,24 +349,23 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 ### build
 
 	$ ganon build --help
-	usage: ganon build [-h] -d db_prefix -i [refs.fasta[.gz] [refs.fasta[.gz]
-	                   ...]] [-r] [-k] [-n] [-f] [-m] [-l] [-t]
-	                   [--fixed-bloom-size] [--fragment-length] [--overlap-length]
-	                   [--seq-info [[...]]] [--seq-info-file]
-	                   [--taxdump-file [[...]]] [--verbose]
+	usage: ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m]
+	                   [-l] [-t] [--fixed-bloom-size] [--fragment-length]
+	                   [--overlap-length] [--seq-info [[...]]] [--seq-info-file]
+	                   [--taxdump-file [[...]]] [--input-directory]
+	                   [--input-extension] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -r , --rank           Lowest taxonomic rank for classification
 	                        [assembly,taxid,species,genus,...]. Default: species
-	  -k , --kmer-size      The k-mer size for the bloom filter [14..32]. Default:
-	                        19
-	  -n , --hash-functions
+	  -k , --kmer-size      The k-mer size for the bloom filter. Default: 19
+	  -n , --hash-functions 
 	                        The number of hash functions to use for the bloom
-	                        filter [2..5]. Default: 3
+	                        filter. Default: 3
 	  -f , --max-fp         Max. false positive rate for k-mer classification.
 	                        Default: 0.05
-	  -m , --max-bloom-size
+	  -m , --max-bloom-size 
 	                        Approx. maximum filter size in Megabytes (MB). Will
 	                        estimate best --bin-length based on --kmer-size,
 	                        --hash-functions and --max-fp [Mutually exclusive
@@ -379,17 +380,17 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	  --overlap-length      Fragment overlap length (in bp). Should be bigger than
 	                        the read length used for classification. Default: 300
 	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided with --input-files, ganon requires
-	                        taxonomic and seq. length information. If a small
-	                        number of sequences is provided (<50000) or when
-	                        --rank assembly, ganon will automatically obtain
-	                        data with NCBI E-utils websevices (eutils). Offline
-	                        mode will download batch files from NCBI Taxonomy and
-	                        look for taxonomic ids in the order provided. Options:
-	                        [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl
-	                        dead_wgs dead_prot], eutils (force webservices) or
-	                        auto (uses eutils or [nucl_gb nucl_wgs]). Default:
-	                        auto [Mutually exclusive --seq-info-file]
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtain data with NCBI E-utils websevices
+	                        (eutils). Offline mode will download batch files from
+	                        NCBI Taxonomy and look for taxonomic ids in the order
+	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss
+	                        pdb prot dead_nucl dead_wgs dead_prot], eutils (force
+	                        webservices) or auto (uses eutils or [nucl_gb
+	                        nucl_wgs]). Default: auto [Mutually exclusive --seq-
+	                        info-file]
 	  --seq-info-file       Pre-generated file with sequence information (seqid
 	                        <tab> seq.len <tab> taxid [<tab> assembly id])
 	                        [Mutually exclusive --seq-info]
@@ -398,22 +399,26 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
 	                        file(s) from NCBI Taxonomy (otherwise it will be
 	                        automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory
 	  --verbose             Verbose mode for ganon
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
-	                        Database output prefix (.filter, .nodes, ,bins. .map
+	                        Database output prefix (.filter, .nodes, .bins, .map
 	                        will be created)
-	  -i [refs.fasta[.gz] [refs.fasta[.gz] ...]], --input-files [refs.fasta[.gz] [refs.fasta[.gz] ...]]
-	                        Multi-fasta[.gz] file[s]
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]
 
 ### classify
 
 	$ ganon classify --help
-	usage: ganon classify [-h] -d [db_prefix [db_prefix ...]] -r [reads.fq[.gz]
-	                      [reads.fq[.gz] ...]] [-c [int [int ...]]]
-	                      [-m [int [int ...]]] [-e [int [int ...]]]
-	                      [-u [int [int ...]]] [-f] [-o] [-n] [-s] [-l] [-p]
+	usage: ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz]
+	                      [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
+	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]]
+	                      [-c [int [int ...]]] [-m [int [int ...]]]
+	                      [-e [int [int ...]]] [-u [int [int ...]]] [-f] [-o] [-n]
+	                      [-s] [--skip-lca] [--skip-reports]
 	                      [-k [RANKS [RANKS ...]]] [-t] [--verbose]
 
 	optional arguments:
@@ -441,19 +446,19 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        speed up analysis but may reduce recall. (e.g. 1 = all
 	                        k-mers, 3 = every 3rd k-mer). Function must be enabled
 	                        on compilation time with -DGANON_OFFSET=ON. Default: 2
-	  -o , --output-file-prefix
+	  -o , --output-file-prefix 
 	                        Output file name prefix: .out for complete results /
 	                        .lca for LCA results / .rep for report. Empty to print
 	                        to STDOUT (only with lca). Default: ""
-	  -n , --output-unclassified-file
+	  -n , --output-unclassified-file 
 	                        Output file for unclassified reads headers. Empty to
 	                        not output. Default: ""
 	  -s, --split-output-file-hierarchy
 	                        Split output in multiple files by hierarchy. Appends
 	                        "_hierachy" to the --output-file definiton.
-	  -l, --skip-lca        Skip LCA step and output multiple matches. --max-
+	  --skip-lca            Skip LCA step and output multiple matches. --max-
 	                        error-unique will not be applied
-	  -p, --skip-reports    Skip reports
+	  --skip-reports        Skip reports
 	  -k [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
 	                        Ranks for the final report. "all" for all indentified
 	                        ranks. empty for default ranks: superkingdom phylum
@@ -464,35 +469,38 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	required arguments:
 	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
 	                        Database prefix[es]
-	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --reads [reads.fq[.gz] [reads.fq[.gz] ...]]
+	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
 	                        Multi-fastq[.gz] file[s] to classify
+	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
+	                        Multi-fastq[.gz] pairs of file[s] to classify
 
 ### update
 
 	$ ganon update --help
-	usage: ganon update [-h] -d db_prefix -i [refs.fasta[.gz] [refs.fasta[.gz]
-	                    ...]] [-o] [-t] [--seq-info [[...]]] [--seq-info-file]
-	                    [--taxdump-file [[...]]] [--verbose]
+	usage: ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t]
+	                    [--seq-info [[...]]] [--seq-info-file]
+	                    [--taxdump-file [[...]]] [--input-directory]
+	                    [--input-extension] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -o , --output-db-prefix
+	  -o , --output-db-prefix 
 	                        Alternative output database prefix. Default: overwrite
 	                        current --db-prefix
 	  -t , --threads        set the number of subprocesses/threads to use for
 	                        calculations. Default: 2
 	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided with --input-files, ganon requires
-	                        taxonomic and seq. length information. If a small
-	                        number of sequences is provided (<50000) or when
-	                        --rank assembly, ganon will automatically obtained
-	                        data with NCBI E-utils websevices (eutils). Offline
-	                        mode will download batch files from NCBI Taxonomy and
-	                        look for taxonomic ids in the order provided. Options:
-	                        [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl
-	                        dead_wgs dead_prot], eutils (force webservices) or
-	                        auto (uses eutils or [nucl_gb nucl_wgs]). Default:
-	                        auto [Mutually exclusive --seq-info-file]
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtained data with NCBI E-utils
+	                        websevices (eutils). Offline mode will download batch
+	                        files from NCBI Taxonomy and look for taxonomic ids in
+	                        the order provided. Options: [nucl_gb nucl_wgs
+	                        nucl_est nucl_gss pdb prot dead_nucl dead_wgs
+	                        dead_prot], eutils (force webservices) or auto (uses
+	                        eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
+	                        exclusive --seq-info-file]
 	  --seq-info-file       Pre-generated file with sequence information (seqid
 	                        <tab> seq.len <tab> taxid [<tab> assembly id])
 	                        [Mutually exclusive --seq-info]
@@ -501,10 +509,12 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
 	                        file(s) from NCBI Taxonomy (otherwise it will be
 	                        automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory
 	  --verbose             Verbose mode for ganon
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
 	                        Database prefix
-	  -i [refs.fasta[.gz] [refs.fasta[.gz] ...]], --input-files [refs.fasta[.gz] [refs.fasta[.gz] ...]]
-	                        Multi-fasta[.gz] file[s]
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]

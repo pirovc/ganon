@@ -17,8 +17,8 @@ def main(arguments=None):
     # Required
     build_group_required = build_parser.add_argument_group('required arguments')
     build_group_required.add_argument('-d', '--db-prefix',      required=True, type=str,                    metavar='db_prefix',        help='Database output prefix (.filter, .nodes, .bins, .map will be created)')
-    build_group_required.add_argument('-i', '--input-files',    required=True, type=str, nargs="*",         metavar='refs.fasta[.gz]',  help='Multi-fasta[.gz] file[s]')
-
+    build_group_required.add_argument('-i', '--input-files',    required=False, type=str, nargs="*",         metavar='',  help='Input reference sequence fasta files [.gz]')
+    
     # Defaults
     build_group_optional = build_parser.add_argument_group('optional arguments')
     build_group_optional.add_argument('-r', '--rank',            type=str,   default='species',metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
@@ -31,10 +31,12 @@ def main(arguments=None):
     build_group_optional.add_argument('--fixed-bloom-size',      type=int,                    metavar='', help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
     build_group_optional.add_argument('--fragment-length',       type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
     build_group_optional.add_argument('--overlap-length',        type=int,   default=300,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
-    build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     build_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
-    
+    build_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
+    build_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory')
+
     # Extra
     build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
     build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
@@ -49,16 +51,18 @@ def main(arguments=None):
     # Required
     update_group_required = update_parser.add_argument_group('required arguments')
     update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database prefix')
-    update_group_required.add_argument('-i', '--input-files',       required=True,  type=str, nargs="*",    metavar='refs.fasta[.gz]',  help='Multi-fasta[.gz] file[s]')
+    update_group_required.add_argument('-i', '--input-files',       required=False, type=str, nargs="*",    metavar='',  help='Input reference sequence fasta files [.gz]')
     
     # Defaults
     update_group_optional = update_parser.add_argument_group('optional arguments')
     update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Alternative output database prefix. Default: overwrite current --db-prefix')
     #update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update complete bins, removing sequences. Input file should be complete, not only new sequences.')
     update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
-    update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided with --input-files, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     update_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     update_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
+    update_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
+    update_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory')
 
     # Extra
     update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
@@ -153,6 +157,15 @@ def main(arguments=None):
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
             print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
             return 1
+
+        if not args.input_files and not args.input_directory:
+            print_log("Please provide files with --input-files and/or --input-directory with --input-extension \n")
+            return 1
+        elif args.input_directory and not args.input_extension:
+            print_log("Please provide the --input-extension when using --input-directory \n")
+            return 1
+        elif args.input_directory and not args.input_files:
+            args.input_files = [] # initializate for adding files later
 
         db_prefix = args.db_prefix
         output_folder = os.path.abspath(os.path.dirname(db_prefix)) + "/"
@@ -261,7 +274,9 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        " ".join([file for file in args.input_files])])
+                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
@@ -332,7 +347,9 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        " ".join([file for file in args.input_files])])
+                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--extension " + args.input_extension if args.input_extension else ""])
 
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -588,6 +605,12 @@ def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exe
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
     
+    # get files from
+    if args.input_directory and args.input_extension:
+        for file in os.listdir(args.input_directory):
+            if file.endswith(args.input_extension):
+                args.input_files.append(os.path.join(args.input_directory, file))
+
     # Prepare TaxSBP input file
     if args.seq_info_file: # file already provided 
         taxsbp_input_file = args.seq_info_file
@@ -876,6 +899,10 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
     min_group_len = min(groups_len.values())
     max_group_len = max(groups_len.values())
     sum_group_len = sum(groups_len.values())
+
+    # special case with one group
+    if ngroups==1:
+        return math.floor(sum_group_len/64)
 
     # minimum number of bins possible (= number of groups) will generate a big and sparse IBF
     min_bins_optimal = optimal_bins(ngroups)

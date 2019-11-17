@@ -35,6 +35,15 @@ SCENARIO( "Build", "[ganon-build]" )
     REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
 }
 
+SCENARIO( "Build from folder", "[ganon-build]" )
+{
+    auto cfg                      = config_build::defaultConfig();
+    cfg.directory_reference_files = "sequences/";
+    cfg.extension                 = ".gz";
+
+    REQUIRE( GanonBuild::run( cfg ) );
+}
+
 SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
 {
     auto cfg      = config_build::defaultConfig();
