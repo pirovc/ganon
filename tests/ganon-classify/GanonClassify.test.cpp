@@ -232,6 +232,25 @@ SCENARIO( "Classify multi-hierarchy without errors allowed", "[ganon-classify]" 
     REQUIRE( aux::filesAreEqual( cfg.output_file, desired_output ) );
 }
 
+SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
+{
+    auto cfg                         = config_classify::defaultConfig();
+    cfg.bloom_filter_files           = { "filters/bacteria.filter", "filters/archaea.filter" };
+    cfg.group_bin_files              = { "files/bacteria.map", "files/archaea.map" };
+    cfg.reads_single                 = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
+    cfg.max_error                    = { 0 };
+    cfg.filter_hierarchy             = { "1", "2" };
+    std::string output_file1         = cfg.output_file + "_1";
+    std::string output_file2         = cfg.output_file + "_2";
+    cfg.split_output_file_hierarchy  = true;
+    const std::string desired_output = "results/classify_output-ba-ba_e0c12.txt";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+
+    int lines = aux::fileLines( output_file1 ) + aux::fileLines( output_file2 ) - 1;
+    REQUIRE( lines == aux::fileLines( desired_output ) );
+}
+
 SCENARIO( "Classify multi-hierarchy with errors allowed", "[ganon-classify]" )
 {
     auto cfg                         = config_classify::defaultConfig();
