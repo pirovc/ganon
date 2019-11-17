@@ -244,9 +244,10 @@ SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
     std::string output_file2         = cfg.output_file + "_2";
     cfg.split_output_file_hierarchy  = true;
     const std::string desired_output = "results/classify_output-ba-ba_e0c12.txt";
-    int               lines          = aux::fileLines( output_file1 ) + aux::fileLines( output_file2 ) - 1;
 
     REQUIRE( GanonClassify::run( cfg ) );
+
+    int lines = aux::fileLines( output_file1 ) + aux::fileLines( output_file2 ) - 1;
     REQUIRE( lines == aux::fileLines( desired_output ) );
 }
 
