@@ -17,10 +17,10 @@ def main(arguments=None):
     # Required
     build_group_required = build_parser.add_argument_group('required arguments')
     build_group_required.add_argument('-d', '--db-prefix',      required=True, type=str,                    metavar='db_prefix',        help='Database output prefix (.filter, .nodes, .bins, .map will be created)')
-
+    build_group_required.add_argument('-i', '--input-files',    required=False, type=str, nargs="*",         metavar='',  help='Input reference sequence fasta files [.gz]')
+    
     # Defaults
     build_group_optional = build_parser.add_argument_group('optional arguments')
-    build_group_optional.add_argument('-i', '--input-files',     type=str, nargs="*",         metavar='',  help='Multi-fasta[.gz] file[s]')
     build_group_optional.add_argument('-r', '--rank',            type=str,   default='species',metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
     build_group_optional.add_argument('-k', '--kmer-size',       type=int,   default=19,      metavar='', help='The k-mer size for the bloom filter. Default: 19')
     build_group_optional.add_argument('-n', '--hash-functions',  type=int,   default=3,       metavar='', help='The number of hash functions to use for the bloom filter. Default: 3')
@@ -51,10 +51,10 @@ def main(arguments=None):
     # Required
     update_group_required = update_parser.add_argument_group('required arguments')
     update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database prefix')
- 
+    update_group_required.add_argument('-i', '--input-files',       required=False, type=str, nargs="*",    metavar='',  help='Input reference sequence fasta files [.gz]')
+    
     # Defaults
     update_group_optional = update_parser.add_argument_group('optional arguments')
-    update_group_optional.add_argument('-i', '--input-files',       type=str, nargs="*",    metavar='',  help='Multi-fasta[.gz] file[s]')
     update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Alternative output database prefix. Default: overwrite current --db-prefix')
     #update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update complete bins, removing sequences. Input file should be complete, not only new sequences.')
     update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
