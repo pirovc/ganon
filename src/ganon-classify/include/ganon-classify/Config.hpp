@@ -87,6 +87,32 @@ public:
             return false;
         }
 
+        bool valid_val = true;
+        for ( uint16_t i = 0; i < min_kmers.size(); ++i )
+        {
+            if (min_kmers[i] < 0 || min_kmers[i] > 1){
+                valid_val = false;
+                break;
+            }
+        }
+        if (!valid_val){
+            std::cerr << "--min-kmers should any value between 0 and 1" << std::endl;
+            return false;
+        }
+        
+        valid_val = true;
+        for ( uint16_t i = 0; i < max_error.size(); ++i )
+        {
+            if (max_error[i] < 0){
+                valid_val = false;
+                break;
+            }
+        }
+        if (!valid_val){
+            std::cerr << "--max-error should any greater than 0" << std::endl;
+            return false;
+        }
+
         if ( reads_paired.size() > 1 && paired_mode == -1 )
             paired_mode = 1;
 
