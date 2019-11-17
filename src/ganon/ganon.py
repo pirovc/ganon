@@ -900,6 +900,10 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
     max_group_len = max(groups_len.values())
     sum_group_len = sum(groups_len.values())
 
+    # special case with one group
+    if ngroups==1:
+        return math.floor(sum_group_len/64)
+
     # minimum number of bins possible (= number of groups) will generate a big and sparse IBF
     min_bins_optimal = optimal_bins(ngroups)
     # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
