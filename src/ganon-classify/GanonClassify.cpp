@@ -116,10 +116,13 @@ inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint1
 
 inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float min_kmers, uint16_t offset )
 {
-    // Return threshold (number of kmers) based on an percentage of kmers
+    // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
     // ceil -> round-up min # k-mers, floor -> round-down for offset
-    return std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset );
+    return min_kmers > 0
+            ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset )
+            : 1u;
 }
+             
 
 inline void flag_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique )
 {
