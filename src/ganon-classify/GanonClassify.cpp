@@ -44,6 +44,34 @@ typedef std::unordered_map< std::string, int16_t > TMatches;
 
 struct ReadBatches
 {
+
+    ReadBatches()
+    {
+    }
+
+    ReadBatches( bool _paired )
+    {
+        paired = _paired;
+    }
+
+    ReadBatches( bool _paired, seqan::StringSet< seqan::CharString > _ids, seqan::StringSet< seqan::Dna5String > _seqs )
+    {
+        paired = _paired;
+        ids    = _ids;
+        seqs   = _seqs;
+    }
+
+    ReadBatches( bool                                  _paired,
+                 seqan::StringSet< seqan::CharString > _ids,
+                 seqan::StringSet< seqan::Dna5String > _seqs,
+                 seqan::StringSet< seqan::Dna5String > _seqs2 )
+    {
+        paired = _paired;
+        ids    = _ids;
+        seqs   = _seqs;
+        seqs2  = _seqs2;
+    }
+
     bool                                  paired = false;
     seqan::StringSet< seqan::CharString > ids;
     seqan::StringSet< seqan::Dna5String > seqs;
@@ -101,7 +129,8 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
+    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 )
+                      / static_cast< float >( kmerSize ) );
 }
 
 inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
@@ -118,11 +147,9 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 {
     // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
     // ceil -> round-up min # k-mers, floor -> round-down for offset
-    return min_kmers > 0
-            ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset )
-            : 1u;
+    return min_kmers > 0 ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset ) : 1u;
 }
-             
+
 
 inline void flag_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique )
 {
@@ -422,12 +449,12 @@ void print_stats( Stats& stats, const StopClock& timeClass )
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
               << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
     std::cerr << " - " << stats.classifiedReads << " sequences classified ("
-              << ( stats.classifiedReads / (double) stats.totalReads ) * 100 << "%)" << std::endl;
+              << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
     std::cerr << " - " << stats.totalReads - stats.classifiedReads << " sequences unclassified ("
-              << ( ( stats.totalReads - stats.classifiedReads ) / (double) stats.totalReads ) * 100 << "%)"
-              << std::endl;
-    std::cerr << " - " << stats.matches << " matches (avg. " << ( stats.matches / (double) stats.classifiedReads )
-              << " match/read)" << std::endl;
+              << ( ( stats.totalReads - stats.classifiedReads ) / static_cast< double >( stats.totalReads ) ) * 100
+              << "%)" << std::endl;
+    std::cerr << " - " << stats.matches << " matches (avg. "
+              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 }
 
 uint32_t parse_reads_single( seqan::SeqFileIn&                 seqFileIn,
