@@ -18,6 +18,9 @@
 #include <type_traits>
 #include <vector>
 
+#include <seqan/seq_io.h>
+#include <seqan/stream.h>
+
 namespace GanonClassify
 {
 

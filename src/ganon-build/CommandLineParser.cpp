@@ -13,7 +13,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // clang-format off
     options.add_options()
-        ( "r,reference-files", "Sequence files .fasta .fa .fna ref.fna[.gz],[ref2.fna[.gz],...,refN.fna[.gz]]", cxxopts::value< std::vector< std::string > >() )
+        ( "r,reference-files", "Sequence files (.fasta .fa .fna) ref.fna[.gz],[ref2.fna[.gz],...,refN.fna[.gz]]", cxxopts::value< std::vector< std::string > >() )
         ( "d,directory-reference-files", "A directory with the reference files", cxxopts::value< std::string >() )
         ( "x,extension", "Extension of the files to search in the --directory-reference-files", cxxopts::value< std::string >() )
         ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
@@ -52,11 +52,11 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // Required
     if ( args.count( "seqid-bin-file" ) )
-        config.seqid_bin_file     = args["seqid-bin-file"].as< std::string >();
+        config.seqid_bin_file = args["seqid-bin-file"].as< std::string >();
     if ( args.count( "output-filter-file" ) )
         config.output_filter_file = args["output-filter-file"].as< std::string >();
     if ( args.count( "reference-files" ) )
-        config.reference_files    = args["reference-files"].as< std::vector< std::string > >();
+        config.reference_files = args["reference-files"].as< std::vector< std::string > >();
 
     // Default
     if ( args.count( "update-filter-file" ) )
