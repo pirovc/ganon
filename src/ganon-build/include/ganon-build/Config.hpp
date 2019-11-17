@@ -30,6 +30,7 @@ public:
     bool        update_complete    = false;
     uint16_t    threads            = 2;
     bool        verbose            = false;
+    bool        quiet              = false;
 
     // hidden
     uint32_t n_batches = 1000;
@@ -56,7 +57,7 @@ public:
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
-            std::cerr << "--filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
+            std::cerr << "WARNING: --filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
                          "--update-filter-file"
                       << std::endl;
             kmer_size        = 0;
@@ -83,6 +84,12 @@ public:
                 filter_size = filter_size_bits / MBinBits;
             }
         }
+
+        if ( n_batches < 1 )
+            n_batches = 1;
+
+        if ( n_refs < 1 )
+            n_refs = 1;
 
         return true;
     }

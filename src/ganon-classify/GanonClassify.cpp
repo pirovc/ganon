@@ -514,7 +514,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
         seqan::SeqFileIn seqFileIn;
         if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
         {
-            std::cerr << "Unable to open " << reads_file << std::endl;
+            std::cerr << "ERROR: Unable to open the file: " << reads_file << std::endl;
             continue;
         }
         uint32_t pos = 0;
@@ -530,7 +530,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
             catch ( seqan::Exception const& e )
             {
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
-                std::cerr << "Error while reading file in batches: " << reads_file << " [" << e.what()
+                std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
                           << "]. Switching to single line parsing." << std::endl;
                 stats.totalReads += parse_reads_single( seqFileIn, pos, config.n_reads, queue1 );
                 break;
@@ -549,12 +549,12 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
             seqan::SeqFileIn seqFileIn2;
             if ( !seqan::open( seqFileIn1, seqan::toCString( config.reads_paired[pair_cnt] ) ) )
             {
-                std::cerr << "Unable to open " << config.reads_paired[pair_cnt] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt] << std::endl;
                 continue;
             }
             if ( !seqan::open( seqFileIn2, seqan::toCString( config.reads_paired[pair_cnt + 1] ) ) )
             {
-                std::cerr << "Unable to open " << config.reads_paired[pair_cnt + 1] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt + 1] << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn1 ) )
@@ -570,12 +570,13 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                 }
                 catch ( seqan::Exception const& e )
                 {
-                    std::cerr << e.what() << std::endl;
+                    std::cerr << "ERROR: " << e.what() << std::endl;
                     continue;
                 }
                 if ( seqan::length( ids1 ) != seqan::length( ids2 ) )
                 {
-                    std::cerr << "Paired-read files do not match" << std::endl;
+                    std::cerr << "ERROR: Paired-read files do not match: " << config.reads_paired[pair_cnt] << ","
+                              << config.reads_paired[pair_cnt + 1] << std::endl;
                     break;
                 }
                 stats.totalReads += seqan::length( ids1 );
@@ -609,7 +610,7 @@ bool run( Config config )
     StopClock timePrintClass;
     StopClock timePrintUnclass;
 
-    if ( config.verbose )
+    if ( !config.quiet && config.verbose )
     {
         std::cerr << config;
     }
@@ -812,14 +813,16 @@ bool run( Config config )
 
     timeGanon.stop();
 
-    std::cerr << std::endl;
-    if ( config.verbose )
+    if ( !config.quiet )
     {
-        detail::print_time(
-            config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+        std::cerr << std::endl;
+        if ( config.verbose )
+        {
+            detail::print_time(
+                config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+        }
+        detail::print_stats( stats, timeClass );
     }
-    detail::print_stats( stats, timeClass );
-
     return true;
 }
 

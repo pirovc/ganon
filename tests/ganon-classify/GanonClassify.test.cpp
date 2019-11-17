@@ -17,7 +17,8 @@ GanonClassify::Config defaultConfig()
     cfg.output_file                 = "classify_test_output.txt";
     cfg.split_output_file_hierarchy = false;
     cfg.threads                     = 3;
-    cfg.verbose                     = true;
+    cfg.verbose                     = false;
+    cfg.quiet                       = true;
     cfg.filter_hierarchy            = { "1" };
     cfg.offset                      = 1;
 
@@ -443,7 +444,8 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
                                   "sequences/virus_NC_011646.1.fasta.gz",
                                   "sequences/virus_NC_032412.1.fasta.gz",
                                   "sequences/virus_NC_035470.1.fasta.gz" };
-    cfg_build.verbose            = true;
+    cfg_build.verbose            = cfg.verbose;
+    cfg_build.quiet              = cfg.quiet;
     REQUIRE( GanonBuild::run( cfg_build ) );
 
 
