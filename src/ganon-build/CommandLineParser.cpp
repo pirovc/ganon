@@ -25,6 +25,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "n-refs", "Number of sequences for each batch", cxxopts::value< uint32_t >() )
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "verbose", "Verbose output mode", cxxopts::value<bool>())
+        ( "quiet", "Quiet output mode (only outputs errors and warnings to the stderr)", cxxopts::value<bool>())
         ( "h,help", "Show help commands" )
         ( "v,version", "Show current version" )
         ( "reference-files", "reference-files", cxxopts::value< std::vector< std::string > >() );
@@ -76,6 +77,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
+    if ( args.count( "quiet" ) )
+        config.quiet = args["quiet"].as< bool >();
+
 
     return config;
 }

@@ -219,7 +219,7 @@ bool run( Config config )
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reference_file ) ) )
             {
-                std::cerr << "Unable to open " << reference_file << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << reference_file << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn ) )
@@ -235,10 +235,10 @@ bool run( Config config )
                 catch ( seqan::Exception const& e )
                 {
                     mtx.lock();
-                    std::cerr << "ERROR: " << e.what() << std::endl;
+                    std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
+                              << std::endl;
                     mtx.unlock();
                 }
-
 
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
@@ -246,7 +246,8 @@ bool run( Config config )
                     if ( seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
-                        std::cerr << ids[i] << " has sequence smaller than k-mer size" << std::endl;
+                        std::cerr << "WARNING: sequence smaller than k-mer size"
+                                  << "[" << ids[i] << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -256,7 +257,8 @@ bool run( Config config )
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
-                        std::cerr << seqid << " not defined on seqid-bin file" << std::endl;
+                        std::cerr << "WARNING: sequence not defined on seqid-bin file"
+                                  << "[" << seqid << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -332,14 +334,16 @@ bool run( Config config )
 
     timeGanon.stop();
 
-    std::cerr << std::endl;
-    if ( config.verbose )
+    if ( !config.quiet )
     {
-        detail::print_time(
-            config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+        std::cerr << std::endl;
+        if ( config.verbose )
+        {
+            detail::print_time(
+                config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+        }
+        detail::print_stats( stats, config, timeBuild );
     }
-    detail::print_stats( stats, config, timeBuild );
-
     return true;
 }
 

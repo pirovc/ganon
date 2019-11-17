@@ -18,7 +18,8 @@ GanonBuild::Config defaultConfig()
                             "sequences/bacteria_NC_017163.1.fasta.gz",
                             "sequences/bacteria_NC_017164.1.fasta.gz",
                             "sequences/bacteria_NC_017543.1.fasta.gz" };
-    cfg.verbose            = true;
+    cfg.verbose            = false;
+    cfg.quiet              = true;
     return cfg;
 }
 

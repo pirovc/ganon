@@ -28,6 +28,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
+        ( "quiet", "Quiet output mode (only outputs errors and warnings to the stderr)", cxxopts::value< bool >())
         ( "r,single-reads", "File[s] with single-end reads .fq .fastq .fasta .fa (e.g. file1.fq[.gz],[file2.fq[.gz] ... fileN.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         ( "p,paired-reads", "Pairs of files with paired-end reads .fq .fastq .fasta .fa (e.g. file1.1.fq[.gz],file1.2.fq[.gz],[file2.1.fq[.gz],file2.2.fq[.gz] ... fileN.1.fq[.gz],fileN.2.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         ( "h,help", "Print help" )
@@ -85,6 +86,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.split_output_file_hierarchy = args["split-output-file-hierarchy"].as< bool >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
+    if ( args.count( "quiet" ) )
+        config.quiet = args["quiet"].as< bool >();
     if ( args.count( "filter-hierarchy" ) )
         config.filter_hierarchy = args["filter-hierarchy"].as< std::vector< std::string > >();
     if ( args.count( "max-error-unique" ) )

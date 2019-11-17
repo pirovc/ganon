@@ -49,6 +49,7 @@ public:
     uint16_t                   offset                      = 1;
     uint16_t                   threads                     = 3;
     bool                       verbose                     = false;
+    bool                       quiet                       = false;
     bool                       split_output_file_hierarchy = false;
 
     // hidden
@@ -90,25 +91,29 @@ public:
         bool valid_val = true;
         for ( uint16_t i = 0; i < min_kmers.size(); ++i )
         {
-            if (min_kmers[i] < 0 || min_kmers[i] > 1){
+            if ( min_kmers[i] < 0 || min_kmers[i] > 1 )
+            {
                 valid_val = false;
                 break;
             }
         }
-        if (!valid_val){
+        if ( !valid_val )
+        {
             std::cerr << "--min-kmers should any value between 0 and 1" << std::endl;
             return false;
         }
-        
+
         valid_val = true;
         for ( uint16_t i = 0; i < max_error.size(); ++i )
         {
-            if (max_error[i] < 0){
+            if ( max_error[i] < 0 )
+            {
                 valid_val = false;
                 break;
             }
         }
-        if (!valid_val){
+        if ( !valid_val )
+        {
             std::cerr << "--max-error should any greater than 0" << std::endl;
             return false;
         }
@@ -214,7 +219,7 @@ public:
         {
             auto filter_cfg = FilterConfig{ bloom_filter_files[h],
                                             group_bin_files[h],
-                                            static_cast<int16_t>( max_error.size() > 0 ? max_error[h] : -1 ),
+                                            static_cast< int16_t >( max_error.size() > 0 ? max_error[h] : -1 ),
                                             ( min_kmers.size() > 0 ? min_kmers[h] : -1 ) };
 
             if ( h_filters.find( filter_hierarchy[h] ) == h_filters.end() )
@@ -265,6 +270,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--offset                    " << config.offset << newl;
     stream << "--verbose                   " << config.verbose << newl;
+    stream << "--quiet                   " << config.quiet << newl;
     stream << "--threads                   " << config.threads << newl;
     stream << "--paired-mode               " << config.paired_mode << newl;
     stream << "--output-unclassified-file  " << config.output_unclassified_file << newl;

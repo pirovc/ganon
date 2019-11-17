@@ -44,6 +44,34 @@ typedef std::unordered_map< std::string, int16_t > TMatches;
 
 struct ReadBatches
 {
+
+    ReadBatches()
+    {
+    }
+
+    ReadBatches( bool _paired )
+    {
+        paired = _paired;
+    }
+
+    ReadBatches( bool _paired, seqan::StringSet< seqan::CharString > _ids, seqan::StringSet< seqan::Dna5String > _seqs )
+    {
+        paired = _paired;
+        ids    = _ids;
+        seqs   = _seqs;
+    }
+
+    ReadBatches( bool                                  _paired,
+                 seqan::StringSet< seqan::CharString > _ids,
+                 seqan::StringSet< seqan::Dna5String > _seqs,
+                 seqan::StringSet< seqan::Dna5String > _seqs2 )
+    {
+        paired = _paired;
+        ids    = _ids;
+        seqs   = _seqs;
+        seqs2  = _seqs2;
+    }
+
     bool                                  paired = false;
     seqan::StringSet< seqan::CharString > ids;
     seqan::StringSet< seqan::Dna5String > seqs;
@@ -101,7 +129,8 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 ) / (float) kmerSize );
+    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 )
+                      / static_cast< float >( kmerSize ) );
 }
 
 inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
@@ -118,11 +147,9 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 {
     // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
     // ceil -> round-up min # k-mers, floor -> round-down for offset
-    return min_kmers > 0
-            ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset )
-            : 1u;
+    return min_kmers > 0 ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset ) : 1u;
 }
-             
+
 
 inline void flag_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique )
 {
@@ -422,12 +449,12 @@ void print_stats( Stats& stats, const StopClock& timeClass )
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
               << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
     std::cerr << " - " << stats.classifiedReads << " sequences classified ("
-              << ( stats.classifiedReads / (double) stats.totalReads ) * 100 << "%)" << std::endl;
+              << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
     std::cerr << " - " << stats.totalReads - stats.classifiedReads << " sequences unclassified ("
-              << ( ( stats.totalReads - stats.classifiedReads ) / (double) stats.totalReads ) * 100 << "%)"
-              << std::endl;
-    std::cerr << " - " << stats.matches << " matches (avg. " << ( stats.matches / (double) stats.classifiedReads )
-              << " match/read)" << std::endl;
+              << ( ( stats.totalReads - stats.classifiedReads ) / static_cast< double >( stats.totalReads ) ) * 100
+              << "%)" << std::endl;
+    std::cerr << " - " << stats.matches << " matches (avg. "
+              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 }
 
 uint32_t parse_reads_single( seqan::SeqFileIn&                 seqFileIn,
@@ -487,7 +514,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
         seqan::SeqFileIn seqFileIn;
         if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
         {
-            std::cerr << "Unable to open " << reads_file << std::endl;
+            std::cerr << "ERROR: Unable to open the file: " << reads_file << std::endl;
             continue;
         }
         uint32_t pos = 0;
@@ -503,7 +530,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
             catch ( seqan::Exception const& e )
             {
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
-                std::cerr << "Error while reading file in batches: " << reads_file << " [" << e.what()
+                std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
                           << "]. Switching to single line parsing." << std::endl;
                 stats.totalReads += parse_reads_single( seqFileIn, pos, config.n_reads, queue1 );
                 break;
@@ -522,12 +549,12 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
             seqan::SeqFileIn seqFileIn2;
             if ( !seqan::open( seqFileIn1, seqan::toCString( config.reads_paired[pair_cnt] ) ) )
             {
-                std::cerr << "Unable to open " << config.reads_paired[pair_cnt] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt] << std::endl;
                 continue;
             }
             if ( !seqan::open( seqFileIn2, seqan::toCString( config.reads_paired[pair_cnt + 1] ) ) )
             {
-                std::cerr << "Unable to open " << config.reads_paired[pair_cnt + 1] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt + 1] << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn1 ) )
@@ -543,12 +570,13 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                 }
                 catch ( seqan::Exception const& e )
                 {
-                    std::cerr << e.what() << std::endl;
+                    std::cerr << "ERROR: " << e.what() << std::endl;
                     continue;
                 }
                 if ( seqan::length( ids1 ) != seqan::length( ids2 ) )
                 {
-                    std::cerr << "Paired-read files do not match" << std::endl;
+                    std::cerr << "ERROR: Paired-read files do not match: " << config.reads_paired[pair_cnt] << ","
+                              << config.reads_paired[pair_cnt + 1] << std::endl;
                     break;
                 }
                 stats.totalReads += seqan::length( ids1 );
@@ -582,7 +610,7 @@ bool run( Config config )
     StopClock timePrintClass;
     StopClock timePrintUnclass;
 
-    if ( config.verbose )
+    if ( !config.quiet && config.verbose )
     {
         std::cerr << config;
     }
@@ -785,14 +813,16 @@ bool run( Config config )
 
     timeGanon.stop();
 
-    std::cerr << std::endl;
-    if ( config.verbose )
+    if ( !config.quiet )
     {
-        detail::print_time(
-            config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+        std::cerr << std::endl;
+        if ( config.verbose )
+        {
+            detail::print_time(
+                config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+        }
+        detail::print_stats( stats, timeClass );
     }
-    detail::print_stats( stats, timeClass );
-
     return true;
 }
 
