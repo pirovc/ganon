@@ -215,7 +215,7 @@ def main(arguments=None):
             bin_length = args.bin_length
         else:
             tx = time.time()
-            print_log("Estimating best bin lenght... ")
+            print_log("Estimating best bin length... ")
             bin_length = estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly)
             if bin_length==0: return 1
             print_log(str(bin_length) + "bp. ")
