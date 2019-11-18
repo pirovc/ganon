@@ -18,7 +18,8 @@ GanonBuild::Config defaultConfig()
                             "sequences/bacteria_NC_017163.1.fasta.gz",
                             "sequences/bacteria_NC_017164.1.fasta.gz",
                             "sequences/bacteria_NC_017543.1.fasta.gz" };
-    cfg.verbose            = true;
+    cfg.verbose            = false;
+    cfg.quiet              = true;
     return cfg;
 }
 
@@ -32,6 +33,15 @@ SCENARIO( "Build", "[ganon-build]" )
 
     REQUIRE( GanonBuild::run( cfg ) );
     REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
+}
+
+SCENARIO( "Build from folder", "[ganon-build]" )
+{
+    auto cfg                      = config_build::defaultConfig();
+    cfg.directory_reference_files = "sequences/";
+    cfg.extension                 = ".gz";
+
+    REQUIRE( GanonBuild::run( cfg ) );
 }
 
 SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )

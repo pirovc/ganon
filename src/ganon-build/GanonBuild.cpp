@@ -219,22 +219,35 @@ bool run( Config config )
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reference_file ) ) )
             {
-                std::cerr << "Unable to open " << reference_file << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << reference_file << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn ) )
             {
 
-                seqan::StringSet< seqan::CharString >  ids;
-                seqan::StringSet< seqan::IupacString > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
+                seqan::StringSet< seqan::CharString > ids;
+                seqan::StringSet< seqan::CharString > seqs;
+
+                try
+                {
+                    seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
+                }
+                catch ( seqan::Exception const& e )
+                {
+                    mtx.lock();
+                    std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
+                              << std::endl;
+                    mtx.unlock();
+                }
+
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
                     if ( seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
-                        std::cerr << ids[i] << " has sequence smaller than k-mer size" << std::endl;
+                        std::cerr << "WARNING: sequence smaller than k-mer size"
+                                  << "[" << ids[i] << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -244,7 +257,8 @@ bool run( Config config )
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
-                        std::cerr << seqid << " not defined on seqid-bin file" << std::endl;
+                        std::cerr << "WARNING: sequence not defined on seqid-bin file"
+                                  << "[" << seqid << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -276,7 +290,7 @@ bool run( Config config )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
                     {
-                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        auto[fragstart, fragend, binid] = seq_bin[val.seqid][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
@@ -320,14 +334,16 @@ bool run( Config config )
 
     timeGanon.stop();
 
-    std::cerr << std::endl;
-    if ( config.verbose )
+    if ( !config.quiet )
     {
-        detail::print_time(
-            config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+        std::cerr << std::endl;
+        if ( config.verbose )
+        {
+            detail::print_time(
+                config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+        }
+        detail::print_stats( stats, config, timeBuild );
     }
-    detail::print_stats( stats, config, timeBuild );
-
     return true;
 }
 

@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+#include <stdio.h>
+#include <dirent.h>
+
 namespace GanonBuild
 {
 
@@ -30,6 +33,9 @@ public:
     bool        update_complete    = false;
     uint16_t    threads            = 2;
     bool        verbose            = false;
+    bool        quiet              = false;
+    std::string directory_reference_files = "";
+    std::string extension = "";
 
     // hidden
     uint32_t n_batches = 1000;
@@ -39,12 +45,40 @@ public:
     const uint16_t min_threads = 2;
     uint16_t       build_threads;
 
+    bool hasEnding (std::string const &fullString, std::string const &ending) {
+        if (fullString.length() >= ending.length()) {
+            return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+        } else {
+            return false;
+        }
+    }
+
     bool validate()
     {
 
-        if ( seqid_bin_file.empty() || output_filter_file.empty() || reference_files.size() == 0 )
+        if ( seqid_bin_file.empty() || output_filter_file.empty() )
         {
-            std::cerr << "--seqid-bin-file, --output-filter-file and positional references are mandatory" << std::endl;
+            std::cerr << "--seqid-bin-file and --output-filter-file are mandatory" << std::endl;
+            return false;
+        }
+
+        // add references from folder
+        if (!directory_reference_files.empty() && !extension.empty())
+        {
+            struct dirent *entry = nullptr;
+            DIR *dp = nullptr;
+            dp = opendir(directory_reference_files.c_str());
+            if (dp != nullptr) {
+                while ((entry = readdir(dp))){
+                    if (hasEnding(entry->d_name, extension))
+                        reference_files.push_back(directory_reference_files + "/" + entry->d_name);
+                }
+            }
+            closedir(dp);
+        }
+
+        if (reference_files.empty()){
+            std::cerr << "Please provide reference sequence files with the parameters --reference-files or/and with --directory-reference-files and --extension" << std::endl;
             return false;
         }
 
@@ -56,7 +90,7 @@ public:
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
-            std::cerr << "--filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
+            std::cerr << "WARNING: --filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
                          "--update-filter-file"
                       << std::endl;
             kmer_size        = 0;
@@ -83,6 +117,12 @@ public:
                 filter_size = filter_size_bits / MBinBits;
             }
         }
+
+        if ( n_batches < 1 )
+            n_batches = 1;
+
+        if ( n_refs < 1 )
+            n_refs = 1;
 
         return true;
     }

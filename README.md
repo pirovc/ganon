@@ -2,7 +2,7 @@
 
 ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
 
-> **ganon: continuously up-to-date with database growth for precise short read classification in metagenomics**
+> **ganon: precise metagenomics classification against large and up-to-date sets of reference sequences**
 > Vitor C. Piro, Temesgen H. Dadi, Enrico Seiler, Knut Reinert, Bernhard Y. Renard
 > bioRxiv 406017; doi: [10.1101/406017](https://doi.org/10.1101/406017)
 
@@ -11,10 +11,12 @@ ganon is a k-mer based read classification tool which uses Interleaved Bloom Fil
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html)
 
 ```shh
-conda install -c bioconda ganon
+conda install -c bioconda -c conda-forge ganon
 ```
 
-To install ganon directly from the source, please check [manual installation](#manual-installation))
+* There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
+
+* Ganon runs on osx only with a [manual installation](#manual-installation). It was tested with gcc 7 and 8, but conda does not support those compilers for osx yet.
 
 ## Running ganon with sample data
 
@@ -24,10 +26,12 @@ To install ganon directly from the source, please check [manual installation](#m
 ganon build --db-prefix sample_bacteria --input-files tests/ganon-build/data/sequences/bacteria*.fasta.gz
 ```
 
+Obs: `ganon build` (with a space in between) is different from the `ganon-build` command.
+
 ### classify
 
 ```shh
-ganon classify --db-prefix sample_bacteria --reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
+ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
 ```
 
 ### update
@@ -36,9 +40,98 @@ ganon classify --db-prefix sample_bacteria --reads tests/ganon-classify/data/rea
 ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files tests/ganon-build/data/sequences/virus*.fasta.gz
 ```
 
+## Building custom indices
+
+To build custom indices, ganon requires one (or multiple) fasta file(s) with the standard NCBI accession.version header (e.g. `>NC_009515.1`). For every sequence, taxonomic information will be automatically retrieved. Check the parameter `--seq-info` and `--taxdump-file` for more information. 
+
+If you want to re-create the indices used in the manuscript above, please follow the instructions https://github.com/pirovc/ganon_benchmark
+
+### Downloading sequences
+
+We suggest using [genome_updater](https://github.com/pirovc/genome_updater) (`conda install -c bioconda genome_updater`) to download sequences from RefSeq/Genbank. genome_updater can download and keep a subset (organism or taxonomic groups) of those repositories updated. For example:
+
+Downloading archaeal and bacterial complete genomes from RefSeq: 
+
+	genome_updater.sh -g "archaea,bacteria" \
+	                  -d "refseq" \
+	                  -l "Complete Genome" \
+	                  -f "genomic.fna.gz,assembly_report.txt" \
+                      -o "RefSeqCG_arc_bac" -b "v1" \
+	                  -a -m -u -r -p -t 24
+
+Where `-a` will additionaly download the taxdump.tar.gz, `-m` will force the MD5 check for every file downloaded, `-u -r -p` will generate reports which can be used later, `-t` set the number of parallel downloads, `-b` will name the version and `-o` set the output working directory. If you want to download a set of defined species instead of the whole organism group, use `-g "species:562,623"` or any taxonomic group(s) `-g "taxids:620,1643685"`.
+
+Building the index based on the files of the example above:
+
+	ganon build --db-prefix ganon_db \
+	            --input-files RefSeqCG_arc_bac/v1/files/*.genomic.fna.gz
+
+If you are getting the bash error `Argument list too long` use `--input-directory "RefSeqCG_arc_bac/v1/files/" --input-extension ".genomic.fna.gz"` instead of `--input-files`
+
+### Updating sequences
+
+To update the folder with the most recent releases (after some days), just re-run the same download command:
+
+	genome_updater.sh -g "archaea,bacteria" \
+	                  -d "refseq" \
+	                  -l "Complete Genome" \
+	                  -f "genomic.fna.gz,assembly_report.txt" \
+                      -o "RefSeqCG_arc_bac" -b "v2" \
+	                  -a -m -u -r -p -t 24
+
+This is going to download the new files (and remove the outdated ones) into the new label `v2`. New log and report files with the current version will be generated. It also checks if the last downloaded version is complete and downloads any missing file.
+
+Updating the index based on the files of the example above:
+
+	ganon update --db-prefix ganon_db --output-db-prefix ganon_db_updated \
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f)
+
+If `--output-db-prefix` is not set, the database files `ganon_db.*` will be overwritten with the updated version. The `find` command will only look for files `-type f` inside the `v2/files/`, ignoring symbolic links from sequences which were not changing in this version.
+
+### Using extra files to build and update
+
+Optionally, some extra files generated by genome_updater can be further used to speed-up the building process:
+
+	# Extract taxonomic information from genome_updater reports
+	awk 'BEGIN {FS="\t";OFS="\t"}{if($4!="na"){ print $4,$5,$6,$2 }}' RefSeqCG_arc_bac/v1/updated_sequence_accession.txt > RefSeqCG_arc_bac/v1/seqinfo.txt
+ 
+	# Use generated files from genome_updater on ganon build
+	ganon build --db-prefix ganon_db \
+	            --input-files RefSeqCG_arc_bac/v1/files/*.genomic.fna.gz \
+	            --seq-info-file RefSeqCG_arc_bac/v1/seqinfo.txt \
+	            --taxdump-file RefSeqCG_arc_bac/v1/{TIMESTAMP}_taxdump.tar.gz
+
+The same goes for the update process:
+
+	# Extract taxonomic information from genome_updater reports
+	awk 'BEGIN {FS="\t";OFS="\t"}{if($1=="A" && $4!="na"){ print $4,$5,$6,$2 }}' RefSeqCG_arc_bac/v2/updated_sequence_accession.txt > RefSeqCG_arc_bac/v2/seqinfo.txt
+
+	# Use generated files on ganon update
+	ganon update --db-prefix ganon_db \
+	             --output-db-prefix ganon_db_updated \
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f) \
+	             --seq-info-file RefSeqCG_arc_bac/v2/seqinfo.txt \
+	             --taxdump-file RefSeqCG_arc_bac/v2/{TIMESTAMP}_taxdump.tar.gz
+
+Obs:
+-  If `-d genbank` was used in genome_updater, change the occurances of `$4` to `$3` in the `awk` commands above.
+- `{TIMESTAMP}` should be the timestamp (YYYY-MM-DD_HH-MM-SS) automatically generated when the files were downloaded.
+
 ## Output files
 
-The main output file is the `*.tre` which will sumarize the results.
+### build/update
+
+{prefix}**.filter**: main bloom filter
+
+{prefix}**.map**: maps assignment to binids
+
+{prefix}**.bins**: bins generated by TaxSBP
+
+{prefix}**.nodes**: taxonomic information required for LCA and reports
+
+### classify
+
+The main output file is the `{prefix}.tre` which will sumarize the results.
 
 Example of the sample data classification `sample_results.tre` previously generated:
 
@@ -97,37 +190,17 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406    
 no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|1052684  Paenibacillus polymyxa M1                      57  57.00000
 ```
 
-### Index size
-
-The file db_prefix.filter is the main and biggest database file for ganon and it stores the interleaved bloom filter. Its size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters: `--bin-length` `--max-fp` `--kmer-size` `--hash-functions`.
-
-Ganon will try to find the best `--bin-length` given `--max-fp` `--kmer-size` `--hash-functions`. If you have a limited amount of resources available, you can set the `--max-bloom-size` to put an approximate limit on the size of the filter (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters). Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step.
-
-`--bin-length` is the size in bp of each group for the taxonomic clustering (with TaxSBP). By default,  `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
-
-Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
-
-### classify
-
-#### .out
-
-all matches (one per hierarchy)
+{prefix}**.out**: all matches (one per hierarchy with `-s, --split-output-file-hierarchy`)
 
 	readid <tab> assignment <tab> k-mer count
 
 * a negative k-mer count work a flag to show that such read did not have the minimum amount of matches to pass the `--max-error-unique` threshold
 
-#### .lca
-
-only one match / read (one per hierarchy)
+{prefix}**.lca**: only one match / read (one per hierarchy with `-s, --split-output-file-hierarchy`)
 	
 	readid <tab> lca assignment <tab> max k-mer count
 
-LCA script obtained from https://www.ics.uci.edu/~eppstein/
-
-#### .rep
-
-detailed report for lca matches (one per hierarchy)
+{prefix}**.rep**: detailed report for lca matches (one per hierarchy with `-s, --split-output-file-hierarchy`)
 	
 	1) lca assignment <tab>
 	2) reads assigned (lca) <tab>
@@ -137,9 +210,7 @@ detailed report for lca matches (one per hierarchy)
 	6) taxonomic rank <tab>
 	7) name
 
-#### .tre
-
-tree-like output with cummulative counts and lineage (one per run)
+{prefix}**.tre**: tree-like output with cummulative counts and lineage (one per run)
 	
 	1) rank <tab>
 	2) lca assignment <tab>
@@ -148,16 +219,25 @@ tree-like output with cummulative counts and lineage (one per run)
 	5) cummulative # reads assigned <tab>
 	6) cummulative % reads assigned
 
-### build/update
+## Choosing parameters
 
-#### .filter
-main bloom filter
-#### .map
-maps assignment to binids
-#### .bins
-bins generated by TaxSBP
-#### .nodes
-taxonomic information required for LCA and reports
+### --single-reads and --paired-reads
+
+ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
+
+### --min-kmers and --max-error
+
+Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
+
+### IBF size
+
+The most useful variable to define the IBF size (.filter file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
+
+The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`, `--kmer-size` and `--hash-functions`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--fixed-bloom-size` (ganon will tell you what's the resulting max. false positive).
+
+`--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default,  `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
+
+Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size by definition. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
 
 ## Manual Installation
 
@@ -165,58 +245,96 @@ taxonomic information required for LCA and reports
 
 #### build
 
-- gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda))
-- cmake >=3
-- Catch2 >=2.7.0
-- cxxopts >=2.1.2
-- sdsl-lite 3.0 [d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48)
-- seqan 2.4.0 [c308e9](https://github.com/eseiler/seqan/commit/c308e99f10d942382d4c7ed6fc91be1a889e644c)
+System packages:
+- gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda)) or clang>=7
+- cmake >=3.10
+
+Specific packages:
+- Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
+- cxxopts >=2.2.0 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
+- sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
+- seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/c308e99f10d942382d4c7ed6fc91be1a889e644c))
 
 #### run
 
+System packages:
 - python >=3.4
-- taxsbp >=0.1.1
-- binpacking >=1.4.1
-- pylca >= 1.0.0
 - pandas
 - wget
 - curl
 - tar
 - GNU core utilities (gawk, zcat)
 
-### Cloning ganon and taxsbp
+Specific packages:
+- taxsbp >=0.1.2 ([6e1481](https://github.com/pirovc/taxsbp/commit/6e14819791a960273a191b3e1e028b084ed2d945))
+- pylca >= 1.0.0 ([d1474b](https://github.com/pirovc/pylca/commit/d1474b2ec2c028963bafce278ccb69cc21c061fa))
+- binpacking >=1.4.1 ([v1.4.1](https://pypi.org/project/binpacking/1.4.1/))
+
+** Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
+
+### Obtaining packages
 
 ```shh
-git clone --recurse-submodules https://github.com/pirovc/ganon.git
-git clone https://github.com/pirovc/taxsbp.git
+git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catch2, cxxopts, sdsl-lite, seqan
+git clone https://github.com/pirovc/taxsbp.git # taxsbp
+git clone https://github.com/pirovc/pylca.git # pylca
 ```
 
-To compile a specific ganon release, check [Using a specific release](#using-a-specific-release))
+### Installing 
 
-### Installing taxsbp + binpacking
+#### taxsbp
 
 ```shh
 cd taxsbp
-python setup.py install
+python3 setup.py install
 taxsbp -h
 ```
 
-### Building (ganon-build and ganon-classify)
+#### pylca
+
+```shh
+cd pylca
+python3 setup.py install
+python3 -c 'from pylca.pylca import *; unittest.main();'
+```
+
+#### binpacking
+
+```shh
+pip3 install binpacking==1.4.1
+binpacking -h
+```
+
+### Building
 	
 ```shh
 cd ganon
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
 ```
 
 in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality. use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 
+### Testing
+
+```shh
+cd ganon
+./ganon -h
+python3 -m unittest discover -s tests/ganon/unit/
+python3 -m unittest discover -s tests/ganon/integration/
+
+cd build
+./ganon-build -h
+./ganon-classify -h
+ctest -VV .
+```
+
 ## Installing GCC7 in a separate environment with conda
 
 ```shh
-conda create -n gcc7 -c quantstack gcc-7 libgcc-7 cmake>=3.8.2
+conda create -n gcc7 -c gouarin gcc-7 libgcc-7 "cmake>=3.10"
 source activate gcc7
 ```
 
@@ -225,31 +343,178 @@ If you are getting the following error `ganon-classify: /usr/lib/x86_64-linux-gn
 ```shh
 export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 ```
-## Using a specific release
 
-```shh
-# download and unpack release
-wget https://github.com/pirovc/ganon/archive/0.1.0.tar.gz
-tar xf 0.1.0.tar.gz
-cd ganon-0.1.0
+## Parameters
 
-# get submodules
-rm -r libs/*
-git init
-git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | 
-  while read path_key path; do
-    url=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.url/')")
-    branch=$(git config -f .gitmodules --get "$(echo $path_key | sed 's/\.path/.branch/')")
-    if [[ ! -z $branch ]]; then branch="-b ${branch}"; fi
-    git submodule add $branch $url $path
-  done
-```
+### build
 
-Make sure you checkout the `sdsl-lite` and `seqan` repositories in the tested commits:
+	$ ganon build --help
+	usage: ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m]
+	                   [-l] [-t] [--fixed-bloom-size] [--fragment-length]
+	                   [--overlap-length] [--seq-info [[...]]] [--seq-info-file]
+	                   [--taxdump-file [[...]]] [--input-directory]
+	                   [--input-extension] [--verbose]
 
-```shh
-cd libs/seqan
-git checkout c308e99f10d942382d4c7ed6fc91be1a889e644c
-cd libs/sdsl-lite
-git checkout d6ed14d5d731ed4a4ec12627c1ed7154b396af48
-```
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -r , --rank           Lowest taxonomic rank for classification
+	                        [assembly,taxid,species,genus,...]. Default: species
+	  -k , --kmer-size      The k-mer size for the bloom filter. Default: 19
+	  -n , --hash-functions 
+	                        The number of hash functions to use for the bloom
+	                        filter. Default: 3
+	  -f , --max-fp         Max. false positive rate for k-mer classification.
+	                        Default: 0.05
+	  -m , --max-bloom-size 
+	                        Approx. maximum filter size in Megabytes (MB). Will
+	                        estimate best --bin-length based on --kmer-size,
+	                        --hash-functions and --max-fp [Mutually exclusive
+	                        --fixed-bloom-size]
+	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
+	  -t , --threads        Number of subprocesses/threads to use for
+	                        calculations. Default: 2
+	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore
+	                        --max-fp [Mutually exclusive --max-bloom-size]
+	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment
+	                        sequences. Default: --bin-length - --overlap-length
+	  --overlap-length      Fragment overlap length (in bp). Should be bigger than
+	                        the read length used for classification. Default: 300
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtain data with NCBI E-utils websevices
+	                        (eutils). Offline mode will download batch files from
+	                        NCBI Taxonomy and look for taxonomic ids in the order
+	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss
+	                        pdb prot dead_nucl dead_wgs dead_prot], eutils (force
+	                        webservices) or auto (uses eutils or [nucl_gb
+	                        nucl_wgs]). Default: auto [Mutually exclusive --seq-
+	                        info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid
+	                        <tab> seq.len <tab> taxid [<tab> assembly id])
+	                        [Mutually exclusive --seq-info]
+	  --taxdump-file [ [ ...]]
+	                        Force use of a specific version of the
+	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be
+	                        automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory
+	  --verbose             Verbose mode for ganon
+
+	required arguments:
+	  -d db_prefix, --db-prefix db_prefix
+	                        Database output prefix (.filter, .nodes, .bins, .map
+	                        will be created)
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]
+
+### classify
+
+	$ ganon classify --help
+	usage: ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz]
+	                      [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
+	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]]
+	                      [-c [int [int ...]]] [-m [int [int ...]]]
+	                      [-e [int [int ...]]] [-u [int [int ...]]] [-f] [-o] [-n]
+	                      [-s] [--skip-lca] [--skip-reports]
+	                      [-k [RANKS [RANKS ...]]] [-t] [--verbose]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -c [int [int ...]], --db-hierarchy [int [int ...]]
+	                        Hierachy definition, one for each database input. Can
+	                        also be string, but input will be always sorted (e.g.
+	                        1 1 2 3). Default: 1
+	  -m [int [int ...]], --min-kmers [int [int ...]]
+	                        Min. percentage of k-mers matching to consider a read
+	                        assigned. Can be used alternatively to --max-error for
+	                        reads of variable size. Single value or one per
+	                        database (e.g. 0.5 0.7 1 0.25). Default: 0.25
+	  -e [int [int ...]], --max-error [int [int ...]]
+	                        Max. number of errors allowed. Single value or one per
+	                        database (e.g. 3 3 4 0) [Mutually exclusive --min-
+	                        kmers]
+	  -u [int [int ...]], --max-error-unique [int [int ...]]
+	                        Max. number of errors allowed for unique assignments
+	                        after filtering. Matches below this error rate will
+	                        not be discarded, but assigned to parent taxonomic
+	                        level. Single value or one per hierachy (e.g. 0 1 2).
+	                        -1 to disable. Default: -1
+	  -f , --offset         Number of k-mers to skip during clasification. Can
+	                        speed up analysis but may reduce recall. (e.g. 1 = all
+	                        k-mers, 3 = every 3rd k-mer). Function must be enabled
+	                        on compilation time with -DGANON_OFFSET=ON. Default: 2
+	  -o , --output-file-prefix 
+	                        Output file name prefix: .out for complete results /
+	                        .lca for LCA results / .rep for report. Empty to print
+	                        to STDOUT (only with lca). Default: ""
+	  -n , --output-unclassified-file 
+	                        Output file for unclassified reads headers. Empty to
+	                        not output. Default: ""
+	  -s, --split-output-file-hierarchy
+	                        Split output in multiple files by hierarchy. Appends
+	                        "_hierachy" to the --output-file definiton.
+	  --skip-lca            Skip LCA step and output multiple matches. --max-
+	                        error-unique will not be applied
+	  --skip-reports        Skip reports
+	  -k [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
+	                        Ranks for the final report. "all" for all indentified
+	                        ranks. empty for default ranks: superkingdom phylum
+	                        class order family genus species species+ assembly
+	  -t , --threads        Number of subprocesses/threads. Default: 3)
+	  --verbose             Output in verbose mode for ganon-classify
+
+	required arguments:
+	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
+	                        Database prefix[es]
+	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
+	                        Multi-fastq[.gz] file[s] to classify
+	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
+	                        Multi-fastq[.gz] pairs of file[s] to classify
+
+### update
+
+	$ ganon update --help
+	usage: ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t]
+	                    [--seq-info [[...]]] [--seq-info-file]
+	                    [--taxdump-file [[...]]] [--input-directory]
+	                    [--input-extension] [--verbose]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -o , --output-db-prefix 
+	                        Alternative output database prefix. Default: overwrite
+	                        current --db-prefix
+	  -t , --threads        set the number of subprocesses/threads to use for
+	                        calculations. Default: 2
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtained data with NCBI E-utils
+	                        websevices (eutils). Offline mode will download batch
+	                        files from NCBI Taxonomy and look for taxonomic ids in
+	                        the order provided. Options: [nucl_gb nucl_wgs
+	                        nucl_est nucl_gss pdb prot dead_nucl dead_wgs
+	                        dead_prot], eutils (force webservices) or auto (uses
+	                        eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
+	                        exclusive --seq-info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid
+	                        <tab> seq.len <tab> taxid [<tab> assembly id])
+	                        [Mutually exclusive --seq-info]
+	  --taxdump-file [ [ ...]]
+	                        Force use of a specific version of the
+	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be
+	                        automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory
+	  --verbose             Verbose mode for ganon
+
+	required arguments:
+	  -d db_prefix, --db-prefix db_prefix
+	                        Database prefix
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]

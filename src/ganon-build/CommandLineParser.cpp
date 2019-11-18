@@ -13,6 +13,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // clang-format off
     options.add_options()
+        ( "r,reference-files", "Sequence files (.fasta .fa .fna) ref.fna[.gz],[ref2.fna[.gz],...,refN.fna[.gz]]", cxxopts::value< std::vector< std::string > >() )
+        ( "d,directory-reference-files", "A directory with the reference files", cxxopts::value< std::string >() )
+        ( "x,extension", "Extension of the files to search in the --directory-reference-files", cxxopts::value< std::string >() )
         ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
         ( "o,output-filter-file", "Output filter file", cxxopts::value< std::string >() )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
@@ -25,13 +28,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "n-refs", "Number of sequences for each batch", cxxopts::value< uint32_t >() )
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "verbose", "Verbose output mode", cxxopts::value<bool>())
+        ( "quiet", "Quiet output mode (only outputs errors and warnings to the stderr)", cxxopts::value<bool>())
         ( "h,help", "Show help commands" )
-        ( "v,version", "Show current version" )
-        ( "reference-files", "reference-files", cxxopts::value< std::vector< std::string > >() );
+        ( "v,version", "Show current version" );
     // clang-format on
-
-    options.parse_positional( { "reference-files" } );
-    options.positional_help( "ref.fna[.gz] [ref2.fna[.gz] ... refN.fna[.gz]]" );
 
     const auto argcCopy = argc;
     const auto args     = options.parse( argc, argv );
@@ -51,9 +51,12 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     Config config;
 
     // Required
-    config.seqid_bin_file     = args["seqid-bin-file"].as< std::string >();
-    config.output_filter_file = args["output-filter-file"].as< std::string >();
-    config.reference_files    = args["reference-files"].as< std::vector< std::string > >();
+    if ( args.count( "seqid-bin-file" ) )
+        config.seqid_bin_file = args["seqid-bin-file"].as< std::string >();
+    if ( args.count( "output-filter-file" ) )
+        config.output_filter_file = args["output-filter-file"].as< std::string >();
+    if ( args.count( "reference-files" ) )
+        config.reference_files = args["reference-files"].as< std::vector< std::string > >();
 
     // Default
     if ( args.count( "update-filter-file" ) )
@@ -76,6 +79,12 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
+    if ( args.count( "quiet" ) )
+        config.quiet = args["quiet"].as< bool >();
+    if ( args.count( "directory-reference-files" ) )
+        config.directory_reference_files = args["directory-reference-files"].as< std::string >();
+    if ( args.count( "extension" ) )
+        config.extension = args["extension"].as< std::string >();
 
     return config;
 }

@@ -3,7 +3,7 @@
 # =============================================================================
 
 cmake_minimum_required( VERSION 3.10 FATAL_ERROR )
-project( ganon VERSION 0.1.4 LANGUAGES CXX )
+project( ganon VERSION 0.1.5 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup
@@ -67,7 +67,7 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
     -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic
-    -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion
+    -Wno-conversion -Wno-sign-conversion -Wnull-dereference -Wdouble-promotion
     -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros )
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
