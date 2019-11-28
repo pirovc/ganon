@@ -41,6 +41,7 @@ typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::
 
 typedef std::unordered_map< std::string, int16_t > TMatches;
 
+typedef std::map< uint32_t, std::string > TMap;
 
 struct ReadBatches
 {
@@ -118,9 +119,9 @@ struct Stats
 
 struct Filter
 {
-    TBloomFilter                      bloom_filter;
-    std::map< uint32_t, std::string > group_bin;
-    FilterConfig                      filter_config;
+    TBloomFilter ibf;
+    TMap         map;
+    FilterConfig filter_config;
 };
 
 inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
@@ -165,7 +166,7 @@ void select_matches( TMatches&                matches,
                      uint16_t&                maxKmerCountRead )
 {
     // for each bin
-    for ( uint32_t binNo = 0; binNo < filter.bloom_filter.noOfBins; ++binNo )
+    for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
     {
         // if kmer count is higher than threshold
         if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
@@ -174,10 +175,10 @@ void select_matches( TMatches&                matches,
             uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
             // keep only the best match group/read when same groups are split in several
             // bins
-            if ( matches.count( filter.group_bin[binNo] ) == 0 || maxKmerCountBin > matches[filter.group_bin[binNo]] )
+            if ( matches.count( filter.map[binNo] ) == 0 || maxKmerCountBin > matches[filter.map[binNo]] )
             {
                 // store match to group
-                matches[filter.group_bin[binNo]] = maxKmerCountBin;
+                matches[filter.map[binNo]] = maxKmerCountBin;
                 if ( maxKmerCountBin > maxKmerCountRead )
                     maxKmerCountRead = maxKmerCountBin;
             }
@@ -185,25 +186,25 @@ void select_matches( TMatches&                matches,
     }
 }
 
-uint16_t find_matches( TMatches& matches, std::vector< Filter >& filter_hierarchy, seqan::Dna5String& read_seq )
+uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, seqan::Dna5String& read_seq )
 {
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
-    for ( Filter& filter : filter_hierarchy )
+    for ( Filter& filter : filters )
     {
         // IBF count
-        std::vector< uint16_t > selectedBins    = seqan::count( filter.bloom_filter, read_seq );
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, TSeqRevComp( read_seq ) );
+        std::vector< uint16_t > selectedBins    = seqan::count( filter.ibf, read_seq );
+        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.ibf, TSeqRevComp( read_seq ) );
 
         uint16_t threshold = ( filter.filter_config.min_kmers > 0 )
                                  ? get_threshold_kmers( seqan::length( read_seq ),
-                                                        filter.bloom_filter.kmerSize,
+                                                        filter.ibf.kmerSize,
                                                         filter.filter_config.min_kmers,
-                                                        filter.bloom_filter.offset )
+                                                        filter.ibf.offset )
                                  : get_threshold_errors( seqan::length( read_seq ),
-                                                         filter.bloom_filter.kmerSize,
+                                                         filter.ibf.kmerSize,
                                                          filter.filter_config.max_error,
-                                                         filter.bloom_filter.offset );
+                                                         filter.ibf.offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
@@ -212,32 +213,29 @@ uint16_t find_matches( TMatches& matches, std::vector< Filter >& filter_hierarch
 }
 
 uint16_t find_matches_paired( TMatches&              matches,
-                              std::vector< Filter >& filter_hierarchy,
+                              std::vector< Filter >& filters,
                               seqan::Dna5String&     read_seq,
                               seqan::Dna5String&     read_seq2,
                               uint16_t               effective_read_len )
 {
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
-    for ( Filter& filter : filter_hierarchy )
+    for ( Filter& filter : filters )
     {
         // IBF count
         // FR
-        std::vector< uint16_t > selectedBins = seqan::count( filter.bloom_filter, read_seq );
-        filter.bloom_filter.count< THashCount >( selectedBins, TSeqRevComp( read_seq2 ) );
+        std::vector< uint16_t > selectedBins = seqan::count( filter.ibf, read_seq );
+        filter.ibf.count< THashCount >( selectedBins, TSeqRevComp( read_seq2 ) );
         // RF
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.bloom_filter, TSeqRevComp( read_seq ) );
-        filter.bloom_filter.count< THashCount >( selectedBinsRev, read_seq2 );
+        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.ibf, TSeqRevComp( read_seq ) );
+        filter.ibf.count< THashCount >( selectedBinsRev, read_seq2 );
 
-        uint16_t threshold = ( filter.filter_config.min_kmers > 0 )
-                                 ? get_threshold_kmers( effective_read_len,
-                                                        filter.bloom_filter.kmerSize,
-                                                        filter.filter_config.min_kmers,
-                                                        filter.bloom_filter.offset )
-                                 : get_threshold_errors( effective_read_len,
-                                                         filter.bloom_filter.kmerSize,
-                                                         filter.filter_config.max_error,
-                                                         filter.bloom_filter.offset );
+        uint16_t threshold =
+            ( filter.filter_config.min_kmers > 0 )
+                ? get_threshold_kmers(
+                      effective_read_len, filter.ibf.kmerSize, filter.filter_config.min_kmers, filter.ibf.offset )
+                : get_threshold_errors(
+                      effective_read_len, filter.ibf.kmerSize, filter.filter_config.max_error, filter.ibf.offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
@@ -270,7 +268,7 @@ uint32_t filter_matches( ReadOut&  read_out,
 }
 
 
-void classify( std::vector< Filter >&    filter_hierarchy,
+void classify( std::vector< Filter >&    filters,
                SafeQueue< ReadOut >&     classified_reads_queue,
                SafeQueue< ReadOut >&     unclassified_reads_queue,
                Stats&                    stats,
@@ -283,7 +281,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
 {
 
     // k-mer sizes should be the same among filters
-    uint16_t kmer_size = filter_hierarchy[0].bloom_filter.kmerSize;
+    uint16_t kmer_size = filters[0].ibf.kmerSize;
 
     while ( true )
     {
@@ -324,7 +322,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                             stats.sumReadLen += read2_len;
 
                         uint16_t max_kmer_count_read = find_matches_paired(
-                            matches, filter_hierarchy, rb.seqs[readID], rb.seqs2[readID], effective_read_len );
+                            matches, filters, rb.seqs[readID], rb.seqs2[readID], effective_read_len );
                         count_filtered_matches = filter_matches(
                             read_out, matches, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
 
@@ -338,7 +336,7 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 }
                 else // single-end mode
                 {
-                    uint16_t max_kmer_count_read = find_matches( matches, filter_hierarchy, rb.seqs[readID] );
+                    uint16_t max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID] );
                     count_filtered_matches =
                         filter_matches( read_out, matches, read1_len, max_kmer_count_read, kmer_size, config.offset );
                     if ( max_error_unique >= 0 && count_filtered_matches == 1 )
@@ -364,8 +362,8 @@ void classify( std::vector< Filter >&    filter_hierarchy,
                 if ( rb.paired )
                     seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
             }
-            else if ( config.output_unclassified ) // no more levels and no classification, add to
-                                                   // unclassified printing queue
+            else if ( config.output_unclassified_reads ) // no more levels and no classification, add to
+                                                         // unclassified printing queue
             {
                 unclassified_reads_queue.push( read_out );
             }
@@ -377,16 +375,15 @@ void classify( std::vector< Filter >&    filter_hierarchy,
     }
 }
 
-void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarchy_name, Config& config )
+void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, Config& config )
 {
     uint16_t first_kmer_size = 0;
-    for ( auto const& filter_config : config.h_filters[hierarchy_name].filters )
+    for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
-
 
         // bloom filter
         TBloomFilter filter;
-        seqan::retrieve( filter, seqan::toCString( filter_config.bloom_filter_file ) );
+        seqan::retrieve( filter, seqan::toCString( filter_config.ibf_file ) );
         // set offset to user-defined value (1==no offset)
         filter.offset = config.offset;
 
@@ -398,14 +395,14 @@ void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarch
         {
             std::cerr
                 << "ERROR: filters on the same hierarchy should have same k-mer size configuration. Ignoring filter: "
-                << filter_config.bloom_filter_file << std::endl;
+                << filter_config.ibf_file << std::endl;
             continue;
         }
 
         // group bin files
-        std::map< uint32_t, std::string > group_bin;
-        std::ifstream                     infile( filter_config.group_bin_file );
-        std::string                       line;
+        TMap          map;
+        std::ifstream infile( filter_config.map_file );
+        std::string   line;
         while ( std::getline( infile, line, '\n' ) )
         {
             std::istringstream         stream_line( line );
@@ -414,10 +411,10 @@ void load_filters( std::vector< Filter >& filter_hierarchy, std::string hierarch
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
             // group <tab> binid
-            group_bin[std::stoul( fields[1] )] = fields[0];
+            map[std::stoul( fields[1] )] = fields[0];
         }
 
-        filter_hierarchy.push_back( Filter{ std::move( filter ), group_bin, filter_config } );
+        filters.push_back( Filter{ std::move( filter ), map, filter_config } );
     }
 }
 
@@ -437,15 +434,15 @@ void print_time( GanonClassify::Config& config,
     std::cerr << "Loading reads    end time: " << timeLoadReads.end() << std::endl;
     std::cerr << "Classifying      end time: " << timeClass.end() << std::endl;
     std::cerr << "Printing clas.   end time: " << timePrintClass.end() << std::endl;
-    if ( config.output_unclassified )
+    if ( config.output_unclassified_reads )
         std::cerr << "Printing unclas. end time: " << timePrintUnclass.end() << std::endl;
     std::cerr << "ganon-classify   end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
     std::cerr << " - loading filters: " << timeLoadFilters.elapsed() << std::endl;
-    std::cerr << " - classifying (" << config.clas_threads << "t): " << timeClass.elapsed() << std::endl;
-    std::cerr << " - printing (1t): " << timePrintClass.elapsed() << std::endl;
-    if ( config.output_unclassified )
-        std::cerr << " - printing unclassified (1t) " << timePrintUnclass.elapsed() << std::endl;
+    std::cerr << " - classifying (" << config.threads_classify << "t): " << timeClass.elapsed() << std::endl;
+    std::cerr << " - printing: " << timePrintClass.elapsed() << std::endl;
+    if ( config.output_unclassified_reads )
+        std::cerr << " - printing unclassified" << timePrintUnclass.elapsed() << std::endl;
     std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
 }
@@ -466,7 +463,7 @@ void print_stats( Stats& stats, const StopClock& timeClass )
               << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 }
 
-uint32_t parse_reads_single( seqan::SeqFileIn&                 seqFileIn,
+uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
                              uint32_t                          pos_start,
                              uint32_t                          n_reads,
                              SafeQueue< detail::ReadBatches >& queue1 )
@@ -518,7 +515,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                   Stats&                            stats,
                   Config const&                     config )
 {
-    for ( auto const& reads_file : config.reads_single )
+    for ( auto const& reads_file : config.single_reads )
     {
         seqan::SeqFileIn seqFileIn;
         if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
@@ -541,7 +538,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
                 std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
                           << "]. Switching to single line parsing." << std::endl;
-                stats.totalReads += parse_reads_single( seqFileIn, pos, config.n_reads, queue1 );
+                stats.totalReads += parse_single_reads( seqFileIn, pos, config.n_reads, queue1 );
                 break;
             }
             stats.totalReads += seqan::length( ids );
@@ -550,20 +547,20 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
         seqan::close( seqFileIn );
     }
     // paired-reads
-    if ( config.reads_paired.size() > 0 )
+    if ( config.paired_reads.size() > 0 )
     {
-        for ( uint16_t pair_cnt = 0; pair_cnt < config.reads_paired.size(); pair_cnt += 2 )
+        for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
             seqan::SeqFileIn seqFileIn1;
             seqan::SeqFileIn seqFileIn2;
-            if ( !seqan::open( seqFileIn1, seqan::toCString( config.reads_paired[pair_cnt] ) ) )
+            if ( !seqan::open( seqFileIn1, seqan::toCString( config.paired_reads[pair_cnt] ) ) )
             {
-                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.paired_reads[pair_cnt] << std::endl;
                 continue;
             }
-            if ( !seqan::open( seqFileIn2, seqan::toCString( config.reads_paired[pair_cnt + 1] ) ) )
+            if ( !seqan::open( seqFileIn2, seqan::toCString( config.paired_reads[pair_cnt + 1] ) ) )
             {
-                std::cerr << "ERROR: Unable to open the file: " << config.reads_paired[pair_cnt + 1] << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << config.paired_reads[pair_cnt + 1] << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn1 ) )
@@ -584,8 +581,8 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
                 }
                 if ( seqan::length( ids1 ) != seqan::length( ids2 ) )
                 {
-                    std::cerr << "ERROR: Paired-read files do not match: " << config.reads_paired[pair_cnt] << ","
-                              << config.reads_paired[pair_cnt + 1] << std::endl;
+                    std::cerr << "ERROR: Paired-read files do not match: " << config.paired_reads[pair_cnt] << ","
+                              << config.paired_reads[pair_cnt + 1] << std::endl;
                     break;
                 }
                 stats.totalReads += seqan::length( ids1 );
@@ -604,9 +601,6 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
 
 bool run( Config config )
 {
-    // speed up output to STDOUT (allows buffering)
-    std::ios_base::sync_with_stdio( false );
-
     if ( !config.validate() )
         return false;
 
@@ -629,16 +623,16 @@ bool run( Config config )
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_unclassified;
-    // If there's no output file, redirect to STDOUT
-    if ( config.output_file.empty() )
+    // If there's no output prefix, redirect to STDOUT
+    if ( config.output_prefix.empty() )
     {
         out.copyfmt( std::cout ); // STDOUT
         out.clear( std::cout.rdstate() );
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
-    else if ( !config.split_output_file_hierarchy )
+    else if ( config.output_hierarchy_single )
     {
-        out.open( config.output_file );
+        out.open( config.output_prefix + ".all" );
     }
 
     // Queues for internal read handling
@@ -690,9 +684,9 @@ bool run( Config config )
 
     // Thread for printing unclassified reads
     timePrintUnclass.start();
-    if ( config.output_unclassified )
+    if ( config.output_unclassified_reads )
     {
-        out_unclassified.open( config.output_unclassified_file );
+        out_unclassified.open( config.output_prefix + ".unclassified.fq" );
         write_tasks.emplace_back(
             std::async( std::launch::async, [=, &unclassified_reads_queue, &out_unclassified, &timePrintUnclass] {
                 while ( true )
@@ -718,23 +712,22 @@ bool run( Config config )
     SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
 
     uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = config.h_filters.size();
+    uint16_t hierarchy_size = config.parsed_hierarchy.size();
     // For every hierarchy level
-    for ( auto const& hierarchy : config.h_filters )
+    for ( auto const& h : config.parsed_hierarchy )
     {
         ++hierarchy_id;
+        std::string hierarchy_label = h.first;
+        // HierarchyConfig hierarchy_config =  h.second;
         bool hierarchy_first = ( hierarchy_id == 1 );
         bool hierarchy_last  = ( hierarchy_id == hierarchy_size );
 
-        std::string hierarchy_name = hierarchy.first;
-
-        // open hierarchy output file (before filter, ganon wrapper is watching)
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
-            out.open( hierarchy.second.output_file );
+        if ( !config.output_prefix.empty() && !config.output_hierarchy_single )
+            out.open( h.second.output_file_all );
 
         timeLoadFilters.start();
-        std::vector< detail::Filter > filter_hierarchy;
-        detail::load_filters( filter_hierarchy, hierarchy_name, config );
+        std::vector< detail::Filter > filters;
+        detail::load_filters( filters, hierarchy_label, config );
         timeLoadFilters.stop();
 
         // hierarchy_id = 1
@@ -759,11 +752,11 @@ bool run( Config config )
         std::vector< std::future< void > > tasks;
         // Threads for classification
         timeClass.start();
-        for ( uint16_t taskNo = 0; taskNo < config.clas_threads; ++taskNo )
+        for ( uint16_t taskNo = 0; taskNo < config.threads_classify; ++taskNo )
         {
             tasks.emplace_back( std::async( std::launch::async,
                                             detail::classify,
-                                            std::ref( filter_hierarchy ),
+                                            std::ref( filters ),
                                             std::ref( classified_reads_queue ),
                                             std::ref( unclassified_reads_queue ),
                                             std::ref( stats ),
@@ -772,7 +765,7 @@ bool run( Config config )
                                             pointer_helper,
                                             hierarchy_first,
                                             hierarchy_last,
-                                            hierarchy.second.max_error_unique ) );
+                                            h.second.max_error_unique ) );
         }
 
 
@@ -788,7 +781,7 @@ bool run( Config config )
                                                 // next iterations)
         }
 
-        if ( config.split_output_file_hierarchy && !hierarchy.second.output_file.empty() )
+        if ( !config.output_prefix.empty() && !config.output_hierarchy_single )
         {
             while ( !classified_reads_queue.empty() )
                 ; // spin
@@ -812,9 +805,11 @@ bool run( Config config )
         task.get();
     }
 
-    if ( config.output_unclassified )
+
+    if ( config.output_unclassified_reads )
         out_unclassified.close();
-    if ( !config.split_output_file_hierarchy && !config.output_file.empty() )
+
+    if ( !config.output_prefix.empty() && config.output_hierarchy_single )
     {
         out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple files
         out.close();
