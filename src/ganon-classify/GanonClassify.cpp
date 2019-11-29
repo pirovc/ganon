@@ -6,7 +6,6 @@
 #include <seqan/binning_directory.h>
 
 #include <atomic>
-#include <chrono>
 #include <cinttypes>
 #include <cmath>
 #include <fstream>
@@ -626,6 +625,49 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
     timeLoadReads.stop();
 }
 
+void write_classified( SafeQueue< detail::ReadOut >& classified_reads_queue,
+                       std::ofstream&                out,
+                       StopClock&                    timePrintClass )
+{
+    while ( true )
+    {
+        detail::ReadOut ro = classified_reads_queue.pop();
+        if ( ro.readID != "" )
+        {
+            for ( uint32_t i = 0; i < ro.matches.size(); ++i )
+            {
+                out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+            }
+        }
+        else
+        {
+            timePrintClass.stop();
+            break;
+        }
+    }
+}
+
+void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_reads_queue,
+                         std::string                   out_unclassified_file,
+                         StopClock&                    timePrintUnclass )
+{
+    std::ofstream out_unclassified( out_unclassified_file );
+    while ( true )
+    {
+        detail::ReadOut rou = unclassified_reads_queue.pop();
+        if ( rou.readID != "" )
+        {
+            out_unclassified << rou.readID << '\n';
+        }
+        else
+        {
+            timePrintUnclass.stop();
+            out_unclassified.close();
+            break;
+        }
+    }
+}
+
 
 } // namespace detail
 
@@ -652,17 +694,13 @@ bool run( Config config )
 
     // Set output stream (file or stdout)
     std::ofstream out;
-    std::ofstream out_unclassified;
+
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
     {
         out.copyfmt( std::cout ); // STDOUT
         out.clear( std::cout.rdstate() );
         out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
-    }
-    else if ( config.output_hierarchy_single )
-    {
-        out.open( config.output_prefix + ".all" );
     }
 
     // Queues for internal read handling
@@ -672,10 +710,6 @@ bool run( Config config )
     SafeQueue< detail::ReadBatches > queue1(
         config.n_batches ); // config.n_batches*config.n_reads = max. amount of reads in memory
     SafeQueue< detail::ReadBatches > queue2;
-
-    // Queues for classified, unclassified reads (print)
-    SafeQueue< detail::ReadOut > classified_reads_queue;
-    SafeQueue< detail::ReadOut > unclassified_reads_queue;
 
     // Statistics values
     detail::Stats stats;
@@ -689,50 +723,18 @@ bool run( Config config )
                                                 std::ref( stats ),
                                                 std::ref( config ) );
 
-
-    // Thread for printing classified reads
-    timePrintClass.start();
-    std::vector< std::future< void > > write_tasks;
-    write_tasks.emplace_back( std::async( std::launch::async, [=, &classified_reads_queue, &out, &timePrintClass] {
-        while ( true )
-        {
-            detail::ReadOut ro = classified_reads_queue.pop();
-            if ( ro.readID != "" )
-            {
-                for ( uint32_t i = 0; i < ro.matches.size(); ++i )
-                {
-                    out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
-                }
-            }
-            else
-            {
-                timePrintClass.stop();
-                break;
-            }
-        }
-    } ) );
-
+    // SafeQueue for printing unclassified
+    SafeQueue< detail::ReadOut > unclassified_reads_queue;
     // Thread for printing unclassified reads
-    timePrintUnclass.start();
-    if ( config.output_unclassified_reads )
+    std::future< void > write_unclassified_task;
+    if ( config.output_unclassified_reads && !config.output_prefix.empty() )
     {
-        out_unclassified.open( config.output_prefix + ".unclassified.fq" );
-        write_tasks.emplace_back(
-            std::async( std::launch::async, [=, &unclassified_reads_queue, &out_unclassified, &timePrintUnclass] {
-                while ( true )
-                {
-                    detail::ReadOut rou = unclassified_reads_queue.pop();
-                    if ( rou.readID != "" )
-                    {
-                        out_unclassified << rou.readID << '\n';
-                    }
-                    else
-                    {
-                        timePrintUnclass.stop();
-                        break;
-                    }
-                }
-            } ) );
+        timePrintUnclass.start();
+        write_unclassified_task = std::async( std::launch::async,
+                                              detail::write_unclassified,
+                                              std::ref( unclassified_reads_queue ),
+                                              config.output_prefix + ".unclassified.fq",
+                                              std::ref( timePrintUnclass ) );
     }
 
 
@@ -743,6 +745,8 @@ bool run( Config config )
 
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
+
+
     // For every hierarchy level
     for ( auto const& h : config.parsed_hierarchy )
     {
@@ -752,13 +756,13 @@ bool run( Config config )
         bool hierarchy_first = ( hierarchy_id == 1 );
         bool hierarchy_last  = ( hierarchy_id == hierarchy_size );
 
-        if ( !config.output_prefix.empty() && !config.output_hierarchy_single )
-            out.open( h.second.output_file_all );
-
         timeLoadFilters.start();
         std::vector< detail::Filter > filters;
         detail::load_filters( filters, hierarchy_label, config );
         timeLoadFilters.stop();
+
+        // Thread for printing classified reads (.lca, .all)
+        std::vector< std::future< void > > write_tasks;
 
         // hierarchy_id = 1
         //  pointer_current=queue1, data comes from file in a limited size queue
@@ -778,6 +782,24 @@ bool run( Config config )
                 queue1.set_max_size( -1 );
         }
 
+        SafeQueue< detail::ReadOut > classified_reads_queue;
+
+        // Open file for writing (if not STDOUT)
+        if ( !config.output_prefix.empty() )
+        {
+            if ( hierarchy_first || !config.output_hierarchy_single )
+                out.open( h.second.output_file_all );
+            else // append if not first and output_hierarchy_single
+                out.open( h.second.output_file_all, std::ofstream::app );
+        }
+
+        // Start writing thread
+        timePrintClass.start();
+        write_tasks.emplace_back( std::async( std::launch::async,
+                                              detail::write_classified,
+                                              std::ref( classified_reads_queue ),
+                                              std::ref( out ),
+                                              std::ref( timePrintClass ) ) );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
@@ -798,10 +820,24 @@ bool run( Config config )
                                             h.second.max_error_unique ) );
         }
 
-
+        // Wait here until classification is over
         for ( auto&& task : tasks )
         {
             task.get();
+        }
+        // Inform that no more reads are going to be pushed
+        classified_reads_queue.notify_push_over();
+
+        // Wait here until all files are written
+        for ( auto&& task : write_tasks )
+        {
+            task.get();
+        }
+
+        // Close file for writing (if not STDOUT)
+        if ( !config.output_prefix.empty() )
+        {
+            out.close();
         }
 
         if ( hierarchy_first )
@@ -811,38 +847,14 @@ bool run( Config config )
                                                 // next iterations)
         }
 
-        if ( !config.output_prefix.empty() && !config.output_hierarchy_single )
-        {
-            while ( !classified_reads_queue.empty() )
-                ; // spin
-            // wait to have all writen before closing - may still fail for the last entry (wait a second) - fix next
-            // version
-            std::chrono::microseconds ms( 500000 ); // half second
-            std::this_thread::sleep_for( ms );
-            out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple
-                         // files
-            out.close();
-        }
-
         timeClass.stop();
     }
 
-    // notify that classification stoped adding new items, can exit when finished
-    classified_reads_queue.notify_push_over();
-    unclassified_reads_queue.notify_push_over();
-    for ( auto&& task : write_tasks )
-    {
-        task.get();
-    }
-
-
+    // Wait here until all unclassified reads are written
     if ( config.output_unclassified_reads )
-        out_unclassified.close();
-
-    if ( !config.output_prefix.empty() && config.output_hierarchy_single )
     {
-        out << '\n'; // write line break at the end, signal to ganon wrapper that file is over in case of multiple files
-        out.close();
+        unclassified_reads_queue.notify_push_over();
+        write_unclassified_task.get();
     }
 
     timeGanon.stop();
