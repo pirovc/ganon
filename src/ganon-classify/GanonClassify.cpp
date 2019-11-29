@@ -34,12 +34,21 @@ typedef seqan::Normal THashCount;
 
 typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
                                  seqan::BDConfig< seqan::Dna5, THashCount, seqan::Uncompressed > >
-    TBloomFilter;
+    TIbf;
 
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
     TSeqRevComp;
 
 typedef std::unordered_map< std::string, int16_t > TMatches;
+
+struct Node
+{
+    std::string parent;
+    std::string rank;
+    std::string name;
+};
+
+typedef std::map< std::string, Node > TTax;
 
 typedef std::map< uint32_t, std::string > TMap;
 
@@ -119,8 +128,9 @@ struct Stats
 
 struct Filter
 {
-    TBloomFilter ibf;
+    TIbf         ibf;
     TMap         map;
+    TTax         tax;
     FilterConfig filter_config;
 };
 
@@ -381,8 +391,13 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
 
-        // bloom filter
-        TBloomFilter filter;
+
+        TIbf filter;
+        TMap map;
+        TTax tax;
+
+
+        // ibf file
         seqan::retrieve( filter, seqan::toCString( filter_config.ibf_file ) );
         // set offset to user-defined value (1==no offset)
         filter.offset = config.offset;
@@ -399,10 +414,11 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
             continue;
         }
 
-        // group bin files
-        TMap          map;
-        std::ifstream infile( filter_config.map_file );
         std::string   line;
+        std::ifstream infile;
+
+        // map file
+        infile.open( filter_config.map_file );
         while ( std::getline( infile, line, '\n' ) )
         {
             std::istringstream         stream_line( line );
@@ -410,11 +426,25 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
             std::string                field;
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
-            // group <tab> binid
+            // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
         }
+        infile.close();
 
-        filters.push_back( Filter{ std::move( filter ), map, filter_config } );
+        // tax file
+        infile.open( filter_config.tax_file );
+        while ( std::getline( infile, line, '\n' ) )
+        {
+            std::istringstream         stream_line( line );
+            std::vector< std::string > fields;
+            std::string                field;
+            while ( std::getline( stream_line, field, '\t' ) )
+                fields.push_back( field );
+            tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
+        }
+        infile.close();
+
+        filters.push_back( Filter{ std::move( filter ), map, tax, filter_config } );
     }
 }
 
