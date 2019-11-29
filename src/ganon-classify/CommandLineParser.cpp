@@ -30,7 +30,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "o,output-prefix", "Output prefix for output files (prefix.lca, prefix.rep, prefix.all, prefix.unclassified.fq). If multi-level hiearchy is provded, files are generated accordingly (prefix.hiearchy.lca, ...). Omit for output to STDOUT (only .lca will be printed)", cxxopts::value< std::string >() )
         ( "a,output-all", "Output file with all matches (prefix.all) [it can be very big]", cxxopts::value< bool >() )
-        ( "n,output-unclassified-reads", "Output unclassified reads (prefix.unclassified.fq) file for unclassified reads", cxxopts::value< bool >() )
+        ( "n,output-unclassified", "Output unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
         ( "s,output-hierarchy-single", "Generate only one output (prefix.lca and prefix.rep) even with multiple hierarchy levels", cxxopts::value< bool >() )
         
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
@@ -91,8 +91,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.output_prefix = args["output-prefix"].as< std::string >();
     if ( args.count( "output-all" ) )
         config.output_all = args["output-all"].as< bool >();
-    if ( args.count( "output-unclassified-reads" ) )
-        config.output_unclassified_reads = args["output-unclassified-reads"].as< bool >();
+    if ( args.count( "output-unclassified" ) )
+        config.output_unclassified = args["output-unclassified"].as< bool >();
     if ( args.count( "output-hierarchy-single" ) )
         config.output_hierarchy_single = args["output-hierarchy-single"].as< bool >();
 

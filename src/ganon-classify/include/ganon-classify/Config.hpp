@@ -48,10 +48,10 @@ public:
     std::vector< int16_t > max_error_unique{ -1 };
     uint16_t               offset = 1;
 
-    std::string output_prefix             = "";
-    bool        output_all                = false;
-    bool        output_unclassified_reads = false;
-    bool        output_hierarchy_single   = false;
+    std::string output_prefix           = "";
+    bool        output_all              = false;
+    bool        output_unclassified     = false;
+    bool        output_hierarchy_single = false;
 
     uint16_t threads   = 3;
     uint32_t n_batches = 1000;
@@ -271,7 +271,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << newl;
     stream << "--output-prefix             " << config.output_prefix << newl;
     stream << "--output-all                " << config.output_all << newl;
-    stream << "--output-unclassified-reads " << config.output_unclassified_reads << newl;
+    stream << "--output-unclassified       " << config.output_unclassified << newl;
     stream << "--output-hierarchy-single   " << config.output_hierarchy_single << newl;
     stream << newl;
     stream << "--threads                   " << config.threads << newl;

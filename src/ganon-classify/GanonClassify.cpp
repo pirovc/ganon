@@ -1,5 +1,6 @@
 #include "GanonClassify.hpp"
 
+#include <utils/LCA.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
@@ -371,8 +372,8 @@ void classify( std::vector< Filter >&    filters,
                 if ( rb.paired )
                     seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
             }
-            else if ( config.output_unclassified_reads ) // no more levels and no classification, add to
-                                                         // unclassified printing queue
+            else if ( config.output_unclassified ) // no more levels and no classification, add to
+                                                   // unclassified printing queue
             {
                 unclassified_reads_queue.push( read_out );
             }
@@ -390,11 +391,9 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
 
-
         TIbf filter;
         TMap map;
         TTax tax;
-
 
         // ibf file
         seqan::retrieve( filter, seqan::toCString( filter_config.ibf_file ) );
@@ -463,14 +462,14 @@ void print_time( GanonClassify::Config& config,
     std::cerr << "Loading reads    end time: " << timeLoadReads.end() << std::endl;
     std::cerr << "Classifying      end time: " << timeClass.end() << std::endl;
     std::cerr << "Printing clas.   end time: " << timePrintClass.end() << std::endl;
-    if ( config.output_unclassified_reads )
+    if ( config.output_unclassified )
         std::cerr << "Printing unclas. end time: " << timePrintUnclass.end() << std::endl;
     std::cerr << "ganon-classify   end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
     std::cerr << " - loading filters: " << timeLoadFilters.elapsed() << std::endl;
     std::cerr << " - classifying (" << config.threads_classify << "t): " << timeClass.elapsed() << std::endl;
     std::cerr << " - printing: " << timePrintClass.elapsed() << std::endl;
-    if ( config.output_unclassified_reads )
+    if ( config.output_unclassified )
         std::cerr << " - printing unclassified" << timePrintUnclass.elapsed() << std::endl;
     std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
@@ -668,6 +667,35 @@ void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_reads_queue,
     }
 }
 
+TTax merge_tax( std::vector< detail::Filter >& filters )
+{
+    if ( filters.size() == 1 )
+    {
+        return filters[0].tax;
+    }
+    else
+    {
+        TTax merged_tax = filters[0].tax;
+        for ( uint16_t i = 1; i < filters.size(); ++i )
+        {
+            // merge taxonomies keeping the first one as a default
+            merged_tax.insert( filters[i].tax.begin(), filters[i].tax.end() );
+        }
+        return merged_tax;
+    }
+}
+
+LCA pre_process_lca( TTax& tax )
+{
+    LCA lca;
+    for ( auto const & [ target, node ] : tax )
+    {
+        lca.addEdge( node.parent, target );
+    }
+    lca.doEulerWalk();
+    return lca;
+}
+
 
 } // namespace detail
 
@@ -727,7 +755,7 @@ bool run( Config config )
     SafeQueue< detail::ReadOut > unclassified_reads_queue;
     // Thread for printing unclassified reads
     std::future< void > write_unclassified_task;
-    if ( config.output_unclassified_reads && !config.output_prefix.empty() )
+    if ( config.output_unclassified && !config.output_prefix.empty() )
     {
         timePrintUnclass.start();
         write_unclassified_task = std::async( std::launch::async,
@@ -748,11 +776,9 @@ bool run( Config config )
 
 
     // For every hierarchy level
-    for ( auto const& h : config.parsed_hierarchy )
+    for ( auto const & [ hierarchy_label, hierarchy_config ] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
-        std::string hierarchy_label = h.first;
-        // HierarchyConfig hierarchy_config =  h.second;
         bool hierarchy_first = ( hierarchy_id == 1 );
         bool hierarchy_last  = ( hierarchy_id == hierarchy_size );
 
@@ -760,6 +786,15 @@ bool run( Config config )
         std::vector< detail::Filter > filters;
         detail::load_filters( filters, hierarchy_label, config );
         timeLoadFilters.stop();
+
+        // merge repeated elements
+        detail::TTax tax = detail::merge_tax( filters );
+
+        // for ( auto const& [target, nodes] : tax )
+        //    std::cerr << target << "\t" << nodes.parent << "\t" << nodes.rank << "\t" << nodes.name << std::endl;
+
+        // pre-processing of nodes
+        LCA lca = detail::pre_process_lca( tax );
 
         // Thread for printing classified reads (.lca, .all)
         std::vector< std::future< void > > write_tasks;
@@ -788,9 +823,9 @@ bool run( Config config )
         if ( !config.output_prefix.empty() )
         {
             if ( hierarchy_first || !config.output_hierarchy_single )
-                out.open( h.second.output_file_all );
+                out.open( hierarchy_config.output_file_all );
             else // append if not first and output_hierarchy_single
-                out.open( h.second.output_file_all, std::ofstream::app );
+                out.open( hierarchy_config.output_file_all, std::ofstream::app );
         }
 
         // Start writing thread
@@ -817,7 +852,7 @@ bool run( Config config )
                                             pointer_helper,
                                             hierarchy_first,
                                             hierarchy_last,
-                                            h.second.max_error_unique ) );
+                                            hierarchy_config.max_error_unique ) );
         }
 
         // Wait here until classification is over
@@ -851,7 +886,7 @@ bool run( Config config )
     }
 
     // Wait here until all unclassified reads are written
-    if ( config.output_unclassified_reads )
+    if ( config.output_unclassified )
     {
         unclassified_reads_queue.notify_push_over();
         write_unclassified_task.get();
