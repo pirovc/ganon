@@ -48,7 +48,7 @@ struct Node
     std::string name;
 };
 
-typedef std::map< std::string, Node > TTax;
+typedef std::unordered_map< std::string, Node > TTax;
 
 typedef std::map< uint32_t, std::string > TMap;
 
@@ -90,7 +90,7 @@ struct ReadBatches
 
 struct ReadMatch
 {
-    std::string group;
+    std::string target;
     int16_t     kmer_count;
 };
 
@@ -160,12 +160,11 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 }
 
 
-inline void flag_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique )
+inline void check_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique, TTax& tax )
 {
-    // set as negative for unique filtering
-    // if kmer count is lower than expected
+    // if kmer count is lower than expected set match to parent node
     if ( read_out.matches[0].kmer_count < threshold_error_unique )
-        read_out.matches[0].kmer_count = -read_out.matches[0].kmer_count;
+        read_out.matches[0].target = tax[read_out.matches[0].target].parent; //parent node
 }
 
 void select_matches( TMatches&                matches,
@@ -183,11 +182,11 @@ void select_matches( TMatches&                matches,
         {
             // get best matching strand
             uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
-            // keep only the best match group/read when same groups are split in several
+            // keep only the best match target/read when same targets are split in several
             // bins
             if ( matches.count( filter.map[binNo] ) == 0 || maxKmerCountBin > matches[filter.map[binNo]] )
             {
-                // store match to group
+                // store match to target
                 matches[filter.map[binNo]] = maxKmerCountBin;
                 if ( maxKmerCountBin > maxKmerCountRead )
                     maxKmerCountRead = maxKmerCountBin;
@@ -267,7 +266,7 @@ uint32_t filter_matches( ReadOut&  read_out,
     uint16_t threshold_strata = get_threshold_errors( len, kmer_size, max_error, offset );
 
     for ( auto const& v : matches )
-    { // matches[group] = kmerCount
+    { // matches[target] = kmerCount
         if ( v.second >= threshold_strata )
         { // apply strata filter
             read_out.matches.push_back( ReadMatch{ v.first, v.second } );
@@ -277,9 +276,27 @@ uint32_t filter_matches( ReadOut&  read_out,
     return read_out.matches.size();
 }
 
+void lca_matches(ReadOut& read_out, ReadOut& read_out_lca, LCA&    lca )
+{
+    std::vector< std::string > targets;
+    int16_t max_kmer_count = 0; 
+    for ( auto const& [target, kmer_count] : read_out.matches ){
+        
+        targets.push_back(target);
+        if (kmer_count>max_kmer_count)
+            max_kmer_count=kmer_count;
+    }
+
+    std::string target_lca = lca.getLCA(targets);
+    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count });
+}
+                        
 
 void classify( std::vector< Filter >&    filters,
+               LCA&    lca,
+               TTax& tax,
                SafeQueue< ReadOut >&     classified_reads_queue,
+               SafeQueue< ReadOut >&     classified_lca_queue,
                SafeQueue< ReadOut >&     unclassified_reads_queue,
                Stats&                    stats,
                Config const&             config,
@@ -314,6 +331,7 @@ void classify( std::vector< Filter >&    filters,
 
             TMatches matches;
             ReadOut  read_out( rb.ids[readID] );
+            ReadOut  read_out_lca( rb.ids[readID] );
             uint32_t count_filtered_matches = 0;
 
             if ( read1_len >= kmer_size ) // just skip classification, add read to left over (dbs can have different
@@ -336,12 +354,17 @@ void classify( std::vector< Filter >&    filters,
                         count_filtered_matches = filter_matches(
                             read_out, matches, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
 
-                        if ( max_error_unique >= 0 && count_filtered_matches == 1 )
+                        if ( count_filtered_matches == 1 )
                         {
-                            uint16_t threshold_error_unique =
-                                get_threshold_errors( effective_read_len, kmer_size, max_error_unique, config.offset );
-                            flag_max_error_unique( read_out, threshold_error_unique );
+                            if (max_error_unique >= 0){
+                                uint16_t threshold_error_unique = get_threshold_errors( effective_read_len, kmer_size, max_error_unique, config.offset );
+                                check_max_error_unique( read_out, threshold_error_unique, tax );
+                            }
+                            read_out_lca = read_out; //just one match
+                        }else{
+                            lca_matches(read_out, read_out_lca, lca);
                         }
+
                     }
                 }
                 else // single-end mode
@@ -349,11 +372,16 @@ void classify( std::vector< Filter >&    filters,
                     uint16_t max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID] );
                     count_filtered_matches =
                         filter_matches( read_out, matches, read1_len, max_kmer_count_read, kmer_size, config.offset );
-                    if ( max_error_unique >= 0 && count_filtered_matches == 1 )
+
+                    if ( count_filtered_matches == 1 )
                     {
-                        uint16_t threshold_error_unique =
-                            get_threshold_errors( read1_len, kmer_size, max_error_unique, config.offset );
-                        flag_max_error_unique( read_out, threshold_error_unique );
+                        if (max_error_unique >= 0){
+                            uint16_t threshold_error_unique = get_threshold_errors( read1_len, kmer_size, max_error_unique, config.offset );
+                            check_max_error_unique( read_out, threshold_error_unique, tax );
+                        }
+                        read_out_lca = read_out; //just one match
+                    }else{
+                        lca_matches(read_out, read_out_lca, lca);
                     }
                 }
             }
@@ -363,7 +391,9 @@ void classify( std::vector< Filter >&    filters,
             {
                 stats.classifiedReads += 1;
                 stats.matches += count_filtered_matches;
-                classified_reads_queue.push( read_out );
+                classified_lca_queue.push( read_out_lca );
+                if (config.output_all)
+                    classified_reads_queue.push( read_out );
             }
             else if ( !hierarchy_last ) // if there is more levels, store read
             {
@@ -635,7 +665,7 @@ void write_classified( SafeQueue< detail::ReadOut >& classified_reads_queue,
         {
             for ( uint32_t i = 0; i < ro.matches.size(); ++i )
             {
-                out << ro.readID << '\t' << ro.matches[i].group << '\t' << ro.matches[i].kmer_count << '\n';
+                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
             }
         }
         else
@@ -711,6 +741,7 @@ bool run( Config config )
     StopClock timeLoadFilters;
     StopClock timeClass;
     StopClock timePrintClass;
+    StopClock timePrintClassLCA;
     StopClock timePrintUnclass;
 
     if ( !config.quiet && config.verbose )
@@ -722,6 +753,7 @@ bool run( Config config )
 
     // Set output stream (file or stdout)
     std::ofstream out;
+    std::ofstream out_all;
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
@@ -761,7 +793,7 @@ bool run( Config config )
         write_unclassified_task = std::async( std::launch::async,
                                               detail::write_unclassified,
                                               std::ref( unclassified_reads_queue ),
-                                              config.output_prefix + ".unclassified.fq",
+                                              config.output_prefix + ".unc",
                                               std::ref( timePrintUnclass ) );
     }
 
@@ -818,23 +850,39 @@ bool run( Config config )
         }
 
         SafeQueue< detail::ReadOut > classified_reads_queue;
+        SafeQueue< detail::ReadOut > classified_lca_queue;
 
-        // Open file for writing (if not STDOUT)
-        if ( !config.output_prefix.empty() )
-        {
+        if ( !config.output_prefix.empty() ){
             if ( hierarchy_first || !config.output_hierarchy_single )
-                out.open( hierarchy_config.output_file_all );
+                out.open( hierarchy_config.output_file_lca );
             else // append if not first and output_hierarchy_single
-                out.open( hierarchy_config.output_file_all, std::ofstream::app );
+                out.open( hierarchy_config.output_file_lca, std::ofstream::app );
+
+            if (config.output_all)
+            {
+                if ( hierarchy_first || !config.output_hierarchy_single )
+                    out_all.open( hierarchy_config.output_file_all );
+                else // append if not first and output_hierarchy_single
+                    out_all.open( hierarchy_config.output_file_all, std::ofstream::app );
+                
+                // Start writing thread for all matches
+                timePrintClass.start();
+                write_tasks.emplace_back( std::async( std::launch::async,
+                                                  detail::write_classified,
+                                                  std::ref( classified_reads_queue ),
+                                                  std::ref( out_all ),
+                                                  std::ref( timePrintClass ) ) );
+            }
+      
         }
 
-        // Start writing thread
-        timePrintClass.start();
+        // Start writing thread for lca matches
+        timePrintClassLCA.start();
         write_tasks.emplace_back( std::async( std::launch::async,
                                               detail::write_classified,
-                                              std::ref( classified_reads_queue ),
+                                              std::ref( classified_lca_queue ),
                                               std::ref( out ),
-                                              std::ref( timePrintClass ) ) );
+                                              std::ref( timePrintClassLCA ) ) );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
@@ -844,7 +892,10 @@ bool run( Config config )
             tasks.emplace_back( std::async( std::launch::async,
                                             detail::classify,
                                             std::ref( filters ),
+                                            std::ref( lca ),
+                                            std::ref( tax ),
                                             std::ref( classified_reads_queue ),
+                                            std::ref( classified_lca_queue ),
                                             std::ref( unclassified_reads_queue ),
                                             std::ref( stats ),
                                             std::ref( config ),
@@ -862,6 +913,7 @@ bool run( Config config )
         }
         // Inform that no more reads are going to be pushed
         classified_reads_queue.notify_push_over();
+        classified_lca_queue.notify_push_over();
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
@@ -873,6 +925,9 @@ bool run( Config config )
         if ( !config.output_prefix.empty() )
         {
             out.close();
+            if (config.output_all){
+                out_all.close();
+            }
         }
 
         if ( hierarchy_first )

@@ -28,7 +28,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
         
-        ( "o,output-prefix", "Output prefix for output files (prefix.lca, prefix.rep, prefix.all, prefix.unclassified.fq). If multi-level hiearchy is provded, files are generated accordingly (prefix.hiearchy.lca, ...). Omit for output to STDOUT (only .lca will be printed)", cxxopts::value< std::string >() )
+        ( "o,output-prefix", "Output prefix for output files (prefix.lca, prefix.rep, prefix.all, prefix.unc). If multi-level hiearchy is provded, files are generated accordingly (prefix.hiearchy.lca, ...). Omit for output to STDOUT (only .lca will be printed)", cxxopts::value< std::string >() )
         ( "a,output-all", "Output file with all matches (prefix.all) [it can be very big]", cxxopts::value< bool >() )
         ( "n,output-unclassified", "Output unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
         ( "s,output-hierarchy-single", "Generate only one output (prefix.lca and prefix.rep) even with multiple hierarchy levels", cxxopts::value< bool >() )
