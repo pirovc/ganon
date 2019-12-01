@@ -759,15 +759,13 @@ TTax merge_tax( std::vector< detail::Filter >& filters )
     }
 }
 
-LCA pre_process_lca( TTax& tax )
+void pre_process_lca( LCA& lca, TTax& tax )
 {
-    LCA lca;
     for ( auto const & [ target, node ] : tax )
     {
         lca.addEdge( node.parent, target );
     }
     lca.doEulerWalk();
-    return lca;
 }
 
 
@@ -873,7 +871,8 @@ bool run( Config config )
         //    std::cerr << target << "\t" << nodes.parent << "\t" << nodes.rank << "\t" << nodes.name << std::endl;
 
         // pre-processing of nodes
-        LCA lca = detail::pre_process_lca( tax );
+        LCA lca;
+        detail::pre_process_lca( lca, tax );
 
         // Thread for printing classified reads (.lca, .all)
         std::vector< std::future< void > > write_tasks;

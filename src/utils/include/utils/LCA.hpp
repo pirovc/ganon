@@ -3,6 +3,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -16,14 +17,16 @@ private:
     unordered_map< string, vector< string > > parents;
     vector< int >                             euler;
     vector< int >                             depth;
-    int*                                      firstAppearance;
-    int                                       vertices;
-    unordered_map< string, int >              encode;
-    unordered_map< int, string >              decode;
-    int**                                     M;
-    void                                      depthFirstSearch( string current, int depth );
-    void                                      preProcessRMQ();
-    int                                       queryRMQ( int i, int j );
+    // int*                                      firstAppearance;
+    unique_ptr< int[] >          firstAppearance;
+    int                          vertices;
+    unordered_map< string, int > encode;
+    unordered_map< int, string > decode;
+    // int**                                     M;
+    unique_ptr< unique_ptr< int[] >[] > M;
+    void                                depthFirstSearch( string current, int depth );
+    void                                preProcessRMQ();
+    int                                 queryRMQ( int i, int j );
 
 public:
     LCA();
@@ -40,15 +43,15 @@ LCA::LCA()
     vertices = 0;
 }
 
-LCA::~LCA()
-{
-    delete[] firstAppearance;
-    for ( unsigned int i = 0; i < depth.size(); i++ )
-    {
-        delete[] M[i];
-    }
-    delete[] M;
-}
+// LCA::~LCA()
+// {
+//     delete[] firstAppearance;
+//     for ( unsigned int i = 0; i < depth.size(); i++ )
+//     {
+//         delete[] M[i];
+//     }
+//     delete[] M;
+// }
 
 void LCA::addEdge( string father, string son )
 {
@@ -99,7 +102,8 @@ void LCA::depthFirstSearch( string current, int _depth )
 
 void LCA::doEulerWalk()
 {
-    firstAppearance = new int[vertices];
+    // firstAppearance = new int[vertices];
+    firstAppearance = make_unique< int[] >( vertices );
     for ( int i = 0; i < vertices; i++ )
     {
         firstAppearance[i] = -1;
@@ -111,11 +115,14 @@ void LCA::doEulerWalk()
 // <O(N logN) Preprocessing time, O(1) Query time>
 void LCA::preProcessRMQ()
 {
-    M            = new int*[depth.size()];
+
+    // M            = new int*[depth.size()];
+    M = make_unique< unique_ptr< int[] >[] >( depth.size() );
+
     int logDepth = log2( depth.size() );
     for ( unsigned int i = 0; i < depth.size(); i++ )
     {
-        M[i] = new int[logDepth];
+        M[i] = make_unique< int[] >( logDepth );
     }
 
     // initialize M for the intervals with length 1
