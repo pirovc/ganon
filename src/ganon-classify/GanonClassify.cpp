@@ -48,9 +48,16 @@ struct Node
     std::string name;
 };
 
-typedef std::unordered_map< std::string, Node > TTax;
+struct Rep
+{
+    std::atomic< uint64_t > direct_matches;
+    std::atomic< uint64_t > lca_matches;
+    std::atomic< uint64_t > unique_matches;
+};
 
-typedef std::map< uint32_t, std::string > TMap;
+typedef std::unordered_map< std::string, Rep >  TRep;
+typedef std::unordered_map< std::string, Node > TTax;
+typedef std::map< uint32_t, std::string >       TMap;
 
 struct ReadBatches
 {
@@ -160,11 +167,17 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 }
 
 
-inline void check_max_error_unique( ReadOut& read_out, uint16_t threshold_error_unique, TTax& tax )
+inline bool check_unique(
+    ReadOut& read_out, uint16_t read_len, uint16_t kmer_size, uint16_t max_error_unique, uint16_t offset, TTax& tax )
 {
+    uint16_t threshold_error_unique = get_threshold_errors( read_len, kmer_size, max_error_unique, offset );
     // if kmer count is lower than expected set match to parent node
     if ( read_out.matches[0].kmer_count < threshold_error_unique )
-        read_out.matches[0].target = tax[read_out.matches[0].target].parent; //parent node
+    {
+        read_out.matches[0].target = tax[read_out.matches[0].target].parent; // parent node
+        return false;
+    }
+    return true;
 }
 
 void select_matches( TMatches&                matches,
@@ -254,6 +267,7 @@ uint16_t find_matches_paired( TMatches&              matches,
 
 uint32_t filter_matches( ReadOut&  read_out,
                          TMatches& matches,
+                         TRep&     rep,
                          uint16_t  len,
                          uint16_t  max_kmer_count_read,
                          uint16_t  kmer_size,
@@ -269,6 +283,7 @@ uint32_t filter_matches( ReadOut&  read_out,
     { // matches[target] = kmerCount
         if ( v.second >= threshold_strata )
         { // apply strata filter
+            rep[v.first].direct_matches++;
             read_out.matches.push_back( ReadMatch{ v.first, v.second } );
         }
     }
@@ -276,25 +291,27 @@ uint32_t filter_matches( ReadOut&  read_out,
     return read_out.matches.size();
 }
 
-void lca_matches(ReadOut& read_out, ReadOut& read_out_lca, LCA&    lca )
+void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, LCA& lca, TRep& rep )
 {
     std::vector< std::string > targets;
-    int16_t max_kmer_count = 0; 
-    for ( auto const& [target, kmer_count] : read_out.matches ){
-        
-        targets.push_back(target);
-        if (kmer_count>max_kmer_count)
-            max_kmer_count=kmer_count;
+    int16_t                    max_kmer_count = 0;
+    for ( auto const & [ target, kmer_count ] : read_out.matches )
+    {
+        targets.push_back( target );
+        if ( kmer_count > max_kmer_count )
+            max_kmer_count = kmer_count;
     }
 
-    std::string target_lca = lca.getLCA(targets);
-    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count });
+    std::string target_lca = lca.getLCA( targets );
+    rep[target_lca].lca_matches++;
+    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count } );
 }
-                        
+
 
 void classify( std::vector< Filter >&    filters,
-               LCA&    lca,
-               TTax& tax,
+               LCA&                      lca,
+               TTax&                     tax,
+               TRep&                     rep,
                SafeQueue< ReadOut >&     classified_reads_queue,
                SafeQueue< ReadOut >&     classified_lca_queue,
                SafeQueue< ReadOut >&     unclassified_reads_queue,
@@ -352,36 +369,52 @@ void classify( std::vector< Filter >&    filters,
                         uint16_t max_kmer_count_read = find_matches_paired(
                             matches, filters, rb.seqs[readID], rb.seqs2[readID], effective_read_len );
                         count_filtered_matches = filter_matches(
-                            read_out, matches, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
+                            read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
 
                         if ( count_filtered_matches == 1 )
                         {
-                            if (max_error_unique >= 0){
-                                uint16_t threshold_error_unique = get_threshold_errors( effective_read_len, kmer_size, max_error_unique, config.offset );
-                                check_max_error_unique( read_out, threshold_error_unique, tax );
-                            }
-                            read_out_lca = read_out; //just one match
-                        }else{
-                            lca_matches(read_out, read_out_lca, lca);
-                        }
+                            bool real_unique = ( max_error_unique >= 0 ) ? check_unique( read_out,
+                                                                                         effective_read_len,
+                                                                                         kmer_size,
+                                                                                         max_error_unique,
+                                                                                         config.offset,
+                                                                                         tax )
+                                                                         : true;
+                            if ( real_unique )
+                                rep[read_out.matches[0].target].unique_matches++;
+                            else
+                                rep[read_out.matches[0].target].lca_matches++;
 
+                            read_out_lca = read_out; // just one match
+                        }
+                        else
+                        {
+                            lca_matches( read_out, read_out_lca, lca, rep );
+                        }
                     }
                 }
                 else // single-end mode
                 {
                     uint16_t max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID] );
-                    count_filtered_matches =
-                        filter_matches( read_out, matches, read1_len, max_kmer_count_read, kmer_size, config.offset );
+                    count_filtered_matches       = filter_matches(
+                        read_out, matches, rep, read1_len, max_kmer_count_read, kmer_size, config.offset );
 
                     if ( count_filtered_matches == 1 )
                     {
-                        if (max_error_unique >= 0){
-                            uint16_t threshold_error_unique = get_threshold_errors( read1_len, kmer_size, max_error_unique, config.offset );
-                            check_max_error_unique( read_out, threshold_error_unique, tax );
-                        }
-                        read_out_lca = read_out; //just one match
-                    }else{
-                        lca_matches(read_out, read_out_lca, lca);
+                        bool real_unique =
+                            ( max_error_unique >= 0 )
+                                ? check_unique( read_out, read1_len, kmer_size, max_error_unique, config.offset, tax )
+                                : true;
+                        if ( real_unique )
+                            rep[read_out.matches[0].target].unique_matches++;
+                        else
+                            rep[read_out.matches[0].target].lca_matches++;
+
+                        read_out_lca = read_out; // just one match
+                    }
+                    else
+                    {
+                        lca_matches( read_out, read_out_lca, lca, rep );
                     }
                 }
             }
@@ -392,7 +425,7 @@ void classify( std::vector< Filter >&    filters,
                 stats.classifiedReads += 1;
                 stats.matches += count_filtered_matches;
                 classified_lca_queue.push( read_out_lca );
-                if (config.output_all)
+                if ( config.output_all )
                     classified_reads_queue.push( read_out );
             }
             else if ( !hierarchy_last ) // if there is more levels, store read
@@ -413,6 +446,17 @@ void classify( std::vector< Filter >&    filters,
         if ( !hierarchy_last && seqan::length( left_over_reads.ids ) > 0 )
             pointer_helper->push( left_over_reads );
     }
+}
+
+void write_report( TRep& rep, TTax& tax, std::string output_file_rep )
+{
+    std::ofstream out_rep( output_file_rep );
+    for ( auto const & [ target, report ] : rep )
+    {
+        out_rep << target << '\t' << tax[target].rank << '\t' << report.direct_matches << '\t' << report.lca_matches
+                << '\t' << report.unique_matches << '\t' << tax[target].name << '\n';
+    }
+    out_rep.close();
 }
 
 void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, Config& config )
@@ -819,6 +863,9 @@ bool run( Config config )
         detail::load_filters( filters, hierarchy_label, config );
         timeLoadFilters.stop();
 
+        // Reports
+        detail::TRep rep;
+
         // merge repeated elements
         detail::TTax tax = detail::merge_tax( filters );
 
@@ -852,28 +899,28 @@ bool run( Config config )
         SafeQueue< detail::ReadOut > classified_reads_queue;
         SafeQueue< detail::ReadOut > classified_lca_queue;
 
-        if ( !config.output_prefix.empty() ){
+        if ( !config.output_prefix.empty() )
+        {
             if ( hierarchy_first || !config.output_hierarchy_single )
                 out.open( hierarchy_config.output_file_lca );
             else // append if not first and output_hierarchy_single
                 out.open( hierarchy_config.output_file_lca, std::ofstream::app );
 
-            if (config.output_all)
+            if ( config.output_all )
             {
                 if ( hierarchy_first || !config.output_hierarchy_single )
                     out_all.open( hierarchy_config.output_file_all );
                 else // append if not first and output_hierarchy_single
                     out_all.open( hierarchy_config.output_file_all, std::ofstream::app );
-                
+
                 // Start writing thread for all matches
                 timePrintClass.start();
                 write_tasks.emplace_back( std::async( std::launch::async,
-                                                  detail::write_classified,
-                                                  std::ref( classified_reads_queue ),
-                                                  std::ref( out_all ),
-                                                  std::ref( timePrintClass ) ) );
+                                                      detail::write_classified,
+                                                      std::ref( classified_reads_queue ),
+                                                      std::ref( out_all ),
+                                                      std::ref( timePrintClass ) ) );
             }
-      
         }
 
         // Start writing thread for lca matches
@@ -894,6 +941,7 @@ bool run( Config config )
                                             std::ref( filters ),
                                             std::ref( lca ),
                                             std::ref( tax ),
+                                            std::ref( rep ),
                                             std::ref( classified_reads_queue ),
                                             std::ref( classified_lca_queue ),
                                             std::ref( unclassified_reads_queue ),
@@ -915,6 +963,10 @@ bool run( Config config )
         classified_reads_queue.notify_push_over();
         classified_lca_queue.notify_push_over();
 
+        // Write report
+        if ( !config.output_prefix.empty() )
+            detail::write_report( rep, tax, hierarchy_config.output_file_rep );
+
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
         {
@@ -925,7 +977,8 @@ bool run( Config config )
         if ( !config.output_prefix.empty() )
         {
             out.close();
-            if (config.output_all){
+            if ( config.output_all )
+            {
                 out_all.close();
             }
         }
