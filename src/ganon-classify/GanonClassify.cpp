@@ -773,6 +773,8 @@ void pre_process_lca( LCA& lca, TTax& tax )
 
 bool run( Config config )
 {
+    //std::ios_base::sync_with_stdio( false );
+
     if ( !config.validate() )
         return false;
 

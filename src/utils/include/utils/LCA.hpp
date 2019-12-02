@@ -30,7 +30,7 @@ private:
 
 public:
     LCA();
-    virtual ~LCA();
+    // virtual ~LCA();
     void   addEdge( string father, string son );
     void   doEulerWalk();
     int    getLCA( int u, int v );
@@ -59,14 +59,12 @@ void LCA::addEdge( string father, string son )
     {
         encode.insert( { father, vertices } );
         decode.insert( { vertices, father } );
-        //        firstAppearance[vertices] = -1;
         vertices++;
     }
     if ( encode.count( son ) == 0 )
     {
         encode.insert( { son, vertices } );
         decode.insert( { vertices, son } );
-        //        firstAppearance[vertices] = -1;
         vertices++;
     }
     if ( parents.count( father ) == 0 )
@@ -119,17 +117,15 @@ void LCA::preProcessRMQ()
     // M            = new int*[depth.size()];
     M = make_unique< unique_ptr< int[] >[] >( depth.size() );
 
-    int logDepth = log2( depth.size() );
+    int logDepth = ceil( log2( depth.size() ) );
     for ( unsigned int i = 0; i < depth.size(); i++ )
     {
-        M[i] = make_unique< int[] >( logDepth );
+        // M[i] = new int[logDepth];
+        M[i]    = make_unique< int[] >( logDepth );
+        M[i][0] = i; // initialize M for the intervals with length 1
     }
 
-    // initialize M for the intervals with length 1
-    for ( unsigned int i = 0; i < depth.size(); i++ )
-    {
-        M[i][0] = i;
-    }
+
     // compute values from smaller to bigger intervals
     for ( unsigned int j = 1; 1u << j <= depth.size(); j++ )
     {
