@@ -182,22 +182,10 @@ int LCA::getLCA( int u, int v )
 string LCA::getLCA( vector< string >& taxIds )
 {
     int lca;
-    if ( taxIds.size() >= 2 )
+    lca = getLCA( encode[taxIds[0]], encode[taxIds[1]] );
+    for ( unsigned int i = 2; i < taxIds.size(); i++ )
     {
-        lca = getLCA( encode[taxIds[0]], encode[taxIds[1]] );
-        for ( unsigned int i = 2; i < taxIds.size(); i++ )
-        {
-            lca = getLCA( lca, encode[taxIds[i]] );
-        }
-        return decode[lca];
+        lca = getLCA( lca, encode[taxIds[i]] );
     }
-    else
-    {
-        return taxIds[0];
-    }
-}
-
-string LCA::getLCA( string taxId1, string taxId2 )
-{
-    return decode[getLCA( encode[taxId1], encode[taxId2] )];
+    return decode[lca];
 }

@@ -51,8 +51,8 @@ struct Node
 struct Rep
 {
     std::atomic< uint64_t > direct_matches;
-    std::atomic< uint64_t > lca_matches;
-    std::atomic< uint64_t > unique_matches;
+    std::atomic< uint64_t > lca_reads;
+    std::atomic< uint64_t > unique_reads;
 };
 
 typedef std::unordered_map< std::string, Rep >  TRep;
@@ -167,17 +167,25 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 }
 
 
-inline bool check_unique(
-    ReadOut& read_out, uint16_t read_len, uint16_t kmer_size, uint16_t max_error_unique, uint16_t offset, TTax& tax )
+inline void check_unique( ReadOut& read_out,
+                          uint16_t read_len,
+                          uint16_t kmer_size,
+                          uint16_t max_error_unique,
+                          uint16_t offset,
+                          TTax&    tax,
+                          TRep&    rep )
 {
     uint16_t threshold_error_unique = get_threshold_errors( read_len, kmer_size, max_error_unique, offset );
     // if kmer count is lower than expected set match to parent node
     if ( read_out.matches[0].kmer_count < threshold_error_unique )
     {
         read_out.matches[0].target = tax[read_out.matches[0].target].parent; // parent node
-        return false;
+        rep[read_out.matches[0].target].lca_reads++;                         // count as lca for parent
     }
-    return true;
+    else
+    {
+        rep[read_out.matches[0].target].unique_reads++; // count as unique for target
+    }
 }
 
 void select_matches( TMatches&                matches,
@@ -218,7 +226,7 @@ uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, seqan:
         std::vector< uint16_t > selectedBins    = seqan::count( filter.ibf, read_seq );
         std::vector< uint16_t > selectedBinsRev = seqan::count( filter.ibf, TSeqRevComp( read_seq ) );
 
-        uint16_t threshold = ( filter.filter_config.min_kmers > 0 )
+        uint16_t threshold = ( filter.filter_config.min_kmers > -1 )
                                  ? get_threshold_kmers( seqan::length( read_seq ),
                                                         filter.ibf.kmerSize,
                                                         filter.filter_config.min_kmers,
@@ -253,7 +261,7 @@ uint16_t find_matches_paired( TMatches&              matches,
         filter.ibf.count< THashCount >( selectedBinsRev, read_seq2 );
 
         uint16_t threshold =
-            ( filter.filter_config.min_kmers > 0 )
+            ( filter.filter_config.min_kmers > -1 )
                 ? get_threshold_kmers(
                       effective_read_len, filter.ibf.kmerSize, filter.filter_config.min_kmers, filter.ibf.offset )
                 : get_threshold_errors(
@@ -291,20 +299,15 @@ uint32_t filter_matches( ReadOut&  read_out,
     return read_out.matches.size();
 }
 
-void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, LCA& lca, TRep& rep )
+void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_count_read, LCA& lca, TRep& rep )
 {
     std::vector< std::string > targets;
-    int16_t                    max_kmer_count = 0;
     for ( auto const & [ target, kmer_count ] : read_out.matches )
-    {
         targets.push_back( target );
-        if ( kmer_count > max_kmer_count )
-            max_kmer_count = kmer_count;
-    }
 
     std::string target_lca = lca.getLCA( targets );
-    rep[target_lca].lca_matches++;
-    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count } );
+    rep[target_lca].lca_reads++;
+    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count_read } );
 }
 
 
@@ -341,87 +344,61 @@ void classify( std::vector< Filter >&    filters,
 
         for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
         {
-            uint16_t read1_len = seqan::length( rb.seqs[readID] );
+            // receives len of first read
+            uint16_t effective_read_len = seqan::length( rb.seqs[readID] );
+
             // count lens just once
             if ( hierarchy_first )
-                stats.sumReadLen += read1_len;
+                stats.sumReadLen += effective_read_len;
 
             TMatches matches;
             ReadOut  read_out( rb.ids[readID] );
-            ReadOut  read_out_lca( rb.ids[readID] );
             uint32_t count_filtered_matches = 0;
+            uint16_t max_kmer_count_read    = 0;
 
-            if ( read1_len >= kmer_size ) // just skip classification, add read to left over (dbs can have different
-                                          // kmer sizes) or unclassified
+            // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
+            if ( effective_read_len >= kmer_size )
             {
                 if ( rb.paired ) // paired-end mode
                 {
                     uint16_t read2_len = seqan::length( rb.seqs2[readID] );
                     if ( read2_len >= kmer_size )
                     {
-                        // effective length of the pair for error calculation
-                        uint16_t effective_read_len = read1_len + read2_len + 1 - kmer_size;
+                        // add to effective length the pair for error calculation
+                        effective_read_len += read2_len + 1 - kmer_size;
 
                         // count lens just once
                         if ( hierarchy_first )
                             stats.sumReadLen += read2_len;
 
-                        uint16_t max_kmer_count_read = find_matches_paired(
+                        max_kmer_count_read = find_matches_paired(
                             matches, filters, rb.seqs[readID], rb.seqs2[readID], effective_read_len );
                         count_filtered_matches = filter_matches(
                             read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
-
-                        if ( count_filtered_matches == 1 )
-                        {
-                            bool real_unique = ( max_error_unique >= 0 ) ? check_unique( read_out,
-                                                                                         effective_read_len,
-                                                                                         kmer_size,
-                                                                                         max_error_unique,
-                                                                                         config.offset,
-                                                                                         tax )
-                                                                         : true;
-                            if ( real_unique )
-                                rep[read_out.matches[0].target].unique_matches++;
-                            else
-                                rep[read_out.matches[0].target].lca_matches++;
-
-                            read_out_lca = read_out; // just one match
-                        }
-                        else
-                        {
-                            lca_matches( read_out, read_out_lca, lca, rep );
-                        }
                     }
                 }
                 else // single-end mode
                 {
-                    uint16_t max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID] );
-                    count_filtered_matches       = filter_matches(
-                        read_out, matches, rep, read1_len, max_kmer_count_read, kmer_size, config.offset );
-
-                    if ( count_filtered_matches == 1 )
-                    {
-                        bool real_unique =
-                            ( max_error_unique >= 0 )
-                                ? check_unique( read_out, read1_len, kmer_size, max_error_unique, config.offset, tax )
-                                : true;
-                        if ( real_unique )
-                            rep[read_out.matches[0].target].unique_matches++;
-                        else
-                            rep[read_out.matches[0].target].lca_matches++;
-
-                        read_out_lca = read_out; // just one match
-                    }
-                    else
-                    {
-                        lca_matches( read_out, read_out_lca, lca, rep );
-                    }
+                    max_kmer_count_read    = find_matches( matches, filters, rb.seqs[readID] );
+                    count_filtered_matches = filter_matches(
+                        read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
                 }
             }
 
-            // If there are matches, add to printing queue
+            // If there are matches
             if ( count_filtered_matches > 0 )
             {
+                if ( max_error_unique >= 0 )
+                    check_unique( read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
+                else
+                    rep[read_out.matches[0].target].unique_reads++;
+
+                ReadOut read_out_lca( rb.ids[readID] );
+                if ( count_filtered_matches == 1 )
+                    read_out_lca = read_out; // just one match
+                else
+                    lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
+
                 stats.classifiedReads += 1;
                 stats.matches += count_filtered_matches;
                 classified_lca_queue.push( read_out_lca );
@@ -448,14 +425,19 @@ void classify( std::vector< Filter >&    filters,
     }
 }
 
-void write_report( TRep& rep, TTax& tax, std::string output_file_rep )
+void write_report( TRep& rep, TTax& tax, Stats& stats, std::string output_file_rep )
 {
     std::ofstream out_rep( output_file_rep );
+    out_rep << "unclassified" << '\t' << "-\t"
+            << "-\t" << stats.totalReads - stats.classifiedReads << "\t"
+            << "-\t"
+            << "-\t" << '\n';
     for ( auto const & [ target, report ] : rep )
     {
-        out_rep << target << '\t' << tax[target].rank << '\t' << report.direct_matches << '\t' << report.lca_matches
-                << '\t' << report.unique_matches << '\t' << tax[target].name << '\n';
+        out_rep << target << '\t' << report.direct_matches << '\t' << report.lca_reads << '\t' << report.unique_reads
+                << '\t' << tax[target].rank << '\t' << tax[target].name << '\n';
     }
+
     out_rep.close();
 }
 
@@ -773,7 +755,7 @@ void pre_process_lca( LCA& lca, TTax& tax )
 
 bool run( Config config )
 {
-    //std::ios_base::sync_with_stdio( false );
+    // std::ios_base::sync_with_stdio( false );
 
     if ( !config.validate() )
         return false;
@@ -966,7 +948,7 @@ bool run( Config config )
 
         // Write report
         if ( !config.output_prefix.empty() )
-            detail::write_report( rep, tax, hierarchy_config.output_file_rep );
+            detail::write_report( rep, tax, stats, hierarchy_config.output_file_rep );
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
