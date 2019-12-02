@@ -14,13 +14,13 @@ namespace config_classify
 GanonClassify::Config defaultConfig()
 {
     GanonClassify::Config cfg;
-    cfg.output_prefix           = "classify_test_output";
-    cfg.output_hierarchy_single = true;
-    cfg.threads                 = 3;
-    cfg.verbose                 = false;
-    cfg.quiet                   = true;
-    cfg.hierarchy_labels        = { "1" };
-    cfg.offset                  = 1;
+    cfg.output_prefix    = "classify_test_output";
+    cfg.output_single    = true;
+    cfg.threads          = 3;
+    cfg.verbose          = false;
+    cfg.quiet            = true;
+    cfg.hierarchy_labels = { "1" };
+    cfg.offset           = 1;
 
     return cfg;
 }
@@ -255,7 +255,7 @@ SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
     cfg.hierarchy_labels             = { "1", "2" };
     std::string output_prefix1       = cfg.output_prefix + ".1.all";
     std::string output_prefix2       = cfg.output_prefix + ".2.all";
-    cfg.output_hierarchy_single      = false;
+    cfg.output_single                = false;
     const std::string desired_output = "results/classify_output-ba-ba_e0c12.txt";
 
     REQUIRE( GanonClassify::run( cfg ) );

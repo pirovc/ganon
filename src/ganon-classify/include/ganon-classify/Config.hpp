@@ -48,10 +48,10 @@ public:
     std::vector< int16_t > max_error_unique{ -1 };
     uint16_t               offset = 1;
 
-    std::string output_prefix           = "";
-    bool        output_all              = false;
-    bool        output_unclassified     = false;
-    bool        output_hierarchy_single = false;
+    std::string output_prefix       = "";
+    bool        output_all          = false;
+    bool        output_unclassified = false;
+    bool        output_single       = false;
 
     uint16_t threads   = 3;
     uint32_t n_batches = 1000;
@@ -210,7 +210,7 @@ public:
                 std::string output_file_lca;
                 std::string output_file_rep;
                 std::string output_file_all;
-                if ( !output_prefix.empty() && unique_hierarchy > 1 && !output_hierarchy_single )
+                if ( !output_prefix.empty() && unique_hierarchy > 1 && !output_single )
                 {
                     output_file_lca = output_prefix + "." + hierarchy_labels[h] + ".lca";
                     output_file_rep = output_prefix + "." + hierarchy_labels[h] + ".rep";
@@ -272,7 +272,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-prefix             " << config.output_prefix << newl;
     stream << "--output-all                " << config.output_all << newl;
     stream << "--output-unclassified       " << config.output_unclassified << newl;
-    stream << "--output-hierarchy-single   " << config.output_hierarchy_single << newl;
+    stream << "--output-single             " << config.output_single << newl;
     stream << newl;
     stream << "--threads                   " << config.threads << newl;
     stream << "--n-batches                 " << config.n_batches << newl;

@@ -98,7 +98,7 @@ struct ReadBatches
 struct ReadMatch
 {
     std::string target;
-    int16_t     kmer_count;
+    uint16_t    kmer_count;
 };
 
 struct ReadOut
@@ -884,16 +884,16 @@ bool run( Config config )
 
         if ( !config.output_prefix.empty() )
         {
-            if ( hierarchy_first || !config.output_hierarchy_single )
+            if ( hierarchy_first || !config.output_single )
                 out.open( hierarchy_config.output_file_lca );
-            else // append if not first and output_hierarchy_single
+            else // append if not first and output_single
                 out.open( hierarchy_config.output_file_lca, std::ofstream::app );
 
             if ( config.output_all )
             {
-                if ( hierarchy_first || !config.output_hierarchy_single )
+                if ( hierarchy_first || !config.output_single )
                     out_all.open( hierarchy_config.output_file_all );
-                else // append if not first and output_hierarchy_single
+                else // append if not first and output_single
                     out_all.open( hierarchy_config.output_file_all, std::ofstream::app );
 
                 // Start writing thread for all matches
