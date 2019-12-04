@@ -91,8 +91,8 @@ def main(arguments=None):
     
     classify_group_optional.add_argument('-o', '--output-prefix', type=str, help='Output prefix. Empty to print to STDOUT (only with lca)')
     classify_group_optional.add_argument('-a', '--output-all', default=False, action='store_true', help='Output all')
-    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output all')
-    classify_group_optional.add_argument('-s', '--output-single', default=False, action='store_true', help='Output all')
+    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output unclassified')
+    classify_group_optional.add_argument('-s', '--output-single', default=False, action='store_true', help='Output single file with multiple hierarchies')
 
     classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads.)')
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)

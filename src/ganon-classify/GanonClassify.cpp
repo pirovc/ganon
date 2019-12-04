@@ -388,16 +388,21 @@ void classify( std::vector< Filter >&    filters,
             // If there are matches
             if ( count_filtered_matches > 0 )
             {
-                if ( max_error_unique >= 0 )
-                    check_unique( read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
-                else
-                    rep[read_out.matches[0].target].unique_reads++;
 
                 ReadOut read_out_lca( rb.ids[readID] );
                 if ( count_filtered_matches == 1 )
+                {
+                    if ( max_error_unique >= 0 )
+                        check_unique(
+                            read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
+                    else
+                        rep[read_out.matches[0].target].unique_reads++;
                     read_out_lca = read_out; // just one match
+                }
                 else
+                {
                     lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
+                }
 
                 stats.classifiedReads += 1;
                 stats.matches += count_filtered_matches;
@@ -425,19 +430,20 @@ void classify( std::vector< Filter >&    filters,
     }
 }
 
-void write_report( TRep& rep, TTax& tax, Stats& stats, std::string output_file_rep )
+void write_report(
+    TRep& rep, TTax& tax, Stats& stats, std::ofstream& out_rep, std::string hierarchy_label, bool hierarchy_last )
 {
-    std::ofstream out_rep( output_file_rep );
-    out_rep << "unclassified" << '\t' << "-\t"
-            << "-\t" << stats.totalReads - stats.classifiedReads << "\t"
-            << "-\t"
-            << "-\t" << '\n';
     for ( auto const & [ target, report ] : rep )
     {
-        out_rep << target << '\t' << report.direct_matches << '\t' << report.lca_reads << '\t' << report.unique_reads
-                << '\t' << tax[target].rank << '\t' << tax[target].name << '\n';
+        out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
+                << '\t' << report.lca_reads << '\t' << tax[target].rank << '\t' << tax[target].name << '\n';
     }
 
+    if ( hierarchy_last )
+    {
+        out_rep << "#total_classified\t" << stats.totalReads - stats.classifiedReads << '\n';
+        out_rep << "#total_unclassified\t" << stats.totalReads << '\n';
+    }
     out_rep.close();
 }
 
@@ -780,6 +786,7 @@ bool run( Config config )
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_all;
+    std::ofstream out_rep;
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
@@ -948,7 +955,16 @@ bool run( Config config )
 
         // Write report
         if ( !config.output_prefix.empty() )
-            detail::write_report( rep, tax, stats, hierarchy_config.output_file_rep );
+            if ( hierarchy_first )
+            {
+                out_rep.open( hierarchy_config.output_file_rep );
+            }
+            else
+            {
+                // append if not first and output_single
+                out_rep.open( hierarchy_config.output_file_rep, std::ofstream::app );
+            }
+        detail::write_report( rep, tax, stats, out_rep, hierarchy_label, hierarchy_last );
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )

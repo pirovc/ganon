@@ -213,14 +213,15 @@ public:
                 if ( !output_prefix.empty() && unique_hierarchy > 1 && !output_single )
                 {
                     output_file_lca = output_prefix + "." + hierarchy_labels[h] + ".lca";
-                    output_file_rep = output_prefix + "." + hierarchy_labels[h] + ".rep";
                     output_file_all = output_prefix + "." + hierarchy_labels[h] + ".all";
+                    output_file_rep = output_prefix + ".rep";
                 }
                 else if ( !output_prefix.empty() )
                 {
                     output_file_lca = output_prefix + ".lca";
-                    output_file_rep = output_prefix + ".rep";
+
                     output_file_all = output_prefix + ".all";
+                    output_file_rep = output_prefix + ".rep";
                 }
 
                 parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{
