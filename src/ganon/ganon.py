@@ -423,7 +423,6 @@ def main(arguments=None):
 
             filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
         
-
             with open(args.output_prefix + ".rep" , 'r') as rep_file:
                 for line in rep_file:
                     fields = line.rstrip().split("\t")
@@ -736,7 +735,7 @@ def parse_tax_files(tax_files):
                 if target not in filtered_nodes:
                     filtered_nodes[target] = (parent,name,rank)
     return filtered_nodes
-    
+
 def read_nodes(nodes_file):
     # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
     nodes = {}
