@@ -41,7 +41,7 @@ public:
     std::vector< std::string > map;
     std::vector< std::string > tax;
 
-    std::vector< std::string > hierarchy_labels{ "" };
+    std::vector< std::string > hierarchy_labels{ "1_default" };
 
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;

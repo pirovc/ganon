@@ -99,10 +99,6 @@ def main(arguments=None):
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
     classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
-
-    #classify_group_optional.add_argument('--skip-filter' default=False, action='store_true', help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
-    #classify_group_optional.add_argument('--skip-lca', default=False, action='store_true', help='Skip LCA step and output multiple matches. --max-error-unique will not be applied')
-    #classify_group_optional.add_argument('--skip-reports', default=False, action='store_true', help='Skip final reports')
     
     classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
 
@@ -402,7 +398,7 @@ def main(arguments=None):
                                        "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in args.db_prefix]),
                                        "--map " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]),
                                        "--tax " + ",".join([db_prefix+".tax" for db_prefix in args.db_prefix]),
-                                       "--hierarchy-labels " + args.hierarchy_labels if args.hierarchy_labels else "",
+                                       "--hierarchy-labels " + ",".join(args.hierarchy_labels) if args.hierarchy_labels else "",
                                        "--max-error " + ",".join([str(me) for me in args.max_error]) if args.max_error else "",
                                        "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]) if args.min_kmers else "",
                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]) if args.max_error_unique else "",
@@ -420,27 +416,31 @@ def main(arguments=None):
         print_log(stderr)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-        # if not args.skip_lca and not args.skip_reports:
-        #     tx = time.time()
-        #     print_log("Generating reports... ")
+        reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
+        if args.output_prefix:
+            tx = time.time()
+            print_log("Generating reports... ")
 
-        #     # get reads classified and unclassified from strerr
-        #     re_out = re.search(r"\d+\ssequences classified", stderr)
-        #     seq_cla = int(re_out.group().split(" ")[0]) if re_out is not None else 0
-        #     re_out = re.search(r"\d+\ssequences unclassified", stderr)
-        #     seq_unc = int(re_out.group().split(" ")[0]) if re_out is not None else 0
-        #     total_reads = seq_cla+seq_unc
+            filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
+        
 
-        #     for hierarchy_name, hierarchy in output_hierarchy.items():
-                
-        #         with open(hierarchy["rep_file"], 'w') as rfile:
-        #             rfile.write("unclassified" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) +"\t"+ "0" +"\t"+ "0" +"\t"+ "0" +"\t"+ "-" +"\t"+ "-" + "\n")
-        #             for assignment in sorted(reports[hierarchy_name], key=lambda k: reports[hierarchy_name][k]['count'], reverse=True):
-        #                 rfile.write(assignment +"\t"+ str(reports[hierarchy_name][assignment]['count']) +"\t"+ str("%.5f" % ((reports[hierarchy_name][assignment]['count']/total_reads)*100)) +"\t"+ str(reports[hierarchy_name][assignment]['assignments']) +"\t"+ str(reports[hierarchy_name][assignment]['unique']) +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][2] +"\t"+ merged_filtered_nodes[hierarchy_name][assignment][1] + "\n")
+            with open(args.output_prefix + ".rep" , 'r') as rep_file:
+                for line in rep_file:
+                    fields = line.rstrip().split("\t")
+                    if fields[0] == "#total_classified":
+                        seq_cla = int(fields[1])
+                    elif fields[0] == "#total_unclassified":
+                        seq_unc = int(fields[1])
+                    else:
+                        hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
+                        reports[hierarchy_name][target]["direct_matches"]+=int(direct_matches)
+                        reports[hierarchy_name][target]["unique_reads"]+=int(unique_reads)
+                        reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
+            total_reads = seq_cla+seq_unc
 
-        #     final_report_file = args.output_file_prefix+".tre"
-        #     print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
-        #     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+            final_report_file = args.output_prefix+".tre"
+            print_final_report(reports, filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
     print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
 
@@ -727,6 +727,16 @@ def build_tax(db_prefix_tax, unique_taxids, group_taxid, ncbi_nodes_file, ncbi_n
 
     tax.close()
 
+def parse_tax_files(tax_files):
+    filtered_nodes = {}
+    for tax_file in tax_files:
+        with open(tax_file , 'r') as tax_file:
+            for line in tax_file:
+                target, parent, rank, name = line.rstrip().split("\t")
+                if target not in filtered_nodes:
+                    filtered_nodes[target] = (parent,name,rank)
+    return filtered_nodes
+    
 def read_nodes(nodes_file):
     # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
     nodes = {}
@@ -891,7 +901,7 @@ def taxid_rank_up_to(taxid, filtered_nodes, fixed_ranks):
     else:
         return "0", ""
 
-def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, final_report_file, ranks):
+def print_final_report(reports, all_filtered_nodes, seq_unc, total_reads, final_report_file, ranks):
 
     if not ranks:  
         all_ranks = False
@@ -903,16 +913,11 @@ def print_final_report(reports, merged_filtered_nodes, seq_unc, total_reads, fin
         all_ranks = False
         fixed_ranks = ['root'] + ranks
 
-    # merge nodes
-    all_filtered_nodes = {}
-    for m in merged_filtered_nodes.values():
-        all_filtered_nodes.update(m)
-
     # sum counts of each report
     merged_rep = defaultdict(int)
     for rep in reports.values():
         for leaf in rep.keys():
-            merged_rep[leaf]+=rep[leaf]['count']
+            merged_rep[leaf]+=rep[leaf]['unique_reads']+rep[leaf]['lca_reads']
 
     final_rep = defaultdict(lambda: {'count': 0, 'rank': ""})
     

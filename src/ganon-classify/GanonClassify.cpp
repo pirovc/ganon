@@ -441,8 +441,8 @@ void write_report(
 
     if ( hierarchy_last )
     {
-        out_rep << "#total_classified\t" << stats.totalReads - stats.classifiedReads << '\n';
-        out_rep << "#total_unclassified\t" << stats.totalReads << '\n';
+        out_rep << "#total_classified\t" << stats.classifiedReads << '\n';
+        out_rep << "#total_unclassified\t" <<stats.totalReads - stats.classifiedReads << '\n';
     }
     out_rep.close();
 }

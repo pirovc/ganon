@@ -20,7 +20,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "m,map", "map files[s]. Tab-separated file mapping target groups (taxids, assemblies) and bin identifiers with the following fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
         ( "x,tax", "tax (taxonomy) files[s]. Tab-separated file with a complete tree with the following fields: node <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
         
-        ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3)", cxxopts::value< std::vector< std::string > >() )
+        ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
         ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. Default: 0.25", cxxopts::value< std::vector< float > >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]", cxxopts::value< std::vector< int16_t > >() )
