@@ -59,7 +59,7 @@ public:
     bool     verbose   = false;
     bool     quiet     = false;
 
-    uint16_t                                 threads_classify = threads - 2;
+    uint16_t                                 threads_classify;
     std::map< std::string, HierarchyConfig > parsed_hierarchy;
 
     bool validate()
@@ -114,8 +114,9 @@ public:
 
         if ( threads <= 3 )
         {
-            threads          = 3;
             threads_classify = 1;
+        }else{
+            threads_classify = threads - 2;
         }
 
         if ( n_batches < 1 )

@@ -123,20 +123,20 @@ Obs:
 
 Every run on `ganon build` or `ganon update` will generate the following database files:
 
-{prefix}**.ibf**: main interleaved bloom filter file
-{prefix}**.map**: mapping between taxonomic targets and bin identifiers
-{prefix}**.tax**: taxonomic nodes
-{prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameter
+ - {prefix}**.ibf**: main interleaved bloom filter file
+ - {prefix}**.map**: mapping between taxonomic targets and bin identifiers
+ - {prefix}**.tax**: taxonomic nodes
+ - {prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameter
 
 Obs:
 -  Database files from version 0.1.X are NOT compatible with 0.2.X
 
 ### classify
 
-{prefix}**.lca**: output with one match for each classified read (fields: read identifier, target, (max) k-mer count)
-{prefix}**.rep**: plain report of the run with only assigned targets (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name).
-{prefix}**.tre**: tree-like report with cummulative counts and lineage (fields: rank, target, lineage, name, cummulative # reads assigned, cummulative % reads assigned)
-{prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active . Warning: file can be very large (fields: read identifier, target, k-mer count)
+ - {prefix}[.{hierarchy}]**.lca**: output with one match for each classified read (fields: read identifier, target, (max) k-mer count)
+ - {prefix}[.{hierarchy}]**.all**: output with all matches for each read. Only generated with --output-all/-a active . Warning: file can be very large (fields: read identifier, target, k-mer count)
+  - {prefix}**.rep**: plain report of the run with only assigned targets (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name).
+ - {prefix}**.tre**: tree-like report with cummulative counts and lineage (fields: rank, target, lineage, name, cummulative # reads assigned, cummulative % reads assigned)
 
 #### Example of classification output files
 

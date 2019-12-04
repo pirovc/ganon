@@ -94,7 +94,7 @@ def main(arguments=None):
     classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output unclassified')
     classify_group_optional.add_argument('-s', '--output-single', default=False, action='store_true', help='Output single file with multiple hierarchies')
 
-    classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads.)')
+    classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads.')
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
@@ -404,7 +404,7 @@ def main(arguments=None):
                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]) if args.max_error_unique else "",
                                        "--offset " + str(args.offset) if args.offset else "",
                                        "--output-prefix " + args.output_prefix if args.output_prefix else "",
-                                       "--output-all" if args.verbose else "",
+                                       "--output-all" if args.output_all else "",
                                        "--output-unclassified" if args.output_unclassified else "",
                                        "--output-single" if args.output_single else "",
                                        "--threads " + str(args.threads) if args.threads else "",
