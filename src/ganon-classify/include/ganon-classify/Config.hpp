@@ -115,7 +115,9 @@ public:
         if ( threads <= 3 )
         {
             threads_classify = 1;
-        }else{
+        }
+        else
+        {
             threads_classify = threads - 2;
         }
 
@@ -124,6 +126,12 @@ public:
 
         if ( n_reads < 1 )
             n_reads = 1;
+
+        if ( output_prefix.empty() )
+        {
+            output_all          = false;
+            output_unclassified = false;
+        }
 
         return parse_hierarchy();
     }
@@ -220,7 +228,6 @@ public:
                 else if ( !output_prefix.empty() )
                 {
                     output_file_lca = output_prefix + ".lca";
-
                     output_file_all = output_prefix + ".all";
                     output_file_rep = output_prefix + ".rep";
                 }

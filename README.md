@@ -124,18 +124,21 @@ Obs:
 Every run on `ganon build` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter file
- - {prefix}**.map**: mapping between taxonomic targets and bin identifiers
- - {prefix}**.tax**: taxonomic nodes
- - {prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameter
+ - {prefix}**.map**: tab-separated mapping between targets and bin identifiers (fields: target, bin id). Targets should be present in the .tax file as a node.
+ - {prefix}**.tax**: taxonomic tree (fields: node, parent, rank, name)
+ - {prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version 0.1.X are NOT compatible with 0.2.X
+-  Database files from version `0.1.X` are **NOT** compatible with `0.2.X`.
 
 ### classify
 
- - {prefix}[.{hierarchy}]**.lca**: output with one match for each classified read (fields: read identifier, target, (max) k-mer count)
- - {prefix}[.{hierarchy}]**.all**: output with all matches for each read. Only generated with --output-all/-a active . Warning: file can be very large (fields: read identifier, target, k-mer count)
-  - {prefix}**.rep**: plain report of the run with only assigned targets (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name).
+ - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca (fields: read identifier, target, (max) k-mer count)
+ - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* (fields: read identifier, target, k-mer count)
+  - {prefix}**.rep**: plain report of the run with only target that receive an match (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+
+### report
+
  - {prefix}**.tre**: tree-like report with cummulative counts and lineage (fields: rank, target, lineage, name, cummulative # reads assigned, cummulative % reads assigned)
 
 #### Example of classification output files
@@ -207,9 +210,14 @@ ganon accepts single-end or paired-end reads. In the paired-end mode, reads are 
 
 Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
 
-### IBF size
+### --max-error-unique
 
-The most useful variable to define the IBF size (.filter file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
+Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the threshold is not achieved, the match is not excluded but assigned to the parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to 0 or 1.
+
+
+### .ibf size (--max-bloom-size, --bin-length)
+
+The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
 
 The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`, `--kmer-size` and `--hash-functions`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--fixed-bloom-size` (ganon will tell you what's the resulting max. false positive).
 
@@ -245,7 +253,6 @@ System packages:
 
 Specific packages:
 - taxsbp >=0.1.2 ([6e1481](https://github.com/pirovc/taxsbp/commit/6e14819791a960273a191b3e1e028b084ed2d945))
-- pylca >= 1.0.0 ([d1474b](https://github.com/pirovc/pylca/commit/d1474b2ec2c028963bafce278ccb69cc21c061fa))
 - binpacking >=1.4.1 ([v1.4.1](https://pypi.org/project/binpacking/1.4.1/))
 
 ** Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
@@ -255,7 +262,6 @@ Specific packages:
 ```shh
 git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catch2, cxxopts, sdsl-lite, seqan
 git clone https://github.com/pirovc/taxsbp.git # taxsbp
-git clone https://github.com/pirovc/pylca.git # pylca
 ```
 
 ### Installing 
@@ -266,14 +272,6 @@ git clone https://github.com/pirovc/pylca.git # pylca
 cd taxsbp
 python3 setup.py install
 taxsbp -h
-```
-
-#### pylca
-
-```shh
-cd pylca
-python3 setup.py install
-python3 -c 'from pylca.pylca import *; unittest.main();'
 ```
 
 #### binpacking

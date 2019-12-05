@@ -39,7 +39,7 @@ typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
 typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
     TSeqRevComp;
 
-typedef std::unordered_map< std::string, int16_t > TMatches;
+typedef std::unordered_map< std::string, uint16_t > TMatches;
 
 struct Node
 {
@@ -50,9 +50,9 @@ struct Node
 
 struct Rep
 {
-    std::atomic< uint64_t > direct_matches;
-    std::atomic< uint64_t > lca_reads;
-    std::atomic< uint64_t > unique_reads;
+    std::atomic< uint64_t > direct_matches = 0;
+    std::atomic< uint64_t > lca_reads      = 0;
+    std::atomic< uint64_t > unique_reads   = 0;
 };
 
 typedef std::unordered_map< std::string, Rep >  TRep;
@@ -120,16 +120,29 @@ struct Stats
 {
     Stats()
     : sumReadLen{ 0 }
+    , totalReads{ 0 }
     , classifiedReads{ 0 }
     , matches{ 0 }
-    , totalReads{ 0 }
     {
     }
 
-    std::atomic< uint64_t > sumReadLen;
-    std::atomic< uint64_t > classifiedReads;
-    std::atomic< uint64_t > matches;
-    uint64_t                totalReads;
+    std::atomic< uint64_t >           sumReadLen;
+    uint64_t                          totalReads;
+    uint64_t                          classifiedReads;
+    uint64_t                          matches;
+    std::map< std::string, uint64_t > classifiedReads_hierarchy;
+    std::map< std::string, uint64_t > matches_hierarchy;
+
+    void load_rep( std::string hierarchy_label, TRep& rep )
+    {
+        for ( auto const & [ target, report ] : rep )
+        {
+            classifiedReads_hierarchy[hierarchy_label] += report.unique_reads + report.lca_reads;
+            matches_hierarchy[hierarchy_label] += report.direct_matches;
+            classifiedReads += report.unique_reads + report.lca_reads;
+            matches += report.direct_matches;
+        }
+    }
 };
 
 
@@ -145,7 +158,7 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( -kmerSize + readLen - ( kmer_count * offset + ( offset - 1 ) ) + 1 )
+    return std::ceil( ( readLen - kmerSize + 1u - ( kmer_count * offset + ( offset - 1u ) ) )
                       / static_cast< float >( kmerSize ) );
 }
 
@@ -303,7 +316,9 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_co
 {
     std::vector< std::string > targets;
     for ( auto const & [ target, kmer_count ] : read_out.matches )
+    {
         targets.push_back( target );
+    }
 
     std::string target_lca = lca.getLCA( targets );
     rep[target_lca].lca_reads++;
@@ -315,9 +330,9 @@ void classify( std::vector< Filter >&    filters,
                LCA&                      lca,
                TTax&                     tax,
                TRep&                     rep,
-               SafeQueue< ReadOut >&     classified_reads_queue,
+               SafeQueue< ReadOut >&     classified_all_queue,
                SafeQueue< ReadOut >&     classified_lca_queue,
-               SafeQueue< ReadOut >&     unclassified_reads_queue,
+               SafeQueue< ReadOut >&     unclassified_queue,
                Stats&                    stats,
                Config const&             config,
                SafeQueue< ReadBatches >* pointer_current,
@@ -353,8 +368,7 @@ void classify( std::vector< Filter >&    filters,
 
             TMatches matches;
             ReadOut  read_out( rb.ids[readID] );
-            uint32_t count_filtered_matches = 0;
-            uint16_t max_kmer_count_read    = 0;
+            uint16_t max_kmer_count_read = 0;
 
             // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
             if ( effective_read_len >= kmer_size )
@@ -366,51 +380,63 @@ void classify( std::vector< Filter >&    filters,
                     {
                         // add to effective length the pair for error calculation
                         effective_read_len += read2_len + 1 - kmer_size;
-
                         // count lens just once
                         if ( hierarchy_first )
                             stats.sumReadLen += read2_len;
 
                         max_kmer_count_read = find_matches_paired(
                             matches, filters, rb.seqs[readID], rb.seqs2[readID], effective_read_len );
-                        count_filtered_matches = filter_matches(
-                            read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
                     }
                 }
                 else // single-end mode
                 {
-                    max_kmer_count_read    = find_matches( matches, filters, rb.seqs[readID] );
-                    count_filtered_matches = filter_matches(
-                        read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
+                    max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID] );
                 }
             }
 
-            // If there are matches
-            if ( count_filtered_matches > 0 )
+            // if there were some assignments
+            if ( max_kmer_count_read > 0 )
             {
 
-                ReadOut read_out_lca( rb.ids[readID] );
-                if ( count_filtered_matches == 1 )
-                {
-                    if ( max_error_unique >= 0 )
-                        check_unique(
-                            read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
-                    else
-                        rep[read_out.matches[0].target].unique_reads++;
-                    read_out_lca = read_out; // just one match
-                }
-                else
-                {
-                    lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
-                }
+                // filter matches
+                uint32_t count_filtered_matches = filter_matches(
+                    read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
 
-                stats.classifiedReads += 1;
-                stats.matches += count_filtered_matches;
-                classified_lca_queue.push( read_out_lca );
-                if ( config.output_all )
-                    classified_reads_queue.push( read_out );
+                // If there are matches remining
+                if ( count_filtered_matches > 0 )
+                {
+
+                    ReadOut read_out_lca( rb.ids[readID] );
+                    if ( count_filtered_matches == 1 )
+                    {
+                        if ( max_error_unique >= 0 )
+                        {
+                            check_unique(
+                                read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
+                        }
+                        else
+                        {
+                            rep[read_out.matches[0].target].unique_reads++;
+                        }
+                        read_out_lca = read_out; // just one match
+                    }
+                    else
+                    {
+                        lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
+                    }
+
+                    classified_lca_queue.push( read_out_lca );
+
+                    if ( config.output_all )
+                        classified_all_queue.push( read_out );
+
+                    // read classified, continue to the next
+                    continue;
+                }
             }
-            else if ( !hierarchy_last ) // if there is more levels, store read
+
+            // not classified
+            if ( !hierarchy_last ) // if there is more levels, store read
             {
                 seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                 seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
@@ -420,7 +446,7 @@ void classify( std::vector< Filter >&    filters,
             else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                    // unclassified printing queue
             {
-                unclassified_reads_queue.push( read_out );
+                unclassified_queue.push( read_out );
             }
         }
 
@@ -430,9 +456,20 @@ void classify( std::vector< Filter >&    filters,
     }
 }
 
-void write_report(
-    TRep& rep, TTax& tax, Stats& stats, std::ofstream& out_rep, std::string hierarchy_label, bool hierarchy_last )
+void write_report( TRep&       rep,
+                   TTax&       tax,
+                   Stats&      stats,
+                   std::string output_file_rep,
+                   std::string hierarchy_label,
+                   bool        hierarchy_first,
+                   bool        hierarchy_last )
 {
+    std::ofstream out_rep;
+    if ( hierarchy_first )
+        out_rep.open( output_file_rep );
+    else // append if not first and output_single
+        out_rep.open( output_file_rep, std::ofstream::app );
+
     for ( auto const & [ target, report ] : rep )
     {
         out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
@@ -442,7 +479,7 @@ void write_report(
     if ( hierarchy_last )
     {
         out_rep << "#total_classified\t" << stats.classifiedReads << '\n';
-        out_rep << "#total_unclassified\t" <<stats.totalReads - stats.classifiedReads << '\n';
+        out_rep << "#total_unclassified\t" << stats.totalReads - stats.classifiedReads << '\n';
     }
     out_rep.close();
 }
@@ -510,47 +547,50 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
 
 void print_time( GanonClassify::Config& config,
                  const StopClock&       timeGanon,
-                 const StopClock&       timeLoadReads,
                  const StopClock&       timeLoadFilters,
-                 const StopClock&       timeClass,
-                 const StopClock&       timePrintClass,
-                 const StopClock&       timePrintUnclass )
+                 const StopClock&       timeClassPrint )
 {
     using ::operator<<;
-
-    std::cerr << "ganon-classify start time: " << timeGanon.begin() << std::endl;
-    std::cerr << "Loading reads  start time: " << timeLoadReads.begin() << std::endl;
-    std::cerr << "Class./ Print. start time: " << timeClass.begin() << std::endl;
-    std::cerr << "Loading reads    end time: " << timeLoadReads.end() << std::endl;
-    std::cerr << "Classifying      end time: " << timeClass.end() << std::endl;
-    std::cerr << "Printing clas.   end time: " << timePrintClass.end() << std::endl;
-    if ( config.output_unclassified )
-        std::cerr << "Printing unclas. end time: " << timePrintUnclass.end() << std::endl;
-    std::cerr << "ganon-classify   end time: " << timeGanon.end() << std::endl;
-    std::cerr << std::endl;
-    std::cerr << " - loading filters: " << timeLoadFilters.elapsed() << std::endl;
-    std::cerr << " - classifying (" << config.threads_classify << "t): " << timeClass.elapsed() << std::endl;
-    std::cerr << " - printing: " << timePrintClass.elapsed() << std::endl;
-    if ( config.output_unclassified )
-        std::cerr << " - printing unclassified" << timePrintUnclass.elapsed() << std::endl;
-    std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
+    std::cerr << "ganon-classify    start time: " << timeGanon.begin() << std::endl;
+    std::cerr << "loading filters      elapsed: " << timeLoadFilters.elapsed() << " seconds" << std::endl;
+    std::cerr << "classifying+printing elapsed: " << timeClassPrint.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify       elapsed: " << timeGanon.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify      end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const StopClock& timeClass )
+void print_stats( Stats& stats, const Config& config, const StopClock& timeClassPrint )
 {
-    const double elapsed_classification = timeClass.elapsed();
+    const double elapsed_classification = timeClassPrint.elapsed();
     std::cerr << "ganon-classify processed " << stats.totalReads << " sequences (" << stats.sumReadLen / 1000000.0
               << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
               << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
     std::cerr << " - " << stats.classifiedReads << " sequences classified ("
               << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
+    std::cerr << " - " << stats.matches << " matches (avg. "
+              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
+
+
+    if ( config.parsed_hierarchy.size() > 1 )
+    {
+        for ( auto const & [ hierarchy_label, hierarchy_config ] : config.parsed_hierarchy )
+        {
+            std::cerr << "    " << hierarchy_label << ": " << stats.classifiedReads_hierarchy[hierarchy_label]
+                      << " sequences ("
+                      << ( stats.classifiedReads_hierarchy[hierarchy_label]
+                           / static_cast< double >( stats.totalReads ) )
+                             * 100
+                      << "%) " << stats.matches_hierarchy[hierarchy_label] << " matches (avg. "
+                      << ( stats.matches_hierarchy[hierarchy_label]
+                           / static_cast< double >( stats.classifiedReads_hierarchy[hierarchy_label] ) )
+                      << ")" << std::endl;
+        }
+    }
+
     std::cerr << " - " << stats.totalReads - stats.classifiedReads << " sequences unclassified ("
               << ( ( stats.totalReads - stats.classifiedReads ) / static_cast< double >( stats.totalReads ) ) * 100
               << "%)" << std::endl;
-    std::cerr << " - " << stats.matches << " matches (avg. "
-              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 }
 
 uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
@@ -600,10 +640,7 @@ uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
     return total_reads;
 }
 
-void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
-                  StopClock&                        timeLoadReads,
-                  Stats&                            stats,
-                  Config const&                     config )
+void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config const& config )
 {
     for ( auto const& reads_file : config.single_reads )
     {
@@ -683,16 +720,13 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1,
         }
     }
     queue1.notify_push_over();
-    timeLoadReads.stop();
 }
 
-void write_classified( SafeQueue< detail::ReadOut >& classified_reads_queue,
-                       std::ofstream&                out,
-                       StopClock&                    timePrintClass )
+void write_classified( SafeQueue< detail::ReadOut >& classified_all_queue, std::ofstream& out )
 {
     while ( true )
     {
-        detail::ReadOut ro = classified_reads_queue.pop();
+        detail::ReadOut ro = classified_all_queue.pop();
         if ( ro.readID != "" )
         {
             for ( uint32_t i = 0; i < ro.matches.size(); ++i )
@@ -702,27 +736,23 @@ void write_classified( SafeQueue< detail::ReadOut >& classified_reads_queue,
         }
         else
         {
-            timePrintClass.stop();
             break;
         }
     }
 }
 
-void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_reads_queue,
-                         std::string                   out_unclassified_file,
-                         StopClock&                    timePrintUnclass )
+void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_queue, std::string out_unclassified_file )
 {
     std::ofstream out_unclassified( out_unclassified_file );
     while ( true )
     {
-        detail::ReadOut rou = unclassified_reads_queue.pop();
+        detail::ReadOut rou = unclassified_queue.pop();
         if ( rou.readID != "" )
         {
             out_unclassified << rou.readID << '\n';
         }
         else
         {
-            timePrintUnclass.stop();
             out_unclassified.close();
             break;
         }
@@ -769,12 +799,8 @@ bool run( Config config )
     // Time control
     StopClock timeGanon;
     timeGanon.start();
-    StopClock timeLoadReads;
     StopClock timeLoadFilters;
-    StopClock timeClass;
-    StopClock timePrintClass;
-    StopClock timePrintClassLCA;
-    StopClock timePrintUnclass;
+    StopClock timeClassPrint;
 
     if ( !config.quiet && config.verbose )
     {
@@ -786,7 +812,6 @@ bool run( Config config )
     // Set output stream (file or stdout)
     std::ofstream out;
     std::ofstream out_all;
-    std::ofstream out_rep;
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
@@ -808,26 +833,19 @@ bool run( Config config )
     detail::Stats stats;
 
     // Thread for reading input files
-    timeLoadReads.start();
-    std::future< void > read_task = std::async( std::launch::async,
-                                                detail::parse_reads,
-                                                std::ref( queue1 ),
-                                                std::ref( timeLoadReads ),
-                                                std::ref( stats ),
-                                                std::ref( config ) );
+    std::future< void > read_task = std::async(
+        std::launch::async, detail::parse_reads, std::ref( queue1 ), std::ref( stats ), std::ref( config ) );
 
     // SafeQueue for printing unclassified
-    SafeQueue< detail::ReadOut > unclassified_reads_queue;
+    SafeQueue< detail::ReadOut > unclassified_queue;
     // Thread for printing unclassified reads
     std::future< void > write_unclassified_task;
     if ( config.output_unclassified && !config.output_prefix.empty() )
     {
-        timePrintUnclass.start();
         write_unclassified_task = std::async( std::launch::async,
                                               detail::write_unclassified,
-                                              std::ref( unclassified_reads_queue ),
-                                              config.output_prefix + ".unc",
-                                              std::ref( timePrintUnclass ) );
+                                              std::ref( unclassified_queue ),
+                                              config.output_prefix + ".unc" );
     }
 
 
@@ -838,7 +856,6 @@ bool run( Config config )
 
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
-
 
     // For every hierarchy level
     for ( auto const & [ hierarchy_label, hierarchy_config ] : config.parsed_hierarchy )
@@ -857,9 +874,6 @@ bool run( Config config )
 
         // merge repeated elements
         detail::TTax tax = detail::merge_tax( filters );
-
-        // for ( auto const& [target, nodes] : tax )
-        //    std::cerr << target << "\t" << nodes.parent << "\t" << nodes.rank << "\t" << nodes.name << std::endl;
 
         // pre-processing of nodes
         LCA lca;
@@ -886,7 +900,7 @@ bool run( Config config )
                 queue1.set_max_size( -1 );
         }
 
-        SafeQueue< detail::ReadOut > classified_reads_queue;
+        SafeQueue< detail::ReadOut > classified_all_queue;
         SafeQueue< detail::ReadOut > classified_lca_queue;
 
         if ( !config.output_prefix.empty() )
@@ -904,26 +918,20 @@ bool run( Config config )
                     out_all.open( hierarchy_config.output_file_all, std::ofstream::app );
 
                 // Start writing thread for all matches
-                timePrintClass.start();
                 write_tasks.emplace_back( std::async( std::launch::async,
                                                       detail::write_classified,
-                                                      std::ref( classified_reads_queue ),
-                                                      std::ref( out_all ),
-                                                      std::ref( timePrintClass ) ) );
+                                                      std::ref( classified_all_queue ),
+                                                      std::ref( out_all ) ) );
             }
         }
 
         // Start writing thread for lca matches
-        timePrintClassLCA.start();
-        write_tasks.emplace_back( std::async( std::launch::async,
-                                              detail::write_classified,
-                                              std::ref( classified_lca_queue ),
-                                              std::ref( out ),
-                                              std::ref( timePrintClassLCA ) ) );
+        write_tasks.emplace_back( std::async(
+            std::launch::async, detail::write_classified, std::ref( classified_lca_queue ), std::ref( out ) ) );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
-        timeClass.start();
+        timeClassPrint.start();
         for ( uint16_t taskNo = 0; taskNo < config.threads_classify; ++taskNo )
         {
             tasks.emplace_back( std::async( std::launch::async,
@@ -932,9 +940,9 @@ bool run( Config config )
                                             std::ref( lca ),
                                             std::ref( tax ),
                                             std::ref( rep ),
-                                            std::ref( classified_reads_queue ),
+                                            std::ref( classified_all_queue ),
                                             std::ref( classified_lca_queue ),
-                                            std::ref( unclassified_reads_queue ),
+                                            std::ref( unclassified_queue ),
                                             std::ref( stats ),
                                             std::ref( config ),
                                             pointer_current,
@@ -950,27 +958,25 @@ bool run( Config config )
             task.get();
         }
         // Inform that no more reads are going to be pushed
-        classified_reads_queue.notify_push_over();
+        classified_all_queue.notify_push_over();
         classified_lca_queue.notify_push_over();
 
-        // Write report
+        // load rep data into stats
+        stats.load_rep( hierarchy_label, rep );
+
+        // write reports
         if ( !config.output_prefix.empty() )
-            if ( hierarchy_first )
-            {
-                out_rep.open( hierarchy_config.output_file_rep );
-            }
-            else
-            {
-                // append if not first and output_single
-                out_rep.open( hierarchy_config.output_file_rep, std::ofstream::app );
-            }
-        detail::write_report( rep, tax, stats, out_rep, hierarchy_label, hierarchy_last );
+        {
+            detail::write_report(
+                rep, tax, stats, hierarchy_config.output_file_rep, hierarchy_label, hierarchy_first, hierarchy_last );
+        }
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
         {
             task.get();
         }
+        timeClassPrint.stop();
 
         // Close file for writing (if not STDOUT)
         if ( !config.output_prefix.empty() )
@@ -988,14 +994,12 @@ bool run( Config config )
             pointer_helper->notify_push_over(); // notify push is over, only on first time (will be always set over for
                                                 // next iterations)
         }
-
-        timeClass.stop();
     }
 
     // Wait here until all unclassified reads are written
     if ( config.output_unclassified )
     {
-        unclassified_reads_queue.notify_push_over();
+        unclassified_queue.notify_push_over();
         write_unclassified_task.get();
     }
 
@@ -1006,10 +1010,9 @@ bool run( Config config )
         std::cerr << std::endl;
         if ( config.verbose )
         {
-            detail::print_time(
-                config, timeGanon, timeLoadReads, timeLoadFilters, timeClass, timePrintClass, timePrintUnclass );
+            detail::print_time( config, timeGanon, timeLoadFilters, timeClassPrint );
         }
-        detail::print_stats( stats, timeClass );
+        detail::print_stats( stats, config, timeClassPrint );
     }
     return true;
 }
