@@ -102,6 +102,21 @@ def main(arguments=None):
     
     classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
 
+    ####################################################################################################
+
+    report_parser = argparse.ArgumentParser(description='Report options', add_help=False)
+
+    # Required
+    report_group_required = report_parser.add_argument_group('required arguments')
+    report_group_required.add_argument('-i', '--rep-file',  required=True, type=str, help='{prefix}.rep file output from ganon classify')
+    report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification (only for .tax files).')
+    
+    # Defaults
+    report_group_optional = report_parser.add_argument_group('optional arguments')
+    report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
+    report_group_optional.add_argument('-m', '--min-matches', type=int, default=0, help='Min. number of matches to output. 0 for all. Default: 0')
+    report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
+    report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report.')
 
     ####################################################################################################
 
@@ -118,15 +133,18 @@ def main(arguments=None):
     classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
     classify.set_defaults(which='classify')
 
+    report = subparsers.add_parser('report', help='Generate reports', parents=[report_parser])
+    report.set_defaults(which='report')
+
     args = parser.parse_args()
 
     if len(sys.argv[1:])==0: # Print help calling script without parameters
         parser.print_help() 
         return 0
     
-    tx_total = time.time()
-
-    args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
+    if args.which!="report": 
+        tx_total = time.time()
+        args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
 
     if args.which=='build' or args.which=='update':
         # if path is given, look for binaries only there
@@ -416,33 +434,26 @@ def main(arguments=None):
         print_log(stderr)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-        reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
         if args.output_prefix:
             tx = time.time()
             print_log("Generating reports... ")
-
             filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
-        
-            with open(args.output_prefix + ".rep" , 'r') as rep_file:
-                for line in rep_file:
-                    fields = line.rstrip().split("\t")
-                    if fields[0] == "#total_classified":
-                        seq_cla = int(fields[1])
-                    elif fields[0] == "#total_unclassified":
-                        seq_unc = int(fields[1])
-                    else:
-                        hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
-                        reports[hierarchy_name][target]["direct_matches"]+=int(direct_matches)
-                        reports[hierarchy_name][target]["unique_reads"]+=int(unique_reads)
-                        reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
-            total_reads = seq_cla+seq_unc
-
-            final_report_file = args.output_prefix+".tre"
-            print_final_report(reports, filtered_nodes, seq_unc, total_reads, final_report_file, args.ranks)
+            classified_reads, unclassified_reads, reports = parse_rep(args.output_prefix+".rep")
+            print_final_report(reports, filtered_nodes, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0)
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
-    print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
 
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+#################################################################################################################################
+
+    elif args.which=='report':
+        classified_reads, unclassified_reads, reports = parse_rep(args.rep_file)
+        filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
+        print_final_report(reports, filtered_nodes, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc)
+
+    if args.which!='report': print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
 
 #################################################################################################################################
 #################################################################################################################################
@@ -726,6 +737,23 @@ def build_tax(db_prefix_tax, unique_taxids, group_taxid, ncbi_nodes_file, ncbi_n
 
     tax.close()
 
+def parse_rep(rep_file):
+    reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
+    with open(rep_file, 'r') as rep_file:
+        for line in rep_file:
+            fields = line.rstrip().split("\t")
+            if fields[0] == "#total_classified":
+                seq_cla = int(fields[1])
+            elif fields[0] == "#total_unclassified":
+                seq_unc = int(fields[1])
+            else:
+                hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
+                reports[hierarchy_name][target]["direct_matches"]+=int(direct_matches)
+                reports[hierarchy_name][target]["unique_reads"]+=int(unique_reads)
+                reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
+    return seq_cla, seq_unc, reports
+
+
 def parse_tax_files(tax_files):
     filtered_nodes = {}
     for tax_file in tax_files:
@@ -900,7 +928,7 @@ def taxid_rank_up_to(taxid, filtered_nodes, fixed_ranks):
     else:
         return "0", ""
 
-def print_final_report(reports, all_filtered_nodes, seq_unc, total_reads, final_report_file, ranks):
+def print_final_report(reports, all_filtered_nodes, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc):
 
     if not ranks:  
         all_ranks = False
@@ -960,14 +988,25 @@ def print_final_report(reports, all_filtered_nodes, seq_unc, total_reads, final_
                 max_rank_idx-=1
                 t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
 
-    with open(final_report_file, 'w') as frfile:
-        frfile.write("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(seq_unc) +"\t"+ str("%.5f" % ((seq_unc/total_reads)*100)) + "\n")
-        if all_ranks:
-            for assignment in sorted(lineage, key=lineage.get):
-                frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
-        else:
-            for assignment in sorted(lineage, key=lambda k: (fixed_ranks.index(final_rep[k]['rank']), -final_rep[k]['count']), reverse=False):
-                frfile.write(final_rep[assignment]['rank'] +"\t"+ assignment +"\t"+ "|".join(lineage[assignment]) +"\t"+ all_filtered_nodes[assignment][1] +"\t"+ str(final_rep[assignment]['count']) +"\t"+ str("%.5f" % ((final_rep[assignment]['count']/total_reads)*100)) + "\n")
+    total_reads = classified_reads + unclassified_reads
+    frfile = open(final_report_file, 'w') if final_report_file else None
+    print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
+    
+    if all_ranks:
+        sorted_assignments = sorted(lineage, key=lineage.get)
+    else:
+        sorted_assignments = sorted(lineage, key=lambda k: (fixed_ranks.index(final_rep[k]['rank']), -final_rep[k]['count']), reverse=False)
+    
+    for assignment in sorted_assignments:
+        rank=final_rep[assignment]['rank'] 
+        name=all_filtered_nodes[assignment][1]
+        matches=final_rep[assignment]['count']
+        if matches < min_matches: continue
+        matches_perc=(final_rep[assignment]['count']/total_reads)*100
+        if matches_perc < min_matches_perc: continue
+        print(rank, assignment, "|".join(lineage[assignment]), name, matches, "%.5f" % matches_perc, file=frfile, sep="\t")
+    
+    if final_report_file: frfile.close()
 
 def print_log(text):
     sys.stderr.write(text)
