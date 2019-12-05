@@ -180,7 +180,7 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 }
 
 
-inline void check_unique( ReadOut& read_out,
+inline void check_unique( ReadOut& read_out_lca,
                           uint16_t read_len,
                           uint16_t kmer_size,
                           uint16_t max_error_unique,
@@ -190,14 +190,14 @@ inline void check_unique( ReadOut& read_out,
 {
     uint16_t threshold_error_unique = get_threshold_errors( read_len, kmer_size, max_error_unique, offset );
     // if kmer count is lower than expected set match to parent node
-    if ( read_out.matches[0].kmer_count < threshold_error_unique )
+    if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
     {
-        read_out.matches[0].target = tax[read_out.matches[0].target].parent; // parent node
-        rep[read_out.matches[0].target].lca_reads++;                         // count as lca for parent
+        read_out_lca.matches[0].target = tax[read_out_lca.matches[0].target].parent; // parent node
+        rep[read_out_lca.matches[0].target].lca_reads++;                             // count as lca for parent
     }
     else
     {
-        rep[read_out.matches[0].target].unique_reads++; // count as unique for target
+        rep[read_out_lca.matches[0].target].unique_reads++; // count as unique for target
     }
 }
 
@@ -409,16 +409,17 @@ void classify( std::vector< Filter >&    filters,
                     ReadOut read_out_lca( rb.ids[readID] );
                     if ( count_filtered_matches == 1 )
                     {
+                        read_out_lca = read_out; // just one match, copy read read_out
                         if ( max_error_unique >= 0 )
                         {
+                            // re-classify read to parent if threshold<=max_error_unique
                             check_unique(
-                                read_out, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
+                                read_out_lca, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
                         }
                         else
                         {
                             rep[read_out.matches[0].target].unique_reads++;
                         }
-                        read_out_lca = read_out; // just one match
                     }
                     else
                     {
@@ -545,10 +546,7 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
     }
 }
 
-void print_time( GanonClassify::Config& config,
-                 const StopClock&       timeGanon,
-                 const StopClock&       timeLoadFilters,
-                 const StopClock&       timeClassPrint )
+void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, const StopClock& timeClassPrint )
 {
     using ::operator<<;
     std::cerr << "ganon-classify    start time: " << timeGanon.begin() << std::endl;
@@ -1010,7 +1008,7 @@ bool run( Config config )
         std::cerr << std::endl;
         if ( config.verbose )
         {
-            detail::print_time( config, timeGanon, timeLoadFilters, timeClassPrint );
+            detail::print_time( timeGanon, timeLoadFilters, timeClassPrint );
         }
         detail::print_stats( stats, config, timeClassPrint );
     }
