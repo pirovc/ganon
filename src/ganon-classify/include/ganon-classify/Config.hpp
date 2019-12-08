@@ -249,28 +249,33 @@ public:
 inline std::ostream& operator<<( std::ostream& stream, const Config& config )
 {
     constexpr auto newl{ "\n" };
+    constexpr auto separator{ "----------------------------------------------------------------------" };
 
-    stream << newl;
+    stream << separator << newl;
+    stream << "Database hierarchy:" << newl;
     for ( auto const& hierarchy_config : config.parsed_hierarchy )
     {
         if ( !hierarchy_config.first.empty() )
-            stream << hierarchy_config.first << ":" << newl;
-        stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
+            stream << hierarchy_config.first << ")"
+                   << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
         for ( auto const& filter_config : hierarchy_config.second.filters )
         {
-            stream << "  --ibf: " << filter_config.ibf_file << newl;
-            stream << "  --map: " << filter_config.map_file << newl;
-            stream << "  --tax: " << filter_config.tax_file << newl;
             if ( filter_config.min_kmers > -1 )
                 stream << "  --min-kmers: " << filter_config.min_kmers << newl;
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
+            stream << "  --ibf: " << filter_config.ibf_file << newl;
+            stream << "  --map: " << filter_config.map_file << newl;
+            stream << "  --tax: " << filter_config.tax_file << newl;
         }
-        stream << "  Output files:" << hierarchy_config.second.output_file_lca << ","
-               << hierarchy_config.second.output_file_rep << "," << hierarchy_config.second.output_file_all << newl;
+        stream << "  Output files:" << newl;
+        stream << "    " << hierarchy_config.second.output_file_lca << newl;
+        stream << "    " << hierarchy_config.second.output_file_rep << newl;
+        if ( config.output_all )
+            stream << "    " << hierarchy_config.second.output_file_all << newl;
     }
     stream << newl;
-    stream << "--offset                    " << config.offset << newl;
+    stream << "Input files:" << newl;
     stream << "--reads-single              " << newl;
     for ( const auto& s : config.single_reads )
         stream << "                            " << s << newl;
@@ -278,17 +283,18 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     for ( const auto& s : config.paired_reads )
         stream << "                            " << s << newl;
     stream << newl;
+    stream << "Parameters:" << newl;
+    stream << "--offset                    " << config.offset << newl;
     stream << "--output-prefix             " << config.output_prefix << newl;
     stream << "--output-all                " << config.output_all << newl;
     stream << "--output-unclassified       " << config.output_unclassified << newl;
     stream << "--output-single             " << config.output_single << newl;
-    stream << newl;
     stream << "--threads                   " << config.threads << newl;
     stream << "--n-batches                 " << config.n_batches << newl;
     stream << "--n-reads                   " << config.n_reads << newl;
     stream << "--verbose                   " << config.verbose << newl;
     stream << "--quiet                     " << config.quiet << newl;
-    stream << newl;
+    stream << separator << newl;
 
     return stream;
 }

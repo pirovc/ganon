@@ -1039,7 +1039,7 @@ class Gnn:
 
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'Sequence({})'.format(', '.join(args))
+        return 'Gnn({})'.format(', '.join(args))
 
     def parse(self, file):
         gnn = pickle.load(gzip.open(file, "rb"))
