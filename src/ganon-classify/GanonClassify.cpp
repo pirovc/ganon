@@ -158,7 +158,7 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( readLen - kmerSize + 1u - ( kmer_count * offset + ( offset - 1u ) ) )
+    return std::ceil( ( readLen - kmerSize + 1 - ( kmer_count * offset + ( offset - 1 ) ) )
                       / static_cast< float >( kmerSize ) );
 }
 
