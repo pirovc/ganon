@@ -26,7 +26,7 @@ GanonClassify::Config defaultConfig()
     return cfg;
 }
 
-std::vector< std::string > output_ext{ "all", "lca", "rep" };
+std::vector< std::string > output_ext{ "all", "lca" }; // "rep" };
 std::string                results_path = "results/";
 
 } // namespace config_classify
