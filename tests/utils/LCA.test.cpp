@@ -73,11 +73,7 @@ SCENARIO( "Reverse test", "[utils][lca]" )
             lca_values["B0"] = { "C0", "F2", "E1" };
             lca_values["B0"] = { "F2", "C0", "E1" };
             lca_values["B0"] = { "F2", "E1", "C0" };
-            lca_values["B0"] = {
-                "E1",
-                "F2",
-                "C0",
-            };
+            lca_values["B0"] = { "E1", "F2", "C0" };
             lca_values["B0"] = { "E1", "C0", "F2" };
 
             THEN( "they are valid" )

@@ -224,13 +224,15 @@ def main(arguments=None):
         use_assembly=True if args.rank=="assembly" else False
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
 
+        tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
+
         # Set bin length
         if args.bin_length: # user defined
             bin_length = args.bin_length
         else:
             tx = time.time()
             print_log("Estimating best bin length... ")
-            bin_length = estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly)
+            bin_length = estimate_bin_len(args, taxsbp_input_file, tax, use_assembly)
             if bin_length==0: return 1
             print_log(str(bin_length) + "bp. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -278,6 +280,25 @@ def main(arguments=None):
             print_log("Bloom filter calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
 
         tx = time.time()
+        print_log("Building database files... ")
+        
+        # Write .tax file
+        tax.filter(unique_taxids) # filter only used taxids
+        if use_assembly: tax.add_nodes(group_taxid, "assembly") # add assembly nodes
+        tax.write(db_prefix_tax)
+
+        gnn = Gnn(kmer_size=args.kmer_size, 
+                hash_functions=args.hash_functions, 
+                number_of_bins=actual_number_of_bins, 
+                rank=args.rank,
+                bin_length=bin_length,
+                fragment_length=fragment_length,
+                overlap_length=args.overlap_length,
+                bins=bins)
+        gnn.write(db_prefix_gnn)
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
+        tx = time.time()
         print_log("Building index (ganon-build)... \n")
         run_ganon_build_cmd = " ".join([ganon_build_exec,
                                         "--seqid-bin-file " + acc_bin_file,
@@ -295,26 +316,8 @@ def main(arguments=None):
         stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-        tx = time.time()
-        print_log("Building database files... ")
-
-        # Build .tax file
-        build_tax(db_prefix_tax, unique_taxids, group_taxid, ncbi_nodes_file, ncbi_names_file, use_assembly)
-
-        gnn = Gnn(kmer_size=args.kmer_size, 
-                hash_functions=args.hash_functions, 
-                number_of_bins=actual_number_of_bins, 
-                rank=args.rank,
-                bin_length=bin_length,
-                fragment_length=fragment_length,
-                overlap_length=args.overlap_length,
-                bins=bins)
-        gnn.write(db_prefix_gnn)
-
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
-
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
  
 #################################################################################################################################
@@ -334,9 +337,10 @@ def main(arguments=None):
         gnn = Gnn(file=db_prefix_gnn)
 
         use_assembly=True if gnn.rank=="assembly" else False
-
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
-        
+        tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
+
+        # write bins from .gnn
         bins_file = tmp_output_folder + "ganon.bins"
         gnn.write_bins(bins_file)
 
@@ -379,20 +383,20 @@ def main(arguments=None):
         tx = time.time()
         print_log("Updating database files ... ")
 
-        # Build .tax file
-        build_tax(tmp_db_prefix_tax, unique_taxids, group_taxid, ncbi_nodes_file, ncbi_names_file, use_assembly)
-
         # move IBF
         shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
-        
+
+        # Update and write .tax file
+        tax.filter(unique_taxids) # filter only used taxids
+        if use_assembly: tax.add_nodes(group_taxid, "assembly") # add assembly nodes
+        tax.merge(Tax([db_prefix_tax]))
+        tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
+
         # write GNN in a different location
         gnn.number_of_bins+=number_of_new_bins # add new bins count
         gnn.bins.extend(bins) # save new bins from taxsbp
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
 
-        # update and write TAX
-        update_tax(db_prefix_tax, tmp_db_prefix_tax, args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
-        
         # update and write MAP
         update_map(db_prefix_map, tmp_db_prefix_map, args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
 
@@ -437,9 +441,9 @@ def main(arguments=None):
         if args.output_prefix:
             tx = time.time()
             print_log("Generating reports... ")
-            filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
+            tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
             classified_reads, unclassified_reads, reports = parse_rep(args.output_prefix+".rep")
-            print_final_report(reports, filtered_nodes, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0)
+            print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0)
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
 
@@ -450,8 +454,8 @@ def main(arguments=None):
 
     elif args.which=='report':
         classified_reads, unclassified_reads, reports = parse_rep(args.rep_file)
-        filtered_nodes = parse_tax_files([db_prefix+".tax" for db_prefix in args.db_prefix])
-        print_final_report(reports, filtered_nodes, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc)
+        tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
+        print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc)
 
     if args.which!='report': print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
 
@@ -462,6 +466,8 @@ def main(arguments=None):
 #################################################################################################################################
 
 def run(cmd, output_file=None, print_stderr=False, shell=False):
+    errcode=0
+    stderr=""
     try:
         errcode=0
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, 
@@ -654,7 +660,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
             print_log(str(tmp_accessions_taxids.shape[0]) + " entries found. ")
             accessions_taxids = pd.concat([accessions_taxids,tmp_accessions_taxids])
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-            if accessions_taxids.shape[0] == acc_count: #if already found all taxid for hte accessions (no need to parse all files)
+            if accessions_taxids.shape[0] == acc_count: #if already found all taxid for hte accessions (no need to "parse all files)
                 break
         
         del tmp_accessions_taxids
@@ -688,55 +694,6 @@ def update_map(old_map, new_map, output_map):
         for binno, group in bin_group.items(): 
             file.write(group + "\t" + binno + "\n")
 
-def update_tax(old_tax, new_tax, output_tax):
-    printed_nodes = set()
-    tax = open(output_tax,'w')
-
-    # copy new tax to the final output, saving nodes
-    with open(new_tax,'r') as file:
-        for line in file:
-            taxid, _ = line.split('\t', 1)
-            printed_nodes.add(taxid)
-            tax.write(line)
-
-    # merge old taxa nodes if they were not yet present - duplicates solved by new nodes
-    with open(old_tax,'r') as file:
-        for line in file:
-            taxid, _ = line.split('\t', 1)
-            if taxid not in printed_nodes:
-                tax.write(line)
-
-    tax.close()
-
-def build_tax(db_prefix_tax, unique_taxids, group_taxid, ncbi_nodes_file, ncbi_names_file, use_assembly):
-
-    # parse nodes.dmp and names.dmp
-    ncbi_nodes, ncbi_ranks = read_nodes(ncbi_nodes_file)
-    ncbi_names = read_names(ncbi_names_file)
-
-    # .tax: taxid/assembly <tab> parent taxid <tab> rank <tab> name
-    tax = open(db_prefix_tax,'w')
-
-    # keep track of printed nodes to not repeat lineage
-    printed_nodes = set()
-
-    # if using assembly, add group to nodes - no name, repeat group
-    if use_assembly:
-        for group,taxid in group_taxid.items():
-            print(group, taxid, "assembly", group, sep="\t", file=tax)
-            printed_nodes.add(group)
-
-    # Filter nodes for used taxids
-    for leaf_taxid in unique_taxids:
-        t = leaf_taxid
-        while t!="0":
-            if t in printed_nodes: break # branch already in the dict
-            printed_nodes.add(t)
-            print(t, ncbi_nodes[t], ncbi_ranks[t], ncbi_names[t], sep="\t", file=tax)
-            t = ncbi_nodes[t]
-
-    tax.close()
-
 def parse_rep(rep_file):
     reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
     with open(rep_file, 'r') as rep_file:
@@ -753,53 +710,12 @@ def parse_rep(rep_file):
                 reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
     return seq_cla, seq_unc, reports
 
-
-def parse_tax_files(tax_files):
-    filtered_nodes = {}
-    for tax_file in tax_files:
-        with open(tax_file , 'r') as tax_file:
-            for line in tax_file:
-                target, parent, rank, name = line.rstrip().split("\t")
-                if target not in filtered_nodes:
-                    filtered_nodes[target] = (parent,name,rank)
-    return filtered_nodes
-
-def read_nodes(nodes_file):
-    # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
-    nodes = {}
-    ranks = {}
-    with open(nodes_file,'r') as fnodes:
-        for line in fnodes:
-            taxid, parent_taxid, rank, _ = line.split('\t|\t',3)
-            nodes[taxid] = parent_taxid
-            ranks[taxid] = rank
-    nodes["1"] = "0"
-    return nodes, ranks
-
-def read_names(names_file):
-    # READ names -> fields (1:TAXID 2:NAME 3:UNIQUE NAME 4:NAME CLASS)
-    names = {}
-    with open(names_file,'r') as fnames:
-        for line in fnames:
-            taxid, name, _, name_class = line.split('\t|\t')
-            if name_class.replace('\t|\n','')=="scientific name":
-                names[taxid] = name
-    return names
-
 def ibf_size_mb(args, bp, bins):
     return (math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*(bp-args.kmer_size+1)))-1)))*bins)/8388608
 
 def optimal_bins(nbins):
     return (math.floor(nbins/64)+1)*64
 
-def get_rank_node(nodes, ranks, taxid, rank):
-    t = taxid
-    try:
-        while ranks[t]!=rank and t!="1": t = nodes[t]
-    except:
-        return taxid
-    
-    return t if t!="1" else taxid
 
 def bins_group(groups_len, fragment_size, overlap_length):
     group_nbins = {}
@@ -811,9 +727,8 @@ def bins_group(groups_len, fragment_size, overlap_length):
         group_nbins[group] = math.ceil(g_len/(fragment_size-overlap_length))
     return group_nbins
 
-def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
-    ncbi_nodes, ncbi_ranks = read_nodes(ncbi_nodes_file)
-    
+def estimate_bin_len(args, taxsbp_input_file, tax, use_assembly):
+
     groups_len = defaultdict(int)
     for line in open(taxsbp_input_file, "r"):
         if use_assembly:
@@ -823,7 +738,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
             fields = line.rstrip().split("\t") # slip by fields in case file has more
             seqlen = fields[1]
             taxid = fields[2]
-            group = taxid if args.rank=="taxid" else get_rank_node(ncbi_nodes, ncbi_ranks, taxid, args.rank) # convert taxid into rank taxid
+            group = taxid if args.rank=="taxid" else tax.get_rank(taxid, args.rank) # convert taxid into rank taxid
 
         sl = int(seqlen)
         if sl<args.kmer_size: continue
@@ -912,24 +827,7 @@ def estimate_bin_len(args, taxsbp_input_file, ncbi_nodes_file, use_assembly):
 
     return bin_length
 
-def taxid_rank_up_to(taxid, filtered_nodes, fixed_ranks):
-    if taxid!="0":
-        original_rank = filtered_nodes[taxid][2]
-        original_taxid = taxid
-        while taxid!="0":
-            if(filtered_nodes[taxid][2] in fixed_ranks):
-                #everything below species (not being assembly) is counted as species+
-                if "species+" in fixed_ranks and original_rank!="species" and original_rank!="assembly" and filtered_nodes[taxid][2]=="species":
-                    return original_taxid, "species+"
-                else:
-                    return taxid, filtered_nodes[taxid][2]
-            taxid = filtered_nodes[taxid][0]
-        return "1", "root" #no standard rank identified
-    else:
-        return "0", ""
-
-def print_final_report(reports, all_filtered_nodes, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc):
-
+def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc):
     if not ranks:  
         all_ranks = False
         fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
@@ -953,18 +851,18 @@ def print_final_report(reports, all_filtered_nodes, classified_reads, unclassifi
         count = merged_rep[leaf]
         if all_ranks: # use all nodes on the tree
             t = leaf
-            r = all_filtered_nodes[t][2]
+            r = tax.nodes[t][1]
         else: # use only nodes of the fixed ranks
-            t, r = taxid_rank_up_to(leaf, all_filtered_nodes, fixed_ranks)
+            t, r = tax.get_node_rank_fixed(leaf, fixed_ranks)
 
         while t!="0":
             final_rep[t]['count']+=count
             final_rep[t]['rank']=r
             if all_ranks:
-                t = all_filtered_nodes[t][0]
-                r = all_filtered_nodes[t][2] if t!="0" else ""
+                t = tax.nodes[t][0]
+                r = tax.nodes[t][1] if t!="0" else ""
             else:
-                t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
+                t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
     # build lineage after all entries were defined
     lineage = {}
@@ -974,9 +872,9 @@ def print_final_report(reports, all_filtered_nodes, classified_reads, unclassifi
             t=assignment
             while t!="0":
                 lineage[assignment].insert(0,t)
-                t = all_filtered_nodes[t][0]
+                t = tax.nodes[t][0]
         else:
-            t, r = taxid_rank_up_to(assignment, all_filtered_nodes, fixed_ranks)
+            t, r = tax.get_node_rank_fixed(assignment, fixed_ranks)
             max_rank_idx = fixed_ranks.index(r) # get index of current rank
             while t!="0":
                 # Add empty || if fixed rank is missing
@@ -986,11 +884,11 @@ def print_final_report(reports, all_filtered_nodes, classified_reads, unclassifi
 
                 lineage[assignment].insert(0,t)
                 max_rank_idx-=1
-                t, r = taxid_rank_up_to(all_filtered_nodes[t][0], all_filtered_nodes, fixed_ranks)
+                t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
     total_reads = classified_reads + unclassified_reads
     frfile = open(final_report_file, 'w') if final_report_file else None
-    print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
+    print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
     
     if all_ranks:
         sorted_assignments = sorted(lineage, key=lineage.get)
@@ -999,12 +897,14 @@ def print_final_report(reports, all_filtered_nodes, classified_reads, unclassifi
     
     for assignment in sorted_assignments:
         rank=final_rep[assignment]['rank'] 
-        name=all_filtered_nodes[assignment][1]
+        name=tax.nodes[assignment][2]
+        reads_unique = rep[assignment]['unique_reads']
+        reads = merged_rep[assignment] 
         matches=final_rep[assignment]['count']
         if matches < min_matches: continue
         matches_perc=(final_rep[assignment]['count']/total_reads)*100
         if matches_perc < min_matches_perc: continue
-        print(rank, assignment, "|".join(lineage[assignment]), name, matches, "%.5f" % matches_perc, file=frfile, sep="\t")
+        print(rank, assignment, "|".join(lineage[assignment]), name, reads_unique, reads, matches, "%.5f" % matches_perc, file=frfile, sep="\t")
     
     if final_report_file: frfile.close()
 
@@ -1068,6 +968,98 @@ class Gnn:
             with open(output_file, 'w') as file:
                 for line in self.bins:
                     file.write(line+"\n")
+
+
+class Tax:
+    def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
+        # nodes[node] = (parent, rank, name)
+        self.nodes = {}
+        # default root node
+        self.nodes["1"] = ("0", "no rank", "root")
+        if tax_files is not None:
+            self.parse(tax_files)
+        elif ncbi_nodes is not None:
+            self.parse_ncbi(ncbi_nodes, ncbi_names)
+
+    def __repr__(self):
+        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
+        return 'Tax({})'.format(', '.join(args))
+
+    def add_nodes(self, new_nodes, label):
+        # add nodes from a dict new_nodes[node] = parent
+        for node,parent in new_nodes.items():
+            if node not in self.nodes:
+                self.nodes[node] = (parent,label,node) # repeat node on name
+
+    def merge(self, extra_tax): # duplicates solved by current tax
+        for node in extra_tax.nodes:
+            if node not in self.nodes: # if present in the current tax
+                self.nodes[node] = extra_tax.nodes[node]
+
+    def filter(self, filter_nodes):
+        new_nodes = {}
+        # Filter nodes for used taxids
+        for node in filter_nodes:
+            if node in self.nodes: # if present in the current tax
+                t = node
+                while t!="0": # while not at root, get lineage
+                    if t in new_nodes: break # branch already added
+                    new_nodes[t] = self.nodes[t] # copy node
+                    t = self.nodes[t][0] # get parent
+        self.nodes = new_nodes
+
+    def parse(self, tax_files):
+        for tax_file in tax_files:
+            with open(tax_file , 'r') as file:
+                for line in file:
+                    node, parent, rank, name = line.rstrip().split("\t")
+                    if node not in self.nodes:
+                        self.nodes[node] = (parent,rank,name)
+
+    def parse_ncbi(self, ncbi_nodes, ncbi_names):
+        names = defaultdict(lambda: "")
+        if ncbi_names is not None:
+            with open(ncbi_names,'r') as file:
+                for line in file:
+                    node, name, _, name_class = line.split('\t|\t') # READ names -> fields (1:TAXID 2:NAME 3:UNIQUE NAME 4:NAME CLASS)
+                    if name_class.replace('\t|\n','')=="scientific name":
+                        names[node] = name
+        with open(ncbi_nodes , 'r') as file:
+            for line in file:
+                node, parent, rank, _ = line.split('\t|\t', 3) # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
+                if node not in self.nodes:
+                    self.nodes[node] = (parent,rank,names[node])
+
+    def write(self, file):
+        # .tax: taxid/assembly <tab> parent taxid <tab> rank <tab> name
+        tax_file = open(file,'w')
+        for node,(parent, rank, name) in self.nodes.items():
+            print(node, parent, rank, name, sep="\t", file=tax_file)
+        tax_file.close()
+
+    def get_rank(self, node, rank):
+        t = node
+        try:
+            while self.nodes[t][1]!=rank and t!="1": t = nodes[t]
+        except:
+            return node
+        return t if t!="1" else node
+
+    def get_node_rank_fixed(self, node, fixed_ranks):
+        if node!="0":
+            original_rank = self.nodes[node][1]
+            original_taxid = node
+            while node!="0":
+                if(self.nodes[node][1] in fixed_ranks):
+                    #everything below species (not being assembly) is counted as species+
+                    if "species+" in fixed_ranks and original_rank!="species" and original_rank!="assembly" and self.nodes[node][1]=="species":
+                        return original_taxid, "species+"
+                    else:
+                        return node, self.nodes[node][1]
+                node = self.nodes[node][0]
+            return "1", "root" #no standard rank identified
+        else:
+            return "0", ""
 
 if __name__ == '__main__':
     main()
