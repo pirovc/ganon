@@ -3,8 +3,10 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <streambuf>
 #include <string>
+#include <vector>
 
 namespace aux
 {
@@ -46,5 +48,23 @@ inline bool fileIsEmpty( const std::string& file )
         return false;
 }
 
+inline std::vector< std::vector< std::string > > parse_tsv( const std::string& file )
+{
+    std::string                               line;
+    std::ifstream                             infile( file );
+    std::vector< std::vector< std::string > > parsed;
+
+    while ( std::getline( infile, line, '\n' ) )
+    {
+        std::istringstream         stream_line( line );
+        std::vector< std::string > fields;
+        std::string                field;
+        while ( std::getline( stream_line, field, '\t' ) )
+            fields.push_back( field );
+        parsed.push_back( fields );
+    }
+    infile.close();
+    return parsed;
+}
 
 } // namespace aux
