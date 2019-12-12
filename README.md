@@ -151,11 +151,11 @@ Obs:
 	1) rank *(e.g. phylum, species, ...)*
 	2) target *(e.g. taxid, assembly id)*
 	3) taxid lineage *(e.g 1|2|1224|...)*
-	4) name *(e.g. Paenibacillus polymyxa)*
-	5) # unique assignments *(number of reads that matched exclusively to this target)*
-	6) # reads assigned *(number of reads directly assigned to this target - either unique or lca)*
-	7) # cummulative assignments *(cummulative number of reads assigned up-to this taxa)*
-	8) % cummulative assignments
+	4) target scientific name *(e.g. Paenibacillus polymyxa)*
+	5) \# unique assignments *(number of reads that matched exclusively to this target)*
+	6) \# reads assigned *(number of reads directly assigned to this target - either unique or lca)*
+	7) \# cummulative assignments *(cummulative number of reads assigned up-to this taxa)*
+	8) \% cummulative assignments
 
 Here only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous (e.g. at assembly level), some entries may have many matches, but all of them shared. In other words, no read will stay in this assignment. Those entries will not be present in the **.tre** file, but information about all matches can be found on **.rep**.
 
