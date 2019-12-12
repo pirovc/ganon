@@ -3,7 +3,7 @@
 import os, sys, pickle, gzip, shutil
 
 if len(sys.argv)==1:
-	print("Converts ganon database from version 0.1.X to 0.2.X")
+	print("Conversion script for ganon database files from version 0.1.X to 0.2.X")
 	print("Usage: ./convert-db-0.1-0.2.py db-prefix-in [db-prefix-out]")
 	print("If no db-prefix-out is provided, the input database will be overwritten")
 	sys.exit()

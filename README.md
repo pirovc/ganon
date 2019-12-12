@@ -37,7 +37,7 @@ ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/d
 ### report
 
 ```
-ganon report --db-prefix sample_bacteria --rep-file sample_bateria.rep --min-matches-perc 0.5 --ranks all --output-report new_report.tre
+ganon report --db-prefix sample_bacteria --rep-file sample_bateria.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
 ```
 
 ### update
@@ -139,23 +139,25 @@ Obs:
 
 ### classify
 
- - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca (fields: read identifier, target, (max) k-mer count)
- - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* (fields: read identifier, target, k-mer count)
-  - {prefix}**.rep**: plain report of the run with only target that receive an match (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+ - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
+ - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* *(fields: read identifier, target, k-mer count)*
+  - {prefix}**.rep**: plain report of the run with only target that receive a match *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`*
   - {prefix}**.tre**: report file (see below)
 
 ### report
 
  - {prefix}**.tre**: tab-separated tree-like report with cummulative counts and lineage with the following fields: 
 
-	1) rank (e.g. phylum, species, ...)
-	2) target (e.g. taxid, assembly id)
-	3) taxid lineage (e.g 1|2|1224|...)
-	4) name (e.g. Paenibacillus polymyxa)
-	5) # unique assignments (number of reads that matched exclusively to this target)
-	6) # reads assigned (number of reads directly assigned to this target - either unique or lca)
-	7) # cummulative assignments (cummulative reads assigned up-to this taxa)
+	1) rank *(e.g. phylum, species, ...)*
+	2) target *(e.g. taxid, assembly id)*
+	3) taxid lineage *(e.g 1|2|1224|...)*
+	4) name *(e.g. Paenibacillus polymyxa)*
+	5) # unique assignments *(number of reads that matched exclusively to this target)*
+	6) # reads assigned *(number of reads directly assigned to this target - either unique or lca)*
+	7) # cummulative assignments *(cummulative number of reads assigned up-to this taxa)*
 	8) % cummulative assignments
+
+Here only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous (e.g. at assembly level), some entries may have many matches, but all of them shared. In other words, no read will stay in this assignment. Those entries will not be present in the **.tre** file, but information about all matches can be found on **.rep**.
 
 #### Example of classification output files
 
