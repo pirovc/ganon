@@ -3,18 +3,20 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <sstream>
 #include <streambuf>
 #include <string>
+#include <vector>
 
 namespace aux
 {
 
 inline int fileLines( const std::string& file )
 {
-    int count = 0;
-    std::ifstream f(file);
-    std::string line;
-    while (getline(f, line))
+    int           count = 0;
+    std::ifstream f( file );
+    std::string   line;
+    while ( getline( f, line ) )
         count++;
     return count;
 }
@@ -40,11 +42,29 @@ inline bool filesAreEqual( const std::string& file1, const std::string& file2 )
 inline bool fileIsEmpty( const std::string& file )
 {
     std::ifstream stream{ file };
-    if (stream.peek() == std::ifstream::traits_type::eof() || stream.peek() == '\n')
-    	return true;
+    if ( stream.peek() == std::ifstream::traits_type::eof() )
+        return true;
     else
-    	return false;
+        return false;
 }
 
+inline std::vector< std::vector< std::string > > parse_tsv( const std::string& file )
+{
+    std::string                               line;
+    std::ifstream                             infile( file );
+    std::vector< std::vector< std::string > > parsed;
+
+    while ( std::getline( infile, line, '\n' ) )
+    {
+        std::istringstream         stream_line( line );
+        std::vector< std::string > fields;
+        std::string                field;
+        while ( std::getline( stream_line, field, '\t' ) )
+            fields.push_back( field );
+        parsed.push_back( fields );
+    }
+    infile.close();
+    return parsed;
+}
 
 } // namespace aux

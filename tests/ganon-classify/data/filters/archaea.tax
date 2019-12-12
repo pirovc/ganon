@@ -1,0 +1,19 @@
+GCF_000204415.1	990316	assembly	GCF_000204415.1
+GCF_000504565.1	1417673	assembly	GCF_000504565.1
+1417673	51589	no rank	Haloarcula hispanica N601
+51589	2237	species	Haloarcula hispanica
+2237	1963268	genus	Haloarcula
+1963268	2235	family	Haloarculaceae
+2235	183963	order	Halobacteriales
+183963	2290931	class	Halobacteria
+2290931	28890	no rank	Stenosarchaea group
+28890	2157	phylum	Euryarchaeota
+2157	131567	superkingdom	Archaea
+131567	1	no rank	cellular organisms
+1	0	no rank	root
+990316	2223	no rank	Methanothrix soehngenii GP6
+2223	2222	species	Methanothrix soehngenii
+2222	143067	genus	Methanothrix
+143067	94695	family	Methanotrichaceae
+94695	224756	order	Methanosarcinales
+224756	2290931	class	Methanomicrobia
