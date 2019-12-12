@@ -832,7 +832,7 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
         all_ranks = False
         fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
     elif ranks[0]=="all":
-        all_ranks = True  
+        all_ranks = True
         fixed_ranks = []
     else:
         all_ranks = False
@@ -842,7 +842,9 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     merged_rep = defaultdict(int)
     for rep in reports.values():
         for leaf in rep.keys():
-            merged_rep[leaf]+=rep[leaf]['unique_reads']+rep[leaf]['lca_reads']
+            reads_assigned = rep[leaf]['unique_reads']+rep[leaf]['lca_reads']
+            if reads_assigned>0:
+                merged_rep[leaf]+=reads_assigned
 
     final_rep = defaultdict(lambda: {'count': 0, 'rank': ""})
     
@@ -914,7 +916,6 @@ def print_log(text):
 
 
 class Gnn:
-
     def __init__(self,
                 kmer_size: int = None, 
                 hash_functions: int = None, 

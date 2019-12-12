@@ -34,6 +34,12 @@ Obs: `ganon build` (with a space in between) is different from the `ganon-build`
 ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
 ```
 
+### report
+
+```
+ganon report --db-prefix sample_bacteria --rep-file sample_bateria.rep --min-matches-perc 0.5 --ranks all --output-report new_report.tre
+```
+
 ### update
 
 ```
@@ -129,75 +135,83 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version `0.1.X` are **NOT** compatible with `0.2.X`.
+-  Database files from version `0.1.X` are **NOT** compatible with `0.2.X`. If you want to convert a database, please use the script `scripts/convert-db-0.1-0.2.py`
 
 ### classify
 
  - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca (fields: read identifier, target, (max) k-mer count)
  - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* (fields: read identifier, target, k-mer count)
   - {prefix}**.rep**: plain report of the run with only target that receive an match (fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+  - {prefix}**.tre**: report file (see below)
 
 ### report
 
- - {prefix}**.tre**: tree-like report with cummulative counts and lineage (fields: rank, target, lineage, name, cummulative # reads assigned, cummulative % reads assigned)
+ - {prefix}**.tre**: tab-separated tree-like report with cummulative counts and lineage with the following fields: 
+
+	1) rank (e.g. phylum, species, ...)
+	2) target (e.g. taxid, assembly id)
+	3) taxid lineage (e.g 1|2|1224|...)
+	4) name (e.g. Paenibacillus polymyxa)
+	5) # unique assignments (number of reads that matched exclusively to this target)
+	6) # reads assigned (number of reads directly assigned to this target - either unique or lca)
+	7) # cummulative assignments (cummulative reads assigned up-to this taxa)
+	8) % cummulative assignments
 
 #### Example of classification output files
 
 The main output file is the `{prefix}.tre` which will sumarize the results (too see the file in a nice format, use `column -s$'\t' -t -n {prefix}.tre`):
 
 ```
-unclassified  -        -                                              -                               1   1.00000
-root          1        1                                              root                            99  99.00000
-superkingdom  2        1|2                                            Bacteria                        99  99.00000
-phylum        1239     1|2|1239                                       Firmicutes                      57  57.00000
-phylum        1224     1|2|1224                                       Proteobacteria                  42  42.00000
-class         91061    1|2|1239|91061                                 Bacilli                         57  57.00000
-class         28211    1|2|1224|28211                                 Alphaproteobacteria             29  29.00000
-class         1236     1|2|1224|1236                                  Gammaproteobacteria             13  13.00000
-order         1385     1|2|1239|91061|1385                            Bacillales                      57  57.00000
-order         204458   1|2|1224|28211|204458                          Caulobacterales                 29  29.00000
-order         72274    1|2|1224|1236|72274                            Pseudomonadales                 13  13.00000
-family        186822   1|2|1239|91061|1385|186822                     Paenibacillaceae                57  57.00000
-family        76892    1|2|1224|28211|204458|76892                    Caulobacteraceae                29  29.00000
-family        468      1|2|1224|1236|72274|468                        Moraxellaceae                   13  13.00000
-genus         44249    1|2|1239|91061|1385|186822|44249               Paenibacillus                   57  57.00000
-genus         75       1|2|1224|28211|204458|76892|75                 Caulobacter                     29  29.00000
-genus         469      1|2|1224|1236|72274|468|469                    Acinetobacter                   13  13.00000
-species       1406     1|2|1239|91061|1385|186822|44249|1406          Paenibacillus polymyxa          57  57.00000
-species       366602   1|2|1224|28211|204458|76892|75|366602          Caulobacter sp. K31             29  29.00000
-species       470      1|2|1224|1236|72274|468|469|470                Acinetobacter baumannii         13  13.00000
-species+      1052684  1|2|1239|91061|1385|186822|44249|1406|1052684  Paenibacillus polymyxa M1       57  57.00000
-species+      696749   1|2|1224|1236|72274|468|469|470|696749         Acinetobacter baumannii 1656-2  13  13.00000
+unclassified  -       -                                      -                        -   -   0    0.00000
+root          1       1                                      root                     0   0   100  100.00000
+superkingdom  2       1|2                                    Bacteria                 0   0   100  100.00000
+phylum        1239    1|2|1239                               Firmicutes               0   0   58   58.00000
+phylum        1224    1|2|1224                               Proteobacteria           0   0   42   42.00000
+class         91061   1|2|1239|91061                         Bacilli                  0   0   58   58.00000
+class         28211   1|2|1224|28211                         Alphaproteobacteria      0   0   29   29.00000
+class         1236    1|2|1224|1236                          Gammaproteobacteria      0   0   13   13.00000
+order         1385    1|2|1239|91061|1385                    Bacillales               0   0   58   58.00000
+order         204458  1|2|1224|28211|204458                  Caulobacterales          0   0   29   29.00000
+order         72274   1|2|1224|1236|72274                    Pseudomonadales          0   0   13   13.00000
+family        186822  1|2|1239|91061|1385|186822             Paenibacillaceae         0   0   58   58.00000
+family        76892   1|2|1224|28211|204458|76892            Caulobacteraceae         0   0   29   29.00000
+family        468     1|2|1224|1236|72274|468                Moraxellaceae            0   0   13   13.00000
+genus         44249   1|2|1239|91061|1385|186822|44249       Paenibacillus            0   0   58   58.00000
+genus         75      1|2|1224|28211|204458|76892|75         Caulobacter              0   0   29   29.00000
+genus         469     1|2|1224|1236|72274|468|469            Acinetobacter            0   0   13   13.00000
+species       1406    1|2|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa   58  58  58   58.00000
+species       366602  1|2|1224|28211|204458|76892|75|366602  Caulobacter sp. K31      29  29  29   29.00000
+species       470     1|2|1224|1236|72274|468|469|470        Acinetobacter baumannii  13  13  13   13.00000
 ```
 
-running with `--ranks all`, the output will show all ranks used for classification, sorted by lineage:
+running `ganon classify` or `ganon report` with `--ranks all`, the output will show all ranks used for classification, sorted by lineage:
 
 ```
-unclassified   -        -                                                             -                                              1   1.00000
-no rank        1        1                                                             root                                           99  99.00000
-no rank        131567   1|131567                                                      cellular organisms                             99  99.00000
-superkingdom   2        1|131567|2                                                    Bacteria                                       99  99.00000
-phylum         1224     1|131567|2|1224                                               Proteobacteria                                 42  42.00000
-class          1236     1|131567|2|1224|1236                                          Gammaproteobacteria                            13  13.00000
-order          72274    1|131567|2|1224|1236|72274                                    Pseudomonadales                                13  13.00000
-family         468      1|131567|2|1224|1236|72274|468                                Moraxellaceae                                  13  13.00000
-genus          469      1|131567|2|1224|1236|72274|468|469                            Acinetobacter                                  13  13.00000
-species group  909768   1|131567|2|1224|1236|72274|468|469|909768                     Acinetobacter calcoaceticus/baumannii complex  13  13.00000
-species        470      1|131567|2|1224|1236|72274|468|469|909768|470                 Acinetobacter baumannii                        13  13.00000
-no rank        696749   1|131567|2|1224|1236|72274|468|469|909768|470|696749          Acinetobacter baumannii 1656-2                 13  13.00000
-class          28211    1|131567|2|1224|28211                                         Alphaproteobacteria                            29  29.00000
-order          204458   1|131567|2|1224|28211|204458                                  Caulobacterales                                29  29.00000
-family         76892    1|131567|2|1224|28211|204458|76892                            Caulobacteraceae                               29  29.00000
-genus          75       1|131567|2|1224|28211|204458|76892|75                         Caulobacter                                    29  29.00000
-species        366602   1|131567|2|1224|28211|204458|76892|75|366602                  Caulobacter sp. K31                            29  29.00000
-no rank        1783272  1|131567|2|1783272                                            Terrabacteria group                            57  57.00000
-phylum         1239     1|131567|2|1783272|1239                                       Firmicutes                                     57  57.00000
-class          91061    1|131567|2|1783272|1239|91061                                 Bacilli                                        57  57.00000
-order          1385     1|131567|2|1783272|1239|91061|1385                            Bacillales                                     57  57.00000
-family         186822   1|131567|2|1783272|1239|91061|1385|186822                     Paenibacillaceae                               57  57.00000
-genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249               Paenibacillus                                  57  57.00000
-species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406          Paenibacillus polymyxa                         57  57.00000
-no rank        1052684  1|131567|2|1783272|1239|91061|1385|186822|44249|1406|1052684  Paenibacillus polymyxa M1                      57  57.00000
+unclassified   -        -                                                     -                                              -   -   0    0.00000
+no rank        1        1                                                     root                                           0   0   100  100.00000
+no rank        131567   1|131567                                              cellular organisms                             0   0   100  100.00000
+superkingdom   2        1|131567|2                                            Bacteria                                       0   0   100  100.00000
+phylum         1224     1|131567|2|1224                                       Proteobacteria                                 0   0   42   42.00000
+class          1236     1|131567|2|1224|1236                                  Gammaproteobacteria                            0   0   13   13.00000
+order          72274    1|131567|2|1224|1236|72274                            Pseudomonadales                                0   0   13   13.00000
+family         468      1|131567|2|1224|1236|72274|468                        Moraxellaceae                                  0   0   13   13.00000
+genus          469      1|131567|2|1224|1236|72274|468|469                    Acinetobacter                                  0   0   13   13.00000
+species group  909768   1|131567|2|1224|1236|72274|468|469|909768             Acinetobacter calcoaceticus/baumannii complex  0   0   13   13.00000
+species        470      1|131567|2|1224|1236|72274|468|469|909768|470         Acinetobacter baumannii                        13  13  13   13.00000
+class          28211    1|131567|2|1224|28211                                 Alphaproteobacteria                            0   0   29   29.00000
+order          204458   1|131567|2|1224|28211|204458                          Caulobacterales                                0   0   29   29.00000
+family         76892    1|131567|2|1224|28211|204458|76892                    Caulobacteraceae                               0   0   29   29.00000
+genus          75       1|131567|2|1224|28211|204458|76892|75                 Caulobacter                                    0   0   29   29.00000
+no rank        2648921  1|131567|2|1224|28211|204458|76892|75|2648921         unclassified Caulobacter                       0   0   29   29.00000
+species        366602   1|131567|2|1224|28211|204458|76892|75|2648921|366602  Caulobacter sp. K31                            29  29  29   29.00000
+no rank        1783272  1|131567|2|1783272                                    Terrabacteria group                            0   0   58   58.00000
+phylum         1239     1|131567|2|1783272|1239                               Firmicutes                                     0   0   58   58.00000
+class          91061    1|131567|2|1783272|1239|91061                         Bacilli                                        0   0   58   58.00000
+order          1385     1|131567|2|1783272|1239|91061|1385                    Bacillales                                     0   0   58   58.00000
+family         186822   1|131567|2|1783272|1239|91061|1385|186822             Paenibacillaceae                               0   0   58   58.00000
+genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Paenibacillus                                  0   0   58   58.00000
+species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         58  58  58   58.00000
+
 ```
 
 ## Choosing parameters
@@ -213,7 +227,6 @@ Both parameters are used to define the similarity threshold between reads and re
 ### --max-error-unique
 
 Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the threshold is not achieved, the match is not excluded but assigned to the parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to 0 or 1.
-
 
 ### .ibf size (--max-bloom-size, --bin-length)
 
@@ -324,173 +337,7 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### build
 
-	$ ganon build --help
-	usage: ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m]
-	                   [-l] [-t] [--fixed-bloom-size] [--fragment-length]
-	                   [--overlap-length] [--seq-info [[...]]] [--seq-info-file]
-	                   [--taxdump-file [[...]]] [--input-directory]
-	                   [--input-extension] [--verbose]
-
-	optional arguments:
-	  -h, --help            show this help message and exit
-	  -r , --rank           Lowest taxonomic rank for classification
-	                        [assembly,taxid,species,genus,...]. Default: species
-	  -k , --kmer-size      The k-mer size for the bloom filter. Default: 19
-	  -n , --hash-functions 
-	                        The number of hash functions to use for the bloom
-	                        filter. Default: 3
-	  -f , --max-fp         Max. false positive rate for k-mer classification.
-	                        Default: 0.05
-	  -m , --max-bloom-size 
-	                        Approx. maximum filter size in Megabytes (MB). Will
-	                        estimate best --bin-length based on --kmer-size,
-	                        --hash-functions and --max-fp [Mutually exclusive
-	                        --fixed-bloom-size]
-	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
-	  -t , --threads        Number of subprocesses/threads to use for
-	                        calculations. Default: 2
-	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore
-	                        --max-fp [Mutually exclusive --max-bloom-size]
-	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment
-	                        sequences. Default: --bin-length - --overlap-length
-	  --overlap-length      Fragment overlap length (in bp). Should be bigger than
-	                        the read length used for classification. Default: 300
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided, ganon requires taxonomic and seq.
-	                        length information. If a small number of sequences is
-	                        provided (<50000) or when --rank assembly, ganon will
-	                        automatically obtain data with NCBI E-utils websevices
-	                        (eutils). Offline mode will download batch files from
-	                        NCBI Taxonomy and look for taxonomic ids in the order
-	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss
-	                        pdb prot dead_nucl dead_wgs dead_prot], eutils (force
-	                        webservices) or auto (uses eutils or [nucl_gb
-	                        nucl_wgs]). Default: auto [Mutually exclusive --seq-
-	                        info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid
-	                        <tab> seq.len <tab> taxid [<tab> assembly id])
-	                        [Mutually exclusive --seq-info]
-	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the
-	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be
-	                        automatically downloaded)
-	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory
-	  --verbose             Verbose mode for ganon
-
-	required arguments:
-	  -d db_prefix, --db-prefix db_prefix
-	                        Database output prefix (.filter, .nodes, .bins, .map
-	                        will be created)
-	  -i [ [ ...]], --input-files [ [ ...]]
-	                        Input reference sequence fasta files [.gz]
-
 ### classify
-
-	$ ganon classify --help
-	usage: ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz]
-	                      [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
-	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]]
-	                      [-c [int [int ...]]] [-m [int [int ...]]]
-	                      [-e [int [int ...]]] [-u [int [int ...]]] [-f] [-o] [-n]
-	                      [-s] [--skip-lca] [--skip-reports]
-	                      [-k [RANKS [RANKS ...]]] [-t] [--verbose]
-
-	optional arguments:
-	  -h, --help            show this help message and exit
-	  -c [int [int ...]], --db-hierarchy [int [int ...]]
-	                        Hierachy definition, one for each database input. Can
-	                        also be string, but input will be always sorted (e.g.
-	                        1 1 2 3). Default: 1
-	  -m [int [int ...]], --min-kmers [int [int ...]]
-	                        Min. percentage of k-mers matching to consider a read
-	                        assigned. Can be used alternatively to --max-error for
-	                        reads of variable size. Single value or one per
-	                        database (e.g. 0.5 0.7 1 0.25). Default: 0.25
-	  -e [int [int ...]], --max-error [int [int ...]]
-	                        Max. number of errors allowed. Single value or one per
-	                        database (e.g. 3 3 4 0) [Mutually exclusive --min-
-	                        kmers]
-	  -u [int [int ...]], --max-error-unique [int [int ...]]
-	                        Max. number of errors allowed for unique assignments
-	                        after filtering. Matches below this error rate will
-	                        not be discarded, but assigned to parent taxonomic
-	                        level. Single value or one per hierachy (e.g. 0 1 2).
-	                        -1 to disable. Default: -1
-	  -f , --offset         Number of k-mers to skip during clasification. Can
-	                        speed up analysis but may reduce recall. (e.g. 1 = all
-	                        k-mers, 3 = every 3rd k-mer). Function must be enabled
-	                        on compilation time with -DGANON_OFFSET=ON. Default: 2
-	  -o , --output-file-prefix 
-	                        Output file name prefix: .out for complete results /
-	                        .lca for LCA results / .rep for report. Empty to print
-	                        to STDOUT (only with lca). Default: ""
-	  -n , --output-unclassified-file 
-	                        Output file for unclassified reads headers. Empty to
-	                        not output. Default: ""
-	  -s, --split-output-file-hierarchy
-	                        Split output in multiple files by hierarchy. Appends
-	                        "_hierachy" to the --output-file definiton.
-	  --skip-lca            Skip LCA step and output multiple matches. --max-
-	                        error-unique will not be applied
-	  --skip-reports        Skip reports
-	  -k [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
-	                        Ranks for the final report. "all" for all indentified
-	                        ranks. empty for default ranks: superkingdom phylum
-	                        class order family genus species species+ assembly
-	  -t , --threads        Number of subprocesses/threads. Default: 3)
-	  --verbose             Output in verbose mode for ganon-classify
-
-	required arguments:
-	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
-	                        Database prefix[es]
-	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
-	                        Multi-fastq[.gz] file[s] to classify
-	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
-	                        Multi-fastq[.gz] pairs of file[s] to classify
 
 ### update
 
-	$ ganon update --help
-	usage: ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t]
-	                    [--seq-info [[...]]] [--seq-info-file]
-	                    [--taxdump-file [[...]]] [--input-directory]
-	                    [--input-extension] [--verbose]
-
-	optional arguments:
-	  -h, --help            show this help message and exit
-	  -o , --output-db-prefix 
-	                        Alternative output database prefix. Default: overwrite
-	                        current --db-prefix
-	  -t , --threads        set the number of subprocesses/threads to use for
-	                        calculations. Default: 2
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided, ganon requires taxonomic and seq.
-	                        length information. If a small number of sequences is
-	                        provided (<50000) or when --rank assembly, ganon will
-	                        automatically obtained data with NCBI E-utils
-	                        websevices (eutils). Offline mode will download batch
-	                        files from NCBI Taxonomy and look for taxonomic ids in
-	                        the order provided. Options: [nucl_gb nucl_wgs
-	                        nucl_est nucl_gss pdb prot dead_nucl dead_wgs
-	                        dead_prot], eutils (force webservices) or auto (uses
-	                        eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
-	                        exclusive --seq-info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid
-	                        <tab> seq.len <tab> taxid [<tab> assembly id])
-	                        [Mutually exclusive --seq-info]
-	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the
-	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be
-	                        automatically downloaded)
-	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory
-	  --verbose             Verbose mode for ganon
-
-	required arguments:
-	  -d db_prefix, --db-prefix db_prefix
-	                        Database prefix
-	  -i [ [ ...]], --input-files [ [ ...]]
-	                        Input reference sequence fasta files [.gz]
