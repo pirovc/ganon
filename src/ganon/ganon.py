@@ -592,23 +592,28 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
     # default accession2taxid files
     default_acc2txid = ["nucl_gb", "nucl_wgs"]
 
-    if seq_info[0] in ["auto","eutils"]: # if using offline mode with acc2txid, get accession when extracting lenghts
+    # if using offline mode with acc2txid, get accession when extracting lenghts
+    if seq_info[0] in ["auto","eutils"]: 
         tx = time.time()
         accessions_file = tmp_output_folder + 'accessions.txt'
         print_log("Extracting accessions... ")
-        # cat | zcat | gawk -> compability with osx
-        run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(" ".join(files), "| zcat" if files[0].endswith(".gz") else "")
-        stdout, stderr, errcode = run(run_get_header, print_stderr=False, shell=True)
-        count = stdout.count('\n')
-        print_log(str(count) + " accessions retrieved. ")
+        seqcount=0
+        accessions = ""
+        for file in files:
+            # cat | zcat | gawk -> compability with osx
+            run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
+            stdout, stderr, errcode = run(run_get_header, print_stderr=False, shell=True)
+            seqcount+=stdout.count('\n')
+            accessions+=stdout
+        print_log(str(seqcount) + " accessions retrieved. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        if seq_info[0]=="auto" and count>50000: 
+        if seq_info[0]=="auto" and seqcount>50000 and not use_assembly: 
             seq_info = default_acc2txid
         else:
             seq_info = ["eutils"]
             with open(accessions_file, "w") as af: # write accessions in file
-                af.write(stdout)
-        del stdout
+                af.write(accessions)
+        del accessions
     
     if seq_info[0]=="eutils":
         tx = time.time()
