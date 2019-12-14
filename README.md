@@ -216,21 +216,65 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Pa
 
 ```
 
+## Hierarchical classification
+
+Ganon classification can be performed in one or more database at the same time. The databases can be provided in any hiearchical order. Multiple database classification can be performed providing several inputs for `--db-prefix`. To classify reads in an hierarchical order, `--hierarchy-labels` should be provided. `--max-error/--min-kmers` can be provided for each database. `--max-error-unique` can be provided for each hierarchy level.
+
+For examples: 
+
+### Classifying reads against multiple databases:
+
+	ganon classify --db-prefix db1 db2 db3 \
+	               --min-kmers 0.75 \
+	               -r reads.fq.gz
+
+Classify reads against 3 database (as if they were one) using the same error rate.
+
+### Classifying reads against multiple databases with different error rates:
+
+	ganon classify --db-prefix db1 db2 db3 \
+	               --max-error  0    1   4 \
+	               -r reads.fq.gz
+
+Classify reads against 3 database (as if they were one) using different error rates for each.
+
+### Classifying reads against multiple databases hierarchicaly:
+
+	ganon classify --db-prefix            db1     db2      db3 \ 
+	               --hierarchy-labels 1_first 1_first 2_second \
+	               -r reads.fq.gz
+
+In this example, reads are going to be classified first agains db1 and db2. Reads without a valid match will be further classified agains db3. `--hierarchy-labels` are strings and are going to be sorted to define the hiearchy order, disregarding input order.
+
+### Classifying reads against multiple databases hierarchicaly with different error rates:
+
+	ganon classify --db-prefix            db1     db2      db3 \
+	               --hierarchy-labels 1_first 1_first 2_second \
+	               --min-kmers              1     0.5     0.25 \
+	               --max-error-unique               0        1 \
+	               -r reads.fq.gz
+
+In this example, classification will be performed with different error rates for each database. For each hiearchy (`1_first` and `2_second`) a different `--max-error-unique` will be used.
+
 ## Choosing parameters
 
-### --single-reads and --paired-reads
+### --single-reads and --paired-reads (classify)
 
 ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
 
-### --min-kmers and --max-error
+### --min-kmers and --max-error (classify)
 
 Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
 
-### --max-error-unique
+### --max-error-unique (classify)
 
 Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the threshold is not achieved, the match is not excluded but assigned to the parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to 0 or 1.
 
-### .ibf size (--max-bloom-size, --bin-length)
+### --offset (classify)
+
+`--offset` can be used to speed-up analysis by skiping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset 3` will only evaluate every 3rd k-mer for the input sequences.
+
+### --max-bloom-size and --bin-length (build)
 
 The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
 
