@@ -22,7 +22,7 @@ if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
 endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
-option( GANON_OFFSET "Enable offset for ganon-classify" OFF )
+option( GANON_OFFSET "Enable offset for ganon-classify" ON )
 option( CONDA "Flag for compilation in conda env." OFF )
 option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 

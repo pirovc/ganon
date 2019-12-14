@@ -218,9 +218,9 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Pa
 
 ## Hierarchical classification
 
-Ganon classification can be performed in one or more database at the same time. The databases can be provided in any hiearchical order. Multiple database classification can be performed providing several inputs for `--db-prefix`. To classify reads in an hierarchical order, `--hierarchy-labels` should be provided. `--max-error/--min-kmers` can be provided for each database. `--max-error-unique` can be provided for each hierarchy level.
+Ganon classification can be performed in one or more databases at the same time. The databases can be provided in a hiearchical order. Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be build with the same `k` size. To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. `--max-error/--min-kmers` can be provided for each database. `--max-error-unique` can be provided for each hierarchy level. When using multiple hiearchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hiearchical levels).
 
-For examples: 
+For example: 
 
 ### Classifying reads against multiple databases:
 
@@ -228,7 +228,7 @@ For examples:
 	               --min-kmers 0.75 \
 	               -r reads.fq.gz
 
-Classify reads against 3 database (as if they were one) using the same error rate.
+Classification against 3 database (as if they were one) using the same error rate.
 
 ### Classifying reads against multiple databases with different error rates:
 
@@ -236,7 +236,7 @@ Classify reads against 3 database (as if they were one) using the same error rat
 	               --max-error  0    1   4 \
 	               -r reads.fq.gz
 
-Classify reads against 3 database (as if they were one) using different error rates for each.
+Classification against 3 database (as if they were one) using different error rates for each.
 
 ### Classifying reads against multiple databases hierarchicaly:
 
@@ -244,7 +244,7 @@ Classify reads against 3 database (as if they were one) using different error ra
 	               --hierarchy-labels 1_first 1_first 2_second \
 	               -r reads.fq.gz
 
-In this example, reads are going to be classified first agains db1 and db2. Reads without a valid match will be further classified agains db3. `--hierarchy-labels` are strings and are going to be sorted to define the hiearchy order, disregarding input order.
+In this example, reads are going to be classified first against db1 and db2. Reads without a valid match will be further classified against db3. `--hierarchy-labels` are strings and are going to be sorted to define the hiearchy order, disregarding input order.
 
 ### Classifying reads against multiple databases hierarchicaly with different error rates:
 
@@ -272,7 +272,7 @@ Exclusive error rate to define the similarity threshold of reads with unique mat
 
 ### --offset (classify)
 
-`--offset` can be used to speed-up analysis by skiping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset 3` will only evaluate every 3rd k-mer for the input sequences.
+`--offset` can be used to speed-up analysis by skiping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`).
 
 ### --max-bloom-size and --bin-length (build)
 

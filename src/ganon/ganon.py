@@ -83,24 +83,22 @@ def main(arguments=None):
 
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
-    classify_group_optional.add_argument('-c', '--hierarchy-labels',            type=str,    nargs="*", help='Hierachy definition, one for each database input. Can also be string, but input will be always sorted (e.g. 1 1 2 3). Default: 1')
-    classify_group_optional.add_argument('-k', '--min-kmers',                   type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Can be used alternatively to --max-error for reads of variable size. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 ')
-    classify_group_optional.add_argument('-e', '--max-error',                   type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
-    classify_group_optional.add_argument('-u', '--max-error-unique',            type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')    
-    classify_group_optional.add_argument('-f', '--offset',                      type=int,               help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 2')
-    
-    classify_group_optional.add_argument('-o', '--output-prefix', type=str, help='Output prefix. Empty to print to STDOUT (only with lca)')
-    classify_group_optional.add_argument('-a', '--output-all', default=False, action='store_true', help='Output all')
-    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output unclassified')
-    classify_group_optional.add_argument('-s', '--output-single', default=False, action='store_true', help='Output single file with multiple hierarchies')
+    classify_group_optional.add_argument('-c', '--hierarchy-labels', type=str,    nargs="*", help='Hierachy definition, one for each database input. Can also be string, but input will be sorted to define order (e.g. 1 1 2 3). Default: 1')
+    classify_group_optional.add_argument('-k', '--min-kmers',        type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]')
+    classify_group_optional.add_argument('-e', '--max-error',        type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
+    classify_group_optional.add_argument('-u', '--max-error-unique', type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')    
+    classify_group_optional.add_argument('-f', '--offset',           type=int,               help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2')    
+    classify_group_optional.add_argument('-o', '--output-prefix',    type=str,               help='Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)')
+    classify_group_optional.add_argument('-a', '--output-all',          default=False, action='store_true', help='Output an additional file with all matches (.all). File can be very large.')
+    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output an additional file with unclassified read headers (.unc)')
+    classify_group_optional.add_argument('-s', '--output-single',       default=False, action='store_true', help='When using multiple hiearchical level, output everything in one file instead of one per hiearchy')
+    classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly. This file can be re-generated with ganon report command.')
 
     classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads.')
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
-    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
-    
-    classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
+    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS) 
 
     ####################################################################################################
 
@@ -109,7 +107,7 @@ def main(arguments=None):
     # Required
     report_group_required = report_parser.add_argument_group('required arguments')
     report_group_required.add_argument('-i', '--rep-file',  required=True, type=str, help='{prefix}.rep file output from ganon classify')
-    report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification (only for .tax files).')
+    report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification.')
     
     # Defaults
     report_group_optional = report_parser.add_argument_group('optional arguments')
