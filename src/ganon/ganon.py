@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, os, sys, subprocess, io, time, shlex, shutil, gzip, pickle, math, re, copy
+import argparse, os, sys, subprocess, time, shlex, shutil, gzip, pickle, math
 from collections import defaultdict, OrderedDict
 
 def main(arguments=None):
@@ -21,13 +21,13 @@ def main(arguments=None):
     
     # Defaults
     build_group_optional = build_parser.add_argument_group('optional arguments')
-    build_group_optional.add_argument('-r', '--rank',            type=str,   default='species',metavar='', help='Lowest taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
-    build_group_optional.add_argument('-k', '--kmer-size',       type=int,   default=19,      metavar='', help='The k-mer size for the bloom filter. Default: 19')
-    build_group_optional.add_argument('-n', '--hash-functions',  type=int,   default=3,       metavar='', help='The number of hash functions to use for the bloom filter. Default: 3')
+    build_group_optional.add_argument('-r', '--rank',            type=str,   default='species', metavar='', help='Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
+    build_group_optional.add_argument('-k', '--kmer-size',       type=int,   default=19,      metavar='', help='The k-mer size for the interleaved bloom filter. Default: 19')
+    build_group_optional.add_argument('-n', '--hash-functions',  type=int,   default=3,       metavar='', help='The number of hash functions for the interleaved bloom filter. Default: 3')
     build_group_optional.add_argument('-f', '--max-fp',          type=float, default=0.05,    metavar='', help='Max. false positive rate for k-mer classification. Default: 0.05')
     build_group_optional.add_argument('-m', '--max-bloom-size',  type=int,                    metavar='', help='Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-size, --hash-functions and --max-fp  [Mutually exclusive --fixed-bloom-size]')
     build_group_optional.add_argument('-l', '--bin-length',      type=int,                    metavar='', help='Maximum length (in bp) for each bin. Default: auto')
-    build_group_optional.add_argument('-t', '--threads',         type=int,   default=2,       metavar='', help='Number of subprocesses/threads to use for calculations. Default: 2')
+    build_group_optional.add_argument('-t', '--threads',         type=int,   default=2,       metavar='', help='Number of subprocesses/threads to use. Default: 2')
     build_group_optional.add_argument('--fixed-bloom-size',      type=int,                    metavar='', help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
     build_group_optional.add_argument('--fragment-length',       type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
     build_group_optional.add_argument('--overlap-length',        type=int,   default=300,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
@@ -35,10 +35,10 @@ def main(arguments=None):
     build_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
     build_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
-    build_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory')
+    build_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
     # Extra
-    build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
+    build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
     build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
     build_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
@@ -50,22 +50,22 @@ def main(arguments=None):
 
     # Required
     update_group_required = update_parser.add_argument_group('required arguments')
-    update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database prefix')
+    update_group_required.add_argument('-d', '--db-prefix',         required=True,  type=str,               metavar='db_prefix',        help='Database input prefix (.ibf, .map, .tax, .gnn)')
     update_group_required.add_argument('-i', '--input-files',       required=False, type=str, nargs="*",    metavar='',  help='Input reference sequence fasta files [.gz]')
     
     # Defaults
     update_group_optional = update_parser.add_argument_group('optional arguments')
-    update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Alternative output database prefix. Default: overwrite current --db-prefix')
+    update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix')
     #update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update complete bins, removing sequences. Input file should be complete, not only new sequences.')
-    update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='set the number of subprocesses/threads to use for calculations. Default: 2')
+    update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='Number of subprocesses/threads to use. Default: 2')
     update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     update_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     update_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
     update_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
-    update_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory')
+    update_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
     # Extra
-    update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon')
+    update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
     update_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
     update_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     update_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
@@ -77,30 +77,28 @@ def main(arguments=None):
 
     # Required
     classify_group_required = classify_parser.add_argument_group('required arguments')
-    classify_group_required.add_argument('-d', '--db-prefix', required=True, nargs="*", type=str, metavar='db_prefix', help='Database prefix[es]')
+    classify_group_required.add_argument('-d', '--db-prefix', required=True, nargs="*", type=str, metavar='db_prefix', help='Database input prefix[es]')
     classify_group_required.add_argument('-r', '--single-reads', nargs="*", type=str, metavar='reads.fq[.gz]', help='Multi-fastq[.gz] file[s] to classify')
     classify_group_required.add_argument('-p', '--paired-reads', nargs="*", type=str,  metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
 
     # Defaults
     classify_group_optional = classify_parser.add_argument_group('optional arguments')
-    classify_group_optional.add_argument('-c', '--hierarchy-labels',            type=str,    nargs="*", help='Hierachy definition, one for each database input. Can also be string, but input will be always sorted (e.g. 1 1 2 3). Default: 1')
-    classify_group_optional.add_argument('-k', '--min-kmers',                   type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Can be used alternatively to --max-error for reads of variable size. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 ')
-    classify_group_optional.add_argument('-e', '--max-error',                   type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
-    classify_group_optional.add_argument('-u', '--max-error-unique',            type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to parent taxonomic level. Single value or one per hierachy (e.g. 0 1 2). -1 to disable. Default: -1')    
-    classify_group_optional.add_argument('-f', '--offset',                      type=int,               help='Number of k-mers to skip during clasification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 2')
-    
-    classify_group_optional.add_argument('-o', '--output-prefix', type=str, help='Output prefix. Empty to print to STDOUT (only with lca)')
-    classify_group_optional.add_argument('-a', '--output-all', default=False, action='store_true', help='Output all')
-    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output unclassified')
-    classify_group_optional.add_argument('-s', '--output-single', default=False, action='store_true', help='Output single file with multiple hierarchies')
+    classify_group_optional.add_argument('-c', '--hierarchy-labels', type=str,    nargs="*", help='Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: 1')
+    classify_group_optional.add_argument('-k', '--min-kmers',        type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]')
+    classify_group_optional.add_argument('-e', '--max-error',        type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
+    classify_group_optional.add_argument('-u', '--max-error-unique', type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierarchy (e.g. 0 1 2). -1 to disable. Default: -1')    
+    classify_group_optional.add_argument('-f', '--offset',           type=int,               help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2')    
+    classify_group_optional.add_argument('-o', '--output-prefix',    type=str,               help='Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)')
+    classify_group_optional.add_argument('-a', '--output-all',          default=False, action='store_true', help='Output an additional file with all matches (.all). File can be very large.')
+    classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output an additional file with unclassified read headers (.unc)')
+    classify_group_optional.add_argument('-s', '--output-single',       default=False, action='store_true', help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
+    classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly. This file can be re-generated with the ganon report command.')
 
-    classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads.')
+    classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads to use. Default: 3')
     classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
     classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
-    classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Output in verbose mode for ganon-classify')
-    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
-    
-    classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
+    classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose mode for ganon-classify')
+    classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS) 
 
     ####################################################################################################
 
@@ -109,14 +107,14 @@ def main(arguments=None):
     # Required
     report_group_required = report_parser.add_argument_group('required arguments')
     report_group_required.add_argument('-i', '--rep-file',  required=True, type=str, help='{prefix}.rep file output from ganon classify')
-    report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification (only for .tax files).')
+    report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification.')
     
     # Defaults
     report_group_optional = report_parser.add_argument_group('optional arguments')
-    report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all indentified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
+    report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
     report_group_optional.add_argument('-m', '--min-matches', type=int, default=0, help='Min. number of matches to output. 0 for all. Default: 0')
     report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
-    report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report.')
+    report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
 
     ####################################################################################################
 
@@ -140,80 +138,31 @@ def main(arguments=None):
 
     if len(sys.argv[1:])==0: # Print help calling script without parameters
         parser.print_help() 
-        return 0
+        sys.exit(0)
     
-    if args.which!="report": 
-        tx_total = time.time()
-        args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
+    # set path for executables
+    path_exec = set_paths(args)
+    if not path_exec: sys.exit(1)
+    # validate arguments and input files
+    if not validate_args_files(args): sys.exit(1)
 
+    # set output files
     if args.which=='build' or args.which=='update':
-        # if path is given, look for binaries only there
-        ganon_build_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
-        for p in ganon_build_paths:
-            ganon_build_exec = shutil.which("ganon-build", path=p)
-            if ganon_build_exec is not None: break
-        if ganon_build_exec is None:
-            print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
-            return 1
-
-        ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None, "scripts/"]
-        for p in ganon_get_len_taxid_paths:
-            ganon_get_len_taxid_exec = shutil.which("ganon-get-len-taxid.sh", path=p)
-            if ganon_get_len_taxid_exec is not None: break
-        if ganon_get_len_taxid_exec is None:
-            print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
-            return 1
-
-        taxsbp_paths = [args.taxsbp_path + "/"] if args.taxsbp_path else [None, "taxsbp/"]
-        for p in taxsbp_paths:
-            taxsbp_exec = shutil.which("taxsbp", path=p)
-            if taxsbp_exec is not None: break
-            taxsbp_exec = shutil.which("taxsbp.py", path=p)
-            if taxsbp_exec is not None: break
-        if taxsbp_exec is None:
-            print_log("TaxSBP script (taxsbp or taxsbp.py) were not found. Please inform the path of the scripts with --taxsbp-path\n")
-            return 1
-
-        if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
-            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
-            return 1
-
-        if not args.input_files and not args.input_directory:
-            print_log("Please provide files with --input-files and/or --input-directory with --input-extension \n")
-            return 1
-        elif args.input_directory and not args.input_extension:
-            print_log("Please provide the --input-extension when using --input-directory \n")
-            return 1
-        elif args.input_directory and not args.input_files:
-            args.input_files = [] # initializate for adding files later
-
         db_prefix = args.db_prefix
-        output_folder = os.path.abspath(os.path.dirname(db_prefix)) + "/"
         tmp_output_folder = db_prefix + "_tmp/"
         db_prefix_ibf = db_prefix + ".ibf"
         db_prefix_map = db_prefix + ".map"
         db_prefix_tax = db_prefix + ".tax"
         db_prefix_gnn = db_prefix + ".gnn"
 
-    if args.which=='build': #If set (!=0), should be smaller than fragment
-        if args.fragment_length>0 and args.overlap_length > args.fragment_length:
-            print_log("--overlap-length cannot be bigger than --fragment-length\n")
-            return 1
+        if args.which=='update':
+            tmp_db_prefix = tmp_output_folder + "tmp"
+            tmp_db_prefix_ibf = tmp_db_prefix + ".ibf"
+            tmp_db_prefix_gnn = tmp_db_prefix + ".gnn"
+            tmp_db_prefix_map = tmp_db_prefix + ".map"
+            tmp_db_prefix_tax = tmp_db_prefix + ".tax"
 
-        if args.fixed_bloom_size and not args.bin_length:
-            print_log("please set the --bin-length to use --fixed-bloom-size\n")
-            return 1
-
-    if args.which=='classify':
-
-        ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
-        for p in ganon_classify_paths:
-            ganon_classify_exec = shutil.which("ganon-classify", path=p)
-            if ganon_classify_exec is not None: break
-        if ganon_classify_exec is None:
-            print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
-            return 1
-
+    tx_total = time.time()
 
 #################################################################################################################################
 #################################################################################################################################
@@ -222,7 +171,7 @@ def main(arguments=None):
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
 
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
@@ -233,7 +182,9 @@ def main(arguments=None):
             tx = time.time()
             print_log("Estimating best bin length... ")
             bin_length = estimate_bin_len(args, taxsbp_input_file, tax, use_assembly)
-            if bin_length==0: return 1
+            if bin_length==0: 
+                print_log("Could not estimate bin length, using default: 1000000 bp")
+                bin_length=1000000
             print_log(str(bin_length) + "bp. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
@@ -247,7 +198,7 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Running taxonomic clustering (TaxSBP)... ")
-        run_taxsbp_cmd = " ".join([taxsbp_exec,
+        run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
                                    "-f " + taxsbp_input_file,
                                    "-n " + ncbi_nodes_file,
                                    "-m " + ncbi_merged_file if ncbi_merged_file else "",
@@ -256,7 +207,7 @@ def main(arguments=None):
                                    "-z " + "assembly" if use_assembly else "",
                                    "-a " + str(fragment_length) if fragment_length else "",
                                    "-o " + str(args.overlap_length) if fragment_length else ""])
-        stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
+        stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
         
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         bins, actual_number_of_bins, unique_taxids, max_length_bin, group_taxid, _ = taxsbp_output_files(stdout, acc_bin_file, db_prefix_map, use_assembly, fragment_length)
@@ -300,7 +251,7 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Building index (ganon-build)... \n")
-        run_ganon_build_cmd = " ".join([ganon_build_exec,
+        run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--seqid-bin-file " + acc_bin_file,
                                         "--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if args.max_fp else "--filter-size " + str(args.fixed_bloom_size),
                                         "--kmer-size " + str(args.kmer_size),
@@ -313,7 +264,7 @@ def main(arguments=None):
                                         "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
                                         "--directory-reference-files " + args.input_directory if args.input_directory else ""
                                         "--extension " + args.input_extension if args.input_extension else ""])
-        stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
+        stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
@@ -328,16 +279,10 @@ def main(arguments=None):
     elif args.which=='update':  
         tx = time.time()
 
-        tmp_db_prefix = tmp_output_folder + "tmp"
-        tmp_db_prefix_ibf = tmp_db_prefix + ".ibf"
-        tmp_db_prefix_gnn = tmp_db_prefix + ".gnn"
-        tmp_db_prefix_map = tmp_db_prefix + ".map"
-        tmp_db_prefix_tax = tmp_db_prefix + ".tax"
-
         gnn = Gnn(file=db_prefix_gnn)
 
         use_assembly=True if gnn.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
         # write bins from .gnn
@@ -345,7 +290,7 @@ def main(arguments=None):
         gnn.write_bins(bins_file)
 
         print_log("Running taxonomic clustering (TaxSBP)... \n")
-        run_taxsbp_cmd = " ".join([taxsbp_exec,
+        run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
                                    "-u " + bins_file,
                                    "-f " + taxsbp_input_file,
                                    "-n " + ncbi_nodes_file,
@@ -355,7 +300,7 @@ def main(arguments=None):
                                    "-z " + "assembly" if use_assembly else "",
                                    "-a " + str(gnn.fragment_length) if gnn.fragment_length else "",
                                    "-o " + str(gnn.overlap_length) if gnn.fragment_length else ""])
-        stdout, stderr, errcode = run(run_taxsbp_cmd, print_stderr=True)
+        stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
 
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         bins, number_of_updated_bins, unique_taxids, max_length_bin, group_taxid, last_bin = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_map, use_assembly, gnn.fragment_length)
@@ -365,7 +310,7 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Updating index (ganon-build)... \n")
-        run_ganon_build_cmd = " ".join([ganon_build_exec,
+        run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--update-filter-file " + db_prefix_ibf,
                                         "--seqid-bin-file " + acc_bin_file,
                                         "--output-filter-file " + tmp_db_prefix_ibf,
@@ -377,7 +322,7 @@ def main(arguments=None):
                                         "--directory-reference-files " + args.input_directory if args.input_directory else ""
                                         "--extension " + args.input_extension if args.input_extension else ""])
 
-        stdout, stderr, errcode = run(run_ganon_build_cmd, print_stderr=True)
+        stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
@@ -414,7 +359,7 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Classifying reads (ganon-classify)... \n")
-        run_ganon_classify = " ".join([ganon_classify_exec,
+        run_ganon_classify = " ".join([path_exec['classify'],
                                        "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
                                        "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else "",
                                        "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in args.db_prefix]),
@@ -433,7 +378,7 @@ def main(arguments=None):
                                        "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                        "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                        "--verbose" if args.verbose else "" ])
-        stdout, stderr, errcode = run(run_ganon_classify)
+        stdout, stderr = run(run_ganon_classify)
         if not args.output_prefix: print(stdout)
         print_log(stderr)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -467,9 +412,7 @@ def main(arguments=None):
 
 def run(cmd, output_file=None, print_stderr=False, shell=False):
     errcode=0
-    stderr=""
     try:
-        errcode=0
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, 
                                     shell=shell, 
                                     universal_newlines=True, 
@@ -478,34 +421,31 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         stdout, stderr = process.communicate() # wait for the process to terminate
         errcode = process.returncode
         if errcode!=0: raise Exception()
-        if print_stderr: print_log(stderr)
-        return stdout, stderr, errcode
+        if print_stderr: print_log(stderr if stderr else "")
+        return stdout, stderr
 
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
         print_log('The following command failed to execute:\n'+cmd)
         print_log(str(e)+"\n")
-        print_log("Errorcode: "+str(errcode)+"\n")
-        print_log("Error: "+stderr+"\n")
-        raise
+        print_log("Error code: "+str(errcode)+"\n")
+        print_log("Out: "+"\n")
+        if stdout: print_log(stdout+"\n")
+        print_log("Error: "+"\n")
+        if stderr: print_log(stderr+"\n")
+        sys.exit(errcode)
 
-def prepare_files(args, tmp_output_folder, use_assembly, ganon_get_len_taxid_exec):
+def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
     
-    # get files from
-    if args.input_directory and args.input_extension:
-        for file in os.listdir(args.input_directory):
-            if file.endswith(args.input_extension):
-                args.input_files.append(os.path.join(args.input_directory, file))
-
     # Prepare TaxSBP input file
     if args.seq_info_file: # file already provided 
         taxsbp_input_file = args.seq_info_file
     else: # retrieve info
-        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, ganon_get_len_taxid_exec, args.seq_info, use_assembly)
+        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, path_exec, args.seq_info, use_assembly)
 
     if not args.taxdump_file:
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
@@ -563,13 +503,13 @@ def get_taxdump(tmp_output_folder):
     print_log("Downloading taxdump... ")
     taxdump_file = tmp_output_folder+'taxdump.tar.gz'
     run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
-    stdout, stderr, errcode = run(run_wget_taxdump_cmd, print_stderr=True)
+    stdout, stderr = run(run_wget_taxdump_cmd, print_stderr=True)
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return taxdump_file
 
 def unpack_taxdump(taxdump_file, tmp_output_folder):
     unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
-    stdout, stderr, errcode = run(unpack_taxdump_cmd, print_stderr=True)
+    stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
 def get_accession2taxid(acc2txid, tmp_output_folder):
@@ -578,11 +518,11 @@ def get_accession2taxid(acc2txid, tmp_output_folder):
     print_log("Downloading " + acc2txid_file + "... ")
     acc2txid_file = tmp_output_folder + acc2txid_file
     run_wget_acc2txid_file_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/{1}.accession2taxid.gz"'.format(acc2txid_file, acc2txid)
-    stdout, stderr, errcode = run(run_wget_acc2txid_file_cmd, print_stderr=True)
+    stdout, stderr = run(run_wget_acc2txid_file_cmd, print_stderr=True)
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return acc2txid_file
 
-def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, seq_info, use_assembly):
+def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_assembly):
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
@@ -602,7 +542,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         for file in files:
             # cat | zcat | gawk -> compability with osx
             run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr, errcode = run(run_get_header, print_stderr=False, shell=True)
+            stdout, stderr = run(run_get_header, print_stderr=False, shell=True)
             seqcount+=stdout.count('\n')
             accessions+=stdout
         print_log(str(seqcount) + " accessions retrieved. ")
@@ -619,10 +559,10 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         tx = time.time()
         print_log("Retrieving sequence lengths and taxid from NCBI E-utils... ")
         run_get_len_taxid_cmd = '{0} -i {1} {2}'.format(
-                                ganon_get_len_taxid_exec,
+                                path_exec['get_len_taxid'],
                                 accessions_file,
                                 "-a" if use_assembly else "")
-        stdout, stderr, errcode = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
+        stdout, stderr = run(run_get_len_taxid_cmd, output_file=taxsbp_input_file, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     
     else:
@@ -637,7 +577,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, ganon_get_len_taxid_exec, s
         for file in files:
             # cat | zcat | gawk -> compability with osx
             run_get_length = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr, errcode = run(run_get_length, print_stderr=False, shell=True)
+            stdout, stderr = run(run_get_length, print_stderr=False, shell=True)
             for line in stdout.rstrip().split("\n"):
                 a, l = line.split("\t")
                 if l != "0": accessions_lengths[a] = l
@@ -915,10 +855,149 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     
     if final_report_file: frfile.close()
 
+def set_paths(args):
+    
+
+    path_exec = {'build': "", 'classify': "", 'get_len_taxid': "", 'taxsbp': ""}
+
+    if args.which=='build' or args.which=='update':
+        args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
+
+        # if path is given, look for binaries only there
+        ganon_build_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
+        for p in ganon_build_paths:
+            path_exec['build'] = shutil.which("ganon-build", path=p)
+            if path_exec['build'] is not None: break
+        if path_exec['build'] is None:
+            print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
+            return False
+
+        ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None, "scripts/"]
+        for p in ganon_get_len_taxid_paths:
+            path_exec['get_len_taxid'] = shutil.which("ganon-get-len-taxid.sh", path=p)
+            if path_exec['get_len_taxid'] is not None: break
+        if path_exec['get_len_taxid'] is None:
+            print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
+            return False
+
+        taxsbp_paths = [args.taxsbp_path + "/"] if args.taxsbp_path else [None, "taxsbp/"]
+        for p in taxsbp_paths:
+            path_exec['taxsbp'] = shutil.which("taxsbp", path=p)
+            if path_exec['taxsbp'] is not None: break
+            path_exec['taxsbp'] = shutil.which("taxsbp.py", path=p)
+            if path_exec['taxsbp'] is not None: break
+        if path_exec['taxsbp'] is None:
+            print_log("TaxSBP script (taxsbp or taxsbp.py) were not found. Please inform the path of the scripts with --taxsbp-path\n")
+            return False
+
+    elif args.which=='classify':
+        args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
+
+        ganon_classify_paths = [args.ganon_path, args.ganon_path+"build/"] if args.ganon_path else [None, "build/"]
+        for p in ganon_classify_paths:
+            path_exec['classify'] = shutil.which("ganon-classify", path=p)
+            if path_exec['classify'] is not None: break
+        if path_exec['classify'] is None:
+            print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
+            return False
+
+    return path_exec
+
+def validate_args_files(args):
+
+    if args.which in ['build','update']:
+        if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
+            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
+            return False
+
+        if not args.input_files and not args.input_directory:
+            print_log("Please provide files with --input-files and/or --input-directory with --input-extension \n")
+            return False
+        elif args.input_directory and not args.input_extension:
+            print_log("Please provide the --input-extension when using --input-directory \n")
+            return False
+        elif args.input_directory and "*" in args.input_extension:
+            print_log("Please do not use wildcards (*) in the --input-extension\n")
+            return False
+        elif args.input_directory and not args.input_files:
+            args.input_files = [] # initializate for adding files later
+
+        # remove non existent files from input list
+        if args.input_files: 
+            args.input_files = check_files(args.input_files)
+
+        # get files from directory
+        if args.input_directory and args.input_extension:
+            for file in os.listdir(args.input_directory):
+                if file.endswith(args.input_extension):
+                    args.input_files.append(os.path.join(args.input_directory, file))
+        
+        if len(args.input_files)==0:
+            print_log("No valid input files found\n")
+            return False
+
+        if args.which=='update':
+            if not check_db(args.db_prefix):
+                return False
+
+        if args.which=='build': #If set (!=0), should be smaller than fragment
+            if args.fragment_length>0 and args.overlap_length > args.fragment_length:
+                print_log("--overlap-length cannot be bigger than --fragment-length\n")
+                return False
+
+            if args.fixed_bloom_size and not args.bin_length:
+                print_log("please set the --bin-length to use --fixed-bloom-size\n")
+                return False
+        
+    elif args.which=='classify':
+        for prefix in args.db_prefix:
+            if not check_db(prefix):
+                return False
+
+        if not args.single_reads and not args.paired_reads:
+            print_log("Please provide file[s] with --single-reads or --paired-reads\n")
+            return False
+
+        len_single_reads = 0
+        if args.single_reads: 
+            args.single_reads = check_files(args.single_reads)
+            len_single_reads = len(args.single_reads)
+        len_paired_reads = 0
+        if args.paired_reads: 
+            args.paired_reads = check_files(args.paired_reads)
+            len_paired_reads = len(args.paired_reads)
+        
+        if len_single_reads+len_paired_reads==0:
+            print_log("No valid input files found\n")
+            return False
+
+    elif args.which=='report':
+        for prefix in args.db_prefix:
+            if not check_db(prefix):
+                return False
+
+        if not os.path.exists(args.rep_file):
+            print_log("No valid input files found\n")
+            return False
+    return True
+
+def check_files(files):
+    len_files = len(files)
+    files[:] = [file for file in files if os.path.exists(file)]
+    if len(files)<len_files:
+        print_log(str(len_files-len(files)) + " input file[s] could not be found\n")
+    return files
+
+def check_db(prefix):
+    for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
+        if not os.path.exists(prefix+db_file_type):
+            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)\n")
+            return False
+    return True
+
 def print_log(text):
     sys.stderr.write(text)
     sys.stderr.flush()
-
 
 class Gnn:
     def __init__(self,

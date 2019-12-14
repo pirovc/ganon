@@ -50,7 +50,7 @@ ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus
 
 To build custom indices, ganon requires one (or multiple) fasta file(s) with the standard NCBI accession.version header (e.g. `>NC_009515.1`). For every sequence, taxonomic information will be automatically retrieved. Check the parameter `--seq-info` and `--taxdump-file` for more information. 
 
-If you want to re-create the indices used in the manuscript above, please follow the instructions https://github.com/pirovc/ganon_benchmark
+If you want to recreate the indices used in the manuscript above, please follow the instructions https://github.com/pirovc/ganon_benchmark
 
 ### Downloading sequences
 
@@ -65,7 +65,7 @@ Downloading archaeal and bacterial complete genomes from RefSeq:
                       -o "RefSeqCG_arc_bac" -b "v1" \
 	                  -a -m -u -r -p -t 24
 
-Where `-a` will additionaly download the taxdump.tar.gz, `-m` will force the MD5 check for every file downloaded, `-u -r -p` will generate reports which can be used later, `-t` set the number of parallel downloads, `-b` will name the version and `-o` set the output working directory. If you want to download a set of defined species instead of the whole organism group, use `-g "species:562,623"` or any taxonomic group(s) `-g "taxids:620,1643685"`.
+Where `-a` will additionally download the taxdump.tar.gz, `-m` will force the MD5 check for every file downloaded, `-u -r -p` will generate reports which can be used later, `-t` set the number of parallel downloads, `-b` will name the version and `-o` set the output working directory. If you want to download a set of defined species instead of the whole organism group, use `-g "species:562,623"` or any taxonomic group(s) `-g "taxids:620,1643685"`.
 
 Building the index based on the files of the example above:
 
@@ -120,7 +120,7 @@ The same goes for the update process:
 	             --taxdump-file RefSeqCG_arc_bac/v2/{TIMESTAMP}_taxdump.tar.gz
 
 Obs:
--  If `-d genbank` was used in genome_updater, change the occurances of `$4` to `$3` in the `awk` commands above.
+-  If `-d genbank` was used in genome_updater, change the occurrences of `$4` to `$3` in the `awk` commands above.
 - `{TIMESTAMP}` should be the timestamp (YYYY-MM-DD_HH-MM-SS) automatically generated when the files were downloaded.
 
 ## Output files
@@ -132,36 +132,36 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.ibf**: main interleaved bloom filter file
  - {prefix}**.map**: tab-separated mapping between targets and bin identifiers (fields: target, bin id). Targets should be present in the .tax file as a node.
  - {prefix}**.tax**: taxonomic tree (fields: node, parent, rank, name)
- - {prefix}**.gnn**: gziped pickled file (python) with information about clustering and parameters used
+ - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
 -  Database files from version `0.1.X` are **NOT** compatible with `0.2.X`. If you want to convert a database, please use the script `scripts/convert-db-0.1-0.2.py`
 
 ### classify
 
- - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hiearchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* *(fields: read identifier, target, k-mer count)*
+ - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
+ - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* *(fields: read identifier, target, k-mer count)*
   - {prefix}**.rep**: plain report of the run with only target that receive a match *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`*
   - {prefix}**.tre**: report file (see below)
 
 ### report
 
- - {prefix}**.tre**: tab-separated tree-like report with cummulative counts and lineage with the following fields: 
+ - {prefix}**.tre**: tab-separated tree-like report with cumulative counts and lineage with the following fields: 
 
 	1) rank *(e.g. phylum, species, ...)*
-	2) target *(e.g. taxid, assembly id)*
+	2) target *(e.g. taxid/assemblyid)*
 	3) taxid lineage *(e.g 1|2|1224|...)*
 	4) target scientific name *(e.g. Paenibacillus polymyxa)*
 	5) \# unique assignments *(number of reads that matched exclusively to this target)*
 	6) \# reads assigned *(number of reads directly assigned to this target - either unique or lca)*
-	7) \# cummulative assignments *(cummulative number of reads assigned up-to this taxa)*
-	8) \% cummulative assignments
+	7) \# cumulative assignments *(cumulative number of reads assigned up-to this taxa)*
+	8) \% cumulative assignments
 
 Here only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous (e.g. at assembly level), some entries may have many matches, but all of them shared. In other words, no read will stay in this assignment. Those entries will not be present in the **.tre** file, but information about all matches can be found on **.rep**.
 
 #### Example of classification output files
 
-The main output file is the `{prefix}.tre` which will sumarize the results (too see the file in a nice format, use `column -s$'\t' -t -n {prefix}.tre`):
+The main output file is the `{prefix}.tre` which will summarize the results (too see the file in a nice format, use `column -s$'\t' -t -n {prefix}.tre`):
 
 ```
 unclassified  -       -                                      -                        -   -   0    0.00000
@@ -216,21 +216,65 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Pa
 
 ```
 
+## Hierarchical classification
+
+Ganon classification can be performed in one or more databases at the same time. The databases can be provided in a hierarchical order. Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `k` size. To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. `--max-error/--min-kmers` can be provided for each database. `--max-error-unique` can be provided for each hierarchy level. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels).
+
+For example: 
+
+### Classifying reads against multiple databases:
+
+	ganon classify --db-prefix db1 db2 db3 \
+	               --min-kmers 0.75 \
+	               -r reads.fq.gz
+
+Classification against 3 database (as if they were one) using the same error rate.
+
+### Classifying reads against multiple databases with different error rates:
+
+	ganon classify --db-prefix db1 db2 db3 \
+	               --max-error  0    1   4 \
+	               -r reads.fq.gz
+
+Classification against 3 database (as if they were one) using different error rates for each.
+
+### Classifying reads against multiple databases hierarchically:
+
+	ganon classify --db-prefix            db1     db2      db3 \ 
+	               --hierarchy-labels 1_first 1_first 2_second \
+	               -r reads.fq.gz
+
+In this example, reads are going to be classified first against db1 and db2. Reads without a valid match will be further classified against db3. `--hierarchy-labels` are strings and are going to be sorted to define the hierarchy order, disregarding input order.
+
+### Classifying reads against multiple databases hierarchically with different error rates:
+
+	ganon classify --db-prefix            db1     db2      db3 \
+	               --hierarchy-labels 1_first 1_first 2_second \
+	               --min-kmers              1     0.5     0.25 \
+	               --max-error-unique               0        1 \
+	               -r reads.fq.gz
+
+In this example, classification will be performed with different error rates for each database. For each hierarchy (`1_first` and `2_second`) a different `--max-error-unique` will be used.
+
 ## Choosing parameters
 
-### --single-reads and --paired-reads
+### --single-reads and --paired-reads (classify)
 
-ganon accepts single-end or paired-end reads. In the paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
+ganon accepts single-end or paired-end reads. In paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
 
-### --min-kmers and --max-error
+### --min-kmers and --max-error (classify)
 
-Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
+Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with a fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
 
-### --max-error-unique
+### --max-error-unique (classify)
 
 Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the threshold is not achieved, the match is not excluded but assigned to the parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to 0 or 1.
 
-### .ibf size (--max-bloom-size, --bin-length)
+### --offset (classify)
+
+`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`).
+
+### --max-bloom-size and --bin-length (build)
 
 The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
 
@@ -339,7 +383,149 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### build
 
-### classify
+	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t] [--fixed-bloom-size]
+	                   [--fragment-length] [--overlap-length] [--seq-info [[...]]] [--seq-info-file] [--taxdump-file [[...]]]
+	                   [--input-directory] [--input-extension] [--verbose]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -r , --rank           Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species
+	  -k , --kmer-size      The k-mer size for the interleaved bloom filter. Default: 19
+	  -n , --hash-functions 
+	                        The number of hash functions for the interleaved bloom filter. Default: 3
+	  -f , --max-fp         Max. false positive rate for k-mer classification. Default: 0.05
+	  -m , --max-bloom-size 
+	                        Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-size,
+	                        --hash-functions and --max-fp [Mutually exclusive --fixed-bloom-size]
+	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
+	  -t , --threads        Number of subprocesses/threads to use. Default: 2
+	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size]
+	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-
+	                        length
+	  --overlap-length      Fragment overlap length (in bp). Should be bigger than the read length used for classification.
+	                        Default: 300
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and
+	                        seq. length information. If a small number of sequences is provided (<50000) or when --rank
+	                        assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode
+	                        will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided.
+	                        Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force
+	                        webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-
+	                        info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id])
+	                        [Mutually exclusive --seq-info]
+	  --taxdump-file [ [ ...]]
+	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --verbose             Verbose mode for ganon-build
+
+	required arguments:
+	  -d db_prefix, --db-prefix db_prefix
+	                        Database output prefix (.ibf, .map, .tax, .gnn will be created)
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]        
 
 ### update
+
+	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t] [--seq-info [[...]]] [--seq-info-file] [--taxdump-file [[...]]]
+	                    [--input-directory] [--input-extension] [--verbose]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -o , --output-db-prefix 
+	                        Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix
+	  -t , --threads        Number of subprocesses/threads to use. Default: 2
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and
+	                        seq. length information. If a small number of sequences is provided (<50000) or when --rank
+	                        assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode
+	                        will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided.
+	                        Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force
+	                        webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-
+	                        info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id])
+	                        [Mutually exclusive --seq-info]
+	  --taxdump-file [ [ ...]]
+	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --verbose             Verbose mode for ganon-build
+
+	required arguments:
+	  -d db_prefix, --db-prefix db_prefix
+	                        Database input prefix (.ibf, .map, .tax, .gnn)
+	  -i [ [ ...]], --input-files [ [ ...]]
+	                        Input reference sequence fasta files [.gz]
+
+### classify
+
+	ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz] [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
+	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]] [-c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]]
+	                      [-k [MIN_KMERS [MIN_KMERS ...]]] [-e [MAX_ERROR [MAX_ERROR ...]]]
+	                      [-u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]] [-f OFFSET] [-o OUTPUT_PREFIX] [-a] [-n] [-s]
+	                      [--ranks [RANKS [RANKS ...]]] [-t THREADS] [--verbose]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]], --hierarchy-labels [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]
+	                        Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to
+	                        define order (e.g. 1 1 2 3). Default: 1
+	  -k [MIN_KMERS [MIN_KMERS ...]], --min-kmers [MIN_KMERS [MIN_KMERS ...]]
+	                        Min. percentage of k-mers matching to consider a read assigned. Single value or one per database
+	                        (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]
+	  -e [MAX_ERROR [MAX_ERROR ...]], --max-error [MAX_ERROR [MAX_ERROR ...]]
+	                        Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive
+	                        --min-kmers]
+	  -u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]], --max-error-unique [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]
+	                        Max. number of errors allowed for unique assignments after filtering. Matches below this error rate
+	                        will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierarchy
+	                        (e.g. 0 1 2). -1 to disable. Default: -1
+	  -f OFFSET, --offset OFFSET
+	                        Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1
+	                        = all k-mers, 3 = every 3rd k-mer). Default: 2
+	  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
+	                        Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)
+	  -a, --output-all      Output an additional file with all matches (.all). File can be very large.
+	  -n, --output-unclassified
+	                        Output an additional file with unclassified read headers (.unc)
+	  -s, --output-single   When using multiple hierarchical levels, output everything in one file instead of one per hierarchy
+	  --ranks [RANKS [RANKS ...]]
+	                        Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks:
+	                        superkingdom phylum class order family genus species species+ assembly. This file can be re-
+	                        generated with the ganon report command.
+	  -t THREADS, --threads THREADS
+	                        Number of subprocesses/threads to use. Default: 3
+	  --verbose             Verbose mode for ganon-classify
+
+	required arguments:
+	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
+	                        Database input prefix[es]
+	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
+	                        Multi-fastq[.gz] file[s] to classify
+	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
+	                        Multi-fastq[.gz] pairs of file[s] to classify
+
+### report
+
+	ganon report [-h] -i REP_FILE -d [db_prefix [db_prefix ...]] [-r [RANKS [RANKS ...]]] [-m MIN_MATCHES]
+	                    [-p MIN_MATCHES_PERC] [-o OUTPUT_REPORT]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -r [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
+	                        Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom
+	                        phylum class order family genus species species+ assembly
+	  -m MIN_MATCHES, --min-matches MIN_MATCHES
+	                        Min. number of matches to output. 0 for all. Default: 0
+	  -p MIN_MATCHES_PERC, --min-matches-perc MIN_MATCHES_PERC
+	                        Min. percentage of matches to output. 0 for all. Default: 0
+	  -o OUTPUT_REPORT, --output-report OUTPUT_REPORT
+	                        Output file for report. Default: STDOUT
+
+	required arguments:
+	  -i REP_FILE, --rep-file REP_FILE
+	                        {prefix}.rep file output from ganon classify
+	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
+	                        Database prefix[es] used for classification.
 

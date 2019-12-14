@@ -46,7 +46,7 @@ public:
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
-    uint16_t               offset = 1;
+    uint16_t               offset = 2;
 
     std::string output_prefix       = "";
     bool        output_all          = false;
@@ -132,6 +132,10 @@ public:
             output_all          = false;
             output_unclassified = false;
         }
+
+#ifndef GANON_OFFSET
+        offset = 1;
+#endif
 
         return parse_hierarchy();
     }
