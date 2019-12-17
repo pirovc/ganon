@@ -133,10 +133,12 @@ public:
             output_unclassified = false;
         }
 
+        if ( offset < 1)
+            offset = 1;
+
 #ifndef GANON_OFFSET
         offset = 1;
 #endif
-
         return parse_hierarchy();
     }
 

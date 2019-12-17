@@ -158,7 +158,8 @@ inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_co
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
     // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( readLen - kmerSize + 1 - ( kmer_count * offset + ( offset - 1 ) ) )
+    uint16_t left_positions = bool((readLen - kmerSize + 1) % offset) * 2; // Acoount for left positions plus last k-mer
+    return std::ceil( ( left_positions + readLen - kmerSize + 1 - ( kmer_count * offset + ( offset - 1 ) ) )
                       / static_cast< float >( kmerSize ) );
 }
 
@@ -167,8 +168,10 @@ inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint1
     // Return threshold (number of kmers) based on an optimal number of errors
     // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
     // just one kmer match (0 would match every read everywhere)
+
+    uint16_t left_positions = bool((readLen - kmerSize + 1) % offset) * 2; // Acoount for left positions plus last k-mer
     return readLen + 1u > kmerSize * ( 1u + max_error )
-               ? std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
+               ? left_positions + std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
                : 1u;
 }
 
