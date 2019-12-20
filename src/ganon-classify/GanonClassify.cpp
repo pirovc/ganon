@@ -157,9 +157,15 @@ struct Filter
 inline uint16_t get_error( uint16_t readLen, uint16_t kmerSize, uint16_t kmer_count, uint16_t offset )
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
-    // (offset-1) -> to correct for the floor left overs
-    return std::ceil( ( readLen - kmerSize + 1 - ( kmer_count * offset + ( offset - 1 ) ) )
-                      / static_cast< float >( kmerSize ) );
+
+    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
+    bool extra_pos = ( readLen - kmerSize ) % offset;
+
+    // - ((offset-1)/kmerSize) adjusts the value to be always below the threshold possible, considering the floor usage
+    // to calculate the kmer_count
+    return std::ceil( ( readLen - kmerSize + offset * ( -kmer_count + extra_pos + 1 ) )
+                          / static_cast< float >( kmerSize )
+                      - ( ( offset - 1 ) / static_cast< float >( kmerSize ) ) );
 }
 
 inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint16_t max_error, uint16_t offset )
@@ -167,8 +173,12 @@ inline uint16_t get_threshold_errors( uint16_t readLen, uint16_t kmerSize, uint1
     // Return threshold (number of kmers) based on an optimal number of errors
     // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
     // just one kmer match (0 would match every read everywhere)
+
+    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
+    bool extra_pos = ( readLen - kmerSize ) % offset;
+
     return readLen + 1u > kmerSize * ( 1u + max_error )
-               ? std::floor( ( readLen - kmerSize + 1u - ( max_error * kmerSize ) ) / offset )
+               ? std::floor( ( ( readLen - kmerSize - max_error * kmerSize ) / offset ) + 1 + extra_pos )
                : 1u;
 }
 
@@ -176,7 +186,11 @@ inline uint16_t get_threshold_kmers( uint16_t readLen, uint16_t kmerSize, float 
 {
     // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
     // ceil -> round-up min # k-mers, floor -> round-down for offset
-    return min_kmers > 0 ? std::floor( std::ceil( ( readLen - kmerSize + 1 ) * min_kmers ) / offset ) : 1u;
+
+    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
+    bool extra_pos = ( readLen - kmerSize ) % offset;
+
+    return min_kmers > 0 ? std::floor( std::ceil( ( readLen - kmerSize ) * min_kmers ) / offset + 1 + extra_pos ) : 1u;
 }
 
 
@@ -510,6 +524,14 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
                 << "ERROR: filters on the same hierarchy should have same k-mer size configuration. Ignoring filter: "
                 << filter_config.ibf_file << std::endl;
             continue;
+        }
+
+        if ( config.offset > first_kmer_size )
+        {
+            std::cerr << "WARNING: offset cannot be bigger than k-mer size. Setting offset to " << first_kmer_size
+                      << std::endl;
+            config.offset = first_kmer_size;
+            filter.offset = first_kmer_size;
         }
 
         std::string   line;
