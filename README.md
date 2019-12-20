@@ -298,7 +298,7 @@ Specific packages:
 - Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
 - cxxopts >=2.2.0 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
 - sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
-- seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/c308e99f10d942382d4c7ed6fc91be1a889e644c))
+- seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/d8b3fcd55858c150bc1dd95fa3cf4c8ebb640829))
 
 #### run
 

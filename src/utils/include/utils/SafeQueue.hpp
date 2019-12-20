@@ -12,25 +12,27 @@ class SafeQueue
 {
 
 private:
-    std::queue< T >         q;
-    std::mutex              m;
-    int                     max_size;
+    std::queue< T > q;
+    std::mutex      m;
+    // queue has max_size size_t (can be set to -1 and it will have no limit on size)
+    size_t                  max_size;
     bool                    push_over = false;
     std::condition_variable cv_push;
     std::condition_variable cv_pop;
 
 public:
     SafeQueue()
-    : max_size( -1 ) // size_t overflow
+    : max_size( std::numeric_limits< size_t >::max() )
     {
     }
 
-    SafeQueue( int max )
+
+    SafeQueue( size_t max )
     : max_size( max )
     {
     }
 
-    void set_max_size( int max )
+    void set_max_size( size_t max )
     {
         std::lock_guard< std::mutex > lock( m );
         max_size = max;
