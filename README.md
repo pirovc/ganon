@@ -141,7 +141,7 @@ Obs:
 
  - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
  - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* *(fields: read identifier, target, k-mer count)*
-  - {prefix}**.rep**: plain report of the run with only target that receive a match *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name). At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`*
+  - {prefix}**.rep**: plain report of the run with only target that receive a match *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name).* Total reads classified are the sum of the columns unique matches and lca matches. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
   - {prefix}**.tre**: report file (see below)
 
 ### report
