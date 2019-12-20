@@ -14,7 +14,7 @@ class SafeQueue
 private:
     std::queue< T > q;
     std::mutex      m;
-    // queue has max_size size_t (can be set to -1 and it will have no limit on size)
+    // Very high max_size - default to std::numeric_limits< size_t >::max() - virtually no limit on size of the queue
     size_t                  max_size;
     bool                    push_over = false;
     std::condition_variable cv_push;
@@ -41,7 +41,7 @@ public:
     void push( T t )
     {
         std::unique_lock< std::mutex > lock( m );
-        while ( q.size() >= max_size ) // never true if max_size=-1 (intended)
+        while ( q.size() >= max_size )
             cv_push.wait( lock );
         q.push( t );
         cv_pop.notify_one();
