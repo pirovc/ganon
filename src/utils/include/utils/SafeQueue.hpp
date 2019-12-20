@@ -12,25 +12,27 @@ class SafeQueue
 {
 
 private:
-    std::queue< T >         q;
-    std::mutex              m;
-    int                     max_size;
+    std::queue< T > q;
+    std::mutex      m;
+    // Very high max_size - default to std::numeric_limits< size_t >::max() - virtually no limit on size of the queue
+    size_t                  max_size;
     bool                    push_over = false;
     std::condition_variable cv_push;
     std::condition_variable cv_pop;
 
 public:
     SafeQueue()
-    : max_size( -1 ) // size_t overflow
+    : max_size( std::numeric_limits< size_t >::max() )
     {
     }
 
-    SafeQueue( int max )
+
+    SafeQueue( size_t max )
     : max_size( max )
     {
     }
 
-    void set_max_size( int max )
+    void set_max_size( size_t max )
     {
         std::lock_guard< std::mutex > lock( m );
         max_size = max;
@@ -39,7 +41,7 @@ public:
     void push( T t )
     {
         std::unique_lock< std::mutex > lock( m );
-        while ( q.size() >= max_size ) // never true if max_size=-1 (intended)
+        while ( q.size() >= max_size )
             cv_push.wait( lock );
         q.push( t );
         cv_pop.notify_one();

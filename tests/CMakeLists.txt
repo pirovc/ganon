@@ -4,13 +4,15 @@
 
 file( COPY ganon-build/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 file( COPY ganon-classify/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
+file( COPY utils/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 
 add_executable( ganon-tests
     aux/Aux.hpp
     setup/Catch2.setup.cpp
     ganon-build/GanonBuild.test.cpp
     ganon-classify/GanonClassify.test.cpp
-    utils/SafeQueue.test.cpp )
+    utils/SafeQueue.test.cpp
+    utils/LCA.test.cpp )
 
 target_link_libraries( ganon-tests
     PRIVATE

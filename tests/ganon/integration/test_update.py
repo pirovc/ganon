@@ -16,7 +16,7 @@ class TestUpdate(unittest.TestCase):
         self.assertFalse(ret, "ganon update finish with an error")
        
         # check if files were created
-        for ext in ["filter", "map", "bins", "nodes"]:
+        for ext in ["ibf", "map", "tax", "gnn"]:
             self.assertTrue(Path(prefix+"."+ext).is_file() , "File (" + ext +") was not created") # TODO check file contents
 
 if __name__ == '__main__':
