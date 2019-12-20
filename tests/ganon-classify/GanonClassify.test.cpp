@@ -186,8 +186,8 @@ SCENARIO( "Classify with min kmers", "[ganon-classify]" )
     cfg.map           = { "filters/bacteria.map" };
     cfg.tax           = { "filters/bacteria.tax" };
     cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.min_kmers     = { 0.3 }; // should work the same as -e 3, threshold = 25 19-mers
-    cfg.output_prefix = "b-b_e3-minkmers";
+    cfg.min_kmers     = { 0.29 }; // should work the same as -e 3, threshold = 25 19-mers
+    cfg.output_prefix = "b-b_m0.29";
 
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
@@ -238,15 +238,39 @@ SCENARIO( "Classify with offset, min kmers and different max. unique errors allo
     cfg.map              = { "filters/bacteria.map" };
     cfg.tax              = { "filters/bacteria.tax" };
     cfg.single_reads     = { "reads/bacteria.simulated.1.fq" };
-    cfg.min_kmers        = { 0.53 }; // ceil((100-19+1)*0.53) = 44 = ((100-19+1)-(2*19)) [2 errors allowed]
+    cfg.min_kmers        = { 0.53 }; // should be equal as 2 errors (9 k-mers)
     cfg.max_error_unique = { 0 };
     cfg.offset           = 6;
-    cfg.output_prefix    = "b-b_e2u0f6-minkmers";
+    cfg.output_prefix    = "b-b_m0.53u0f6";
 
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
         REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
                                      config_classify::results_path + cfg.output_prefix + "." + ext ) );
+}
+
+SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
+{
+    auto cfg          = config_classify::defaultConfig();
+    cfg.ibf           = { "filters/bacteria.ibf" };
+    cfg.map           = { "filters/bacteria.map" };
+    cfg.tax           = { "filters/bacteria.tax" };
+    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
+    cfg.offset        = 25; // should be limited by k-mer size (19)
+    cfg.output_prefix = "b-b_f25";
+    REQUIRE( GanonClassify::run( cfg ) );
+
+    auto cfg2          = config_classify::defaultConfig();
+    cfg2.ibf           = { "filters/bacteria.ibf" };
+    cfg2.map           = { "filters/bacteria.map" };
+    cfg2.tax           = { "filters/bacteria.tax" };
+    cfg2.single_reads  = { "reads/bacteria.simulated.1.fq" };
+    cfg2.offset        = 19;
+    cfg2.output_prefix = "b-b_f19";
+    REQUIRE( GanonClassify::run( cfg2 ) );
+
+    for ( auto const& ext : config_classify::output_ext )
+        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
 }
 #endif
 
