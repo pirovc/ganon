@@ -135,12 +135,12 @@ struct Stats
 
     void load_rep( std::string hierarchy_label, TRep& rep )
     {
-        for ( auto const & [ target, report ] : rep )
+        for ( auto& r : rep )
         {
-            classifiedReads_hierarchy[hierarchy_label] += report.unique_reads + report.lca_reads;
-            matches_hierarchy[hierarchy_label] += report.direct_matches;
-            classifiedReads += report.unique_reads + report.lca_reads;
-            matches += report.direct_matches;
+            classifiedReads_hierarchy[hierarchy_label] += r.second.unique_reads + r.second.lca_reads;
+            matches_hierarchy[hierarchy_label] += r.second.direct_matches;
+            classifiedReads += r.second.unique_reads + r.second.lca_reads;
+            matches += r.second.direct_matches;
         }
     }
 };
@@ -329,9 +329,9 @@ uint32_t filter_matches( ReadOut&  read_out,
 void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_count_read, LCA& lca, TRep& rep )
 {
     std::vector< std::string > targets;
-    for ( auto const & [ target, kmer_count ] : read_out.matches )
+    for ( auto& r : read_out.matches )
     {
-        targets.push_back( target );
+        targets.push_back( r.target );
     }
 
     std::string target_lca = lca.getLCA( targets );
@@ -594,16 +594,13 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
 
     if ( config.parsed_hierarchy.size() > 1 )
     {
-        for ( auto const & [ hierarchy_label, hierarchy_config ] : config.parsed_hierarchy )
+        for ( auto& h : config.parsed_hierarchy )
         {
-            std::cerr << "    " << hierarchy_label << ": " << stats.classifiedReads_hierarchy[hierarchy_label]
-                      << " sequences ("
-                      << ( stats.classifiedReads_hierarchy[hierarchy_label]
-                           / static_cast< double >( stats.totalReads ) )
-                             * 100
-                      << "%) " << stats.matches_hierarchy[hierarchy_label] << " matches (avg. "
-                      << ( stats.matches_hierarchy[hierarchy_label]
-                           / static_cast< double >( stats.classifiedReads_hierarchy[hierarchy_label] ) )
+            std::cerr << "    " << h.first << ": " << stats.classifiedReads_hierarchy[h.first] << " sequences ("
+                      << ( stats.classifiedReads_hierarchy[h.first] / static_cast< double >( stats.totalReads ) ) * 100
+                      << "%) " << stats.matches_hierarchy[h.first] << " matches (avg. "
+                      << ( stats.matches_hierarchy[h.first]
+                           / static_cast< double >( stats.classifiedReads_hierarchy[h.first] ) )
                       << ")" << std::endl;
         }
     }
@@ -917,7 +914,7 @@ bool run( Config config )
 
             // Remove size limit from reading since it's always already loaded
             if ( hierarchy_id == 2 )
-                queue1.set_max_size( -1 );
+                queue1.set_max_size( std::numeric_limits< size_t >::max() );
         }
 
         SafeQueue< detail::ReadOut > classified_all_queue;
