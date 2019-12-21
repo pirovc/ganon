@@ -130,8 +130,8 @@ Obs:
 Every run on `ganon build` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter file
- - {prefix}**.map**: tab-separated mapping between targets and bin identifiers (fields: target, bin id). Targets should be present in the .tax file as a node.
- - {prefix}**.tax**: taxonomic tree (fields: node, parent, rank, name)
+ - {prefix}**.map**: tab-separated mapping between targets and bin identifiers. Targets should be present in the .tax file as a node *(fields: target, bin id)*
+ - {prefix}**.tax**: taxonomic tree *(fields: node, parent, rank, name)*
  - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
@@ -140,8 +140,8 @@ Obs:
 ### classify
 
  - {prefix}**.lca**: output with one match for each classified read after LCA. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. *Warning: file can be very large* *(fields: read identifier, target, k-mer count)*
-  - {prefix}**.rep**: plain report of the run with only target that receive a match *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name).* Total reads classified are the sum of the columns unique matches and lca matches. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+ - {prefix}**.all**: output with all matches for each read. Only generated with --output-all/-a active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all. **Warning: file can be very large** *(fields: read identifier, target, k-mer count)*
+  - {prefix}**.rep**: plain report of the run with only target that receive a match. Total reads classified are the sum of the columns unique matches and lca matches. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`. *(fields: hierarchy_label, target, total matches, unique matches, lca matches, rank, name)*
   - {prefix}**.tre**: report file (see below)
 
 ### report
@@ -296,9 +296,9 @@ System packages:
 
 Specific packages:
 - Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
-- cxxopts >=2.2.0 ([a0de9f](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
+- cxxopts >=2.2.0 ([073dd3](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
 - sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
-- seqan 2.4.0 ([c308e9](https://github.com/eseiler/seqan/commit/d8b3fcd55858c150bc1dd95fa3cf4c8ebb640829))
+- seqan 2.4.0 ([d8b3fc](https://github.com/eseiler/seqan/commit/d8b3fcd55858c150bc1dd95fa3cf4c8ebb640829))
 
 #### run
 
