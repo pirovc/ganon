@@ -260,19 +260,23 @@ In this example, classification will be performed with different error rates for
 
 ### --single-reads and --paired-reads (classify)
 
-ganon accepts single-end or paired-end reads. In paired-end mode, reads are always reported with the header of the first pair. The maximum number of k-mers matches a pair can have is: `length(read1) + length(read2) + 1 - k`. Paired-end reads are classified in a forward-reverse orientation.
+ganon accepts single-end or paired-end reads. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a forward-reverse orientation.
 
 ### --min-kmers and --max-error (classify)
 
-Both parameters are used to define the similarity threshold between reads and references. `--max-error` will work with a fixed number of errors to calculate the amount of k-mers necessary to match. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match.
+Both parameters are used to define the similarity threshold between reads and references. `--max-error` will calculate the minimum amount of k-mers matches based on the q-gram lemma. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match. Note that the strata filter will always select reads with the best error range first (no error, 1 error, 2 errors, ...) and those parameters are controlling the lower bound of the threshold.
+
+`--max-error` is recomended when working with precise classification. For example, most of your reads are represented in the index. `--max-error 0` means that all k-mers of a read should match a reference to be classified (very strict). Values used here are usually low (1, 3, 5), but not necessarily. Note that if you have reads of different lenghts you may want to use `--min-kmers` (with high values, e.g. 0.75) to apply roughly the same criteria for your data.
+
+`--min-kmers` is recommended in more exploratory cases where exact matches are not possible. For example, analysing a sample with very few known species. `--min-kmers 0`  means that any read with one or more k-mers will be considered. This does not mean that any read will be classified, but that the threshold is very low for reads with few matches. Using low `--min-kmers` will mostly introduce false positives with a chance of increasing your sensitivity. Values here are usually low (0.25, 0.1, 0.05).
 
 ### --max-error-unique (classify)
 
-Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the threshold is not achieved, the match is not excluded but assigned to the parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to 0 or 1.
+Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the classified read has less than `--max-error-unique`, the match is not excluded but assigned to its parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to lower values (0, 1, 2).
 
 ### --offset (classify)
 
-`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`).
+`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that offset will affect the sensitivity and precision of your classsification.
 
 ### --max-bloom-size and --bin-length (build)
 
