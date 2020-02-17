@@ -312,7 +312,7 @@ uint32_t filter_matches( ReadOut&  read_out,
     // get maximum possible number of error for this read
     uint16_t max_error = get_error( len, kmer_size, max_kmer_count_read, offset );
     // get min kmer count necesary to achieve the calculated number of errors
-    uint16_t threshold_strata = get_threshold_errors( len, kmer_size, max_error, offset );
+    uint16_t threshold_strata = get_threshold_errors( len, kmer_size, max_error + 1, offset );
 
     for ( auto const& v : matches )
     { // matches[target] = kmerCount
