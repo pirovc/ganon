@@ -87,6 +87,7 @@ def main(arguments=None):
     classify_group_optional.add_argument('-k', '--min-kmers',        type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]')
     classify_group_optional.add_argument('-e', '--max-error',        type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
     classify_group_optional.add_argument('-u', '--max-error-unique', type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierarchy (e.g. 0 1 2). -1 to disable. Default: -1')    
+    classify_group_optional.add_argument('-l', '--strata-filter',    type=int,    nargs="*", help='Additional errors allowed (relative to the best match) to filter and select matches. Single value or one per hierarchy (e.g. 0 1 2). -1 to disable filtering. Default: 0')    
     classify_group_optional.add_argument('-f', '--offset',           type=int,               help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2')    
     classify_group_optional.add_argument('-o', '--output-prefix',    type=str,               help='Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)')
     classify_group_optional.add_argument('-a', '--output-all',          default=False, action='store_true', help='Output an additional file with all matches (.all). File can be very large.')
@@ -369,6 +370,7 @@ def main(arguments=None):
                                        "--max-error " + ",".join([str(me) for me in args.max_error]) if args.max_error else "",
                                        "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]) if args.min_kmers else "",
                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]) if args.max_error_unique else "",
+                                       "--strata-filter " + ",".join([str(sf) for sf in args.strata_filter]) if args.strata_filter else "",
                                        "--offset " + str(args.offset) if args.offset else "",
                                        "--output-prefix " + args.output_prefix if args.output_prefix else "",
                                        "--output-all" if args.output_all else "",
