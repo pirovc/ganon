@@ -274,6 +274,10 @@ Both parameters are used to define the similarity threshold between reads and re
 
 Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the classified read has less than `--max-error-unique`, the match is not excluded but assigned to its parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to lower values (0, 1, 2).
 
+### --strata-filter (classify)
+
+The strata filter is active by default. For every read, the best match - meaning most k-mers against the same target - is selected. An error value is calculated based on the q-gram lemma. All matches below this error rate are discarded (`--strata-filter 0` by default). For example: the best match of a read has 0 errors (all k-mers matched a target). With `--strata-filter 1` all matches with 0 + 1 errors will be reported. `--strata-filter -1` will disable the strata filtering and report everything up-to `--max-error`/`--min-kmers`. To use ganon as a not optimized k-mer counter use: `--min-kmers 0 --strata-filter -1`.
+
 ### --offset (classify)
 
 `--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that offset will affect the sensitivity and precision of your classsification.

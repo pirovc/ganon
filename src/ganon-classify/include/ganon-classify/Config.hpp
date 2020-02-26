@@ -25,6 +25,7 @@ struct HierarchyConfig
 {
     std::vector< FilterConfig > filters;
     int16_t                     max_error_unique;
+    int16_t                     strata_filter;
     std::string                 output_file_lca;
     std::string                 output_file_rep;
     std::string                 output_file_all;
@@ -46,6 +47,7 @@ public:
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
+    std::vector< int16_t > strata_filter{ 0 };
     uint16_t               offset = 2;
 
     std::string output_prefix       = "";
@@ -133,7 +135,7 @@ public:
             output_unclassified = false;
         }
 
-        if ( offset < 1)
+        if ( offset < 1 )
             offset = 1;
 
 #ifndef GANON_OFFSET
@@ -212,6 +214,19 @@ public:
             return false;
         }
 
+        if ( strata_filter.size() == 1 && unique_hierarchy > 1 )
+        {
+            for ( uint16_t b = 1; b < unique_hierarchy; ++b )
+            {
+                strata_filter.push_back( strata_filter[0] );
+            }
+        }
+        else if ( strata_filter.size() != unique_hierarchy )
+        {
+            std::cerr << "Please provide a single or one-per-hierarchy --strata-filter value[s]" << std::endl;
+            return false;
+        }
+
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
@@ -238,9 +253,12 @@ public:
                     output_file_rep = output_prefix + ".rep";
                 }
 
-                parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{
-                    fc, max_error_unique[hierarchy_count], output_file_lca, output_file_rep, output_file_all
-                };
+                parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{ fc,
+                                                                         max_error_unique[hierarchy_count],
+                                                                         strata_filter[hierarchy_count],
+                                                                         output_file_lca,
+                                                                         output_file_rep,
+                                                                         output_file_all };
                 ++hierarchy_count;
             }
             else
@@ -262,8 +280,11 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     for ( auto const& hierarchy_config : config.parsed_hierarchy )
     {
         if ( !hierarchy_config.first.empty() )
-            stream << hierarchy_config.first << ")"
-                   << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
+        {
+            stream << hierarchy_config.first << ")" << newl;
+            stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
+            stream << " --strata-filter: " << hierarchy_config.second.strata_filter << newl;
+        }
         for ( auto const& filter_config : hierarchy_config.second.filters )
         {
             if ( filter_config.min_kmers > -1 )
