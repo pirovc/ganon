@@ -693,7 +693,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             {
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
                 std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
-                          << "]. Switching to single line parsing." << std::endl;
+                          << "]. Switched to single line parsing (slower)." << std::endl;
                 stats.totalReads += parse_single_reads( seqFileIn, pos, config.n_reads, queue1 );
                 break;
             }
