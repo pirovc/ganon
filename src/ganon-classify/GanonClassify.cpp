@@ -428,7 +428,7 @@ void classify( std::vector< Filter >&    filters,
                                                                   config.offset,
                                                                   strata_filter );
 
-                // If there are matches remining
+                // If there are matches
                 if ( count_filtered_matches > 0 )
                 {
 
@@ -560,6 +560,7 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
                 fields.push_back( field );
             // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
+            // std::cerr << std::stoul( fields[1] ) << " -- " << fields[0] << std::endl;
         }
         infile.close();
 
@@ -573,6 +574,8 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
             tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
+            // std::cerr << fields[0]  << " -- " << fields[1]  << " -- " << fields[2]  << " -- " << fields[3] <<
+            // std::endl;
         }
         infile.close();
 

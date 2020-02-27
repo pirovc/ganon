@@ -296,6 +296,7 @@ bool run( Config config )
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid );
+
                         // mtx.lock();
                         // std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
                         // << std::endl; mtx.unlock();
