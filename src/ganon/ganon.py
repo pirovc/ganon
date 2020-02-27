@@ -1044,7 +1044,7 @@ class Bins:
                                 header=None, 
                                 skiprows=0,
                                 names=['seqid','length', 'taxid', 'binid'] if not use_assembly else ['seqid','length', 'taxid', 'group', 'binid'], 
-                                dtype={'seqid': 'string', 'length': 'uint64', 'taxid': 'string', 'binid': 'uint64'})
+                                dtype={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64'})
         if not use_assembly:
             self.bins['group'] = self.bins['taxid'] # Add taxid as group
         if fragment_length: 
