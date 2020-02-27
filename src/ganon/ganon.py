@@ -222,7 +222,7 @@ def main(arguments=None):
         
         # define bloom filter size based on given false positive
         MBinBits = 8388608
-        print_log("Max unique " + args.kmer_size +  "-mers: " + str(max_kmer_count) + "\n")
+        print_log("Max unique " + str(args.kmer_size) +  "-mers: " + str(max_kmer_count) + "\n")
         if not args.fixed_bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
             print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
@@ -1044,7 +1044,7 @@ class Bins:
                                 header=None, 
                                 skiprows=0,
                                 names=['seqid','length', 'taxid', 'binid'] if not use_assembly else ['seqid','length', 'taxid', 'group', 'binid'], 
-                                dtype={'seqid': str, 'length': int, 'taxid': str, 'binid': int})
+                                dtype={'seqid': 'string', 'length': 'uint64', 'taxid': 'string', 'binid': 'uint64'})
         if not use_assembly:
             self.bins['group'] = self.bins['taxid'] # Add taxid as group
         if fragment_length: 
