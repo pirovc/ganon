@@ -152,18 +152,15 @@ def main(arguments=None):
     # set output files
     if args.which=='build' or args.which=='update':
         db_prefix = args.db_prefix
-        tmp_output_folder = db_prefix + "_tmp/"
+        if args.which=='update' and args.output_db_prefix:
+            tmp_output_folder = args.output_db_prefix + "_tmp/"
+        else:
+            tmp_output_folder = db_prefix + "_tmp/"
         db_prefix_ibf = db_prefix + ".ibf"
         db_prefix_map = db_prefix + ".map"
         db_prefix_tax = db_prefix + ".tax"
         db_prefix_gnn = db_prefix + ".gnn"
 
-        if args.which=='update':
-            tmp_db_prefix = tmp_output_folder + "tmp"
-            tmp_db_prefix_ibf = tmp_db_prefix + ".ibf"
-            tmp_db_prefix_gnn = tmp_db_prefix + ".gnn"
-            tmp_db_prefix_map = tmp_db_prefix + ".map"
-            tmp_db_prefix_tax = tmp_db_prefix + ".tax"
 
     tx_total = time.time()
 
@@ -186,7 +183,7 @@ def main(arguments=None):
             print_log("Estimating best bin length... ")
             bin_length = estimate_bin_len(args, taxsbp_input_file, tax, use_assembly)
             if bin_length<=0: 
-                print_log("Could not estimate best bin length, using default.")
+                print_log("Could not estimate best bin length, using default. ")
                 bin_length=1000000
             print_log(str(bin_length) + "bp. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -216,17 +213,16 @@ def main(arguments=None):
         bins = Bins(stdout, use_assembly, fragment_length)
         del stdout
         actual_number_of_bins = bins.get_number_of_bins()
+        optimal_number_of_bins = optimal_bins(actual_number_of_bins)
         max_length_bin = bins.get_max_bin_length()
         max_kmer_count = max_length_bin-args.kmer_size+1 # aproximate number of unique k-mers by just considering that they are all unique
         
         print_log(str(actual_number_of_bins) + " bins created. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        print_log("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
-
-        # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
-        optimal_number_of_bins = optimal_bins(actual_number_of_bins)
+        
         # define bloom filter size based on given false positive
         MBinBits = 8388608
+        print_log("Max unique " + args.kmer_size +  "-mers: " + str(max_kmer_count) + "\n")
         if not args.fixed_bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
             print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
@@ -293,10 +289,13 @@ def main(arguments=None):
     elif args.which=='update':  
         tx = time.time()
 
+        # Load .gnn file
         gnn = Gnn(file=db_prefix_gnn)
 
         use_assembly=True if gnn.rank=="assembly" else False
         taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
+        
+        # load new taxonomy
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
         # write bins from .gnn
@@ -333,10 +332,12 @@ def main(arguments=None):
         # Update and write .tax file
         tax.filter(bins.get_unique_taxids()) # filter only used taxids
         if use_assembly: tax.add_nodes(bins.get_group_taxid(), "assembly") # add assembly nodes
+        # Load old .tax file into new taxonomy
         tax.merge(Tax([db_prefix_tax]))
+        # Write .tax file
         tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
 
-        # write GNN in a different location
+        # Write .gnn file
         gnn.number_of_bins+=number_of_new_bins # add new bins count
         gnn.bins.extend(bins.lines) # save new bins from taxsbp
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
@@ -356,6 +357,9 @@ def main(arguments=None):
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         bins.write_acc_bin_file(acc_bin_file)
 
+        # Temporary output filter 
+        tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
+
         run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--update-filter-file " + db_prefix_ibf,
                                         "--seqid-bin-file " + acc_bin_file,
@@ -368,10 +372,9 @@ def main(arguments=None):
                                         "--directory-reference-files " + args.input_directory if args.input_directory else ""
                                         "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
-        # move IBF
+        # move IBF to final location
         shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
