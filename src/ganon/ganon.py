@@ -885,10 +885,14 @@ def validate_input_files(args):
 
     # get files from directory
     if args.input_directory and args.input_extension:
-        for file in os.listdir(args.input_directory):
-            if file.endswith(args.input_extension):
-                input_files_from_directory.append(os.path.join(args.input_directory, file))
-    
+        if not os.path.isdir(args.input_directory):
+            print_log(args.input_directory + " is not a valid directory\n")
+        else:
+            for file in os.listdir(args.input_directory):
+                if file.endswith(args.input_extension):
+                    input_files_from_directory.append(os.path.join(args.input_directory, file))
+            print_log(str(len(input_files_from_directory)) + " file(s) found in " + args.input_directory + "\n")
+
     # remove non existent files from input list
     if args.input_files: 
         input_files = check_files(args.input_files)
