@@ -146,11 +146,17 @@ def main(arguments=None):
     # set path for executables
     path_exec = set_paths(args)
     if not path_exec: sys.exit(1)
-    # validate arguments and input files
-    if not validate_args_files(args): sys.exit(1)
+    # validate arguments
+    if not validate_args(args): sys.exit(1)
 
-    # set output files
-    if args.which=='build' or args.which=='update':
+    if args.which in ['build','update']:    
+        # validate input files
+        input_files, input_files_from_directory = validate_input_files(args)
+        if len(input_files)==0 and len(input_files_from_directory)==0:
+            print_log("No valid input files found\n")
+            sys.exit(1)
+
+        # set output files
         db_prefix = args.db_prefix
         if args.which=='update' and args.output_db_prefix:
             tmp_output_folder = args.output_db_prefix + "_tmp/"
@@ -171,7 +177,7 @@ def main(arguments=None):
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory)
 
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
@@ -272,8 +278,8 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
-                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else "",
                                         "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -293,7 +299,7 @@ def main(arguments=None):
         gnn = Gnn(file=db_prefix_gnn)
 
         use_assembly=True if gnn.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory)
         
         # load new taxonomy
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
@@ -368,8 +374,8 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
-                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else "",
                                         "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         # move IBF to final location
@@ -466,7 +472,7 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         if stderr: print_log(stderr+"\n")
         sys.exit(errcode)
 
-def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
+def prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
@@ -475,7 +481,7 @@ def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
     if args.seq_info_file: # file already provided 
         taxsbp_input_file = args.seq_info_file
     else: # retrieve info
-        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, path_exec, args.seq_info, use_assembly)
+        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, input_files, input_files_from_directory, args.threads, path_exec, args.seq_info, use_assembly)
 
     if not args.taxdump_file:
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
@@ -512,7 +518,7 @@ def get_accession2taxid(acc2txid, tmp_output_folder):
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return acc2txid_file
 
-def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_assembly):
+def retrieve_ncbi(tmp_output_folder, input_files, input_files_from_directory, threads, path_exec, seq_info, use_assembly):
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
@@ -529,7 +535,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
         print_log("Extracting accessions... ")
         seqcount=0
         accessions = ""
-        for file in files:
+        for file in input_files + input_files_from_directory:
             # cat | zcat | gawk -> compability with osx
             run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr = run(run_get_header, print_stderr=False, shell=True)
@@ -563,7 +569,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
         print_log("Extracting sequence lengths... ")
         accessions_lengths = {}
         acc_count = 0
-        for file in files:
+        for file in input_files + input_files_from_directory:
             # cat | zcat | gawk -> compability with osx
             run_get_length = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr = run(run_get_length, print_stderr=False, shell=True)
@@ -873,8 +879,23 @@ def set_paths(args):
 
     return path_exec
 
-def validate_args_files(args):
+def validate_input_files(args):
+    input_files_from_directory = []
+    input_files = []
 
+    # get files from directory
+    if args.input_directory and args.input_extension:
+        for file in os.listdir(args.input_directory):
+            if file.endswith(args.input_extension):
+                input_files_from_directory.append(os.path.join(args.input_directory, file))
+    
+    # remove non existent files from input list
+    if args.input_files: 
+        input_files = check_files(args.input_files)
+
+    return input_files, input_files_from_directory
+
+def validate_args(args):
     if args.which in ['build','update']:
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
             print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
@@ -888,22 +909,6 @@ def validate_args_files(args):
             return False
         elif args.input_directory and "*" in args.input_extension:
             print_log("Please do not use wildcards (*) in the --input-extension\n")
-            return False
-        elif args.input_directory and not args.input_files:
-            args.input_files = [] # initializate for adding files later
-
-        # remove non existent files from input list
-        if args.input_files: 
-            args.input_files = check_files(args.input_files)
-
-        # get files from directory
-        if args.input_directory and args.input_extension:
-            for file in os.listdir(args.input_directory):
-                if file.endswith(args.input_extension):
-                    args.input_files.append(os.path.join(args.input_directory, file))
-        
-        if len(args.input_files)==0:
-            print_log("No valid input files found\n")
             return False
 
         if args.which=='update':
