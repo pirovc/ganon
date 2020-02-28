@@ -428,7 +428,7 @@ void classify( std::vector< Filter >&    filters,
                                                                   config.offset,
                                                                   strata_filter );
 
-                // If there are matches remining
+                // If there are matches
                 if ( count_filtered_matches > 0 )
                 {
 
@@ -560,6 +560,7 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
                 fields.push_back( field );
             // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
+            // std::cerr << std::stoul( fields[1] ) << " -- " << fields[0] << std::endl;
         }
         infile.close();
 
@@ -573,6 +574,8 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
             tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
+            // std::cerr << fields[0]  << " -- " << fields[1]  << " -- " << fields[2]  << " -- " << fields[3] <<
+            // std::endl;
         }
         infile.close();
 
@@ -693,7 +696,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             {
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
                 std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
-                          << "]. Switching to single line parsing." << std::endl;
+                          << "]. Switched to single line parsing (slower)." << std::endl;
                 stats.totalReads += parse_single_reads( seqFileIn, pos, config.n_reads, queue1 );
                 break;
             }

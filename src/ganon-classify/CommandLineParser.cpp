@@ -35,8 +35,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "s,output-single", "Generate only one output (prefix.lca and prefix.rep) even with multiple hierarchy levels", cxxopts::value< bool >() )
         
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
-        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
+        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
         ( "quiet", "Quiet output mode (only outputs errors and warnings to the STDERR)", cxxopts::value< bool >())
         ( "h,help", "Print help" )
@@ -101,11 +101,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
-
-    if ( args.count( "n-batches" ) )
-        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "n-reads" ) )
         config.n_reads = args["n-reads"].as< uint32_t >();
+    if ( args.count( "n-batches" ) )
+        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "quiet" ) )
