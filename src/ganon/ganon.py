@@ -448,6 +448,8 @@ def main(arguments=None):
 
 def run(cmd, output_file=None, print_stderr=False, shell=False):
     errcode=0
+    stdout=""
+    stderr=""
     try:
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, 
                                     shell=shell, 
@@ -891,7 +893,7 @@ def validate_input_files(args):
             for file in os.listdir(args.input_directory):
                 if file.endswith(args.input_extension):
                     input_files_from_directory.append(os.path.join(args.input_directory, file))
-            print_log(str(len(input_files_from_directory)) + " file(s) found in " + args.input_directory + "\n")
+            print_log(str(len(input_files_from_directory)) + " file(s) [" + args.input_extension + "] found in " + args.input_directory + "\n")
 
     # remove non existent files from input list
     if args.input_files: 
