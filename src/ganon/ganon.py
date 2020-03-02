@@ -957,21 +957,21 @@ def validate_args(args):
             if not check_db(prefix):
                 return False
 
-        if not os.path.exists(args.rep_file):
-            print_log("No valid input files found\n")
+        if not os.path.isfile(args.rep_file):
+            print_log("File not found [" + args.rep_file + "]\n")
             return False
+
     return True
 
 def check_files(files):
-    len_files = len(files)
-    files[:] = [file for file in files if os.path.exists(file)]
-    if len(files)<len_files:
-        print_log(str(len_files-len(files)) + " input file[s] could not be found\n")
-    return files
+    checked_files = [file for file in files if os.path.isfile(file)]
+    if len(checked_files)<len(files):
+        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found\n")
+    return checked_files
 
 def check_db(prefix):
     for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
-        if not os.path.exists(prefix+db_file_type):
+        if not os.path.isfile(prefix+db_file_type):
             print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)\n")
             return False
     return True
