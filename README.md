@@ -301,6 +301,7 @@ Such adjustment is necessary to equalize the size of each bin, since the IBF req
 System packages:
 - gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda)) or clang>=7
 - cmake >=3.10
+- zlib
 
 Specific packages:
 - Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
@@ -391,73 +392,105 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### build
 
-	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t] [--fixed-bloom-size]
-	                   [--fragment-length] [--overlap-length] [--seq-info [[...]]] [--seq-info-file] [--taxdump-file [[...]]]
-	                   [--input-directory] [--input-extension] [--verbose]
+	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m]
+	                   [-l] [-t] [--fixed-bloom-size] [--fragment-length]
+	                   [--overlap-length] [--seq-info [[...]]] [--seq-info-file]
+	                   [--taxdump-file [[...]]] [--input-directory]
+	                   [--input-extension] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -r , --rank           Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species
-	  -k , --kmer-size      The k-mer size for the interleaved bloom filter. Default: 19
+	  -r , --rank           Target taxonomic rank for classification
+	                        [assembly,taxid,species,genus,...]. Default: species
+	  -k , --kmer-size      The k-mer size for the interleaved bloom filter.
+	                        Default: 19
 	  -n , --hash-functions 
-	                        The number of hash functions for the interleaved bloom filter. Default: 3
-	  -f , --max-fp         Max. false positive rate for k-mer classification. Default: 0.05
+	                        The number of hash functions for the interleaved bloom
+	                        filter. Default: 3
+	  -f , --max-fp         Max. false positive rate for k-mer classification.
+	                        Default: 0.05
 	  -m , --max-bloom-size 
-	                        Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-size,
-	                        --hash-functions and --max-fp [Mutually exclusive --fixed-bloom-size]
+	                        Approx. maximum filter size in Megabytes (MB). Will
+	                        estimate best --bin-length based on --kmer-size,
+	                        --hash-functions and --max-fp [Mutually exclusive
+	                        --fixed-bloom-size]
 	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
 	  -t , --threads        Number of subprocesses/threads to use. Default: 2
-	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size]
-	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-
-	                        length
-	  --overlap-length      Fragment overlap length (in bp). Should be bigger than the read length used for classification.
-	                        Default: 300
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and
-	                        seq. length information. If a small number of sequences is provided (<50000) or when --rank
-	                        assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode
-	                        will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided.
-	                        Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force
-	                        webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-
+	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore
+	                        --max-fp [Mutually exclusive --max-bloom-size]
+	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment
+	                        sequences. Default: --bin-length - --overlap-length
+	  --overlap-length      Fragment overlap length (in bp). Should be bigger than
+	                        the read length used for classification. Default: 300
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtain data with NCBI E-utils websevices
+	                        (eutils). Offline mode will download batch files from
+	                        NCBI Taxonomy and look for taxonomic ids in the order
+	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss
+	                        pdb prot dead_nucl dead_wgs dead_prot], eutils (force
+	                        webservices) or auto (uses eutils or [nucl_gb
+	                        nucl_wgs]). Default: auto [Mutually exclusive --seq-
 	                        info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id])
+	  --seq-info-file       Pre-generated file with sequence information (seqid
+	                        <tab> seq.len <tab> taxid [<tab> assembly id])
 	                        [Mutually exclusive --seq-info]
 	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	                        Force use of a specific version of the
+	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be
+	                        automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --input-extension     Extension of files to use with --input-directory
+	                        (provide it without * expansion, e.g. ".fna.gz")
 	  --verbose             Verbose mode for ganon-build
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
-	                        Database output prefix (.ibf, .map, .tax, .gnn will be created)
+	                        Database output prefix (.ibf, .map, .tax, .gnn will be
+	                        created)
 	  -i [ [ ...]], --input-files [ [ ...]]
-	                        Input reference sequence fasta files [.gz]        
+	                        Input reference sequence fasta files [.gz]
+
 
 ### update
 
-	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t] [--seq-info [[...]]] [--seq-info-file] [--taxdump-file [[...]]]
-	                    [--input-directory] [--input-extension] [--verbose]
+	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t]
+	                    [--seq-info [[...]]] [--seq-info-file]
+	                    [--taxdump-file [[...]]] [--input-directory]
+	                    [--input-extension] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -o , --output-db-prefix 
-	                        Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix
+	                        Output database prefix (.ibf, .map, .tax, .gnn).
+	                        Default: overwrite current --db-prefix
 	  -t , --threads        Number of subprocesses/threads to use. Default: 2
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and
-	                        seq. length information. If a small number of sequences is provided (<50000) or when --rank
-	                        assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode
-	                        will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided.
-	                        Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force
-	                        webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-
-	                        info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id])
+	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
+	                        entry provided, ganon requires taxonomic and seq.
+	                        length information. If a small number of sequences is
+	                        provided (<50000) or when --rank assembly, ganon will
+	                        automatically obtained data with NCBI E-utils
+	                        websevices (eutils). Offline mode will download batch
+	                        files from NCBI Taxonomy and look for taxonomic ids in
+	                        the order provided. Options: [nucl_gb nucl_wgs
+	                        nucl_est nucl_gss pdb prot dead_nucl dead_wgs
+	                        dead_prot], eutils (force webservices) or auto (uses
+	                        eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
+	                        exclusive --seq-info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid
+	                        <tab> seq.len <tab> taxid [<tab> assembly id])
 	                        [Mutually exclusive --seq-info]
 	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	                        Force use of a specific version of the
+	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be
+	                        automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --input-extension     Extension of files to use with --input-directory
+	                        (provide it without * expansion, e.g. ".fna.gz")
 	  --verbose             Verbose mode for ganon-build
 
 	required arguments:
@@ -468,40 +501,63 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### classify
 
-	ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz] [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
-	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]] [-c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]]
-	                      [-k [MIN_KMERS [MIN_KMERS ...]]] [-e [MAX_ERROR [MAX_ERROR ...]]]
-	                      [-u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]] [-f OFFSET] [-o OUTPUT_PREFIX] [-a] [-n] [-s]
+	ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz]
+	                      [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
+	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]]
+	                      [-c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]]
+	                      [-k [MIN_KMERS [MIN_KMERS ...]]]
+	                      [-e [MAX_ERROR [MAX_ERROR ...]]]
+	                      [-u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]]
+	                      [-l [STRATA_FILTER [STRATA_FILTER ...]]] [-f OFFSET]
+	                      [-o OUTPUT_PREFIX] [-a] [-n] [-s]
 	                      [--ranks [RANKS [RANKS ...]]] [-t THREADS] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]], --hierarchy-labels [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]
-	                        Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to
-	                        define order (e.g. 1 1 2 3). Default: 1
+	                        Hierarchy definition, one for each database input. Can
+	                        also be a string, but input will be sorted to define
+	                        order (e.g. 1 1 2 3). Default: 1
 	  -k [MIN_KMERS [MIN_KMERS ...]], --min-kmers [MIN_KMERS [MIN_KMERS ...]]
-	                        Min. percentage of k-mers matching to consider a read assigned. Single value or one per database
-	                        (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]
+	                        Min. percentage of k-mers matching to consider a read
+	                        assigned. Single value or one per database (e.g. 0.5
+	                        0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-
+	                        error]
 	  -e [MAX_ERROR [MAX_ERROR ...]], --max-error [MAX_ERROR [MAX_ERROR ...]]
-	                        Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive
-	                        --min-kmers]
+	                        Max. number of errors allowed. Single value or one per
+	                        database (e.g. 3 3 4 0) [Mutually exclusive --min-
+	                        kmers]
 	  -u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]], --max-error-unique [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]
-	                        Max. number of errors allowed for unique assignments after filtering. Matches below this error rate
-	                        will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierarchy
-	                        (e.g. 0 1 2). -1 to disable. Default: -1
+	                        Max. number of errors allowed for unique assignments
+	                        after filtering. Matches below this error rate will
+	                        not be discarded, but assigned to a parent taxonomic
+	                        level. Single value or one per hierarchy (e.g. 0 1 2).
+	                        -1 to disable. Default: -1
+	  -l [STRATA_FILTER [STRATA_FILTER ...]], --strata-filter [STRATA_FILTER [STRATA_FILTER ...]]
+	                        Additional errors allowed (relative to the best match)
+	                        to filter and select matches. Single value or one per
+	                        hierarchy (e.g. 0 1 2). -1 to disable filtering.
+	                        Default: 0
 	  -f OFFSET, --offset OFFSET
-	                        Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1
-	                        = all k-mers, 3 = every 3rd k-mer). Default: 2
+	                        Number of k-mers to skip during classification. Can
+	                        speed up analysis but may reduce recall. (e.g. 1 = all
+	                        k-mers, 3 = every 3rd k-mer). Default: 2
 	  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-	                        Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)
-	  -a, --output-all      Output an additional file with all matches (.all). File can be very large.
+	                        Output prefix for .lca and .rep. Empty to output to
+	                        STDOUT (only .lca will be printed)
+	  -a, --output-all      Output an additional file with all matches (.all).
+	                        File can be very large.
 	  -n, --output-unclassified
-	                        Output an additional file with unclassified read headers (.unc)
-	  -s, --output-single   When using multiple hierarchical levels, output everything in one file instead of one per hierarchy
+	                        Output an additional file with unclassified read
+	                        headers (.unc)
+	  -s, --output-single   When using multiple hierarchical levels, output
+	                        everything in one file instead of one per hierarchy
 	  --ranks [RANKS [RANKS ...]]
-	                        Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks:
-	                        superkingdom phylum class order family genus species species+ assembly. This file can be re-
-	                        generated with the ganon report command.
+	                        Ranks to show in the report (.tre). "all" for all
+	                        identified ranks. empty for default ranks:
+	                        superkingdom phylum class order family genus species
+	                        species+ assembly. This file can be re-generated with
+	                        the ganon report command.
 	  -t THREADS, --threads THREADS
 	                        Number of subprocesses/threads to use. Default: 3
 	  --verbose             Verbose mode for ganon-classify
@@ -516,18 +572,22 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### report
 
-	ganon report [-h] -i REP_FILE -d [db_prefix [db_prefix ...]] [-r [RANKS [RANKS ...]]] [-m MIN_MATCHES]
+	ganon report [-h] -i REP_FILE -d [db_prefix [db_prefix ...]]
+	                    [-r [RANKS [RANKS ...]]] [-m MIN_MATCHES]
 	                    [-p MIN_MATCHES_PERC] [-o OUTPUT_REPORT]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -r [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
-	                        Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom
-	                        phylum class order family genus species species+ assembly
+	                        Ranks for the final report. "all" for all identified
+	                        ranks. empty for default ranks: superkingdom phylum
+	                        class order family genus species species+ assembly
 	  -m MIN_MATCHES, --min-matches MIN_MATCHES
-	                        Min. number of matches to output. 0 for all. Default: 0
+	                        Min. number of matches to output. 0 for all. Default:
+	                        0
 	  -p MIN_MATCHES_PERC, --min-matches-perc MIN_MATCHES_PERC
-	                        Min. percentage of matches to output. 0 for all. Default: 0
+	                        Min. percentage of matches to output. 0 for all.
+	                        Default: 0
 	  -o OUTPUT_REPORT, --output-report OUTPUT_REPORT
 	                        Output file for report. Default: STDOUT
 
