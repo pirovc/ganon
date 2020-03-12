@@ -306,13 +306,18 @@ uint32_t filter_matches( ReadOut&  read_out,
                          uint16_t  len,
                          uint16_t  max_kmer_count_read,
                          uint16_t  kmer_size,
-                         uint16_t  offset )
+                         uint16_t  offset,
+                         int16_t   strata_filter )
 {
 
-    // get maximum possible number of error for this read
-    uint16_t max_error = get_error( len, kmer_size, max_kmer_count_read, offset );
-    // get min kmer count necesary to achieve the calculated number of errors
-    uint16_t threshold_strata = get_threshold_errors( len, kmer_size, max_error, offset );
+    uint16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
+    if ( strata_filter > -1 )
+    {
+        // get maximum possible number of error for this read
+        uint16_t max_error = get_error( len, kmer_size, max_kmer_count_read, offset );
+        // get min kmer count necesary to achieve the calculated number of errors
+        threshold_strata = get_threshold_errors( len, kmer_size, max_error + strata_filter, offset );
+    }
 
     for ( auto const& v : matches )
     { // matches[target] = kmerCount
@@ -353,7 +358,8 @@ void classify( std::vector< Filter >&    filters,
                SafeQueue< ReadBatches >* pointer_helper,
                bool                      hierarchy_first,
                bool                      hierarchy_last,
-               int16_t                   max_error_unique )
+               int16_t                   max_error_unique,
+               int16_t                   strata_filter )
 {
 
     // k-mer sizes should be the same among filters
@@ -413,10 +419,16 @@ void classify( std::vector< Filter >&    filters,
             {
 
                 // filter matches
-                uint32_t count_filtered_matches = filter_matches(
-                    read_out, matches, rep, effective_read_len, max_kmer_count_read, kmer_size, config.offset );
+                uint32_t count_filtered_matches = filter_matches( read_out,
+                                                                  matches,
+                                                                  rep,
+                                                                  effective_read_len,
+                                                                  max_kmer_count_read,
+                                                                  kmer_size,
+                                                                  config.offset,
+                                                                  strata_filter );
 
-                // If there are matches remining
+                // If there are matches
                 if ( count_filtered_matches > 0 )
                 {
 
@@ -485,7 +497,7 @@ void write_report( TRep&       rep,
     else // append if not first and output_single
         out_rep.open( output_file_rep, std::ofstream::app );
 
-    for ( auto const & [ target, report ] : rep )
+    for ( auto const& [target, report] : rep )
     {
         out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
                 << '\t' << report.lca_reads << '\t' << tax[target].rank << '\t' << tax[target].name << '\n';
@@ -548,6 +560,7 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
                 fields.push_back( field );
             // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
+            // std::cerr << std::stoul( fields[1] ) << " -- " << fields[0] << std::endl;
         }
         infile.close();
 
@@ -561,6 +574,8 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
             tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
+            // std::cerr << fields[0]  << " -- " << fields[1]  << " -- " << fields[2]  << " -- " << fields[3] <<
+            // std::endl;
         }
         infile.close();
 
@@ -681,7 +696,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             {
                 // Error occured, faulty fastq, continue to parse reads one by one from the last valid position
                 std::cerr << "ERROR: Problems while reading the file in batches: " << reads_file << " [" << e.what()
-                          << "]. Switching to single line parsing." << std::endl;
+                          << "]. Switched to single line parsing (slower)." << std::endl;
                 stats.totalReads += parse_single_reads( seqFileIn, pos, config.n_reads, queue1 );
                 break;
             }
@@ -796,7 +811,7 @@ TTax merge_tax( std::vector< detail::Filter >& filters )
 
 void pre_process_lca( LCA& lca, TTax& tax )
 {
-    for ( auto const & [ target, node ] : tax )
+    for ( auto const& [target, node] : tax )
     {
         lca.addEdge( node.parent, target );
     }
@@ -875,7 +890,7 @@ bool run( Config config )
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
 
     // For every hierarchy level
-    for ( auto const & [ hierarchy_label, hierarchy_config ] : config.parsed_hierarchy )
+    for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
         bool hierarchy_first = ( hierarchy_id == 1 );
@@ -966,7 +981,8 @@ bool run( Config config )
                                             pointer_helper,
                                             hierarchy_first,
                                             hierarchy_last,
-                                            hierarchy_config.max_error_unique ) );
+                                            hierarchy_config.max_error_unique,
+                                            hierarchy_config.strata_filter ) );
         }
 
         // Wait here until classification is over

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse, os, sys, subprocess, time, shlex, shutil, gzip, pickle, math
+import pandas as pd
+from io import StringIO
 from collections import defaultdict, OrderedDict
 
 def main(arguments=None):
 
-    version = '0.2.0'
+    version = '0.2.1'
     
     ####################################################################################################
 	
@@ -87,6 +89,7 @@ def main(arguments=None):
     classify_group_optional.add_argument('-k', '--min-kmers',        type=float,  nargs="*", help='Min. percentage of k-mers matching to consider a read assigned. Single value or one per database (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]')
     classify_group_optional.add_argument('-e', '--max-error',        type=int,    nargs="*", help='Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually exclusive --min-kmers]')
     classify_group_optional.add_argument('-u', '--max-error-unique', type=int,    nargs="*", help='Max. number of errors allowed for unique assignments after filtering. Matches below this error rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per hierarchy (e.g. 0 1 2). -1 to disable. Default: -1')    
+    classify_group_optional.add_argument('-l', '--strata-filter',    type=int,    nargs="*", help='Additional errors allowed (relative to the best match) to filter and select matches. Single value or one per hierarchy (e.g. 0 1 2). -1 to disable filtering. Default: 0')    
     classify_group_optional.add_argument('-f', '--offset',           type=int,               help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2')    
     classify_group_optional.add_argument('-o', '--output-prefix',    type=str,               help='Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)')
     classify_group_optional.add_argument('-a', '--output-all',          default=False, action='store_true', help='Output an additional file with all matches (.all). File can be very large.')
@@ -143,24 +146,27 @@ def main(arguments=None):
     # set path for executables
     path_exec = set_paths(args)
     if not path_exec: sys.exit(1)
-    # validate arguments and input files
-    if not validate_args_files(args): sys.exit(1)
+    # validate arguments
+    if not validate_args(args): sys.exit(1)
 
-    # set output files
-    if args.which=='build' or args.which=='update':
+    if args.which in ['build','update']:    
+        # validate input files
+        input_files, input_files_from_directory = validate_input_files(args)
+        if len(input_files)==0 and len(input_files_from_directory)==0:
+            print_log("No valid input files found\n")
+            sys.exit(1)
+
+        # set output files
         db_prefix = args.db_prefix
-        tmp_output_folder = db_prefix + "_tmp/"
+        if args.which=='update' and args.output_db_prefix:
+            tmp_output_folder = args.output_db_prefix + "_tmp/"
+        else:
+            tmp_output_folder = db_prefix + "_tmp/"
         db_prefix_ibf = db_prefix + ".ibf"
         db_prefix_map = db_prefix + ".map"
         db_prefix_tax = db_prefix + ".tax"
         db_prefix_gnn = db_prefix + ".gnn"
 
-        if args.which=='update':
-            tmp_db_prefix = tmp_output_folder + "tmp"
-            tmp_db_prefix_ibf = tmp_db_prefix + ".ibf"
-            tmp_db_prefix_gnn = tmp_db_prefix + ".gnn"
-            tmp_db_prefix_map = tmp_db_prefix + ".map"
-            tmp_db_prefix_tax = tmp_db_prefix + ".tax"
 
     tx_total = time.time()
 
@@ -171,7 +177,7 @@ def main(arguments=None):
 
     if args.which=='build':     
         use_assembly=True if args.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory)
 
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
@@ -182,8 +188,8 @@ def main(arguments=None):
             tx = time.time()
             print_log("Estimating best bin length... ")
             bin_length = estimate_bin_len(args, taxsbp_input_file, tax, use_assembly)
-            if bin_length==0: 
-                print_log("Could not estimate bin length, using default: 1000000 bp")
+            if bin_length<=0: 
+                print_log("Could not estimate best bin length, using default. ")
                 bin_length=1000000
             print_log(str(bin_length) + "bp. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -209,19 +215,20 @@ def main(arguments=None):
                                    "-o " + str(args.overlap_length) if fragment_length else ""])
         stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
         
-        acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        bins, actual_number_of_bins, unique_taxids, max_length_bin, group_taxid, _ = taxsbp_output_files(stdout, acc_bin_file, db_prefix_map, use_assembly, fragment_length)
+        # parse stdout bins
+        bins = Bins(stdout, use_assembly, fragment_length)
+        del stdout
+        actual_number_of_bins = bins.get_number_of_bins()
+        optimal_number_of_bins = optimal_bins(actual_number_of_bins)
+        max_length_bin = bins.get_max_bin_length()
+        max_kmer_count = max_length_bin-args.kmer_size+1 # aproximate number of unique k-mers by just considering that they are all unique
+        
         print_log(str(actual_number_of_bins) + " bins created. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
-        # aproximate number of unique k-mers by just considering that they are all unique
-        max_kmer_count = max_length_bin-args.kmer_size+1
-        print_log("Approximate (upper-bound) # unique k-mers: " + str(max_kmer_count) + "\n")
-        # get optimal number of bins to get correct fp rate based on IBF implementation (always next multiple of 64)
-        optimal_number_of_bins = optimal_bins(actual_number_of_bins)
-
+        
         # define bloom filter size based on given false positive
         MBinBits = 8388608
+        print_log("Max unique " + str(args.kmer_size) +  "-mers: " + str(max_kmer_count) + "\n")
         if not args.fixed_bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
             print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
@@ -233,11 +240,16 @@ def main(arguments=None):
         tx = time.time()
         print_log("Building database files... ")
         
+        # Write .map file
+        mapp = Map(bins)
+        mapp.write(db_prefix_map)
+
         # Write .tax file
-        tax.filter(unique_taxids) # filter only used taxids
-        if use_assembly: tax.add_nodes(group_taxid, "assembly") # add assembly nodes
+        tax.filter(bins.get_unique_taxids()) # filter only used taxids
+        if use_assembly: tax.add_nodes(bins.get_group_taxid(), "assembly") # add assembly nodes
         tax.write(db_prefix_tax)
 
+        # Write .gnn file
         gnn = Gnn(kmer_size=args.kmer_size, 
                 hash_functions=args.hash_functions, 
                 number_of_bins=actual_number_of_bins, 
@@ -245,12 +257,17 @@ def main(arguments=None):
                 bin_length=bin_length,
                 fragment_length=fragment_length,
                 overlap_length=args.overlap_length,
-                bins=bins)
+                bins=bins.lines)
         gnn.write(db_prefix_gnn)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
         print_log("Building index (ganon-build)... \n")
+
+        # Write aux. file for ganon
+        acc_bin_file = tmp_output_folder + "acc_bin.txt"
+        bins.write_acc_bin_file(acc_bin_file)
+
         run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--seqid-bin-file " + acc_bin_file,
                                         "--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if args.max_fp else "--filter-size " + str(args.fixed_bloom_size),
@@ -261,8 +278,8 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
-                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else "",
                                         "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
@@ -270,7 +287,6 @@ def main(arguments=None):
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
         
- 
 #################################################################################################################################
 #################################################################################################################################
 #################################################################################################################################
@@ -279,10 +295,13 @@ def main(arguments=None):
     elif args.which=='update':  
         tx = time.time()
 
+        # Load .gnn file
         gnn = Gnn(file=db_prefix_gnn)
 
         use_assembly=True if gnn.rank=="assembly" else False
-        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec)
+        taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory)
+        
+        # load new taxonomy
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
 
         # write bins from .gnn
@@ -302,14 +321,51 @@ def main(arguments=None):
                                    "-o " + str(gnn.overlap_length) if gnn.fragment_length else ""])
         stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
 
-        acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        bins, number_of_updated_bins, unique_taxids, max_length_bin, group_taxid, last_bin = taxsbp_output_files(stdout, acc_bin_file, tmp_db_prefix_map, use_assembly, gnn.fragment_length)
-        number_of_new_bins = int(last_bin) + 1 - gnn.number_of_bins
+        # parse stdout new bins
+        bins = Bins(stdout, use_assembly, gnn.fragment_length)
+        del stdout
+
+        number_of_updated_bins = bins.get_number_of_bins()
+        last_bin = bins.get_last_bin()
+        number_of_new_bins = last_bin + 1 - gnn.number_of_bins
+               
         print_log(str(number_of_updated_bins) + " bins updated, " + str(number_of_new_bins) + " new. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
+        print_log("Updating database files ... ")
+
+        # Update and write .tax file
+        tax.filter(bins.get_unique_taxids()) # filter only used taxids
+        if use_assembly: tax.add_nodes(bins.get_group_taxid(), "assembly") # add assembly nodes
+        # Load old .tax file into new taxonomy
+        tax.merge(Tax([db_prefix_tax]))
+        # Write .tax file
+        tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
+
+        # Write .gnn file
+        gnn.number_of_bins+=number_of_new_bins # add new bins count
+        gnn.bins.extend(bins.lines) # save new bins from taxsbp
+        gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
+
+        # Write .map file
+        mapp = Map(bins)
+        old_mapp = Map(map_file=db_prefix_map)
+        old_mapp.update(mapp)
+        old_mapp.write(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
+
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
+        tx = time.time()
         print_log("Updating index (ganon-build)... \n")
+
+        # Write aux. file for ganon
+        acc_bin_file = tmp_output_folder + "acc_bin.txt"
+        bins.write_acc_bin_file(acc_bin_file)
+
+        # Temporary output filter 
+        tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
+
         run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--update-filter-file " + db_prefix_ibf,
                                         "--seqid-bin-file " + acc_bin_file,
@@ -318,37 +374,16 @@ def main(arguments=None):
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                        "--reference-files " + ",".join([file for file in args.input_files]) if args.input_files else ""
-                                        "--directory-reference-files " + args.input_directory if args.input_directory else ""
+                                        "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                        "--directory-reference-files " + args.input_directory if args.input_directory else "",
                                         "--extension " + args.input_extension if args.input_extension else ""])
-
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
-        tx = time.time()
-        print_log("Updating database files ... ")
-
-        # move IBF
+        # move IBF to final location
         shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
-
-        # Update and write .tax file
-        tax.filter(unique_taxids) # filter only used taxids
-        if use_assembly: tax.add_nodes(group_taxid, "assembly") # add assembly nodes
-        tax.merge(Tax([db_prefix_tax]))
-        tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
-
-        # write GNN in a different location
-        gnn.number_of_bins+=number_of_new_bins # add new bins count
-        gnn.bins.extend(bins) # save new bins from taxsbp
-        gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
-
-        # update and write MAP
-        update_map(db_prefix_map, tmp_db_prefix_map, args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
-
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
 #################################################################################################################################
 #################################################################################################################################
@@ -363,12 +398,13 @@ def main(arguments=None):
                                        "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
                                        "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else "",
                                        "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in args.db_prefix]),
-                                       "--map " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]),
+                                       "--map " + ",".join([db_prefix+".map" for db_prefix in args.db_prefix]), 
                                        "--tax " + ",".join([db_prefix+".tax" for db_prefix in args.db_prefix]),
                                        "--hierarchy-labels " + ",".join(args.hierarchy_labels) if args.hierarchy_labels else "",
                                        "--max-error " + ",".join([str(me) for me in args.max_error]) if args.max_error else "",
                                        "--min-kmers " + ",".join([str(mk) for mk in args.min_kmers]) if args.min_kmers else "",
                                        "--max-error-unique " + ",".join([str(meu) for meu in args.max_error_unique]) if args.max_error_unique else "",
+                                       "--strata-filter " + ",".join([str(sf) for sf in args.strata_filter]) if args.strata_filter else "",
                                        "--offset " + str(args.offset) if args.offset else "",
                                        "--output-prefix " + args.output_prefix if args.output_prefix else "",
                                        "--output-all" if args.output_all else "",
@@ -377,7 +413,7 @@ def main(arguments=None):
                                        "--threads " + str(args.threads) if args.threads else "",
                                        "--n-reads " + str(args.n_reads) if args.n_reads is not None else "",
                                        "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
-                                       "--verbose" if args.verbose else "" ])
+                                       "--verbose" if args.verbose else ""])
         stdout, stderr = run(run_ganon_classify)
         if not args.output_prefix: print(stdout)
         print_log(stderr)
@@ -412,6 +448,8 @@ def main(arguments=None):
 
 def run(cmd, output_file=None, print_stderr=False, shell=False):
     errcode=0
+    stdout=""
+    stderr=""
     try:
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, 
                                     shell=shell, 
@@ -436,7 +474,7 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         if stderr: print_log(stderr+"\n")
         sys.exit(errcode)
 
-def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
+def prepare_files(args, tmp_output_folder, use_assembly, path_exec, input_files, input_files_from_directory):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
@@ -445,7 +483,7 @@ def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
     if args.seq_info_file: # file already provided 
         taxsbp_input_file = args.seq_info_file
     else: # retrieve info
-        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, args.input_files, args.threads, path_exec, args.seq_info, use_assembly)
+        taxsbp_input_file = retrieve_ncbi(tmp_output_folder, input_files, input_files_from_directory, args.threads, path_exec, args.seq_info, use_assembly)
 
     if not args.taxdump_file:
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder), tmp_output_folder)
@@ -457,46 +495,6 @@ def prepare_files(args, tmp_output_folder, use_assembly, path_exec):
         ncbi_merged_file =  args.taxdump_file[2] if len(args.taxdump_file)==3 else ""
 
     return taxsbp_input_file, ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
-
-def taxsbp_output_files(stdout, acc_bin_file, db_prefix_map, use_assembly, fragment_length):
-    bins = []
-    bin_group = dict() # for unique map entries
-    unique_taxids = set() # for nodes
-    bin_length = defaultdict(int) # calculate max bin length
-    group_taxid = {} # set group taxid connection for nodes in case of assembly
-
-    acc_bin = open(acc_bin_file,'w') # input for ganon-build for build
-    for line in stdout.split("\n"):
-        if line:
-            #acc, length, taxid, [group/rank taxid,] binno
-            if use_assembly:
-                acc, length, taxid, group, binno = line.split("\t")
-                group_taxid[group] = taxid
-            else:
-                acc, length, taxid, binno = line.split("\t")
-                group = taxid # taxid is the classification group
-
-            # if sequences are fragmentes
-            if fragment_length: 
-                acc, coord = acc.split("/")
-                frag_start, frag_end = coord.split(":")
-            else:
-                frag_start = 1
-                frag_end = length
-
-            bin_length[int(binno)]+=int(length)
-            bin_group[binno] = group # save unique mapping
-            unique_taxids.add(taxid)
-            bins.append(line)
-            print(acc, frag_start, frag_end, binno, sep="\t", file=acc_bin)
-    acc_bin.close()
-
-    # write .map
-    with open(db_prefix_map, 'w') as file:
-        for binno, group in bin_group.items(): 
-            file.write(group + "\t" + binno + "\n")
-
-    return bins, len(bin_length), unique_taxids, max(bin_length.values()), group_taxid, max(bin_length.keys())
 
 def get_taxdump(tmp_output_folder):
     tx = time.time()
@@ -522,7 +520,7 @@ def get_accession2taxid(acc2txid, tmp_output_folder):
     print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     return acc2txid_file
 
-def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_assembly):
+def retrieve_ncbi(tmp_output_folder, input_files, input_files_from_directory, threads, path_exec, seq_info, use_assembly):
 
     taxsbp_input_file = tmp_output_folder + 'acc_len_taxid.txt'
 
@@ -539,7 +537,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
         print_log("Extracting accessions... ")
         seqcount=0
         accessions = ""
-        for file in files:
+        for file in input_files + input_files_from_directory:
             # cat | zcat | gawk -> compability with osx
             run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr = run(run_get_header, print_stderr=False, shell=True)
@@ -566,7 +564,6 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
     
     else:
-        import pandas as pd
 
         acc2txid_options = ["nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
 
@@ -574,7 +571,7 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
         print_log("Extracting sequence lengths... ")
         accessions_lengths = {}
         acc_count = 0
-        for file in files:
+        for file in input_files + input_files_from_directory:
             # cat | zcat | gawk -> compability with osx
             run_get_length = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr = run(run_get_length, print_stderr=False, shell=True)
@@ -624,21 +621,6 @@ def retrieve_ncbi(tmp_output_folder, files, threads, path_exec, seq_info, use_as
 
     return taxsbp_input_file
 
-def update_map(old_map, new_map, output_map):
-    bin_group = dict() # for unique map entries
-    with open(old_map,'r') as file:
-        for line in file:
-            group, binno = line.rstrip().split('\t')
-            bin_group[binno] = group # save unique mapping
-    with open(new_map,'r') as file:
-        for line in file:
-            group, binno = line.rstrip().split('\t')
-            bin_group[binno] = group# save unique mapping
-    # write final .map
-    with open(output_map, 'w') as file:
-        for binno, group in bin_group.items(): 
-            file.write(group + "\t" + binno + "\n")
-
 def parse_rep(rep_file):
     reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
     with open(rep_file, 'r') as rep_file:
@@ -661,7 +643,6 @@ def ibf_size_mb(args, bp, bins):
 def optimal_bins(nbins):
     return (math.floor(nbins/64)+1)*64
 
-
 def bins_group(groups_len, fragment_size, overlap_length):
     group_nbins = {}
     # ignore overlap_length if too close to the size of the fragment size (*2) to avoid extreme numbers
@@ -673,7 +654,6 @@ def bins_group(groups_len, fragment_size, overlap_length):
     return group_nbins
 
 def estimate_bin_len(args, taxsbp_input_file, tax, use_assembly):
-
     groups_len = defaultdict(int)
     for line in open(taxsbp_input_file, "r"):
         if use_assembly:
@@ -856,8 +836,6 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     if final_report_file: frfile.close()
 
 def set_paths(args):
-    
-
     path_exec = {'build': "", 'classify': "", 'get_len_taxid': "", 'taxsbp': ""}
 
     if args.which=='build' or args.which=='update':
@@ -903,8 +881,27 @@ def set_paths(args):
 
     return path_exec
 
-def validate_args_files(args):
+def validate_input_files(args):
+    input_files_from_directory = []
+    input_files = []
 
+    # get files from directory
+    if args.input_directory and args.input_extension:
+        if not os.path.isdir(args.input_directory):
+            print_log(args.input_directory + " is not a valid directory\n")
+        else:
+            for file in os.listdir(args.input_directory):
+                if file.endswith(args.input_extension):
+                    input_files_from_directory.append(os.path.join(args.input_directory, file))
+            print_log(str(len(input_files_from_directory)) + " file(s) [" + args.input_extension + "] found in " + args.input_directory + "\n")
+
+    # remove non existent files from input list
+    if args.input_files: 
+        input_files = check_files(args.input_files)
+
+    return input_files, input_files_from_directory
+
+def validate_args(args):
     if args.which in ['build','update']:
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
             print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
@@ -918,22 +915,6 @@ def validate_args_files(args):
             return False
         elif args.input_directory and "*" in args.input_extension:
             print_log("Please do not use wildcards (*) in the --input-extension\n")
-            return False
-        elif args.input_directory and not args.input_files:
-            args.input_files = [] # initializate for adding files later
-
-        # remove non existent files from input list
-        if args.input_files: 
-            args.input_files = check_files(args.input_files)
-
-        # get files from directory
-        if args.input_directory and args.input_extension:
-            for file in os.listdir(args.input_directory):
-                if file.endswith(args.input_extension):
-                    args.input_files.append(os.path.join(args.input_directory, file))
-        
-        if len(args.input_files)==0:
-            print_log("No valid input files found\n")
             return False
 
         if args.which=='update':
@@ -976,21 +957,21 @@ def validate_args_files(args):
             if not check_db(prefix):
                 return False
 
-        if not os.path.exists(args.rep_file):
-            print_log("No valid input files found\n")
+        if not os.path.isfile(args.rep_file):
+            print_log("File not found [" + args.rep_file + "]\n")
             return False
+
     return True
 
 def check_files(files):
-    len_files = len(files)
-    files[:] = [file for file in files if os.path.exists(file)]
-    if len(files)<len_files:
-        print_log(str(len_files-len(files)) + " input file[s] could not be found\n")
-    return files
+    checked_files = [file for file in files if os.path.isfile(file)]
+    if len(checked_files)<len(files):
+        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found\n")
+    return checked_files
 
 def check_db(prefix):
     for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
-        if not os.path.exists(prefix+db_file_type):
+        if not os.path.isfile(prefix+db_file_type):
             print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)\n")
             return False
     return True
@@ -1053,7 +1034,87 @@ class Gnn:
             with open(output_file, 'w') as file:
                 for line in self.bins:
                     file.write(line+"\n")
+            
+class Bins:
+    # bins columns pandas dataframe
+    bins = pd.DataFrame(columns=['seqid','start','end', 'length', 'taxid', 'group', 'binid'])
+    lines = []
 
+    def __init__(self, taxsbp_stdout: str=None, use_assembly=False, fragment_length=0):
+        if taxsbp_stdout: 
+            self.parse_bins(taxsbp_stdout, use_assembly, fragment_length)
+            self.lines = [line for line in taxsbp_stdout.split("\n") if line]
+
+    def __repr__(self):
+        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
+        return 'Bins({})'.format(', '.join(args))
+
+    def parse_bins(self, taxsbp_stdout, use_assembly, fragment_length):
+        self.bins = pd.read_csv(StringIO(taxsbp_stdout), 
+                                sep='\t', 
+                                header=None, 
+                                skiprows=0,
+                                names=['seqid','length', 'taxid', 'binid'] if not use_assembly else ['seqid','length', 'taxid', 'group', 'binid'], 
+                                dtype={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64'})
+        if not use_assembly:
+            self.bins['group'] = self.bins['taxid'] # Add taxid as group
+        if fragment_length: 
+            self.bins[['seqid','begin','end']] = self.bins.seqid.str.split(r"\/|:", expand=True)
+        else:
+            self.bins['begin'] = 1
+            self.bins['end'] = self.bins['length']
+
+    def write_acc_bin_file(self, acc_bin_file):
+        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','begin','end','binid'], sep='\t')
+
+    def get_number_of_bins(self):
+        return self.bins.binid.unique().size
+
+    def get_unique_taxids(self):
+        return self.bins.taxid.unique()
+
+    def get_binid_length_sum(self):
+        return self.bins.groupby(['binid'])['length'].sum()
+        
+    def get_max_bin_length(self):
+        return self.get_binid_length_sum().max()
+
+    def get_group_taxid(self):
+        return self.bins[['group','taxid']].drop_duplicates().set_index('group')
+
+    def get_last_bin(self):
+        return self.bins.binid.max()
+
+class Map:
+    data = {}
+    def __init__(self, bins: Bins=None, map_file: str=None):
+        if map_file:
+            self.data = self.parse_map_file(map_file)
+        else:
+            self.data = self.parse_map_bins(bins)
+
+    def __repr__(self):
+        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
+        return 'Map({})'.format(', '.join(args))
+
+    def parse_map_bins(self,bins):
+        return dict(zip(bins.bins.binid, bins.bins.group))
+
+    def parse_map_file(self,map_file):
+        mapp = {}
+        with open(map_file, 'r') as file:
+            for line in file:
+                group, binid = line.rstrip().split("\t")
+                mapp[binid] = group
+        return mapp
+
+    def write(self, map_file):
+        with open(map_file, 'w') as file:
+            for binid, group in self.data.items(): 
+                file.write(group + "\t" + str(binid) + "\n")
+
+    def update(self, new_map):
+        self.data.update(new_map.data)
 
 class Tax:
     def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
@@ -1071,10 +1132,10 @@ class Tax:
         return 'Tax({})'.format(', '.join(args))
 
     def add_nodes(self, new_nodes, label):
-        # add nodes from a dict new_nodes[node] = parent
-        for node,parent in new_nodes.items():
+        # add nodes from a pandas dataframe [group taxid]
+        for node,parent in new_nodes.iterrows():
             if node not in self.nodes:
-                self.nodes[node] = (parent,label,node) # repeat node on name
+                self.nodes[node] = (parent['taxid'],label,node) # repeat node on name
 
     def merge(self, extra_tax): # duplicates solved by current tax
         for node in extra_tax.nodes:

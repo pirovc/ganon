@@ -22,9 +22,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
-        ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. Default: 0.25", cxxopts::value< std::vector< float > >() )
-        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]", cxxopts::value< std::vector< int16_t > >() )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. Matches not passing this criterial will be flagged with negative k-mer counts.", cxxopts::value< std::vector< int16_t > >() )
+        ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. One per filter. Default: 0.25", cxxopts::value< std::vector< float > >() )
+        ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]. One per filter.", cxxopts::value< std::vector< int16_t > >() )
+        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
+        ( "l,strata-filter", "Additional errors allowed (relative to the best match) to filter and select matches. -1 for no filtering. One per hiearchy label. Default: 0", cxxopts::value< std::vector< int16_t > >() )
         
         ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
         
@@ -34,8 +35,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "s,output-single", "Generate only one output (prefix.lca and prefix.rep) even with multiple hierarchy levels", cxxopts::value< bool >() )
         
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
-        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
+        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
         ( "quiet", "Quiet output mode (only outputs errors and warnings to the STDERR)", cxxopts::value< bool >())
         ( "h,help", "Print help" )
@@ -78,6 +79,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.max_error = args["max-error"].as< std::vector< int16_t > >();
     if ( args.count( "max-error-unique" ) )
         config.max_error_unique = args["max-error-unique"].as< std::vector< int16_t > >();
+    if ( args.count( "strata-filter" ) )
+        config.strata_filter = args["strata-filter"].as< std::vector< int16_t > >();
     if ( args.count( "offset" ) )
     {
 #ifdef GANON_OFFSET
@@ -98,11 +101,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
-
-    if ( args.count( "n-batches" ) )
-        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "n-reads" ) )
         config.n_reads = args["n-reads"].as< uint32_t >();
+    if ( args.count( "n-batches" ) )
+        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "quiet" ) )

@@ -109,6 +109,23 @@ SCENARIO( "Classify paired-reads concat with unique errors", "[ganon-classify]" 
                                      config_classify::results_path + cfg.output_prefix + "." + ext ) );
 }
 
+SCENARIO( "Classify reads with no filtering", "[ganon-classify]" )
+{
+    auto cfg          = config_classify::defaultConfig();
+    cfg.ibf           = { "filters/bacteria.ibf" };
+    cfg.map           = { "filters/bacteria.map" };
+    cfg.tax           = { "filters/bacteria.tax" };
+    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
+    cfg.max_error     = { 5 };
+    cfg.strata_filter = { -1 };
+    cfg.output_prefix = "b-b_e5l-1";
+
+    REQUIRE( GanonClassify::run( cfg ) );
+    for ( auto const& ext : config_classify::output_ext )
+        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
+                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+}
+
 SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[ganon-classify]" )
 {
     auto cfg             = config_classify::defaultConfig();

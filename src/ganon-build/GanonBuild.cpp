@@ -149,7 +149,7 @@ void print_time( const GanonBuild::Config& config,
     std::cerr << " - loading files: " << timeLoadFiles.elapsed() << std::endl;
     std::cerr << " - loading filter: " << timeLoadFilter.elapsed() << std::endl;
     std::cerr << " - loading sequences (1t): " << timeLoadSeq.elapsed() << std::endl;
-    std::cerr << " - building filter (" << config.build_threads << "t): " << timeBuild.elapsed() << std::endl;
+    std::cerr << " - building filter (" << config.threads_build << "t): " << timeBuild.elapsed() << std::endl;
     std::cerr << " - saving filter: " << timeSaveFilter.elapsed() << std::endl;
     std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
@@ -247,7 +247,7 @@ bool run( Config config )
                     { // sequence too small
                         mtx.lock();
                         std::cerr << "WARNING: sequence smaller than k-mer size"
-                                  << "[" << ids[i] << "]" << std::endl;
+                                  << " [" << ids[i] << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -257,8 +257,8 @@ bool run( Config config )
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
-                        std::cerr << "WARNING: sequence not defined on seqid-bin file"
-                                  << "[" << seqid << "]" << std::endl;
+                        std::cerr << "WARNING: sequence not defined on seqid-bin-file"
+                                  << " [" << seqid << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -280,7 +280,7 @@ bool run( Config config )
     // Start execution threads to add kmers
     timeBuild.start();
     std::vector< std::future< void > > tasks;
-    for ( uint16_t taskNo = 0; taskNo < config.build_threads; ++taskNo )
+    for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
         tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs, &mtx, &config] {
             while ( true )
@@ -290,21 +290,16 @@ bool run( Config config )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
                     {
-                        auto[fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        // mtx.lock();
                         seqan::insertKmer( filter, fragment, binid );
-                        // mtx.unlock();
-                        if ( config.verbose )
-                        {
-                            mtx.lock();
-                            std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
-                                      << std::endl;
-                            mtx.unlock();
-                        }
+
+                        // mtx.lock();
+                        // std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                        // << std::endl; mtx.unlock();
                     }
                 }
                 else
