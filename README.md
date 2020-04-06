@@ -37,7 +37,7 @@ ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/d
 ### report
 
 ```
-ganon report --db-prefix sample_bacteria --rep-file sample_bateria.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
+ganon report --db-prefix sample_bacteria --rep-file sample_results.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
 ```
 
 ### update

@@ -3,7 +3,7 @@
 # =============================================================================
 
 cmake_minimum_required( VERSION 3.10 FATAL_ERROR )
-project( ganon VERSION 0.2.1 LANGUAGES CXX )
+project( ganon VERSION 0.2.2 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup

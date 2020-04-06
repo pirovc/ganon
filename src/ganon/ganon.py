@@ -7,7 +7,7 @@ from collections import defaultdict, OrderedDict
 
 def main(arguments=None):
 
-    version = '0.2.1'
+    version = '0.2.2'
     
     ####################################################################################################
 	
