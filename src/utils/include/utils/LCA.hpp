@@ -9,30 +9,28 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace std;
-
 // required: root node == "1" and father == "0"
 class LCA
 {
 private:
-    unordered_map< string, vector< string > > parents;
-    vector< int >                             euler;
-    vector< int >                             depth;
-    unique_ptr< int[] >                       firstAppearance;
-    int                                       vertices;
-    unordered_map< string, int >              encode;
-    unordered_map< int, string >              decode;
-    unique_ptr< unique_ptr< int[] >[] >       M;
-    void                                      depthFirstSearch( string current, int depth );
-    void                                      preProcessRMQ();
-    int                                       queryRMQ( int i, int j );
+    std::unordered_map< std::string, std::vector< std::string > > parents;
+    std::vector< int >                                            euler;
+    std::vector< int >                                            depth;
+    std::unique_ptr< int[] >                                      firstAppearance;
+    int                                                           vertices;
+    std::unordered_map< std::string, int >                        encode;
+    std::unordered_map< int, std::string >                        decode;
+    std::unique_ptr< std::unique_ptr< int[] >[] >                 M;
+    void                                                          depthFirstSearch( std::string current, int depth );
+    void                                                          preProcessRMQ();
+    int                                                           queryRMQ( int i, int j );
 
 public:
     LCA();
-    void   addEdge( string father, string son );
-    void   doEulerWalk();
-    int    getLCA( int u, int v );
-    string getLCA( vector< string >& taxIds );
+    void        addEdge( std::string father, std::string son );
+    void        doEulerWalk();
+    int         getLCA( int u, int v );
+    std::string getLCA( std::vector< std::string >& taxIds );
 };
 
 inline LCA::LCA()
@@ -40,7 +38,7 @@ inline LCA::LCA()
     vertices = 0;
 }
 
-inline void LCA::addEdge( string father, string son )
+inline void LCA::addEdge( std::string father, std::string son )
 {
     if ( encode.count( father ) == 0 )
     {
@@ -56,7 +54,7 @@ inline void LCA::addEdge( string father, string son )
     }
     if ( parents.count( father ) == 0 )
     {
-        vector< string > children;
+        std::vector< std::string > children;
         children.push_back( son );
         parents[father] = children;
     }
@@ -66,7 +64,7 @@ inline void LCA::addEdge( string father, string son )
     }
 }
 
-inline void LCA::depthFirstSearch( string current, int _depth )
+inline void LCA::depthFirstSearch( std::string current, int _depth )
 {
     // marking first appearance for current node
     if ( firstAppearance[encode[current]] == -1 )
@@ -87,7 +85,7 @@ inline void LCA::depthFirstSearch( string current, int _depth )
 
 inline void LCA::doEulerWalk()
 {
-    firstAppearance = make_unique< int[] >( vertices );
+    firstAppearance = std::make_unique< int[] >( vertices );
     for ( int i = 0; i < vertices; i++ )
     {
         firstAppearance[i] = -1;
@@ -100,12 +98,12 @@ inline void LCA::doEulerWalk()
 inline void LCA::preProcessRMQ()
 {
 
-    M = make_unique< unique_ptr< int[] >[] >( depth.size() );
+    M = std::make_unique< std::unique_ptr< int[] >[] >( depth.size() );
 
     int logDepth = ceil( log2( depth.size() ) );
     for ( unsigned int i = 0; i < depth.size(); i++ )
     {
-        M[i]    = make_unique< int[] >( logDepth );
+        M[i]    = std::make_unique< int[] >( logDepth );
         M[i][0] = i; // initialize M for the intervals with length 1
     }
 
@@ -131,7 +129,7 @@ inline int LCA::queryRMQ( int i, int j )
 {
     if ( i > j )
     {
-        swap( i, j );
+        std::swap( i, j );
     }
 
     int k = log2( j - i + 1 );
@@ -162,14 +160,14 @@ inline int LCA::getLCA( int u, int v )
 
     if ( firstAppearance[u] > firstAppearance[v] )
     {
-        swap( u, v );
+        std::swap( u, v );
     }
 
     // doing RMQ in the required range
     return euler[queryRMQ( firstAppearance[u], firstAppearance[v] )];
 }
 
-inline string LCA::getLCA( vector< string >& taxIds )
+inline std::string LCA::getLCA( std::vector< std::string >& taxIds )
 {
     int lca;
     lca = getLCA( encode[taxIds[0]], encode[taxIds[1]] );
