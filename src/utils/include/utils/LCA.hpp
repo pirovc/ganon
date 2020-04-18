@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cassert>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -166,12 +168,13 @@ inline int LCA::getLCA( int u, int v )
 
 inline std::string LCA::getLCA( const std::vector< std::string >& taxIds )
 {
-    int lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
+    assert( taxIds.size() > 1 );
 
-    for ( auto it = std::next( taxIds.begin(), 2 ); it != taxIds.end(); ++it )
-    {
-        lca = getLCA( lca, m_encode[*it] );
-    }
+    const auto lca = std::accumulate(
+        std::next( taxIds.begin(), 2 ),
+        taxIds.end(),
+        getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] ),
+        [&]( const auto prevLCA, const std::string nextId ) { return getLCA( prevLCA, m_encode[nextId] ); } );
 
     return m_decode[lca];
 }
