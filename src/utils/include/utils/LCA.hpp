@@ -166,11 +166,12 @@ inline int LCA::getLCA( int u, int v )
 
 inline std::string LCA::getLCA( const std::vector< std::string >& taxIds )
 {
-    int lca;
-    lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
-    for ( unsigned int i = 2; i < taxIds.size(); i++ )
+    int lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
+
+    for ( auto it = std::next( taxIds.begin(), 2 ); it != taxIds.end(); ++it )
     {
-        lca = getLCA( lca, m_encode[taxIds[i]] );
+        lca = getLCA( lca, m_encode[*it] );
     }
+
     return m_decode[lca];
 }
