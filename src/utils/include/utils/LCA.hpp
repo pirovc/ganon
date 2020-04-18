@@ -13,7 +13,8 @@
 class LCA
 {
 public:
-    LCA();
+    LCA() = default;
+
     void        addEdge( std::string father, std::string son );
     void        doEulerWalk();
     int         getLCA( int u, int v );
@@ -28,16 +29,11 @@ private:
     std::vector< int >                                            euler;
     std::vector< int >                                            depth;
     std::unique_ptr< int[] >                                      firstAppearance;
-    int                                                           vertices;
+    int                                                           vertices = 0;
     std::unordered_map< std::string, int >                        encode;
     std::unordered_map< int, std::string >                        decode;
     std::unique_ptr< std::unique_ptr< int[] >[] >                 M;
 };
-
-inline LCA::LCA()
-{
-    vertices = 0;
-}
 
 inline void LCA::addEdge( std::string father, std::string son )
 {
