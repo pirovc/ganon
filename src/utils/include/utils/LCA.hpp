@@ -97,7 +97,7 @@ inline void LCA::preProcessRMQ()
 
     M = std::make_unique< std::unique_ptr< int[] >[] >( depth.size() );
 
-    int logDepth = ceil( log2( depth.size() ) );
+    int logDepth = std::ceil( std::log2( depth.size() ) );
     for ( unsigned int i = 0; i < depth.size(); i++ )
     {
         M[i]    = std::make_unique< int[] >( logDepth );
@@ -129,7 +129,7 @@ inline int LCA::queryRMQ( int i, int j )
         std::swap( i, j );
     }
 
-    int k = log2( j - i + 1 );
+    int k = std::log2( j - i + 1 );
 
     if ( depth[M[i][k]] <= depth[M[j - ( 1 << k ) + 1][k]] )
     {
