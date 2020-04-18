@@ -12,7 +12,18 @@
 // required: root node == "1" and father == "0"
 class LCA
 {
+public:
+    LCA();
+    void        addEdge( std::string father, std::string son );
+    void        doEulerWalk();
+    int         getLCA( int u, int v );
+    std::string getLCA( std::vector< std::string >& taxIds );
+
 private:
+    void depthFirstSearch( std::string current, int depth );
+    void preProcessRMQ();
+    int  queryRMQ( int i, int j );
+
     std::unordered_map< std::string, std::vector< std::string > > parents;
     std::vector< int >                                            euler;
     std::vector< int >                                            depth;
@@ -21,16 +32,6 @@ private:
     std::unordered_map< std::string, int >                        encode;
     std::unordered_map< int, std::string >                        decode;
     std::unique_ptr< std::unique_ptr< int[] >[] >                 M;
-    void                                                          depthFirstSearch( std::string current, int depth );
-    void                                                          preProcessRMQ();
-    int                                                           queryRMQ( int i, int j );
-
-public:
-    LCA();
-    void        addEdge( std::string father, std::string son );
-    void        doEulerWalk();
-    int         getLCA( int u, int v );
-    std::string getLCA( std::vector< std::string >& taxIds );
 };
 
 inline LCA::LCA()
