@@ -18,7 +18,7 @@ public:
     void        addEdge( std::string father, std::string son );
     void        doEulerWalk();
     int         getLCA( int u, int v );
-    std::string getLCA( std::vector< std::string >& taxIds );
+    std::string getLCA( const std::vector< std::string >& taxIds );
 
 private:
     void depthFirstSearch( std::string current, int depth );
@@ -164,7 +164,7 @@ inline int LCA::getLCA( int u, int v )
     return m_euler[queryRMQ( m_firstAppearance[u], m_firstAppearance[v] )];
 }
 
-inline std::string LCA::getLCA( std::vector< std::string >& taxIds )
+inline std::string LCA::getLCA( const std::vector< std::string >& taxIds )
 {
     int lca;
     lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
