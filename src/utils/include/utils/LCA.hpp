@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <fstream>
@@ -34,7 +35,7 @@ private:
     int                                                           m_vertices = 0;
     std::unordered_map< std::string, int >                        m_encode;
     std::unordered_map< int, std::string >                        m_decode;
-    std::unique_ptr< std::unique_ptr< int[] >[] >                 m_M;
+    std::vector< std::vector< int > >                             m_M;
 };
 
 inline void LCA::addEdge( const std::string& father, const std::string& son )
@@ -96,21 +97,20 @@ inline void LCA::doEulerWalk()
 // <O(N logN) Preprocessing time, O(1) Query time>
 inline void LCA::preProcessRMQ()
 {
+    const auto size     = m_depth.size();
+    const int  logDepth = std::ceil( std::log2( m_depth.size() ) );
 
-    m_M = std::make_unique< std::unique_ptr< int[] >[] >( m_depth.size() );
+    m_M.resize( size, std::vector< int >( logDepth ) );
 
-    int logDepth = std::ceil( std::log2( m_depth.size() ) );
-    for ( unsigned int i = 0; i < m_depth.size(); i++ )
+    for ( auto i = 0u; i < size; ++i )
     {
-        m_M[i]    = std::make_unique< int[] >( logDepth );
-        m_M[i][0] = i; // initialize M for the intervals with length 1
+        m_M[i].front() = i;
     }
 
-
     // compute values from smaller to bigger intervals
-    for ( unsigned int j = 1; 1u << j <= m_depth.size(); j++ )
+    for ( unsigned int j = 1; 1u << j <= size; j++ )
     {
-        for ( unsigned int i = 0; i + ( 1 << j ) - 1 < m_depth.size(); i++ )
+        for ( unsigned int i = 0; i + ( 1 << j ) - 1 < size; i++ )
         {
             if ( m_depth[m_M[i][j - 1]] < m_depth[m_M[i + ( 1 << ( j - 1 ) )][j - 1]] )
             {
