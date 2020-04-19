@@ -15,7 +15,7 @@ public:
 
     void        addEdge( const std::string& father, const std::string& son );
     void        doEulerWalk();
-    int         getLCA( int u, int v );
+    int         getLCA( int u, int v ) const;
     std::string getLCA( const std::vector< std::string >& taxIds );
 
 private:
@@ -140,8 +140,11 @@ inline int LCA::queryRMQ( int i, int j ) const
     }
 }
 
-inline int LCA::getLCA( int u, int v )
+inline int LCA::getLCA( int u, int v ) const
 {
+    assert( u >= 0 && u < m_firstAppearance.size() );
+    assert( v >= 0 && v < m_firstAppearance.size() );
+
     // trivial case
     if ( u == v )
     {
