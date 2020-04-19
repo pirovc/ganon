@@ -25,7 +25,7 @@ public:
 private:
     void depthFirstSearch( const std::string& current, int depth );
     void preProcessRMQ();
-    int  queryRMQ( int i, int j );
+    int  queryRMQ( int i, int j ) const;
 
     std::unordered_map< std::string, std::vector< std::string > > m_parents;
     std::vector< int >                                            m_euler;
@@ -124,22 +124,24 @@ inline void LCA::preProcessRMQ()
     }
 }
 
-inline int LCA::queryRMQ( int i, int j )
+inline int LCA::queryRMQ( int i, int j ) const
 {
     if ( i > j )
     {
         std::swap( i, j );
     }
 
-    int k = std::log2( j - i + 1 );
+    const auto k     = static_cast< int >( std::log2( j - i + 1 ) );
+    const auto term1 = m_M[i][k];
+    const auto term2 = m_M[j - ( 1 << k ) + 1][k];
 
-    if ( m_depth[m_M[i][k]] <= m_depth[m_M[j - ( 1 << k ) + 1][k]] )
+    if ( m_depth[term1] <= m_depth[term2] )
     {
-        return m_M[i][k];
+        return term1;
     }
     else
     {
-        return m_M[j - ( 1 << k ) + 1][k];
+        return term2;
     }
 }
 
