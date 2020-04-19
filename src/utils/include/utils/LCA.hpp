@@ -17,7 +17,7 @@ class LCA
 public:
     LCA() = default;
 
-    void        addEdge( std::string father, std::string son );
+    void        addEdge( const std::string& father, const std::string& son );
     void        doEulerWalk();
     int         getLCA( int u, int v );
     std::string getLCA( const std::vector< std::string >& taxIds );
@@ -37,29 +37,29 @@ private:
     std::unique_ptr< std::unique_ptr< int[] >[] >                 m_M;
 };
 
-inline void LCA::addEdge( std::string father, std::string son )
+inline void LCA::addEdge( const std::string& father, const std::string& son )
 {
     if ( m_encode.count( father ) == 0 )
     {
         m_encode.insert( { father, m_vertices } );
         m_decode.insert( { m_vertices, father } );
-        m_vertices++;
+        ++m_vertices;
     }
+
     if ( m_encode.count( son ) == 0 )
     {
         m_encode.insert( { son, m_vertices } );
         m_decode.insert( { m_vertices, son } );
-        m_vertices++;
+        ++m_vertices;
     }
+
     if ( m_parents.count( father ) == 0 )
     {
-        std::vector< std::string > children;
-        children.push_back( son );
-        m_parents[father] = children;
+        m_parents[father] = { son };
     }
     else
     {
-        m_parents[father].push_back( son );
+        m_parents[father].emplace_back( son );
     }
 }
 
