@@ -30,7 +30,7 @@ private:
     std::unordered_map< std::string, std::vector< std::string > > m_parents;
     std::vector< int >                                            m_euler;
     std::vector< int >                                            m_depth;
-    std::unique_ptr< int[] >                                      m_firstAppearance;
+    std::vector< int >                                            m_firstAppearance;
     int                                                           m_vertices = 0;
     std::unordered_map< std::string, int >                        m_encode;
     std::unordered_map< int, std::string >                        m_decode;
@@ -84,11 +84,7 @@ inline void LCA::depthFirstSearch( std::string current, int depth )
 
 inline void LCA::doEulerWalk()
 {
-    m_firstAppearance = std::make_unique< int[] >( m_vertices );
-    for ( int i = 0; i < m_vertices; i++ )
-    {
-        m_firstAppearance[i] = -1;
-    }
+    m_firstAppearance.resize( m_vertices, -1 );
     depthFirstSearch( "1", 0 );
     preProcessRMQ();
 }
