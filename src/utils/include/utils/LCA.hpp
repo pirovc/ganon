@@ -23,7 +23,7 @@ public:
     std::string getLCA( const std::vector< std::string >& taxIds );
 
 private:
-    void depthFirstSearch( std::string current, int depth );
+    void depthFirstSearch( const std::string& current, int depth );
     void preProcessRMQ();
     int  queryRMQ( int i, int j );
 
@@ -63,21 +63,25 @@ inline void LCA::addEdge( const std::string& father, const std::string& son )
     }
 }
 
-inline void LCA::depthFirstSearch( std::string current, int depth )
+inline void LCA::depthFirstSearch( const std::string& current, int depth )
 {
+    const auto currentEncoded = m_encode[current];
+
     // marking first appearance for current node
-    if ( m_firstAppearance[m_encode[current]] == -1 )
+    if ( m_firstAppearance[currentEncoded] == -1 )
     {
-        m_firstAppearance[m_encode[current]] = m_euler.size();
+        m_firstAppearance[currentEncoded] = m_euler.size();
     }
+
     // pushing root to euler walk
-    m_euler.push_back( m_encode[current] );
+    m_euler.push_back( currentEncoded );
     // pushing depth of current node
     m_depth.push_back( depth );
-    for ( unsigned int i = 0; i < m_parents[current].size(); i++ )
+
+    for ( const auto& node : m_parents[current] )
     {
-        depthFirstSearch( m_parents[current][i], depth + 1 );
-        m_euler.push_back( m_encode[current] );
+        depthFirstSearch( node, depth + 1 );
+        m_euler.push_back( currentEncoded );
         m_depth.push_back( depth );
     }
 }
