@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <string>
@@ -30,7 +31,7 @@ private:
     std::vector< int >                                            m_firstAppearance;
     int                                                           m_vertices = 0;
     std::unordered_map< std::string, unsigned int >               m_encode;
-    std::unordered_map< int, std::string >                        m_decode;
+    std::vector< std::string >                                    m_decode;
     std::vector< std::vector< int > >                             m_M;
 };
 
@@ -39,14 +40,14 @@ inline void LCA::addEdge( const std::string& father, const std::string& son )
     if ( m_encode.count( father ) == 0 )
     {
         m_encode.insert( { father, m_vertices } );
-        m_decode.insert( { m_vertices, father } );
+        m_decode.insert( m_decode.begin() + m_vertices, 1, father );
         ++m_vertices;
     }
 
     if ( m_encode.count( son ) == 0 )
     {
         m_encode.insert( { son, m_vertices } );
-        m_decode.insert( { m_vertices, son } );
+        m_decode.insert( m_decode.begin() + m_vertices, 1, son );
         ++m_vertices;
     }
 
@@ -145,8 +146,8 @@ inline int LCA::queryRMQ( unsigned int i, unsigned int j ) const
 // TODO: here is a suggestion, u and v should be unsigned! They are indexes...
 inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 {
-    assert( u >= 0 && u < m_firstAppearance.size() );
-    assert( v >= 0 && v < m_firstAppearance.size() );
+    assert( u < m_firstAppearance.size() );
+    assert( v < m_firstAppearance.size() );
 
     // trivial case
     if ( u == v )
@@ -171,11 +172,13 @@ inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 
 inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
 {
+
+    assert( taxIds.size() > 1 ); // Ideally should return itself if size==1
+
     // check for valid entries
-    for ( auto it = taxIds.begin(); it != taxIds.end(); ++it )
+    if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
     {
-        if ( !m_encode.count( *it ) )
-            return "1";
+        return "1";
     }
 
     int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
