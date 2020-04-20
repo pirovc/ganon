@@ -40,14 +40,14 @@ inline void LCA::addEdge( const std::string& father, const std::string& son )
     if ( m_encode.count( father ) == 0 )
     {
         m_encode.insert( { father, m_vertices } );
-        m_decode.insert( m_decode.begin() + m_vertices, 1, father );
+        m_decode.insert( m_decode.begin() + m_vertices, father );
         ++m_vertices;
     }
 
     if ( m_encode.count( son ) == 0 )
     {
         m_encode.insert( { son, m_vertices } );
-        m_decode.insert( m_decode.begin() + m_vertices, 1, son );
+        m_decode.insert( m_decode.begin() + m_vertices, son );
         ++m_vertices;
     }
 
@@ -121,7 +121,6 @@ inline void LCA::preProcessRMQ()
     }
 }
 
-// TODO: suggestion, i and j should also be unsigned...
 inline int LCA::queryRMQ( unsigned int i, unsigned int j ) const
 {
     if ( i > j )
@@ -143,7 +142,6 @@ inline int LCA::queryRMQ( unsigned int i, unsigned int j ) const
     }
 }
 
-// TODO: here is a suggestion, u and v should be unsigned! They are indexes...
 inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 {
     assert( u < m_firstAppearance.size() );
