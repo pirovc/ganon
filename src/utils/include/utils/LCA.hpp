@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <numeric>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -119,6 +118,7 @@ inline void LCA::preProcessRMQ()
     }
 }
 
+// TODO: suggestion, i and j should also be unsigned...
 inline int LCA::queryRMQ( int i, int j ) const
 {
     if ( i > j )
@@ -140,6 +140,7 @@ inline int LCA::queryRMQ( int i, int j ) const
     }
 }
 
+// TODO: here is a suggestion, u and v should be unsigned! They are indexes...
 inline int LCA::getLCA( int u, int v ) const
 {
     assert( u >= 0 && u < m_firstAppearance.size() );
@@ -166,15 +167,18 @@ inline int LCA::getLCA( int u, int v ) const
     return m_euler[queryRMQ( m_firstAppearance[u], m_firstAppearance[v] )];
 }
 
+// TODO: this function should be const! For that, we cannot use operator[] for the maps. They
+// are not const and can potentially modify the maps. We should maybe call m_encode.at(...).
 inline std::string LCA::getLCA( const std::vector< std::string >& taxIds )
 {
-    assert( taxIds.size() > 1 );
+    assert( taxIds.size() > 1 ); // I wonder if, aside from asserting this, if we should just branch off...
 
-    const auto lca = std::accumulate(
-        std::next( taxIds.begin(), 2 ),
-        taxIds.end(),
-        getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] ),
-        [&]( const auto prevLCA, const std::string nextId ) { return getLCA( prevLCA, m_encode[nextId] ); } );
+    int lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
+
+    for ( auto it = std::next( taxIds.begin(), 2 ); it != taxIds.end(); ++it )
+    {
+        lca = getLCA( lca, m_encode[*it] );
+    }
 
     return m_decode[lca];
 }
