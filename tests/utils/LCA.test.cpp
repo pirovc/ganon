@@ -46,9 +46,9 @@ SCENARIO( "Invalid nodes", "[utils][lca]" )
         WHEN( "LCA values are requested" )
         {
             TLcaValues lca_values;
-            lca_values["0"] = { "xxxxx", "aaaaaa" };
-            lca_values["0"] = { "xxxxx", "pppppp", "xccccc" };
-            lca_values["0"] = { "xxxxx", "pppppp", "xccccc", "E2" };
+            lca_values["1"] = { "xxxxx", "aaaaaa" };
+            lca_values["1"] = { "xxxxx", "pppppp", "xccccc" };
+            lca_values["1"] = { "xxxxx", "pppppp", "xccccc", "E2" };
             THEN( "they are valid" )
             {
                 for ( auto& v : lca_values )

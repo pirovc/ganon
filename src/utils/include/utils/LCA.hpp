@@ -14,20 +14,22 @@ public:
 
     void        addEdge( const std::string& father, const std::string& son );
     void        doEulerWalk();
-    int         getLCA( int u, int v ) const;
-    std::string getLCA( const std::vector< std::string >& taxIds );
+    int         getLCA( unsigned int u, unsigned int v ) const;
+    std::string getLCA( const std::vector< std::string >& taxIds ) const;
 
 private:
-    void depthFirstSearch( const std::string& current, int depth );
+    void depthFirstSearch( const std::string& current, unsigned int depth );
     void preProcessRMQ();
-    int  queryRMQ( int i, int j ) const;
+    int  queryRMQ( unsigned int i, unsigned int j ) const;
+
+    static constexpr int first_appearance_init = -1;
 
     std::unordered_map< std::string, std::vector< std::string > > m_parents;
     std::vector< int >                                            m_euler;
     std::vector< int >                                            m_depth;
     std::vector< int >                                            m_firstAppearance;
     int                                                           m_vertices = 0;
-    std::unordered_map< std::string, int >                        m_encode;
+    std::unordered_map< std::string, unsigned int >               m_encode;
     std::unordered_map< int, std::string >                        m_decode;
     std::vector< std::vector< int > >                             m_M;
 };
@@ -58,12 +60,12 @@ inline void LCA::addEdge( const std::string& father, const std::string& son )
     }
 }
 
-inline void LCA::depthFirstSearch( const std::string& current, int depth )
+inline void LCA::depthFirstSearch( const std::string& current, unsigned int depth )
 {
     const auto currentEncoded = m_encode[current];
 
     // marking first appearance for current node
-    if ( m_firstAppearance[currentEncoded] == -1 )
+    if ( m_firstAppearance[currentEncoded] == first_appearance_init )
     {
         m_firstAppearance[currentEncoded] = m_euler.size();
     }
@@ -83,7 +85,7 @@ inline void LCA::depthFirstSearch( const std::string& current, int depth )
 
 inline void LCA::doEulerWalk()
 {
-    m_firstAppearance.resize( m_vertices, -1 );
+    m_firstAppearance.resize( m_vertices, first_appearance_init );
     depthFirstSearch( "1", 0 );
     preProcessRMQ();
 }
@@ -119,7 +121,7 @@ inline void LCA::preProcessRMQ()
 }
 
 // TODO: suggestion, i and j should also be unsigned...
-inline int LCA::queryRMQ( int i, int j ) const
+inline int LCA::queryRMQ( unsigned int i, unsigned int j ) const
 {
     if ( i > j )
     {
@@ -141,7 +143,7 @@ inline int LCA::queryRMQ( int i, int j ) const
 }
 
 // TODO: here is a suggestion, u and v should be unsigned! They are indexes...
-inline int LCA::getLCA( int u, int v ) const
+inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 {
     assert( u >= 0 && u < m_firstAppearance.size() );
     assert( v >= 0 && v < m_firstAppearance.size() );
@@ -167,18 +169,21 @@ inline int LCA::getLCA( int u, int v ) const
     return m_euler[queryRMQ( m_firstAppearance[u], m_firstAppearance[v] )];
 }
 
-// TODO: this function should be const! For that, we cannot use operator[] for the maps. They
-// are not const and can potentially modify the maps. We should maybe call m_encode.at(...).
-inline std::string LCA::getLCA( const std::vector< std::string >& taxIds )
+inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
 {
-    assert( taxIds.size() > 1 ); // I wonder if, aside from asserting this, if we should just branch off...
+    // check for valid entries
+    for ( auto it = taxIds.begin(); it != taxIds.end(); ++it )
+    {
+        if ( !m_encode.count( *it ) )
+            return "1";
+    }
 
-    int lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
+    int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
 
     for ( auto it = std::next( taxIds.begin(), 2 ); it != taxIds.end(); ++it )
     {
-        lca = getLCA( lca, m_encode[*it] );
+        lca = getLCA( lca, m_encode.at( *it ) );
     }
 
-    return m_decode[lca];
+    return m_decode.at( lca );
 }
