@@ -90,7 +90,7 @@ This is going to download the new files (and remove the outdated ones) into the 
 Updating the index based on the files of the example above:
 
 	ganon update --db-prefix ganon_db --output-db-prefix ganon_db_updated \
-	             --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f)
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/ -name *.genomic.fna.gz -type f)
 
 If `--output-db-prefix` is not set, the database files `ganon_db.*` will be overwritten with the updated version. The `find` command will only look for files `-type f` inside the `v2/files/`, ignoring symbolic links from sequences which were not changing in this version.
 
@@ -115,7 +115,7 @@ The same goes for the update process:
 	# Use generated files on ganon update
 	ganon update --db-prefix ganon_db \
 	             --output-db-prefix ganon_db_updated \
-	             --input-files $(find RefSeqCG_arc_bac/v2/files/*.genomic.fna.gz -type f) \
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/ -name *.genomic.fna.gz -type f) \
 	             --seq-info-file RefSeqCG_arc_bac/v2/seqinfo.txt \
 	             --taxdump-file RefSeqCG_arc_bac/v2/{TIMESTAMP}_taxdump.tar.gz
 
