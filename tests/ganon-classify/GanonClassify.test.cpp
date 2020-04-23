@@ -17,7 +17,7 @@ GanonClassify::Config defaultConfig()
     cfg.output_single       = true;
     cfg.output_all          = true;
     cfg.output_unclassified = false;
-    cfg.threads             = 3;
+    cfg.threads             = 4;
     cfg.verbose             = false;
     cfg.quiet               = true;
     cfg.hierarchy_labels    = { "1" };
@@ -26,7 +26,7 @@ GanonClassify::Config defaultConfig()
     return cfg;
 }
 
-std::vector< std::string > output_ext{ "all", "lca" }; // "rep" };
+std::vector< std::string > output_ext{ "all", "lca", "rep" };
 std::string                results_path = "results/";
 
 } // namespace config_classify
@@ -43,11 +43,14 @@ SCENARIO( "Classify", "[ganon-classify]" )
     cfg.max_error     = { 3 };
     cfg.output_prefix = "b-b_e3";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
-
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify LCA", "[ganon-classify]" )
@@ -60,20 +63,28 @@ SCENARIO( "Classify LCA", "[ganon-classify]" )
     cfg.max_error     = { 0 }; // one match per read - all=lca
     cfg.output_prefix = "b-b_e0";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 
     cfg.max_error     = { 5 }; // more than one match per read
     cfg.output_prefix = "b-b_e5";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
+    REQUIRE_FALSE( aux::filesAreEqualSorted( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify paired-reads concat", "[ganon-classify]" )
@@ -86,10 +97,14 @@ SCENARIO( "Classify paired-reads concat", "[ganon-classify]" )
     cfg.max_error     = { 0 };
     cfg.output_prefix = "b-b_e0-paired";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify paired-reads concat with unique errors", "[ganon-classify]" )
@@ -103,10 +118,14 @@ SCENARIO( "Classify paired-reads concat with unique errors", "[ganon-classify]" 
     cfg.max_error_unique = { 0 };
     cfg.output_prefix    = "b-b_e1u0-paired";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify reads with no filtering", "[ganon-classify]" )
@@ -120,10 +139,14 @@ SCENARIO( "Classify reads with no filtering", "[ganon-classify]" )
     cfg.strata_filter = { -1 };
     cfg.output_prefix = "b-b_e5l-1";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[ganon-classify]" )
@@ -138,10 +161,14 @@ SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[gano
     cfg.hierarchy_labels = { "1", "2" };
     cfg.output_prefix    = "ab-ab_e0-paired";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 #ifdef GANON_OFFSET
@@ -156,10 +183,14 @@ SCENARIO( "Classify with offset", "[ganon-classify]" )
     cfg.max_error     = { 3 };
     cfg.output_prefix = "b-b_e3f2";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 #endif
 
@@ -173,10 +204,14 @@ SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
     cfg.max_error     = { 0 };
     cfg.output_prefix = "b-b_e0-noerrors";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 
     // using min_kmers = 1 should achieve the same result
     auto cfg2          = config_classify::defaultConfig();
@@ -186,14 +221,19 @@ SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
     cfg2.single_reads  = { "reads/bacteria.simulated.1.fq" };
     cfg2.min_kmers     = { 1 };
     cfg2.output_prefix = "b-b_m1-noerrors";
+
+    INFO( "output_prefix2: " + cfg2.output_prefix );
     REQUIRE( GanonClassify::run( cfg2 ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg2.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg2.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg2.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg2.output_prefix + "." + ext ) );
+    }
 
     // check if both files are the same
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
 }
 
 SCENARIO( "Classify with min kmers", "[ganon-classify]" )
@@ -206,10 +246,14 @@ SCENARIO( "Classify with min kmers", "[ganon-classify]" )
     cfg.min_kmers     = { 0.29 }; // should work the same as -e 3, threshold = 25 19-mers
     cfg.output_prefix = "b-b_m0.29";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify]" )
@@ -223,10 +267,14 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     cfg.max_error        = { 3 };
     cfg.output_prefix    = "b-b_e3u1";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 #ifdef GANON_OFFSET
@@ -242,10 +290,14 @@ SCENARIO( "Classify with offset and different max. unique errors allowed", "[gan
     cfg.offset           = 6;
     cfg.output_prefix    = "b-b_e2u0f6";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify with offset, min kmers and different max. unique errors allowed", "[ganon-classify]" )
@@ -260,10 +312,14 @@ SCENARIO( "Classify with offset, min kmers and different max. unique errors allo
     cfg.offset           = 6;
     cfg.output_prefix    = "b-b_m0.53u0f6";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
@@ -275,6 +331,7 @@ SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
     cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
     cfg.offset        = 25; // should be limited by k-mer size (19)
     cfg.output_prefix = "b-b_f25";
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
 
     auto cfg2          = config_classify::defaultConfig();
@@ -284,10 +341,14 @@ SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
     cfg2.single_reads  = { "reads/bacteria.simulated.1.fq" };
     cfg2.offset        = 19;
     cfg2.output_prefix = "b-b_f19";
+    INFO( "output_prefix2: " + cfg2.output_prefix );
     REQUIRE( GanonClassify::run( cfg2 ) );
 
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    }
 }
 #endif
 
@@ -301,10 +362,14 @@ SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
     cfg.max_error     = { 0 };
     cfg.output_prefix = "ba-ba_e0";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-filter with errors allowed", "[ganon-classify]" )
@@ -317,10 +382,14 @@ SCENARIO( "Classify multi-filter with errors allowed", "[ganon-classify]" )
     cfg.max_error     = { 4 };
     cfg.output_prefix = "ba-ba_e4";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-filter with multiple errors", "[ganon-classify]" )
@@ -333,10 +402,14 @@ SCENARIO( "Classify multi-filter with multiple errors", "[ganon-classify]" )
     cfg.max_error     = { 0, 4 };
     cfg.output_prefix = "ba-ba_e04";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-hierarchy without errors allowed", "[ganon-classify]" )
@@ -350,10 +423,14 @@ SCENARIO( "Classify multi-hierarchy without errors allowed", "[ganon-classify]" 
     cfg.hierarchy_labels = { "1", "2" };
     cfg.output_prefix    = "ba-ba_e0c12";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
@@ -370,17 +447,18 @@ SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
     std::string output2  = cfg.output_prefix + ".2.all";
     cfg.output_single    = false;
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".rep",
                                        config_classify::results_path + cfg.output_prefix + ".rep" ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".1.lca",
-                                 config_classify::results_path + cfg.output_prefix + ".1.lca" ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".2.lca",
-                                 config_classify::results_path + cfg.output_prefix + ".2.lca" ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".1.all",
-                                 config_classify::results_path + cfg.output_prefix + ".1.all" ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".2.all",
-                                 config_classify::results_path + cfg.output_prefix + ".2.all" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".1.lca",
+                                       config_classify::results_path + cfg.output_prefix + ".1.lca" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".2.lca",
+                                       config_classify::results_path + cfg.output_prefix + ".2.lca" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".1.all",
+                                       config_classify::results_path + cfg.output_prefix + ".1.all" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".2.all",
+                                       config_classify::results_path + cfg.output_prefix + ".2.all" ) );
 }
 
 SCENARIO( "Classify multi-hierarchy with errors allowed", "[ganon-classify]" )
@@ -394,10 +472,14 @@ SCENARIO( "Classify multi-hierarchy with errors allowed", "[ganon-classify]" )
     cfg.hierarchy_labels = { "1", "2" };
     cfg.output_prefix    = "ba-ba_e4c12";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-hierarchy with multiple errors", "[ganon-classify]" )
@@ -411,10 +493,14 @@ SCENARIO( "Classify multi-hierarchy with multiple errors", "[ganon-classify]" )
     cfg.max_error        = { 3, 4 };
     cfg.output_prefix    = "ab-a_e34c12";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-hierarchy with multiple errors and multiple unique errors", "[ganon-classify]" )
@@ -429,10 +515,14 @@ SCENARIO( "Classify multi-hierarchy with multiple errors and multiple unique err
     cfg.max_error_unique = { 0, 1 };
     cfg.output_prefix    = "ab-a_e34c12u01";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 // Functionality
@@ -447,12 +537,16 @@ SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
     cfg.max_error     = { 3 };
     cfg.output_prefix = "b-problematic_e3";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileLines( cfg.output_prefix + ".all" ) == 4 );
 
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify without matches", "[ganon-classify]" )
@@ -465,6 +559,7 @@ SCENARIO( "Classify without matches", "[ganon-classify]" )
     cfg.max_error     = { 0 };
     cfg.output_prefix = "b-v_e0";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
 }
@@ -479,6 +574,7 @@ SCENARIO( "Classify multi-filter without matches", "[ganon-classify]" )
     cfg.max_error     = { 0 };
     cfg.output_prefix = "ba-v_e0";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
 }
@@ -494,6 +590,7 @@ SCENARIO( "Classify multi-hierarchy without matches", "[ganon-classify]" )
     cfg.hierarchy_labels = { "1", "2" };
     cfg.output_prefix    = "ba-v_e0c12";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
 }
@@ -510,10 +607,14 @@ SCENARIO( "Classify forced failure with different max. errors allowed", "[ganon-
 
     const std::string undesired_output_prefix = "b-b_e3";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE_FALSE( aux::filesAreEqual( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + undesired_output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE_FALSE( aux::filesAreEqualSorted(
+            cfg.output_prefix + "." + ext, config_classify::results_path + undesired_output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-filter with partial matching reads", "[ganon-classify]" )
@@ -535,10 +636,15 @@ SCENARIO( "Classify multi-filter with partial matching reads", "[ganon-classify]
     cfg2.max_error     = { 0 };
     cfg2.output_prefix = "bav-a_e0";
 
+    INFO( "output_prefix: " + cfg1.output_prefix );
+    INFO( "output_prefix2: " + cfg2.output_prefix );
     REQUIRE( GanonClassify::run( cfg1 ) );
     REQUIRE( GanonClassify::run( cfg2 ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classify]" )
@@ -564,10 +670,15 @@ SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classi
     cfg2.hierarchy_labels = { "1", "2", "3" };
     cfg2.output_prefix    = "bav-v_e0";
 
+    INFO( "output_prefix: " + cfg1.output_prefix );
     REQUIRE( GanonClassify::run( cfg1 ) );
+    INFO( "output_prefix2: " + cfg2.output_prefix );
     REQUIRE( GanonClassify::run( cfg2 ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
+    }
 }
 
 SCENARIO( "Classify after update", "[ganon-classify]" )
@@ -581,6 +692,7 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     cfg.max_error     = { 3 };
     cfg.output_prefix = "b-v_e3";
 
+    INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
     REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
 
@@ -608,10 +720,14 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     const std::string desired_output_prefix = "b-b_e3";
 
     // Results of bacteria should be the same as without update (check if FP changed or filter was affected)
+    INFO( "output_prefix2: " + cfg2.output_prefix );
     REQUIRE( GanonClassify::run( cfg2 ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg2.output_prefix + "." + ext,
-                                     config_classify::results_path + desired_output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg2.output_prefix + "." + ext,
+                                           config_classify::results_path + desired_output_prefix + "." + ext ) );
+    }
 
     // Virus reads should now map
     auto cfg3          = config_classify::defaultConfig();
@@ -622,8 +738,12 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     cfg3.single_reads  = { "reads/virus.simulated.1.fq" };
     cfg3.output_prefix = "bv-v_e3";
 
+    INFO( "output_prefix2: " + cfg3.output_prefix );
     REQUIRE( GanonClassify::run( cfg3 ) );
     for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqual( cfg3.output_prefix + "." + ext,
-                                     config_classify::results_path + cfg3.output_prefix + "." + ext ) );
+    {
+        INFO( "extension: " + ext );
+        REQUIRE( aux::filesAreEqualSorted( cfg3.output_prefix + "." + ext,
+                                           config_classify::results_path + cfg3.output_prefix + "." + ext ) );
+    }
 }
