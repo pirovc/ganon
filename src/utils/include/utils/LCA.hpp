@@ -175,16 +175,11 @@ inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
 
     // check for valid entries
     if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
-    {
         return "1";
-    }
 
     int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
-
-    for ( auto it = std::next( taxIds.begin(), 2 ); it != taxIds.end(); ++it )
-    {
-        lca = getLCA( lca, m_encode.at( *it ) );
-    }
+    for ( unsigned int i = 2; i < taxIds.size(); ++i )
+        lca = getLCA( lca, m_encode.at( taxIds[i] ) );
 
     return m_decode.at( lca );
 }
