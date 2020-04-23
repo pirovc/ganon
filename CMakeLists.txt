@@ -2,8 +2,8 @@
 # ganon
 # =============================================================================
 
-cmake_minimum_required( VERSION 3.8.2 FATAL_ERROR )
-project( ganon VERSION 0.9.0 LANGUAGES CXX )
+cmake_minimum_required( VERSION 3.10 FATAL_ERROR )
+project( ganon VERSION 0.2.3 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup
@@ -22,6 +22,9 @@ if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
 endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
+option( GANON_OFFSET "Enable offset for ganon-classify" ON )
+option( CONDA "Flag for compilation in conda env." OFF )
+option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
 # -----------------------------------------------------------------------------
 # build types
@@ -64,7 +67,7 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
     -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic
-    -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion
+    -Wno-conversion -Wno-sign-conversion -Wnull-dereference -Wdouble-promotion
     -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros )
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
@@ -74,7 +77,15 @@ endif()
 
 # seqan specific flags:
 
-add_compile_options( -static -msse4.2 -march=native )
+if ( NOT CONDA )
+	add_compile_options( -static -march=native )
+endif()
+
+# Enable offset:
+
+if( GANON_OFFSET )
+	add_compile_options(-DGANON_OFFSET) 
+endif()
 
 # -----------------------------------------------------------------------------
 # dependencies and 3rd party libraries
@@ -87,13 +98,16 @@ find_package( Threads REQUIRED )
 # 2. cxxopts:
 
 add_library( cxxopts INTERFACE )
-target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
+if( INCLUDE_DIRS )
+    target_include_directories( cxxopts SYSTEM INTERFACE ${INCLUDE_DIRS} )
+else()
+    target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
+endif()
 
 # 3. sdsl-lite:
 
 add_library( sdsl-lite INTERFACE )
-target_include_directories( sdsl-lite
-    SYSTEM INTERFACE libs/sdsl-lite/include )
+target_include_directories( sdsl-lite SYSTEM INTERFACE libs/sdsl-lite/include )
 
 # 4. Zlib (optional for SeqAn):
 
@@ -113,9 +127,12 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
 # 6. Catch2:
 
-add_library( catch2 INTERFACE )
-target_include_directories( catch2
-    SYSTEM INTERFACE libs/Catch2/single_include )
+add_library( Catch2 INTERFACE )
+if( INCLUDE_DIRS )
+    target_include_directories( Catch2 SYSTEM INTERFACE ${INCLUDE_DIRS} )
+else()
+    target_include_directories( Catch2 SYSTEM INTERFACE libs/Catch2/single_include )
+endif()
 
 # -----------------------------------------------------------------------------
 # verbose log
@@ -130,7 +147,7 @@ if( VERBOSE_CONFIG )
     message( STATUS "Misc symbols")
     message( STATUS "  Build type        : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
-
+    message( STATUS "  INCLUDE_DIRS      : ${INCLUDE_DIRS}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 endif()

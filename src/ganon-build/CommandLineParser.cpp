@@ -13,23 +13,29 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // clang-format off
     options.add_options()
-        ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
-        ( "o,output-filter-file", "Output filter file", cxxopts::value< std::string >() )
-        ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >()->default_value( "" ) )
-        ( "c,update-complete", "Old and new sequences are provided for updated bins (used to remove sequences)", cxxopts::value< bool >()->default_value( "false" ) )
-        ( "s,filter-size", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint64_t >()->default_value( "16" ) )
-        ( "b,filter-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >()->default_value( "0" ) )
-        ( "k,kmer-size", "k size", cxxopts::value< uint16_t >()->default_value( "19" ) )
-        ( "n,hash-functions", "Number of hash functions", cxxopts::value< uint16_t >()->default_value( "3" ) )
-        ( "t,threads", "Number of threads", cxxopts::value< uint16_t >()->default_value( "1" ) )
-        ( "verbose", "Verbose output mode", cxxopts::value<bool>()->default_value("false"))
-        ( "h,help", "Show help commands" )
-        ( "v,version", "Show current version" )
-        ( "reference-files", "reference-files", cxxopts::value< std::vector< std::string > >() );
-    // clang-format on
+        ( "r,reference-files", "Sequence files .fasta .fa .fna (e.g ref.fna[.gz],[ref2.fna[.gz],...,refN.fna[.gz]])", cxxopts::value< std::vector< std::string > >() )
+        ( "d,directory-reference-files", "Directory with reference files. Do not provide wildcards, just path (e.g. /path/to/folder/)", cxxopts::value< std::string >() )
+        ( "x,extension", "Extension of the files to search in the --directory-reference-files (e.g. '.fna')", cxxopts::value< std::string >() )
 
-    options.parse_positional( { "reference-files" } );
-    options.positional_help( "ref.fna[.gz] [ref2.fna[.gz] ... refN.fna[.gz]]" );
+        ( "e,seqid-bin-file", "Tab-separated file linking sequences and bin identifiers. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin Id", cxxopts::value< std::string >() )
+        ( "o,output-filter-file", "Output file for filter (e.g. filter.ibf)", cxxopts::value< std::string >() )
+        ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
+        ( "c,update-complete", "When using --update-filter-file and all sequences are provided to update index, set this option to not only add sequences to the filter but also remove", cxxopts::value< bool >() )
+        
+        ( "s,filter-size", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint32_t >() )
+        ( "b,filter-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >() )
+        
+        ( "k,kmer-size", "k size to build filter", cxxopts::value< uint16_t >() )
+        ( "n,hash-functions", "Number of hash functions to build filter", cxxopts::value< uint16_t >() )
+
+        ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
+        ( "n-refs", "Number of sequences for each batch", cxxopts::value< uint32_t >() )        
+        ( "n-batches", "Number of batches of n-refs to hold in memory", cxxopts::value< uint32_t >() )
+        ( "verbose", "Verbose output mode", cxxopts::value<bool>())
+        ( "quiet", "Quiet output mode (only outputs errors and warnings to the stderr)", cxxopts::value<bool>())
+        ( "h,help", "Show help commands" )
+        ( "v,version", "Show current version" );
+    // clang-format on
 
     const auto argcCopy = argc;
     const auto args     = options.parse( argc, argv );
@@ -45,37 +51,45 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         return std::nullopt;
     }
 
+
     Config config;
 
-    config.seqid_bin_file     = args["seqid-bin-file"].as< std::string >();
-    config.output_filter_file = args["output-filter-file"].as< std::string >();
-    config.update_filter_file = args["update-filter-file"].as< std::string >();
-    config.reference_files    = args["reference-files"].as< std::vector< std::string > >();
-    config.update_complete    = args["update-complete"].as< bool >();
-    config.threads            = args["threads"].as< uint16_t >();
-    config.verbose            = args["verbose"].as< bool >();
+    if ( args.count( "reference-files" ) )
+        config.reference_files = args["reference-files"].as< std::vector< std::string > >();
+    if ( args.count( "directory-reference-files" ) )
+        config.directory_reference_files = args["directory-reference-files"].as< std::string >();
+    if ( args.count( "extension" ) )
+        config.extension = args["extension"].as< std::string >();
 
-    config.build_threads = config.threads - 1; // -1 reading files
+    if ( args.count( "seqid-bin-file" ) )
+        config.seqid_bin_file = args["seqid-bin-file"].as< std::string >();
+    if ( args.count( "output-filter-file" ) )
+        config.output_filter_file = args["output-filter-file"].as< std::string >();
+    if ( args.count( "update-filter-file" ) )
+        config.update_filter_file = args["update-filter-file"].as< std::string >();
+    if ( args.count( "update-complete" ) )
+        config.update_complete = args["update-complete"].as< bool >();
 
-    // Skip variables if updating, loads from existing filter file
-    if ( !config.update_filter_file.empty() )
-    {
-        std::cerr << "--filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
-                     "--update-filter-file"
-                  << std::endl;
-        config.kmer_size      = 0;
-        config.hash_functions = 0;
-        config.filter_size    = 0;
-    }
-    else
-    {
-        config.kmer_size      = args["kmer-size"].as< uint16_t >();
+    if ( args.count( "filter-size" ) )
+        config.filter_size = args["filter-size"].as< uint32_t >();
+    if ( args.count( "filter-size-bits" ) )
+        config.filter_size_bits = args["filter-size-bits"].as< uint64_t >();
+
+    if ( args.count( "kmer-size" ) )
+        config.kmer_size = args["kmer-size"].as< uint16_t >();
+    if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
 
-        config.filter_size = args["filter-size-bits"].as< uint64_t >() > 0
-                                 ? args["filter-size-bits"].as< uint64_t >()
-                                 : args["filter-size"].as< uint64_t >() * Config::MBinBits;
-    }
+    if ( args.count( "threads" ) )
+        config.threads = args["threads"].as< uint16_t >();
+    if ( args.count( "n-refs" ) )
+        config.n_refs = args["n-refs"].as< uint32_t >();
+    if ( args.count( "n-batches" ) )
+        config.n_batches = args["n-batches"].as< uint32_t >();
+    if ( args.count( "verbose" ) )
+        config.verbose = args["verbose"].as< bool >();
+    if ( args.count( "quiet" ) )
+        config.quiet = args["quiet"].as< bool >();
 
     return config;
 }

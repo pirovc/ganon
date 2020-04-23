@@ -1,7 +1,7 @@
 #include "GanonBuild.hpp"
 
 #include <utils/SafeQueue.hpp>
-#include <utils/Time.hpp>
+#include <utils/StopClock.hpp>
 
 #include <seqan/binning_directory.h>
 
@@ -96,7 +96,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
 
         config.kmer_size = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
-        // config.filter_size = seqan::get...( filter ); // not avail.
+        // config.filter_size_bits = seqan::get...( filter ); // not avail.
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
@@ -115,7 +115,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
     }
     else
     {
-        filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size );
+        filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size_bits );
     }
 
     stats.totalBinsFile = seqan::getNumberOfBins( filter );
@@ -124,34 +124,40 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
 }
 
 void print_time( const GanonBuild::Config& config,
-                 Time&                     timeGanon,
-                 Time&                     timeLoadFiles,
-                 Time&                     timeLoadSeq,
-                 Time&                     timeBuild,
-                 Time&                     timeSaveFilter )
+                 const StopClock&          timeGanon,
+                 const StopClock&          timeLoadFiles,
+                 const StopClock&          timeLoadSeq,
+                 const StopClock&          timeBuild,
+                 const StopClock&          timeLoadFilter,
+                 const StopClock&          timeSaveFilter )
 {
-    std::cerr << "ganon-build       start time: " << timeGanon.get_start_ctime();
-    std::cerr << "Loading files     start time: " << timeLoadFiles.get_start_ctime();
-    std::cerr << "Loading files       end time: " << timeLoadFiles.get_end_ctime();
-    std::cerr << "Loading sequences start time: " << timeLoadSeq.get_start_ctime();
-    std::cerr << "Building          start time: " << timeBuild.get_start_ctime();
-    std::cerr << "Loading sequences   end time: " << timeLoadSeq.get_end_ctime();
-    std::cerr << "Building            end time: " << timeBuild.get_end_ctime();
-    std::cerr << "Saving filter     start time: " << timeSaveFilter.get_start_ctime();
-    std::cerr << "Saving filter       end time: " << timeSaveFilter.get_end_ctime();
-    std::cerr << "ganon-build         end time: " << timeGanon.get_end_ctime();
+    using ::operator<<;
+
+    std::cerr << "ganon-build       start time: " << timeGanon.begin() << std::endl;
+    std::cerr << "Loading files     start time: " << timeLoadFiles.begin() << std::endl;
+    std::cerr << "Loading files       end time: " << timeLoadFiles.end() << std::endl;
+    std::cerr << "Loading sequences start time: " << timeLoadSeq.begin() << std::endl;
+    std::cerr << "Loading filter    start time: " << timeLoadFilter.begin() << std::endl;
+    std::cerr << "Loading filter      end time: " << timeLoadFilter.end() << std::endl;
+    std::cerr << "Building filter   start time: " << timeBuild.begin() << std::endl;
+    std::cerr << "Loading sequences   end time: " << timeLoadSeq.end() << std::endl;
+    std::cerr << "Building filter     end time: " << timeBuild.end() << std::endl;
+    std::cerr << "Saving filter     start time: " << timeSaveFilter.begin() << std::endl;
+    std::cerr << "Saving filter       end time: " << timeSaveFilter.end() << std::endl;
+    std::cerr << "ganon-build         end time: " << timeGanon.end() << std::endl;
     std::cerr << std::endl;
-    std::cerr << " - loading files: " << timeLoadFiles.get_elapsed() << std::endl;
-    std::cerr << " - loading sequences (1t): " << timeLoadSeq.get_elapsed() << std::endl;
-    std::cerr << " - building filter (" << config.build_threads << "t): " << timeBuild.get_elapsed() << std::endl;
-    std::cerr << " - saving filter: " << timeSaveFilter.get_elapsed() << std::endl;
-    std::cerr << " - total: " << timeGanon.get_elapsed() << std::endl;
+    std::cerr << " - loading files: " << timeLoadFiles.elapsed() << std::endl;
+    std::cerr << " - loading filter: " << timeLoadFilter.elapsed() << std::endl;
+    std::cerr << " - loading sequences (1t): " << timeLoadSeq.elapsed() << std::endl;
+    std::cerr << " - building filter (" << config.threads_build << "t): " << timeBuild.elapsed() << std::endl;
+    std::cerr << " - saving filter: " << timeSaveFilter.elapsed() << std::endl;
+    std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const GanonBuild::Config& config, Time& timeBuild )
+void print_stats( Stats& stats, const GanonBuild::Config& config, const StopClock& timeBuild )
 {
-    double   elapsed_build = timeBuild.get_elapsed();
+    double   elapsed_build = timeBuild.elapsed();
     uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
@@ -171,17 +177,20 @@ void print_stats( Stats& stats, const GanonBuild::Config& config, Time& timeBuil
 
 bool run( Config config )
 {
-    Time timeGanon;
+
+    if ( !config.validate() )
+        return false;
+
+    StopClock timeGanon;
     timeGanon.start();
-    Time timeLoadFiles;
-    Time timeLoadSeq;
-    Time timeBuild;
-    Time timeSaveFilter;
+    StopClock timeLoadFiles;
+    StopClock timeLoadFilter;
+    StopClock timeLoadSeq;
+    StopClock timeBuild;
+    StopClock timeSaveFilter;
 
     if ( config.verbose )
-    {
         std::cerr << config;
-    }
 
     //////////////////////////////
 
@@ -194,43 +203,51 @@ bool run( Config config )
     parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids );
     stats.totalSeqsBinId = seq_bin.size();
     stats.totalBinsBinId = bin_ids.size();
+    timeLoadFiles.stop();
 
-    // load new or given filter
-    detail::Tfilter filter = load_filter( config, bin_ids, stats );
-    timeLoadFiles.end();
     //////////////////////////////
 
     std::mutex                mtx;
-    SafeQueue< detail::Seqs > q_Seqs;
-    bool                      finished = false;
+    SafeQueue< detail::Seqs > queue_refs(
+        config.n_batches ); // config.n_batches*config.n_refs = max. amount of references in memory
 
     // Start extra thread for reading the input
     timeLoadSeq.start();
-    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &q_Seqs, &finished, &mtx, &stats] {
+    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &queue_refs, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
             seqan::SeqFileIn seqFileIn;
             if ( !seqan::open( seqFileIn, seqan::toCString( reference_file ) ) )
             {
-                std::cerr << "Unable to open " << reference_file << std::endl;
+                std::cerr << "ERROR: Unable to open the file: " << reference_file << std::endl;
                 continue;
             }
             while ( !seqan::atEnd( seqFileIn ) )
             {
-                while ( q_Seqs.size() > ( config.threads * 10 ) )
+
+                seqan::StringSet< seqan::CharString > ids;
+                seqan::StringSet< seqan::CharString > seqs;
+
+                try
                 {
-                    ; // spin
+                    seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
                 }
-                seqan::StringSet< seqan::CharString >  ids;
-                seqan::StringSet< seqan::IupacString > seqs;
-                seqan::readRecords( ids, seqs, seqFileIn, config.threads * 5 );
+                catch ( seqan::Exception const& e )
+                {
+                    mtx.lock();
+                    std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
+                              << std::endl;
+                    mtx.unlock();
+                }
+
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
                     if ( seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
-                        std::cerr << ids[i] << " has sequence smaller than k-mer size" << std::endl;
+                        std::cerr << "WARNING: sequence smaller than k-mer size"
+                                  << " [" << ids[i] << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
@@ -240,29 +257,35 @@ bool run( Config config )
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
-                        std::cerr << seqid << " not defined on seqid-bin file" << std::endl;
+                        std::cerr << "WARNING: sequence not defined on seqid-bin-file"
+                                  << " [" << seqid << "]" << std::endl;
                         mtx.unlock();
                         stats.invalidSeqs += 1;
                         continue;
                     }
                     stats.sumSeqLen += seqan::length( seqs[i] );
-                    q_Seqs.push( detail::Seqs{ seqid, seqs[i] } );
+                    queue_refs.push( detail::Seqs{ seqid, seqs[i] } );
                 }
             }
             seqan::close( seqFileIn );
         }
-        finished = true;
+        queue_refs.notify_push_over();
     } ) );
+
+    // load new or given filter
+    timeLoadFilter.start();
+    detail::Tfilter filter = load_filter( config, bin_ids, stats );
+    timeLoadFilter.stop();
 
     // Start execution threads to add kmers
     timeBuild.start();
     std::vector< std::future< void > > tasks;
-    for ( int taskNo = 0; taskNo < config.build_threads; ++taskNo )
+    for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &q_Seqs, &finished, &mtx, &config] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs, &mtx, &config] {
             while ( true )
             {
-                detail::Seqs val = q_Seqs.pop();
+                detail::Seqs val = queue_refs.pop();
                 if ( val.seqid != "" )
                 {
                     for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
@@ -272,47 +295,50 @@ bool run( Config config )
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        // mtx.lock();
                         seqan::insertKmer( filter, fragment, binid );
-                        // mtx.unlock();
-                        if ( config.verbose )
-                        {
-                            mtx.lock();
-                            std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
-                                      << std::endl;
-                            mtx.unlock();
-                        }
+
+                        // mtx.lock();
+                        // std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
+                        // << std::endl; mtx.unlock();
                     }
                 }
-                if ( finished && q_Seqs.empty() )
+                else
+                {
                     break;
+                }
             }
         } ) );
     }
     //////////////////////////////
 
     read_task.get();
-    timeLoadSeq.end();
+    timeLoadSeq.stop();
 
     for ( auto&& task : tasks )
     {
         task.get();
     }
-    timeBuild.end();
+    timeBuild.stop();
     //////////////////////////////
 
     // Store filter
     timeSaveFilter.start();
     seqan::store( filter, seqan::toCString( config.output_filter_file ) );
-    timeSaveFilter.end();
+    timeSaveFilter.stop();
     //////////////////////////////
 
-    timeGanon.end();
+    timeGanon.stop();
 
-    std::cerr << std::endl;
-    detail::print_time( config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeSaveFilter );
-    detail::print_stats( stats, config, timeBuild );
-
+    if ( !config.quiet )
+    {
+        std::cerr << std::endl;
+        if ( config.verbose )
+        {
+            detail::print_time(
+                config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+        }
+        detail::print_stats( stats, config, timeBuild );
+    }
     return true;
 }
 
