@@ -174,8 +174,8 @@ inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
     assert( taxIds.size() > 1 ); // Ideally should return itself if size==1
 
     // check for valid entries
-    if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
-        return "1";
+    // if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
+    //    return "1";
 
     int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
     for ( unsigned int i = 2; i < taxIds.size(); ++i )
