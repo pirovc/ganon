@@ -3,10 +3,10 @@ dist: xenial
 
 matrix:
   include:
-    - name: "osx appleclang-10"
+    - name: "osx xcode11"
       os: osx
-      osx_image: xcode10
-      env: BUILD_TYPE=Release
+      osx_image: xcode11
+      env: MATRIX_EVAL="BUILD_TYPE=Release"
 
     - name: "osx gcc-7"
       os: osx
