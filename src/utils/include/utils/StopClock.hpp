@@ -7,7 +7,7 @@
 class StopClock
 {
 public:
-    using Clock     = std::chrono::high_resolution_clock;
+    using Clock     = std::chrono::system_clock;
     using TimePoint = std::chrono::time_point< Clock >;
     using Seconds   = double;
 
@@ -51,8 +51,8 @@ private:
     std::chrono::duration< Seconds > m_runTime{ 0.0 };
 };
 
-template < typename Stream, typename Clock >
-inline Stream& operator<<( Stream& stream, const std::chrono::time_point< Clock >& timepoint )
+template < typename Stream >
+inline Stream& operator<<( Stream& stream, const StopClock::TimePoint& timepoint )
 {
     const auto time = std::chrono::system_clock::to_time_t( timepoint );
     stream << std::put_time( std::localtime( &time ), "%c" );
