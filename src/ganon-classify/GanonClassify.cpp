@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 
 namespace GanonClassify
@@ -58,6 +59,8 @@ struct Rep
 typedef std::unordered_map< std::string, Rep >  TRep;
 typedef std::unordered_map< std::string, Node > TTax;
 typedef std::map< uint32_t, std::string >       TMap;
+
+typedef std::unordered_set< std::string > TUniqueTarget;
 
 struct ReadBatches
 {
@@ -206,12 +209,12 @@ inline void check_unique( ReadOut& read_out_lca,
     // if kmer count is lower than expected set match to parent node
     if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
     {
-        read_out_lca.matches[0].target = tax[read_out_lca.matches[0].target].parent; // parent node
-        rep[read_out_lca.matches[0].target].lca_reads++;                             // count as lca for parent
+        read_out_lca.matches[0].target = tax.at( read_out_lca.matches[0].target ).parent; // parent node
+        rep.at( read_out_lca.matches[0].target ).lca_reads++;                             // count as lca for parent
     }
     else
     {
-        rep[read_out_lca.matches[0].target].unique_reads++; // count as unique for target
+        rep.at( read_out_lca.matches[0].target ).unique_reads++; // count as unique for target
     }
 }
 
@@ -232,10 +235,11 @@ void select_matches( TMatches&                matches,
             uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
             // keep only the best match target/read when same targets are split in several
             // bins
-            if ( matches.count( filter.map[binNo] ) == 0 || maxKmerCountBin > matches[filter.map[binNo]] )
+
+            if ( matches.count( filter.map.at( binNo ) ) == 0 || maxKmerCountBin > matches[filter.map.at( binNo )] )
             {
                 // store match to target
-                matches[filter.map[binNo]] = maxKmerCountBin;
+                matches[filter.map.at( binNo )] = maxKmerCountBin;
                 if ( maxKmerCountBin > maxKmerCountRead )
                     maxKmerCountRead = maxKmerCountBin;
             }
@@ -323,7 +327,7 @@ uint32_t filter_matches( ReadOut&  read_out,
     { // matches[target] = kmerCount
         if ( v.second >= threshold_strata )
         { // apply strata filter
-            rep[v.first].direct_matches++;
+            rep.at( v.first ).direct_matches++;
             read_out.matches.push_back( ReadMatch{ v.first, v.second } );
         }
     }
@@ -340,7 +344,7 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_co
     }
 
     std::string target_lca = lca.getLCA( targets );
-    rep[target_lca].lca_reads++;
+    rep.at( target_lca ).lca_reads++;
     read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count_read } );
 }
 
@@ -444,7 +448,7 @@ void classify( std::vector< Filter >&    filters,
                         }
                         else
                         {
-                            rep[read_out.matches[0].target].unique_reads++;
+                            rep.at( read_out.matches[0].target ).unique_reads++;
                         }
                     }
                     else
@@ -499,8 +503,12 @@ void write_report( TRep&       rep,
 
     for ( auto const& [target, report] : rep )
     {
-        out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
-                << '\t' << report.lca_reads << '\t' << tax[target].rank << '\t' << tax[target].name << '\n';
+        if ( report.direct_matches || report.lca_reads || report.unique_reads )
+        {
+            out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
+                    << '\t' << report.lca_reads << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name
+                    << '\n';
+        }
     }
 
     if ( hierarchy_last )
@@ -511,7 +519,10 @@ void write_report( TRep&       rep,
     out_rep.close();
 }
 
-void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, Config& config )
+bool load_filters( std::vector< Filter >& filters,
+                   TUniqueTarget&         unique_targets,
+                   std::string            hierarchy_label,
+                   Config&                config )
 {
     uint16_t first_kmer_size = 0;
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
@@ -560,9 +571,18 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
                 fields.push_back( field );
             // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
+            unique_targets.insert( fields[0] );
+
             // std::cerr << std::stoul( fields[1] ) << " -- " << fields[0] << std::endl;
         }
         infile.close();
+
+        // Check consistency of map file and ibf file
+        if ( map.size() != filter.noOfBins )
+        {
+            std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
+            return false;
+        }
 
         // tax file
         infile.open( filter_config.tax_file );
@@ -581,6 +601,8 @@ void load_filters( std::vector< Filter >& filters, std::string hierarchy_label, 
 
         filters.push_back( Filter{ std::move( filter ), map, tax, filter_config } );
     }
+
+    return true;
 }
 
 void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, const StopClock& timeClassPrint )
@@ -809,6 +831,19 @@ TTax merge_tax( std::vector< detail::Filter >& filters )
     }
 }
 
+void validate_targets_tax( const TUniqueTarget unique_targets, TTax& tax )
+{
+    for ( const auto& target : unique_targets )
+    {
+        if ( tax.count( target ) == 0 )
+        {
+            tax[target] = Node{ "1", "no rank", target };
+            std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
+                      << std::endl;
+        }
+    }
+}
+
 void pre_process_lca( LCA& lca, TTax& tax )
 {
     for ( auto const& [target, node] : tax )
@@ -898,14 +933,29 @@ bool run( Config config )
 
         timeLoadFilters.start();
         std::vector< detail::Filter > filters;
-        detail::load_filters( filters, hierarchy_label, config );
+        detail::TUniqueTarget         unique_targets;
+        bool                          loaded = detail::load_filters( filters, unique_targets, hierarchy_label, config );
+        if ( !loaded )
+        {
+            return false;
+        }
         timeLoadFilters.stop();
-
-        // Reports
-        detail::TRep rep;
 
         // merge repeated elements
         detail::TTax tax = detail::merge_tax( filters );
+
+        // Reports
+        detail::TRep rep;
+        // Initialize rep for all tax entries
+        // initialize entries for the report (access multithred)
+        for ( auto const& [target, node] : tax )
+        {
+            rep[target].direct_matches = 0;
+        }
+
+        // validate targets and tax
+        // if target not found in tax, add node target with parent = "1" (root)
+        detail::validate_targets_tax( unique_targets, tax );
 
         // pre-processing of nodes
         LCA lca;
@@ -990,6 +1040,7 @@ bool run( Config config )
         {
             task.get();
         }
+
         // Inform that no more reads are going to be pushed
         classified_all_queue.notify_push_over();
         classified_lca_queue.notify_push_over();
@@ -1003,7 +1054,6 @@ bool run( Config config )
             detail::write_report(
                 rep, tax, stats, hierarchy_config.output_file_rep, hierarchy_label, hierarchy_first, hierarchy_last );
         }
-
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
         {
