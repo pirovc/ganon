@@ -153,12 +153,6 @@ inline int LCA::getLCA( unsigned int u, unsigned int v ) const
         return u;
     }
 
-    // check for invalid nodes
-    if ( u == 0 || v == 0 )
-    {
-        return 0;
-    }
-
     if ( m_firstAppearance[u] > m_firstAppearance[v] )
     {
         std::swap( u, v );
