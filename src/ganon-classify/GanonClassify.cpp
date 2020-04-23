@@ -946,11 +946,11 @@ bool run( Config config )
 
         // Reports
         detail::TRep rep;
-        // Initialize rep for all tax entries
-        // initialize entries for the report (access multithred)
-        for ( auto const& [target, node] : tax )
+
+        // initialize entries for the report with all possible taxa (to direct access it in multiple threads)
+        for ( const auto& it : tax )
         {
-            rep[target].direct_matches = 0;
+            rep[it.first]; // initialize using [] due to std::atomic being not movable/copyable
         }
 
         // validate targets and tax
