@@ -371,8 +371,8 @@ SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
     cfg.output_single    = false;
 
     REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE(
-        aux::filesAreEqual( cfg.output_prefix + ".rep", config_classify::results_path + cfg.output_prefix + ".rep" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".rep",
+                                       config_classify::results_path + cfg.output_prefix + ".rep" ) );
     REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".1.lca",
                                  config_classify::results_path + cfg.output_prefix + ".1.lca" ) );
     REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".2.lca",
@@ -405,7 +405,7 @@ SCENARIO( "Classify multi-hierarchy with multiple errors", "[ganon-classify]" )
     auto cfg             = config_classify::defaultConfig();
     cfg.ibf              = { "filters/archaea.ibf", "filters/bacteria.ibf" };
     cfg.map              = { "filters/archaea.map", "filters/bacteria.map" };
-    cfg.tax              = { "filters/bacteria.tax", "filters/archaea.tax" };
+    cfg.tax              = { "filters/archaea.tax", "filters/bacteria.tax" };
     cfg.single_reads     = { "reads/archaea.simulated.1.fq" };
     cfg.hierarchy_labels = { "1", "2" };
     cfg.max_error        = { 3, 4 };
