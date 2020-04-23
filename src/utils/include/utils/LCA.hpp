@@ -1,10 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <cassert>
 #include <cmath>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,78 +13,80 @@ class LCA
 public:
     LCA() = default;
 
-    void        addEdge( std::string father, std::string son );
+    void        addEdge( const std::string& father, const std::string& son );
     void        doEulerWalk();
-    int         getLCA( int u, int v );
-    std::string getLCA( std::vector< std::string >& taxIds );
+    int         getLCA( unsigned int u, unsigned int v ) const;
+    std::string getLCA( const std::vector< std::string >& taxIds ) const;
 
 private:
-    void depthFirstSearch( std::string current, int depth );
+    void depthFirstSearch( const std::string& current, unsigned int depth );
     void preProcessRMQ();
-    int  queryRMQ( int i, int j );
+    int  queryRMQ( unsigned int i, unsigned int j ) const;
+
+    static constexpr int first_appearance_init = -1;
 
     std::unordered_map< std::string, std::vector< std::string > > m_parents;
     std::vector< int >                                            m_euler;
     std::vector< int >                                            m_depth;
-    std::unique_ptr< int[] >                                      m_firstAppearance;
+    std::vector< int >                                            m_firstAppearance;
     int                                                           m_vertices = 0;
-    std::unordered_map< std::string, int >                        m_encode;
-    std::unordered_map< int, std::string >                        m_decode;
-    std::unique_ptr< std::unique_ptr< int[] >[] >                 m_M;
+    std::unordered_map< std::string, unsigned int >               m_encode;
+    std::vector< std::string >                                    m_decode;
+    std::vector< std::vector< int > >                             m_M;
 };
 
-inline void LCA::addEdge( std::string father, std::string son )
+inline void LCA::addEdge( const std::string& father, const std::string& son )
 {
     if ( m_encode.count( father ) == 0 )
     {
         m_encode.insert( { father, m_vertices } );
-        m_decode.insert( { m_vertices, father } );
-        m_vertices++;
+        m_decode.insert( m_decode.begin() + m_vertices, father );
+        ++m_vertices;
     }
+
     if ( m_encode.count( son ) == 0 )
     {
         m_encode.insert( { son, m_vertices } );
-        m_decode.insert( { m_vertices, son } );
-        m_vertices++;
+        m_decode.insert( m_decode.begin() + m_vertices, son );
+        ++m_vertices;
     }
+
     if ( m_parents.count( father ) == 0 )
     {
-        std::vector< std::string > children;
-        children.push_back( son );
-        m_parents[father] = children;
+        m_parents[father] = { son };
     }
     else
     {
-        m_parents[father].push_back( son );
+        m_parents[father].emplace_back( son );
     }
 }
 
-inline void LCA::depthFirstSearch( std::string current, int depth )
+inline void LCA::depthFirstSearch( const std::string& current, unsigned int depth )
 {
+    const auto currentEncoded = m_encode[current];
+
     // marking first appearance for current node
-    if ( m_firstAppearance[m_encode[current]] == -1 )
+    if ( m_firstAppearance[currentEncoded] == first_appearance_init )
     {
-        m_firstAppearance[m_encode[current]] = m_euler.size();
+        m_firstAppearance[currentEncoded] = m_euler.size();
     }
+
     // pushing root to euler walk
-    m_euler.push_back( m_encode[current] );
+    m_euler.push_back( currentEncoded );
     // pushing depth of current node
     m_depth.push_back( depth );
-    for ( unsigned int i = 0; i < m_parents[current].size(); i++ )
+
+    for ( const auto& node : m_parents[current] )
     {
-        depthFirstSearch( m_parents[current][i], depth + 1 );
-        m_euler.push_back( m_encode[current] );
+        depthFirstSearch( node, depth + 1 );
+        m_euler.push_back( currentEncoded );
         m_depth.push_back( depth );
     }
 }
 
 inline void LCA::doEulerWalk()
 {
-    m_firstAppearance = std::make_unique< int[] >( m_vertices );
-    for ( int i = 0; i < m_vertices; i++ )
-    {
-        m_firstAppearance[i] = -1;
-    }
+    m_firstAppearance.resize( m_vertices, first_appearance_init );
     depthFirstSearch( "1", 0 );
     preProcessRMQ();
 }
@@ -94,21 +94,20 @@ inline void LCA::doEulerWalk()
 // <O(N logN) Preprocessing time, O(1) Query time>
 inline void LCA::preProcessRMQ()
 {
+    const auto size     = m_depth.size();
+    const int  logDepth = std::ceil( std::log2( m_depth.size() ) );
 
-    m_M = std::make_unique< std::unique_ptr< int[] >[] >( m_depth.size() );
+    m_M.resize( size, std::vector< int >( logDepth ) );
 
-    int logDepth = std::ceil( std::log2( m_depth.size() ) );
-    for ( unsigned int i = 0; i < m_depth.size(); i++ )
+    for ( auto i = 0u; i < size; ++i )
     {
-        m_M[i]    = std::make_unique< int[] >( logDepth );
-        m_M[i][0] = i; // initialize M for the intervals with length 1
+        m_M[i].front() = i;
     }
 
-
     // compute values from smaller to bigger intervals
-    for ( unsigned int j = 1; 1u << j <= m_depth.size(); j++ )
+    for ( unsigned int j = 1; 1u << j <= size; j++ )
     {
-        for ( unsigned int i = 0; i + ( 1 << j ) - 1 < m_depth.size(); i++ )
+        for ( unsigned int i = 0; i + ( 1 << j ) - 1 < size; i++ )
         {
             if ( m_depth[m_M[i][j - 1]] < m_depth[m_M[i + ( 1 << ( j - 1 ) )][j - 1]] )
             {
@@ -122,27 +121,32 @@ inline void LCA::preProcessRMQ()
     }
 }
 
-inline int LCA::queryRMQ( int i, int j )
+inline int LCA::queryRMQ( unsigned int i, unsigned int j ) const
 {
     if ( i > j )
     {
         std::swap( i, j );
     }
 
-    int k = std::log2( j - i + 1 );
+    const auto k     = static_cast< int >( std::log2( j - i + 1 ) );
+    const auto term1 = m_M[i][k];
+    const auto term2 = m_M[j - ( 1 << k ) + 1][k];
 
-    if ( m_depth[m_M[i][k]] <= m_depth[m_M[j - ( 1 << k ) + 1][k]] )
+    if ( m_depth[term1] <= m_depth[term2] )
     {
-        return m_M[i][k];
+        return term1;
     }
     else
     {
-        return m_M[j - ( 1 << k ) + 1][k];
+        return term2;
     }
 }
 
-inline int LCA::getLCA( int u, int v )
+inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 {
+    assert( u < m_firstAppearance.size() );
+    assert( v < m_firstAppearance.size() );
+
     // trivial case
     if ( u == v )
     {
@@ -164,13 +168,18 @@ inline int LCA::getLCA( int u, int v )
     return m_euler[queryRMQ( m_firstAppearance[u], m_firstAppearance[v] )];
 }
 
-inline std::string LCA::getLCA( std::vector< std::string >& taxIds )
+inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
 {
-    int lca;
-    lca = getLCA( m_encode[taxIds[0]], m_encode[taxIds[1]] );
-    for ( unsigned int i = 2; i < taxIds.size(); i++ )
-    {
-        lca = getLCA( lca, m_encode[taxIds[i]] );
-    }
-    return m_decode[lca];
+
+    assert( taxIds.size() > 1 ); // Ideally should return itself if size==1
+
+    // check for valid entries
+    // if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
+    //    return "1";
+
+    int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
+    for ( unsigned int i = 2; i < taxIds.size(); ++i )
+        lca = getLCA( lca, m_encode.at( taxIds[i] ) );
+
+    return m_decode.at( lca );
 }
