@@ -371,8 +371,8 @@ SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
     cfg.output_single    = false;
 
     REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE(
-        aux::filesAreEqual( cfg.output_prefix + ".rep", config_classify::results_path + cfg.output_prefix + ".rep" ) );
+    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".rep",
+                                       config_classify::results_path + cfg.output_prefix + ".rep" ) );
     REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".1.lca",
                                  config_classify::results_path + cfg.output_prefix + ".1.lca" ) );
     REQUIRE( aux::filesAreEqual( cfg.output_prefix + ".2.lca",

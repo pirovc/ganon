@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -38,6 +39,19 @@ inline bool filesAreEqual( const std::string& file1, const std::string& file2 )
     return data1 == data2;
 }
 
+inline bool filesAreEqualSorted( const std::string& file1, const std::string& file2 )
+{
+    std::ifstream stream1{ file1 };
+    std::string   data1{ std::istreambuf_iterator< char >{ stream1 }, std::istreambuf_iterator< char >{} };
+
+    std::ifstream stream2{ file2 };
+    std::string   data2{ std::istreambuf_iterator< char >{ stream2 }, std::istreambuf_iterator< char >{} };
+
+    std::sort( data1.begin(), data1.end() );
+    std::sort( data2.begin(), data2.end() );
+
+    return data1 == data2;
+}
 
 inline bool fileIsEmpty( const std::string& file )
 {
