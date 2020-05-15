@@ -814,8 +814,8 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
                 max_rank_idx-=1
                 t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
-        # if taxids is provided, just keep entries with them
-        if taxids:
+        # if taxids is provided, just keep entries with them (and root)
+        if taxids and assignment!="1":
             if not any(t in taxids for t in lineage[assignment]):
                 del lineage[assignment]
 
