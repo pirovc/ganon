@@ -1193,7 +1193,7 @@ class Tax:
     def get_rank(self, node, rank):
         t = node
         try:
-            while self.nodes[t][1]!=rank and t!="1": t = nodes[t]
+            while self.nodes[t][1]!=rank and t!="1": t = self.nodes[t][0]
         except:
             return node
         return t if t!="1" else node
