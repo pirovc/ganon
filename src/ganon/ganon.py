@@ -7,7 +7,7 @@ from collections import defaultdict, OrderedDict
 
 def main(arguments=None):
 
-    version = '0.2.2'
+    version = '0.2.3'
     
     ####################################################################################################
 	
@@ -117,6 +117,7 @@ def main(arguments=None):
     report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
     report_group_optional.add_argument('-m', '--min-matches', type=int, default=0, help='Min. number of matches to output. 0 for all. Default: 0')
     report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
+    report_group_optional.add_argument('-t', '--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
     report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
 
     ####################################################################################################
@@ -424,7 +425,7 @@ def main(arguments=None):
             print_log("Generating reports... ")
             tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
             classified_reads, unclassified_reads, reports = parse_rep(args.output_prefix+".rep")
-            print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0)
+            print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0, [])
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         
 
@@ -436,7 +437,7 @@ def main(arguments=None):
     elif args.which=='report':
         classified_reads, unclassified_reads, reports = parse_rep(args.rep_file)
         tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
-        print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc)
+        print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc, args.taxids)
 
     if args.which!='report': print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
 
@@ -752,7 +753,7 @@ def estimate_bin_len(args, taxsbp_input_file, tax, use_assembly):
 
     return bin_length
 
-def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc):
+def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
     if not ranks:  
         all_ranks = False
         fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
@@ -813,9 +814,15 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
                 max_rank_idx-=1
                 t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
+        # if taxids is provided, just keep entries with them (and root)
+        if taxids and assignment!="1":
+            if not any(t in taxids for t in lineage[assignment]):
+                del lineage[assignment]
+
     total_reads = classified_reads + unclassified_reads
     frfile = open(final_report_file, 'w') if final_report_file else None
     print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
+    
     
     if all_ranks:
         sorted_assignments = sorted(lineage, key=lineage.get)
@@ -1186,7 +1193,7 @@ class Tax:
     def get_rank(self, node, rank):
         t = node
         try:
-            while self.nodes[t][1]!=rank and t!="1": t = nodes[t]
+            while self.nodes[t][1]!=rank and t!="1": t = self.nodes[t][0]
         except:
             return node
         return t if t!="1" else node
