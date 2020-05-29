@@ -8,7 +8,7 @@ from io import StringIO
 import pandas as pd
 from collections import defaultdict
 
-def main(arguments=None):
+def main():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-q', '--fastq-file', required=False, type=str, metavar='',  help='Input reads used on ganon classify (.fq[.gz])')
