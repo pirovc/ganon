@@ -52,7 +52,7 @@ To build custom indices, ganon requires one (or multiple) fasta file(s) with the
 
 If you want to recreate the indices used in the manuscript above, please follow the instructions https://github.com/pirovc/ganon_benchmark
 
-### Downloading sequences
+### Downloading sequences and building a new index
 
 We suggest using [genome_updater](https://github.com/pirovc/genome_updater) (`conda install -c bioconda genome_updater`) to download sequences from RefSeq/Genbank. genome_updater can download and keep a subset (organism or taxonomic groups) of those repositories updated. For example:
 
@@ -74,7 +74,7 @@ Building the index based on the files of the example above:
 
 If you are getting the bash error `Argument list too long` use `--input-directory "RefSeqCG_arc_bac/v1/files/" --input-extension ".genomic.fna.gz"` instead of `--input-files`
 
-### Updating sequences
+### Updating the index with new sequences
 
 To update the folder with the most recent releases (after some days), just re-run the same download command:
 
@@ -93,6 +93,8 @@ Updating the index based on the files of the example above:
 	             --input-files $(find RefSeqCG_arc_bac/v2/files/ -name *.genomic.fna.gz -type f)
 
 If `--output-db-prefix` is not set, the database files `ganon_db.*` will be overwritten with the updated version. The `find` command will only look for files `-type f` inside the `v2/files/`, ignoring symbolic links from sequences which were not changing in this version.
+
+By default, `ganon update` will only add new sequences provided to the index. To perform a full update, also removing sequences for the index, use the option `--update-complete` and provide the full set of updated references instead of only the new sequences. 
 
 ### Using extra files to build and update
 
@@ -574,7 +576,8 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 	ganon report [-h] -i REP_FILE -d [db_prefix [db_prefix ...]]
 	                    [-r [RANKS [RANKS ...]]] [-m MIN_MATCHES]
-	                    [-p MIN_MATCHES_PERC] [-o OUTPUT_REPORT]
+	                    [-p MIN_MATCHES_PERC] [-t [TAXIDS [TAXIDS ...]]]
+	                    [-o OUTPUT_REPORT]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -588,6 +591,9 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	  -p MIN_MATCHES_PERC, --min-matches-perc MIN_MATCHES_PERC
 	                        Min. percentage of matches to output. 0 for all.
 	                        Default: 0
+	  -t [TAXIDS [TAXIDS ...]], --taxids [TAXIDS [TAXIDS ...]]
+	                        One or more taxids to filter report. Example: 562 2157
+	                        report only E. Coli and Archaea matches
 	  -o OUTPUT_REPORT, --output-report OUTPUT_REPORT
 	                        Output file for report. Default: STDOUT
 
@@ -596,4 +602,5 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        {prefix}.rep file output from ganon classify
 	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
 	                        Database prefix[es] used for classification.
+
 
