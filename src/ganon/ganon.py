@@ -33,7 +33,7 @@ def main(arguments=None):
     build_group_optional.add_argument('--fixed-bloom-size',      type=int,                    metavar='', help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
     build_group_optional.add_argument('--fragment-length',       type=int,   default=-1,      metavar='', help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
     build_group_optional.add_argument('--overlap-length',        type=int,   default=300,     metavar='', help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
-    build_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    build_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     build_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
     build_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
@@ -60,7 +60,7 @@ def main(arguments=None):
     update_group_optional.add_argument('-o', '--output-db-prefix',                  type=str,                               metavar='', help='Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix')
     update_group_optional.add_argument('-c', '--update-complete',                             default=False, action='store_true', help='Update adding and removing sequences. Input files should represent the complete updated set of references, not only new sequences.')
     update_group_optional.add_argument('-t', '--threads',                           type=int, default=2,                    metavar='', help='Number of subprocesses/threads to use. Default: 2')
-    update_group_optional.add_argument('--seq-info',              type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+    update_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", default=["auto"],  metavar='', help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
     update_group_optional.add_argument('--seq-info-file',         type=str,                               metavar='', help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
     update_group_optional.add_argument('--taxdump-file',          type=str, nargs="*",                    metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
     update_group_optional.add_argument('--input-directory',       type=str,                    metavar='', help='Directory containing input files')
@@ -190,7 +190,19 @@ def main(arguments=None):
         if args.seq_info_file: # file already provided 
             seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
         else: # retrieve info
-            seqinfo = create_seqinfo(tmp_output_folder, input_files + input_files_from_directory, args.threads, path_exec, args.seq_info, use_assembly)
+            # Count number of input sequences to define method or retrieve accessions for forced eutils
+            seqinfo = SeqInfo()
+            tx = time.time()
+            print_log("Extracting sequence identifiers... ")
+            seqinfo.parse_seqid(input_files + input_files_from_directory)
+            print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
+            print(seqinfo.seqinfo)
+
+            seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
+
+            print(seqinfo.seqinfo)
 
         # Set bin length
         if args.bin_length: # user defined
@@ -219,7 +231,7 @@ def main(arguments=None):
         else:
             seq_info_file = tmp_output_folder + "seqinfo.txt"
             seqinfo.write_seq_info_file(seq_info_file, use_assembly)
-            
+
         tx = time.time()
         print_log("Running taxonomic clustering (TaxSBP)... ")
         run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
@@ -319,49 +331,76 @@ def main(arguments=None):
         # Set assembly mode
         use_assembly=True if gnn.rank=="assembly" else False
 
-        # Set up taxonomy files
-        ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
-
-        # Load or create seqinfo
-        if args.seq_info_file: # file already provided 
-            seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
-        else: # retrieve info
-            seqinfo = create_seqinfo(tmp_output_folder, input_files + input_files_from_directory, args.threads, path_exec, args.seq_info, use_assembly)
-
         # load bins
         bins = Bins(lines=gnn.bins, use_assembly=use_assembly, fragment_length=gnn.fragment_length)
         
-        # check for input ids
-        added_seqids, removed_seqids, kept_seqids = check_updated_seqids(taxsbp_input_file, bins, args.update_complete)
+        # Load or create seqinfo
+        if args.seq_info_file: # file already provided 
+            seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
+        else:
+            seqinfo = SeqInfo()
+            tx = time.time()
+            print_log("Extracting sequence identifiers... ")
+            seqinfo.parse_seqid(input_files + input_files_from_directory)
+            print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
+            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
+        # check sequences compared to bins
+        added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.seqinfo.seqid), set(bins.bins.seqid))
         print_log(str(len(added_seqids)) + " sequences to be added, " + str(len(removed_seqids)) + " sequences to be removed, " + str(len(kept_seqids)) + " sequences to be kept.\n")
+        # Ignore removed sequences if not doing complete update
+        if not args.update_complete: removed_seqids=0
 
         if not added_seqids and not removed_seqids:
-            print_log("Nothing to be done.\n")
+            print_log("Nothing to update.\n")
             sys.exit(0)
 
-        # update complete
-        if removed_seqids:
+        if args.update_complete:           
+            # Remove already included seqids to just retrieve information for added sequences
+            seqinfo.remove_seqids(kept_seqids | removed_seqids)
+
+        seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
+
+        # if found sequences to remove, update bins
+        if args.update_complete and removed_seqids:
+            
             # save which bins were affected with removal of sequences
-            binids_with_seqids_removed = bins.get_binids(removed_seqids)
             bins.remove_seqids(removed_seqids)
+
+            # TODO - deal with completely empty bins - how to tell ganon to update
+            removed_bins = bins.get_subset(removed_seqids)
+            print(removed_bins.bins)
+
+            # in case all sequences are removed
+            if bins.size()==0:
+                print_log("With all sequences removed there is nothing left to update. Please use ganon build for your new sequences\n")
+                sys.exit(0)
 
             # save updated bins on gnn
             gnn.bins = bins.get_bins_formatted()
 
-            # TODO remove binids_with_seqids_removed from taxsbp_input_file
-
-
+            # TODO how to treat empty bins (they won't be reused)
 
         # TODO remove repeated seqids ? kept_seqids.intersection(added_seqids) ? only if not update complete?
+
+        # Write file for taxsbp
+        if args.seq_info_file:
+            seq_info_file = args.seq_info_file
+        else:
+            seq_info_file = tmp_output_folder + "seqinfo.txt"
+            seqinfo.write_seq_info_file(seq_info_file, use_assembly)
 
         # write bins to file for taxsbp
         bins_file = tmp_output_folder + "ganon.bins"
         bins.write_formatted(bins_file)
 
+        # Set up taxonomy files
+        ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
+
         print_log("Running taxonomic clustering (TaxSBP)... \n")
         run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
                                    "-u " + bins_file,
-                                   "-f " + taxsbp_input_file,
+                                   "-f " + seq_info_file,
                                    "-n " + ncbi_nodes_file,
                                    "-m " + ncbi_merged_file if ncbi_merged_file else "",
                                    "-l " + str(gnn.bin_length),
@@ -376,11 +415,6 @@ def main(arguments=None):
         updated_bins = Bins(taxsbp_stdout=stdout, use_assembly=use_assembly, fragment_length=gnn.fragment_length)
         del stdout
 
-        print(bins.bins)
-        print(updated_bins.bins)
-
-        sys.exit(0)
-        
         number_of_updated_bins = updated_bins.get_number_of_bins()
         last_bin = updated_bins.get_last_bin()
         number_of_new_bins = last_bin + 1 - gnn.number_of_bins
@@ -400,19 +434,19 @@ def main(arguments=None):
         tax.merge(Tax([db_prefix_tax]))
         # Write .tax file
         tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
+        # TODO - remove entries from .tax from removed entries of the db
 
         # Write .gnn file
         gnn.number_of_bins+=number_of_new_bins # add new bins count
         gnn.bins.extend(updated_bins.get_bins_formatted()) # save new bins from taxsbp
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
 
-        # Write .map file
-        mapp = Map(updated_bins)
-        old_mapp = Map(map_file=db_prefix_map)
-        old_mapp.update(mapp)
-        old_mapp.write(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
+        # Recreate .map file based on the new bins
+        mapp = Map(bins=Bins(lines=gnn.bins))
+        mapp.write(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
 
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+
 
         tx = time.time()
         print_log("Updating index (ganon-build)... \n")
@@ -420,6 +454,13 @@ def main(arguments=None):
         # Write aux. file for ganon
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
         updated_bins.write_acc_bin_file(acc_bin_file)
+
+        # if sequences were removed, include the bins in the acc_bin file
+        if args.update_complete and removed_seqids:
+            removed_bins.write_acc_bin_file(acc_bin_file, append=True)
+            # deal with completely emptied bin
+
+        sys.exit(0)
 
         # Temporary output filter 
         tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
@@ -532,21 +573,12 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         if stderr: print_log(stderr+"\n")
         sys.exit(errcode)
 
-def check_updated_seqids(taxsbp_input_file, bins, update_complete):
-
-    new_seqids = set(pd.read_csv(taxsbp_input_file, sep='\t', header=None, usecols=[0])[0])
-    old_seqids = set(bins.bins.seqid)
-
+def check_updated_seqids(new_seqids, old_seqids):
     # remove repeated from old bins
     added_seqids = new_seqids.difference(old_seqids)
-    removed_seqids = set()
-    if update_complete:
-        removed_seqids = old_seqids.difference(new_seqids)
+    removed_seqids = old_seqids.difference(new_seqids)
     kept_seqids = old_seqids.difference(removed_seqids)
 
-    print(added_seqids)
-    print(removed_seqids)
-    print(kept_seqids)
     return added_seqids, removed_seqids, kept_seqids
 
 def set_tmp_folder(tmp_output_folder):
@@ -554,45 +586,29 @@ def set_tmp_folder(tmp_output_folder):
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
 
-def create_seqinfo(tmp_output_folder, input_files, threads, path_exec, seq_info, use_assembly):
+def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assembly):
     
     # Max. # of sequences to use eutils as auto mode
     max_seqs_eutils = 50000
     # default accession2taxid files
     default_acc2txid = ["nucl_gb", "nucl_wgs"]
     # initialize total count
-    seqid_total_count = 0
+    seqid_total_count = seqinfo.size()
 
-    seqinfo = SeqInfo()
+    # Define method to use
+    if seq_info_mode[0]=="auto" and seqid_total_count>max_seqs_eutils: 
+        seq_info_mode = default_acc2txid
+    else:
+        seq_info_mode = ["eutils"]
 
-    # Count number of input sequences to define method or retrieve accessions for forced eutils
-    if seq_info[0] in ["auto","eutils"]: 
-        tx = time.time()
-        print_log("Extracting sequence identifiers... ")
-        seqinfo.parse_seqid(input_files)
-        seqid_total_count = seqinfo.size()
-        print_log(str(seqid_total_count) + " sequences successfuly retrieved. ")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
-        print(seqinfo.seqinfo)
-
-        # Define method to use
-        if seq_info[0]=="auto" and seqid_total_count>max_seqs_eutils: 
-            seq_info = default_acc2txid
-        else:
-            seq_info = ["eutils"]
-
-    if seq_info[0]=="eutils":
+    if seq_info_mode[0]=="eutils":
         tx = time.time()
         print_log("Retrieving sequence information from NCBI E-utils... ")
         seqid_file = tmp_output_folder + "seqids.txt"
         seqinfo.write_seqid_file(seqid_file)
         seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
         print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        
-        print(seqinfo.seqinfo)
-    
+        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")    
         return seqinfo
     else:
         # acc2taxid - offline mode
@@ -605,15 +621,13 @@ def create_seqinfo(tmp_output_folder, input_files, threads, path_exec, seq_info,
         print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-        print(seqinfo.seqinfo)
-
         # Check if retrieved lengths are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
             print_log("Could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences\n")
             seqid_total_count = seqinfo.size()
  
         dowloaded_acc2txid_files = []
-        for acc2txid in seq_info:
+        for acc2txid in seq_info_mode:
             if acc2txid not in acc2txid_options:
                 print_log(acc2txid +  " is not a valid option \n")
             else:
@@ -627,8 +641,6 @@ def create_seqinfo(tmp_output_folder, input_files, threads, path_exec, seq_info,
         for acc2txid_file, cnt in count_acc2txid.items():
             print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file\n")
         
-        print(seqinfo.seqinfo)
-
         # Check if retrieved lengths are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
             print_log("Could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions\n")
@@ -641,9 +653,7 @@ def create_seqinfo(tmp_output_folder, input_files, threads, path_exec, seq_info,
             seqinfo.write_seqid_file(seqid_file)
             seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=True, get_assembly=True)
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        
-            print(seqinfo.seqinfo)
-
+    
         return seqinfo
 
 
@@ -1105,6 +1115,9 @@ class SeqInfo:
     def size(self):
         return self.seqinfo.shape[0]
 
+    def remove_seqids(self, seqids):
+        self.seqinfo = self.seqinfo[~self.seqinfo['seqid'].isin(seqids)]
+
     def write_seqid_file(self, seqid_file):
         self.seqinfo["seqid"].to_csv(seqid_file, header=False, index=False)
 
@@ -1178,6 +1191,14 @@ class Bins:
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Bins({})'.format(', '.join(args))
 
+    def size(self):
+        return self.bins.shape[0]
+
+    def get_subset(self,seqids):
+        subBins = Bins(use_assembly=self.use_assembly, fragment_length=self.fragment_length)
+        subBins.bins = self.bins[self.bins['seqid'].isin(seqids)]
+        return subBins
+
     def parse_bins(self, taxsbp_stdout):
         self.bins = pd.read_csv(StringIO(taxsbp_stdout), 
                                 sep='\t', 
@@ -1193,8 +1214,8 @@ class Bins:
             self.bins['begin'] = 1
             self.bins['end'] = self.bins['length']
 
-    def write_acc_bin_file(self, acc_bin_file):
-        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','begin','end','binid'], sep='\t')
+    def write_acc_bin_file(self, acc_bin_file, append=False):
+        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','begin','end','binid'], sep='\t', mode='w' if not append else 'a')
 
     def write_formatted(self, output_file):
         with open(output_file, 'w') as file:
@@ -1202,10 +1223,6 @@ class Bins:
 
     def remove_seqids(self, seqids):
         self.bins = self.bins[~self.bins['seqid'].isin(seqids)]
-
-    def get_binids(self, seqids):
-        print(self.bins)
-        print(self.bins[self.bins['seqid'].isin(seqids)].binid.unique())
 
     def get_bins_formatted(self):
         formated_bins = []
@@ -1265,9 +1282,6 @@ class Map:
         with open(map_file, 'w') as file:
             for binid, group in self.data.items(): 
                 file.write(group + "\t" + str(binid) + "\n")
-
-    def update(self, new_map):
-        self.data.update(new_map.data)
 
 class Tax:
     def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
