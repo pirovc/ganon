@@ -345,43 +345,41 @@ def main(arguments=None):
             print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
+        
         # check sequences compared to bins
         added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.seqinfo.seqid), set(bins.bins.seqid))
-        print_log(str(len(added_seqids)) + " sequences to be added, " + str(len(removed_seqids)) + " sequences to be removed, " + str(len(kept_seqids)) + " sequences to be kept.\n")
         # Ignore removed sequences if not doing complete update
-        if not args.update_complete: removed_seqids=0
-
+        if args.update_complete: 
+            print_log("Adding " + str(len(added_seqids)) + " sequences, removing " + str(len(removed_seqids)) + " sequences, keeping " + str(len(kept_seqids)) + " sequences.\n")
+        else:
+            removed_seqids=[]
+            print_log("Adding " + str(len(added_seqids)) + " sequences, ignoring " + str(len(kept_seqids)) + " repeated sequences.\n")
+        
         if not added_seqids and not removed_seqids:
             print_log("Nothing to update.\n")
             sys.exit(0)
 
+        print(seqinfo.seqinfo)
         if args.update_complete:           
             # Remove already included seqids to just retrieve information for added sequences
             seqinfo.remove_seqids(kept_seqids | removed_seqids)
+        else:
+            # Remove seqids already present in the current version (repeated entries)
+            seqinfo.remove_seqids(kept_seqids)
 
-        seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
+        # load seqinfo file with data
+        if not args.seq_info_file: 
+            seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
 
+        print(seqinfo.seqinfo)
+        
+        print(bins.bins)
         # if found sequences to remove, update bins
         if args.update_complete and removed_seqids:
-            
-            # save which bins were affected with removal of sequences
-            bins.remove_seqids(removed_seqids)
-
-            # TODO - deal with completely empty bins - how to tell ganon to update
-            removed_bins = bins.get_subset(removed_seqids)
-            print(removed_bins.bins)
-
-            # in case all sequences are removed
-            if bins.size()==0:
-                print_log("With all sequences removed there is nothing left to update. Please use ganon build for your new sequences\n")
-                sys.exit(0)
-
-            # save updated bins on gnn
-            gnn.bins = bins.get_bins_formatted()
-
-            # TODO how to treat empty bins (they won't be reused)
-
-        # TODO remove repeated seqids ? kept_seqids.intersection(added_seqids) ? only if not update complete?
+            # removed sequences are kept in the bins but with zero values to keep the bin information
+            # clear removed seqids (length=0)
+            bins.clear_seqids(removed_seqids)
+        print(bins.bins)
 
         # Write file for taxsbp
         if args.seq_info_file:
@@ -391,8 +389,10 @@ def main(arguments=None):
             seqinfo.write_seq_info_file(seq_info_file, use_assembly)
 
         # write bins to file for taxsbp
-        bins_file = tmp_output_folder + "ganon.bins"
+        bins_file = tmp_output_folder + "bins.txt"
         bins.write_formatted(bins_file)
+
+        
 
         # Set up taxonomy files
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
@@ -408,13 +408,16 @@ def main(arguments=None):
                                    "-z " + "assembly" if use_assembly else "",
                                    "-a " + str(gnn.fragment_length) if gnn.fragment_length else "",
                                    "-o " + str(gnn.overlap_length) if gnn.fragment_length else ""])
-        print(run_taxsbp_cmd)
         stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
 
         # parse stdout new bins
         updated_bins = Bins(taxsbp_stdout=stdout, use_assembly=use_assembly, fragment_length=gnn.fragment_length)
         del stdout
 
+        print(updated_bins.bins)
+        # TODO REMOVE
+        updated_bins.write_formatted(tmp_output_folder + "updated_bins.txt")
+        
         number_of_updated_bins = updated_bins.get_number_of_bins()
         last_bin = updated_bins.get_last_bin()
         number_of_new_bins = last_bin + 1 - gnn.number_of_bins
@@ -437,6 +440,8 @@ def main(arguments=None):
         # TODO - remove entries from .tax from removed entries of the db
 
         # Write .gnn file
+        # TODO delete removed_seqids fron bins - how to deal with empty bins for further updates. TaxSBP will re-use them?
+        if args.update_complete and removed_seqids: gnn.bins = bins.get_bins_formatted() # save changed bins
         gnn.number_of_bins+=number_of_new_bins # add new bins count
         gnn.bins.extend(updated_bins.get_bins_formatted()) # save new bins from taxsbp
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
@@ -447,20 +452,21 @@ def main(arguments=None):
 
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-
         tx = time.time()
         print_log("Updating index (ganon-build)... \n")
 
         # Write aux. file for ganon
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
+        # write all new sequences
         updated_bins.write_acc_bin_file(acc_bin_file)
 
-        # if sequences were removed, include the bins in the acc_bin file
-        if args.update_complete and removed_seqids:
-            removed_bins.write_acc_bin_file(acc_bin_file, append=True)
-            # deal with completely emptied bin
-
-        sys.exit(0)
+        # write complete old bins entries which had sequences added or removed
+        # ganon-build needs the information to reset changed bins
+        if args.update_complete:
+            bins_changed = set(updated_bins.get_binids())
+            if removed_seqids:
+                bins_changed.update(bins.get_subset(seqids=removed_seqids).get_binids())
+            bins.get_subset(binids=bins_changed).write_acc_bin_file(acc_bin_file, append=True)
 
         # Temporary output filter 
         tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
@@ -475,14 +481,15 @@ def main(arguments=None):
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
                                         "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
                                         "--directory-reference-files " + args.input_directory if args.input_directory else "",
-                                        "--extension " + args.input_extension if args.input_extension else ""])
+                                        "--extension " + args.input_extension if args.input_extension else "",
+                                        "--update-complete" if args.update_complete else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         # move IBF to final location
         shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
-        shutil.rmtree(tmp_output_folder)
+        #shutil.rmtree(tmp_output_folder)
 
 #################################################################################################################################
 #################################################################################################################################
@@ -1194,9 +1201,10 @@ class Bins:
     def size(self):
         return self.bins.shape[0]
 
-    def get_subset(self,seqids):
+    def get_subset(self,seqids: list=[], binids: list=[]):
         subBins = Bins(use_assembly=self.use_assembly, fragment_length=self.fragment_length)
-        subBins.bins = self.bins[self.bins['seqid'].isin(seqids)]
+        if seqids: subBins.bins = self.bins.loc[self.bins['seqid'].isin(seqids)]
+        elif binids: subBins.bins = self.bins.loc[self.bins['binid'].isin(binids)]
         return subBins
 
     def parse_bins(self, taxsbp_stdout):
@@ -1221,8 +1229,9 @@ class Bins:
         with open(output_file, 'w') as file:
             file.write("\n".join(self.get_bins_formatted()))
 
-    def remove_seqids(self, seqids):
-        self.bins = self.bins[~self.bins['seqid'].isin(seqids)]
+    def clear_seqids(self, seqids):
+        self.bins.loc[self.bins['seqid'].isin(seqids),['length']]=0
+        #self.bins.drop_duplicates(inplace=True, ignore_index=True)
 
     def get_bins_formatted(self):
         formated_bins = []
@@ -1254,6 +1263,9 @@ class Bins:
 
     def get_last_bin(self):
         return self.bins.binid.max()
+
+    def get_binids(self):
+        return self.bins.binid.unique()
 
 class Map:
     data = {}

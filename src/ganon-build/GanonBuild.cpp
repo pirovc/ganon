@@ -93,18 +93,11 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
     {
         // load filter
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
+        stats.totalBinsFile = seqan::getNumberOfBins( filter );
 
         config.kmer_size = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
-
-        // Reset bins if complete set of sequences is provided (re-create updated bins)
-        if ( config.update_complete )
-        {
-            std::vector< uint32_t > updated_bins;
-            updated_bins.insert( updated_bins.end(), bin_ids.begin(), bin_ids.end() );
-            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
-        }
 
         // create new bins on the loaded filter
         uint32_t length_new_bins = *bin_ids.rbegin() + 1; // get last binid in the set = total number of bins
@@ -112,13 +105,35 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
 
         if ( stats.newBins > 0 )
             filter.resizeBins( length_new_bins );
+
+        // Reset bins if complete set of sequences is provided (re-create updated bins)
+        if ( config.update_complete )
+        {
+            std::vector< uint32_t > updated_bins;
+            for (auto const& binid : bin_ids)
+            {
+                if( binid>=seqan::getNumberOfBins( filter )-stats.newBins ){
+                    break;
+                }
+                updated_bins.emplace_back(binid);
+            }
+
+            //updated_bins.insert( updated_bins.end(), bin_ids.begin(), bin_ids.end()-stats.newBins );
+            for ( auto const& b : updated_bins)
+            {
+                std::cerr << "Cleared bin: " << b << std::endl; 
+            } 
+            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
+        }
+
     }
     else
     {
         filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size_bits );
+        stats.totalBinsFile = seqan::getNumberOfBins( filter );
     }
 
-    stats.totalBinsFile = seqan::getNumberOfBins( filter );
+    
 
     return filter;
 }
@@ -170,7 +185,7 @@ void print_stats( Stats& stats, const GanonBuild::Config& config, const StopCloc
         std::cerr << " - " << stats.newBins << " new bins were added to the existing " << stats.totalBinsFile
                   << " bins." << std::endl;
     std::cerr << " - " << validSeqs << " valid sequences in " << stats.totalBinsFile + stats.newBins
-              << " bins were written to " << config.output_filter_file << std::endl;
+              << " bins were written to the IBF" << std::endl;
 }
 
 } // namespace detail
