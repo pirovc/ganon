@@ -4,6 +4,7 @@ import argparse, os, sys, subprocess, time, shlex, shutil, gzip, pickle, math
 import pandas as pd
 from io import StringIO
 from collections import defaultdict, OrderedDict
+import taxsbp.taxsbp
 
 def main(arguments=None):
 
@@ -197,12 +198,7 @@ def main(arguments=None):
             seqinfo.parse_seqid(input_files + input_files_from_directory)
             print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
-            print(seqinfo.seqinfo)
-
             seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
-
-            print(seqinfo.seqinfo)
 
         # Set bin length
         if args.bin_length: # user defined
@@ -225,29 +221,20 @@ def main(arguments=None):
         else: # user input
             fragment_length = args.fragment_length - args.overlap_length 
 
-        # Write file for taxsbp
-        if args.seq_info_file:
-            seq_info_file = args.seq_info_file
-        else:
-            seq_info_file = tmp_output_folder + "seqinfo.txt"
-            seqinfo.write_seq_info_file(seq_info_file, use_assembly)
-
         tx = time.time()
-        print_log("Running taxonomic clustering (TaxSBP)... ")
-        run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
-                                   "-f " + seq_info_file,
-                                   "-n " + ncbi_nodes_file,
-                                   "-m " + ncbi_merged_file if ncbi_merged_file else "",
-                                   "-l " + str(bin_length),
-                                   "-r " + ("assembly" if use_assembly else args.rank),
-                                   "-z " + "assembly" if use_assembly else "",
-                                   "-a " + str(fragment_length) if fragment_length else "",
-                                   "-o " + str(args.overlap_length) if fragment_length else ""])
-        stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
-        
-        # parse stdout bins
-        bins = Bins(taxsbp_stdout=stdout, use_assembly=use_assembly, fragment_length=fragment_length)
-        del stdout
+        print_log("Running taxonomic clustering (TaxSBP)...\n")
+        taxsbp_params={}
+        taxsbp_params["nodes_file"] = ncbi_nodes_file
+        taxsbp_params["bin_len"] = bin_length
+        taxsbp_params["bin_exclusive"] = "assembly" if use_assembly else args.rank
+        if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
+        if fragment_length: 
+            taxsbp_params["fragment_len"] = fragment_length
+            taxsbp_params["overlap_len"] = args.overlap_length
+        if use_assembly: taxsbp_params["specialization"] = "assembly"
+        taxsbp_params["input_table"] = seqinfo.get_csv()
+
+        bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
         actual_number_of_bins = bins.get_number_of_bins()
         optimal_number_of_bins = optimal_bins(actual_number_of_bins)
         max_length_bin = bins.get_max_bin_length()
@@ -271,12 +258,11 @@ def main(arguments=None):
         print_log("Building database files... ")
         
         # Write .map file
-        mapp = Map(bins)
-        mapp.write(db_prefix_map)
+        bins.write_map_file(db_prefix_map, use_assembly)
 
         # Write .tax file
-        tax.filter(bins.get_unique_taxids()) # filter only used taxids
-        if use_assembly: tax.add_nodes(bins.get_group_taxid(), "assembly") # add assembly nodes
+        tax.filter(bins.get_taxids()) # filter only used taxids
+        if use_assembly: tax.add_nodes(bins.get_specialization_taxid(), "assembly") # add assembly nodes
         tax.write(db_prefix_tax)
 
         # Write .gnn file
@@ -287,7 +273,7 @@ def main(arguments=None):
                 bin_length=bin_length,
                 fragment_length=fragment_length,
                 overlap_length=args.overlap_length,
-                bins=bins.get_bins_formatted())
+                bins=bins.get_list())
         gnn.write(db_prefix_gnn)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
@@ -315,7 +301,7 @@ def main(arguments=None):
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
-        #shutil.rmtree(tmp_output_folder)
+        shutil.rmtree(tmp_output_folder)
         
 #################################################################################################################################
 #################################################################################################################################
@@ -332,8 +318,8 @@ def main(arguments=None):
         use_assembly=True if gnn.rank=="assembly" else False
 
         # load bins
-        bins = Bins(lines=gnn.bins, use_assembly=use_assembly, fragment_length=gnn.fragment_length)
-        
+        bins = Bins(taxsbp_ret=gnn.bins)
+
         # Load or create seqinfo
         if args.seq_info_file: # file already provided 
             seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
@@ -345,9 +331,8 @@ def main(arguments=None):
             print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
             print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
-        
         # check sequences compared to bins
-        added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.seqinfo.seqid), set(bins.bins.seqid))
+        added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
         # Ignore removed sequences if not doing complete update
         if args.update_complete: 
             print_log("Adding " + str(len(added_seqids)) + " sequences, removing " + str(len(removed_seqids)) + " sequences, keeping " + str(len(kept_seqids)) + " sequences.\n")
@@ -359,7 +344,6 @@ def main(arguments=None):
             print_log("Nothing to update.\n")
             sys.exit(0)
 
-        print(seqinfo.seqinfo)
         if args.update_complete:           
             # Remove already included seqids to just retrieve information for added sequences
             seqinfo.remove_seqids(kept_seqids | removed_seqids)
@@ -371,67 +355,43 @@ def main(arguments=None):
         if not args.seq_info_file: 
             seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
 
-        print(seqinfo.seqinfo)
-        
-        print(bins.bins)
-        # if found sequences to remove, update bins
+        previous_binids = set(bins.get_binids())
+        # remove seqids from bins if performing update complete
         if args.update_complete and removed_seqids:
-            # removed sequences are kept in the bins but with zero values to keep the bin information
-            # clear removed seqids (length=0)
-            bins.clear_seqids(removed_seqids)
-        print(bins.bins)
-
-        # Write file for taxsbp
-        if args.seq_info_file:
-            seq_info_file = args.seq_info_file
-        else:
-            seq_info_file = tmp_output_folder + "seqinfo.txt"
-            seqinfo.write_seq_info_file(seq_info_file, use_assembly)
-
-        # write bins to file for taxsbp
-        bins_file = tmp_output_folder + "bins.txt"
-        bins.write_formatted(bins_file)
-
-        
+            bins.remove_seqids(removed_seqids)
+        kept_binids = set(bins.get_binids())
 
         # Set up taxonomy files
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
 
-        print_log("Running taxonomic clustering (TaxSBP)... \n")
-        run_taxsbp_cmd = " ".join([path_exec['taxsbp'],
-                                   "-u " + bins_file,
-                                   "-f " + seq_info_file,
-                                   "-n " + ncbi_nodes_file,
-                                   "-m " + ncbi_merged_file if ncbi_merged_file else "",
-                                   "-l " + str(gnn.bin_length),
-                                   "-r " + ("assembly" if use_assembly else gnn.rank),
-                                   "-z " + "assembly" if use_assembly else "",
-                                   "-a " + str(gnn.fragment_length) if gnn.fragment_length else "",
-                                   "-o " + str(gnn.overlap_length) if gnn.fragment_length else ""])
-        stdout, stderr = run(run_taxsbp_cmd, print_stderr=True)
+        tx = time.time()
+        print_log("Running taxonomic clustering (TaxSBP)...\n")
 
-        # parse stdout new bins
-        updated_bins = Bins(taxsbp_stdout=stdout, use_assembly=use_assembly, fragment_length=gnn.fragment_length)
-        del stdout
-
-        print(updated_bins.bins)
-        # TODO REMOVE
-        updated_bins.write_formatted(tmp_output_folder + "updated_bins.txt")
-        
-        number_of_updated_bins = updated_bins.get_number_of_bins()
-        last_bin = updated_bins.get_last_bin()
-        number_of_new_bins = last_bin + 1 - gnn.number_of_bins
-               
-        print_log(str(number_of_updated_bins) + " bins changed: " + str(int(number_of_updated_bins-number_of_new_bins)) + " updated, " + str(int(number_of_new_bins)) + " new. ")
+        taxsbp_params={}
+        taxsbp_params["update_table"] = bins.get_csv()
+        taxsbp_params["nodes_file"] = ncbi_nodes_file
+        taxsbp_params["bin_len"] = gnn.bin_length
+        taxsbp_params["bin_exclusive"] = "assembly" if use_assembly else gnn.rank
+        if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
+        if gnn.fragment_length: 
+            taxsbp_params["fragment_len"] = gnn.fragment_length
+            taxsbp_params["overlap_len"] = gnn.overlap_length
+        if use_assembly: taxsbp_params["specialization"] = "assembly"
+        taxsbp_params["input_table"] = seqinfo.get_csv()
+        updated_bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
+        binids = set(updated_bins.get_binids())
+        removed_binids = len(previous_binids.difference(kept_binids))
+        new_binids = len(binids.difference(kept_binids))
+        updated_binids = len(kept_binids.intersection(binids))
+        print_log(str(new_binids) + " bins added, " + str(updated_binids) + " bins updated, " + str(removed_binids) + " bins removed.")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
         print_log("Updating database files ... ")
-
         # load new taxonomy
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         # Update and write .tax file
-        tax.filter(updated_bins.get_unique_taxids()) # filter only used taxids
+        tax.filter(updated_bins.get_taxids()) # filter only used taxids
         if use_assembly: tax.add_nodes(updated_bins.get_group_taxid(), "assembly") # add assembly nodes
         # Load old .tax file into new taxonomy
         tax.merge(Tax([db_prefix_tax]))
@@ -439,17 +399,16 @@ def main(arguments=None):
         tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
         # TODO - remove entries from .tax from removed entries of the db
 
+        # merge updated and old bins together
+        bins.merge(updated_bins)
+        
         # Write .gnn file
-        # TODO delete removed_seqids fron bins - how to deal with empty bins for further updates. TaxSBP will re-use them?
-        if args.update_complete and removed_seqids: gnn.bins = bins.get_bins_formatted() # save changed bins
-        gnn.number_of_bins+=number_of_new_bins # add new bins count
-        gnn.bins.extend(updated_bins.get_bins_formatted()) # save new bins from taxsbp
+        gnn.bins = bins.get_list() # save updated bins
+        gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
 
         # Recreate .map file based on the new bins
-        mapp = Map(bins=Bins(lines=gnn.bins))
-        mapp.write(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
-
+        bins.write_map_file(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map, use_assembly)
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
@@ -489,7 +448,7 @@ def main(arguments=None):
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
-        #shutil.rmtree(tmp_output_folder)
+        shutil.rmtree(tmp_output_folder)
 
 #################################################################################################################################
 #################################################################################################################################
@@ -1118,9 +1077,15 @@ class SeqInfo:
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'SeqInfo({})'.format(', '.join(args))
+    
+    def get_csv(self):
+        return self.seqinfo.to_csv(sep="\t",header=False, index=False)
 
     def size(self):
         return self.seqinfo.shape[0]
+
+    def get_seqids(self):
+        return self.seqinfo.seqid
 
     def remove_seqids(self, seqids):
         self.seqinfo = self.seqinfo[~self.seqinfo['seqid'].isin(seqids)]
@@ -1158,7 +1123,6 @@ class SeqInfo:
         else:
             self.seqinfo = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=self.seq_info_colums, dtype=self.seq_info_types)
 
-
     def parse_acc2txid(self, acc2txid_files):
         count_acc2txid = {}
         set_seqids = set(self.seqinfo.seqid)
@@ -1173,84 +1137,58 @@ class SeqInfo:
             del tmp_seqid_taxids
             #if already found all taxid for the seqids (no need to parse all files till the end)
             if sum(count_acc2txid.values()) == self.size(): 
-                break
-                
+                break 
         return count_acc2txid
 
-    def write_seq_info_file(self, seq_info_file, use_assembly):
-        self.seqinfo.to_csv(seq_info_file, sep="\t", header=False, index=False, columns=self.seq_info_colums if use_assembly else self.seq_info_colums[0:3])
 
 class Bins:
     # bins columns pandas dataframe
-    bins = pd.DataFrame(columns=['seqid','start','end', 'length', 'taxid', 'group', 'binid'])
-    use_assembly = False
-    fragment_length = 0
+    columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
+    bins = pd.DataFrame([], columns=columns)
 
-    def __init__(self, taxsbp_stdout: str=None, lines: list=[], use_assembly=False, fragment_length=0):
-        self.use_assembly = use_assembly
-        self.fragment_length = fragment_length
-        if taxsbp_stdout: 
-            self.parse_bins(taxsbp_stdout)
-        elif lines:
-            self.parse_bins("\n".join(lines))
+    def __init__(self, taxsbp_ret: list=[]):
+        if taxsbp_ret: 
+            self.parse_bins(taxsbp_ret)
 
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Bins({})'.format(', '.join(args))
+    
+    def parse_bins(self, taxsbp_ret):
+        self.bins = pd.DataFrame(taxsbp_ret, columns=self.columns)
 
     def size(self):
         return self.bins.shape[0]
 
     def get_subset(self,seqids: list=[], binids: list=[]):
-        subBins = Bins(use_assembly=self.use_assembly, fragment_length=self.fragment_length)
+        subBins = Bins()
         if seqids: subBins.bins = self.bins.loc[self.bins['seqid'].isin(seqids)]
         elif binids: subBins.bins = self.bins.loc[self.bins['binid'].isin(binids)]
         return subBins
 
-    def parse_bins(self, taxsbp_stdout):
-        self.bins = pd.read_csv(StringIO(taxsbp_stdout), 
-                                sep='\t', 
-                                header=None, 
-                                skiprows=0,
-                                names=['seqid','length', 'taxid', 'binid'] if not self.use_assembly else ['seqid','length', 'taxid', 'group', 'binid'], 
-                                dtype={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64'})
-        if not self.use_assembly:
-            self.bins['group'] = self.bins['taxid'] # Add taxid as group
-        if self.fragment_length: 
-            self.bins[['seqid','begin','end']] = self.bins.seqid.str.split(r"\/|:", expand=True)
-        else:
-            self.bins['begin'] = 1
-            self.bins['end'] = self.bins['length']
+    def get_csv(self):
+        return self.bins.to_csv(sep="\t",header=False, index=False)
 
-    def write_acc_bin_file(self, acc_bin_file, append=False):
-        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','begin','end','binid'], sep='\t', mode='w' if not append else 'a')
+    def get_list(self):
+        return self.bins.values.tolist()
 
-    def write_formatted(self, output_file):
-        with open(output_file, 'w') as file:
-            file.write("\n".join(self.get_bins_formatted()))
+    def get_bins(self):
+        return self.bins
 
-    def clear_seqids(self, seqids):
-        self.bins.loc[self.bins['seqid'].isin(seqids),['length']]=0
-        #self.bins.drop_duplicates(inplace=True, ignore_index=True)
-
-    def get_bins_formatted(self):
-        formated_bins = []
-        # re-format bins into taxsbp order
-        for index, row in self.bins.iterrows():
-            acc = row['seqid']
-            if self.fragment_length: acc += "/" + row['begin'] + ":" + row['end']
-            line = acc + "\t" + str(row['length']) + "\t" + row['taxid']
-            if self.use_assembly: line += "\t" + row['group']
-            line += "\t" + str(row['binid'])
-            formated_bins.append(line)
-
-        return(formated_bins)
+    def remove_seqids(self, seqids):
+        self.bins = self.bins.loc[~self.bins['seqid'].isin(seqids)]
 
     def get_number_of_bins(self):
-        return self.bins.binid.unique().size
-
-    def get_unique_taxids(self):
+        return self.get_binids().size
+    
+    def get_taxids(self):
         return self.bins.taxid.unique()
+
+    def get_binids(self):
+        return self.bins.binid.unique()
+
+    def get_seqids(self):
+        return self.bins.seqid.unique()
 
     def get_binid_length_sum(self):
         return self.bins.groupby(['binid'])['length'].sum()
@@ -1258,43 +1196,21 @@ class Bins:
     def get_max_bin_length(self):
         return self.get_binid_length_sum().max()
 
-    def get_group_taxid(self):
-        return self.bins[['group','taxid']].drop_duplicates().set_index('group')
+    def get_specialization_taxid(self):
+        return self.bins[['specialization','taxid']].drop_duplicates().set_index('specialization')
 
-    def get_last_bin(self):
-        return self.bins.binid.max()
+    def merge(self, bins):
+        self.bins = pd.concat([self.bins, bins.get_bins()])
 
-    def get_binids(self):
-        return self.bins.binid.unique()
+    def write_acc_bin_file(self, acc_bin_file, append=False):
+        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t', mode='w' if not append else 'a')
 
-class Map:
-    data = {}
-    def __init__(self, bins: Bins=None, map_file: str=None):
-        if map_file:
-            self.data = self.parse_map_file(map_file)
+    def write_map_file(self, map_file, use_assembly):
+        if use_assembly:
+            self.bins[['specialization','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')
         else:
-            self.data = self.parse_map_bins(bins)
-
-    def __repr__(self):
-        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'Map({})'.format(', '.join(args))
-
-    def parse_map_bins(self,bins):
-        return dict(zip(bins.bins.binid, bins.bins.group))
-
-    def parse_map_file(self,map_file):
-        mapp = {}
-        with open(map_file, 'r') as file:
-            for line in file:
-                group, binid = line.rstrip().split("\t")
-                mapp[binid] = group
-        return mapp
-
-    def write(self, map_file):
-        with open(map_file, 'w') as file:
-            for binid, group in self.data.items(): 
-                file.write(group + "\t" + str(binid) + "\n")
-
+            self.bins[['taxid','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')
+       
 class Tax:
     def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
         # nodes[node] = (parent, rank, name)
