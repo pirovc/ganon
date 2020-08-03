@@ -65,7 +65,10 @@ before_install:
   - python3 -m pip install --user --upgrade pip
   - python3 -m pip install --user pandas>=1.0.0
   - python3 -m pip install --user binpacking==1.4.1
+  - git clone https://github.com/pirovc/pylca.git
+  - cd pylca; python3 setup.py install; cd ..
   - git clone https://github.com/pirovc/taxsbp.git
+  - cd taxsbp; python3 setup.py install; cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install --user coverage;
     fi

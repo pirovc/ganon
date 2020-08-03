@@ -153,7 +153,7 @@ def main(arguments=None):
         # validate input files
         input_files, input_files_from_directory = validate_input_files(args)
         if len(input_files)==0 and len(input_files_from_directory)==0:
-            print_log("No valid input files found\n")
+            print_log("No valid input files found")
             sys.exit(1)
 
         # set output files
@@ -169,6 +169,7 @@ def main(arguments=None):
 
 
     tx_total = time.time()
+    print_log("--- ganon version " + str(version) + " ---")
 
 #################################################################################################################################
 #################################################################################################################################
@@ -182,34 +183,32 @@ def main(arguments=None):
         use_assembly=True if args.rank=="assembly" else False
 
         # Set up taxonomy
+        tx = time.time()
+        print_log("Loading taxonomy")
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
-        # Load or create seqinfo
-        if args.seq_info_file: # file already provided 
-            seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
-        else: # retrieve info
-            # Count number of input sequences to define method or retrieve accessions for forced eutils
-            seqinfo = SeqInfo()
-            tx = time.time()
-            print_log("Extracting sequence identifiers... ")
-            seqinfo.parse_seqid(input_files + input_files_from_directory)
-            print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
-            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-            seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
+        # Load seqids and generate seqinfo
+        if args.seq_info_file:
+            seqinfo = load_seqids(seq_info_file=args.seq_info_file)
+        else:
+            seqinfo = load_seqids(files=input_files + input_files_from_directory) 
+            load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
 
         # Set bin length
         if args.bin_length: # user defined
             bin_length = args.bin_length
         else:
             tx = time.time()
-            print_log("Estimating best bin length... ")
+            print_log("Calculating best bin length")
             bin_length = estimate_bin_len(args, seqinfo, tax, use_assembly)
             if bin_length<=0: 
-                print_log("Could not estimate best bin length, using default. ")
                 bin_length=1000000
-            print_log(str(bin_length) + "bp. ")
-            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+                print_log(" - could not estimate bin length, using default (" + str(bin_length) + ")")
+            else:
+                print_log(" - " + str(bin_length) + "bp")
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         # Set fragment length
         if args.fragment_length==-1: # if ==-1 set default
@@ -220,7 +219,7 @@ def main(arguments=None):
             fragment_length = args.fragment_length - args.overlap_length 
 
         tx = time.time()
-        print_log("Running taxonomic clustering (TaxSBP)...\n")
+        print_log("Running taxonomic clustering (TaxSBP)")
         taxsbp_params={}
         taxsbp_params["nodes_file"] = ncbi_nodes_file
         taxsbp_params["bin_len"] = bin_length
@@ -238,33 +237,24 @@ def main(arguments=None):
         optimal_number_of_bins = optimal_bins(actual_number_of_bins)
         max_length_bin = bins.get_max_bin_length()
         max_kmer_count = max_length_bin-args.kmer_size+1 # aproximate number of unique k-mers by just considering that they are all unique
-        
-        print_log(str(actual_number_of_bins) + " bins created. ")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        
-        # define bloom filter size based on given false positive
-        MBinBits = 8388608
-        print_log("Max unique " + str(args.kmer_size) +  "-mers: " + str(max_kmer_count) + "\n")
-        if not args.fixed_bloom_size:
-            bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
-            print_log("Bloom filter calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n")
-        else:
-            bin_size_bits = math.ceil((args.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
-            estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
-            print_log("Bloom filter calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])\n"))
+        print_log(" - " + str(actual_number_of_bins) + " bins created")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         tx = time.time()
-        print_log("Building database files... ")
+        print_log("Building database files")
         
         # Write .map file
+        print_log(" - " + db_prefix_map)
         bins.write_map_file(db_prefix_map, use_assembly)
 
         # Write .tax file
+        print_log(" - " + db_prefix_tax)
         tax.filter(bins.get_taxids()) # filter only used taxids
         if use_assembly: tax.add_nodes(bins.get_specialization_taxid(), "assembly") # add assembly nodes
         tax.write(db_prefix_tax)
 
         # Write .gnn file
+        print_log(" - " + db_prefix_gnn)
         gnn = Gnn(kmer_size=args.kmer_size, 
                 hash_functions=args.hash_functions, 
                 number_of_bins=actual_number_of_bins, 
@@ -274,10 +264,19 @@ def main(arguments=None):
                 overlap_length=args.overlap_length,
                 bins=bins.get_list())
         gnn.write(db_prefix_gnn)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
-        tx = time.time()
-        print_log("Building index (ganon-build)... \n")
+        print_log("Building index (ganon-build)")
+        # define bloom filter size based on given false positive
+        MBinBits = 8388608
+        print_log(" - max unique " + str(args.kmer_size) +  "-mers: " + str(max_kmer_count))
+        if not args.fixed_bloom_size:
+            bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
+            print_log(" - IBF calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])")
+        else:
+            bin_size_bits = math.ceil((args.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
+            estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
+            print_log(" - IBF calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])"))
 
         # Write aux. file for ganon
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
@@ -297,7 +296,6 @@ def main(arguments=None):
                                         "--directory-reference-files " + args.input_directory if args.input_directory else "",
                                         "--extension " + args.input_extension if args.input_extension else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
@@ -319,28 +317,24 @@ def main(arguments=None):
         # load bins
         bins = Bins(taxsbp_ret=gnn.bins)
 
-        # Load or create seqinfo
-        if args.seq_info_file: # file already provided 
-            seqinfo = SeqInfo(seq_info_file=args.seq_info_file)
+        # Load seqids and generate seqinfo
+        if args.seq_info_file:
+            seqinfo = load_seqids(seq_info_file=args.seq_info_file)
         else:
-            seqinfo = SeqInfo()
-            tx = time.time()
-            print_log("Extracting sequence identifiers... ")
-            seqinfo.parse_seqid(input_files + input_files_from_directory)
-            print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
-            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+            seqinfo = load_seqids(files=input_files + input_files_from_directory) 
 
         # check sequences compared to bins
         added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
         # Ignore removed sequences if not doing complete update
         if args.update_complete: 
-            print_log("Adding " + str(len(added_seqids)) + " sequences, removing " + str(len(removed_seqids)) + " sequences, keeping " + str(len(kept_seqids)) + " sequences.\n")
+            print_log("Update: adding " + str(len(added_seqids)) + " sequences, removing " + str(len(removed_seqids)) + " sequences, keeping " + str(len(kept_seqids)) + " sequences")
         else:
             removed_seqids=[]
-            print_log("Adding " + str(len(added_seqids)) + " sequences, ignoring " + str(len(kept_seqids)) + " repeated sequences.\n")
-        
+            print_log("Update: adding " + str(len(added_seqids)) + " sequences, ignoring " + str(len(kept_seqids)) + " repeated sequences")
+        print_log("")
+
         if not added_seqids and not removed_seqids:
-            print_log("Nothing to update.\n")
+            print_log("Nothing to update.")
             sys.exit(0)
 
         if args.update_complete:           
@@ -350,9 +344,8 @@ def main(arguments=None):
             # Remove seqids already present in the current version (repeated entries)
             seqinfo.remove_seqids(kept_seqids)
 
-        # load seqinfo file with data
-        if not args.seq_info_file: 
-            seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
+        # load seqinfo file with data (after removing ids)
+        if not args.seq_info_file: load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
 
         # save set of current binids
         previous_binids = set(bins.get_binids())
@@ -366,7 +359,7 @@ def main(arguments=None):
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
 
         tx = time.time()
-        print_log("Running taxonomic clustering (TaxSBP)...\n")
+        print_log("Running taxonomic clustering (TaxSBP)")
         taxsbp_params={}
         taxsbp_params["update_table"] = bins.get_csv()
         taxsbp_params["nodes_file"] = ncbi_nodes_file
@@ -384,12 +377,13 @@ def main(arguments=None):
         removed_binids = previous_binids.difference(kept_binids)
         new_binids = taxsbp_binids.difference(kept_binids)
         updated_binids = kept_binids.intersection(taxsbp_binids)
-        print_log(str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed\n")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(" - " + str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         tx = time.time()
-        print_log("Updating database files ... ")
+        print_log("Updating database files")
         # load new taxonomy
+        print_log(" - " + args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         # Update and write .tax file
         tax.filter(updated_bins.get_taxids()) # filter only used taxids
@@ -404,16 +398,18 @@ def main(arguments=None):
         bins.merge(updated_bins)
         
         # Write .gnn file
+        print_log(" - " + args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
         gnn.bins = bins.get_list() # save updated bins
         gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
         gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
 
         # Recreate .map file based on the new bins
+        print_log(" - " + args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
         bins.write_map_file(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map, use_assembly)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         tx = time.time()
-        print_log("Updating index (ganon-build)... \n")
+        print_log("Updating index (ganon-build)")
 
         # Write aux. file for ganon
         # This file has to contain all new sequences
@@ -439,9 +435,9 @@ def main(arguments=None):
                                         "--extension " + args.input_extension if args.input_extension else "",
                                         "--update-complete" if args.update_complete else ""])
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
+        
         # move IBF to final location
         shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         # Delete temp files
         shutil.rmtree(tmp_output_folder)
@@ -453,8 +449,7 @@ def main(arguments=None):
 
     elif args.which=='classify':
 
-        tx = time.time()
-        print_log("Classifying reads (ganon-classify)... \n")
+        print_log("Classifying reads (ganon-classify)")
         run_ganon_classify = " ".join([path_exec['classify'],
                                        "--single-reads " +  ",".join(args.single_reads) if args.single_reads else "",
                                        "--paired-reads " +  ",".join(args.paired_reads) if args.paired_reads else "",
@@ -478,16 +473,15 @@ def main(arguments=None):
         stdout, stderr = run(run_ganon_classify)
         if not args.output_prefix: print(stdout)
         print_log(stderr)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         if args.output_prefix:
             tx = time.time()
-            print_log("Generating reports... ")
+            print_log("Generating report")
             tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
             classified_reads, unclassified_reads, reports = parse_rep(args.output_prefix+".rep")
             print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_prefix+".tre", args.ranks, 0, 0, [])
-            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-        
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
+
 
 #################################################################################################################################
 #################################################################################################################################
@@ -499,7 +493,7 @@ def main(arguments=None):
         tax = Tax([db_prefix+".tax" for db_prefix in args.db_prefix])
         print_final_report(reports, tax, classified_reads, unclassified_reads, args.output_report, args.ranks, args.min_matches, args.min_matches_perc, args.taxids)
 
-    if args.which!='report': print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.\n")
+    print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.")
 
 #################################################################################################################################
 #################################################################################################################################
@@ -520,19 +514,19 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         stdout, stderr = process.communicate() # wait for the process to terminate
         errcode = process.returncode
         if errcode!=0: raise Exception()
-        if print_stderr: print_log(stderr if stderr else "")
+        if print_stderr and stderr: print_log(stderr)
         return stdout, stderr
 
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
         print_log('The following command failed to execute:\n'+cmd)
-        print_log(str(e)+"\n")
-        print_log("Error code: "+str(errcode)+"\n")
-        print_log("Out: "+"\n")
-        if stdout: print_log(stdout+"\n")
-        print_log("Error: "+"\n")
-        if stderr: print_log(stderr+"\n")
+        print_log(str(e))
+        print_log("Error code: "+str(errcode))
+        print_log("Out: ")
+        if stdout: print_log(stdout)
+        print_log("Error: ")
+        if stderr: print_log(stderr)
         sys.exit(errcode)
 
 def check_updated_seqids(new_seqids, old_seqids):
@@ -547,6 +541,20 @@ def set_tmp_folder(tmp_output_folder):
     # Create temporary working directory
     if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
+
+def load_seqids(files: list=[], seq_info_file: str=None):
+    tx = time.time()
+    print_log("Extracting sequence identifiers")
+    # Load or create seqinfo
+    if seq_info_file is not None: # file already provided 
+        seqinfo = SeqInfo(seq_info_file=seq_info_file)
+    else: # retrieve info
+        # Count number of input sequences to define method or retrieve accessions for forced eutils
+        seqinfo = SeqInfo()
+        seqinfo.parse_seqid(files)
+    print_log(" - "  + str(seqinfo.size()) + " sequences successfuly retrieved")
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
+    return seqinfo
 
 def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assembly):
     
@@ -565,59 +573,52 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
 
     if seq_info_mode[0]=="eutils":
         tx = time.time()
-        print_log("Retrieving sequence information from NCBI E-utils... ")
+        print_log("Retrieving sequence information from NCBI E-utils")
         seqid_file = tmp_output_folder + "seqids.txt"
         seqinfo.write_seqid_file(seqid_file)
         seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
-        print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")    
-        return seqinfo
+        print_log(" - " + str(seqinfo.size()) + " sequences successfuly retrieved")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     else:
         # acc2taxid - offline mode
         acc2txid_options = ["nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
 
         # Retrieve seq. lengths
         tx = time.time()
-        print_log("Extracting sequence lengths... ")
+        print_log("Extracting sequence lengths")
         seqinfo.parse_seqid_length(input_files)
-        print_log(str(seqinfo.size()) + " sequences successfuly retrieved. ")
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-
+        print_log(" - " + str(seqinfo.size()) + " sequences successfuly retrieved")
         # Check if retrieved lengths are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
-            print_log("Could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences\n")
+            print_log(" - could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences")
             seqid_total_count = seqinfo.size()
- 
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
+
+        tx = time.time()
+        print_log("Extracting taxonomic information from accession2taxid files")
         dowloaded_acc2txid_files = []
         for acc2txid in seq_info_mode:
             if acc2txid not in acc2txid_options:
-                print_log(acc2txid +  " is not a valid option \n")
+                print_log(" - " + acc2txid +  " is not a valid option")
             else:
                 dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder))
             
-        tx = time.time()
-        print_log("Extracting taxonomic information from accession2taxid files ... ")
         count_acc2txid = seqinfo.parse_acc2txid(dowloaded_acc2txid_files)
-        print(count_acc2txid)
-        print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
         for acc2txid_file, cnt in count_acc2txid.items():
-            print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file\n")
-        
-        # Check if retrieved lengths are the same as number of inputs, reset counter
+            print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file")
+        # Check if retrieved taxids are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
-            print_log("Could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions\n")
+            print_log(" - could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions")
             seqid_total_count = seqinfo.size()
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         if use_assembly:
             tx = time.time()
-            print_log("Retrieving assembly information from NCBI E-utils... ")
+            print_log("Retrieving assembly information from NCBI E-utils")
             seqid_file = tmp_output_folder + "seqids.txt"
             seqinfo.write_seqid_file(seqid_file)
             seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=True, get_assembly=True)
-            print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
-    
-        return seqinfo
-
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
 def set_taxdump_files(args, tmp_output_folder):
     if not args.taxdump_file:
@@ -633,11 +634,11 @@ def set_taxdump_files(args, tmp_output_folder):
 
 def get_taxdump(tmp_output_folder):
     tx = time.time()
-    print_log("Downloading taxdump... ")
+    print_log("Downloading taxdump")
     taxdump_file = tmp_output_folder+'taxdump.tar.gz'
     run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
     stdout, stderr = run(run_wget_taxdump_cmd, print_stderr=True)
-    print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     return taxdump_file
 
 def unpack_taxdump(taxdump_file, tmp_output_folder):
@@ -648,11 +649,11 @@ def unpack_taxdump(taxdump_file, tmp_output_folder):
 def get_accession2taxid(acc2txid, tmp_output_folder):
     tx = time.time()
     acc2txid_file = acc2txid + ".accession2taxid.gz"
-    print_log("Downloading " + acc2txid_file + "... ")
+    print_log("Downloading " + acc2txid_file)
     acc2txid_file = tmp_output_folder + acc2txid_file
     run_wget_acc2txid_file_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/{1}.accession2taxid.gz"'.format(acc2txid_file, acc2txid)
     stdout, stderr = run(run_wget_acc2txid_file_cmd, print_stderr=True)
-    print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     return acc2txid_file
 
 def parse_rep(rep_file):
@@ -713,16 +714,16 @@ def estimate_bin_len(args, seqinfo, tax, use_assembly):
     min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
 
     if args.verbose:
-        print_log("Group sizes for %s in bp: min %d, max %d, avg %d, sum %d\n" % (args.rank, min_group_len, max_group_len, math.ceil(sum_group_len/min_bins_optimal), sum_group_len))
-        print_log("Minimum optimal number of bins %d (from %d bins)\n" % (min_bins_optimal,ngroups))
-        print_log("Minimum estimated size %.2fMB in 1 bin\n" % ibf_size_mb(args, sum_group_len, 1))
-        print_log("%d bins necessary to achieve %.2fMB (%dbp per bin)\n" % (max_bins_optimal, min_size_possible, min_group_len))
-        print_log("%.2fMB necessary to achieve %d bins (%dbp per bin)\n" % (ibf_size_mb(args, max_group_len, min_bins_optimal), min_bins_optimal, max_group_len))
+        print_log("Group sizes for %s in bp: min %d, max %d, avg %d, sum %d" % (args.rank, min_group_len, max_group_len, math.ceil(sum_group_len/min_bins_optimal), sum_group_len))
+        print_log("Minimum optimal number of bins %d (from %d bins)" % (min_bins_optimal,ngroups))
+        print_log("Minimum estimated size %.2fMB in 1 bin" % ibf_size_mb(args, sum_group_len, 1))
+        print_log("%d bins necessary to achieve %.2fMB (%dbp per bin)" % (max_bins_optimal, min_size_possible, min_group_len))
+        print_log("%.2fMB necessary to achieve %d bins (%dbp per bin)" % (ibf_size_mb(args, max_group_len, min_bins_optimal), min_bins_optimal, max_group_len))
 
     # define maximum size based on an user input
     if args.max_bloom_size:
         if args.max_bloom_size < math.ceil(min_size_possible):
-            print("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
+            print_log("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
             return 0
         max_bloom_size = args.max_bloom_size # user provided size limit
         min_nbins = min_bins_optimal # use the optimal
@@ -736,14 +737,14 @@ def estimate_bin_len(args, seqinfo, tax, use_assembly):
     attempts=30 # number of iterations
     att_cont=0
     decrease_iter = 1 
-    if args.verbose: print_log("\nmax_bloom_size %d, min_nbins %d\n" % (max_bloom_size, min_nbins))
+    if args.verbose: print_log("\nmax_bloom_size %d, min_nbins %d" % (max_bloom_size, min_nbins))
     while att_cont<=attempts:
         att_cont+=1
 
         nbins = optimal_bins(sum(bins_group(groups_len, bin_length, args.overlap_length).values()))
         size_mb = ibf_size_mb(args, bin_length, nbins)
   
-        if args.verbose: print_log("bin_length %d will generate %d bins with %.2fMB\n" % (bin_length, nbins, size_mb))
+        if args.verbose: print_log("bin_length %d will generate %d bins with %.2fMB" % (bin_length, nbins, size_mb))
 
         if max_bloom_size: # has user input size limit
             if math.ceil(size_mb)>=max_bloom_size*0.99 and math.floor(size_mb)<=max_bloom_size*1.01: # if achieved in the goal range
@@ -774,7 +775,7 @@ def estimate_bin_len(args, seqinfo, tax, use_assembly):
             bin_length=args.overlap_length+1
             break
     
-    if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- \n" % (nbins, size_mb , bin_length))
+    if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- " % (nbins, size_mb , bin_length))
 
     return bin_length
 
@@ -879,7 +880,7 @@ def set_paths(args):
             path_exec['build'] = shutil.which("ganon-build", path=p)
             if path_exec['build'] is not None: break
         if path_exec['build'] is None:
-            print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path\n")
+            print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
             return False
 
         ganon_get_len_taxid_paths = [args.ganon_path, args.ganon_path+"scripts/", args.ganon_path+"../scripts/"] if args.ganon_path else [None, "scripts/"]
@@ -887,7 +888,7 @@ def set_paths(args):
             path_exec['get_len_taxid'] = shutil.which("ganon-get-len-taxid.sh", path=p)
             if path_exec['get_len_taxid'] is not None: break
         if path_exec['get_len_taxid'] is None:
-            print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
+            print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path")
             return False
 
     elif args.which=='classify':
@@ -898,7 +899,7 @@ def set_paths(args):
             path_exec['classify'] = shutil.which("ganon-classify", path=p)
             if path_exec['classify'] is not None: break
         if path_exec['classify'] is None:
-            print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path\n")
+            print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path")
             return False
 
     return path_exec
@@ -910,12 +911,12 @@ def validate_input_files(args):
     # get files from directory
     if args.input_directory and args.input_extension:
         if not os.path.isdir(args.input_directory):
-            print_log(args.input_directory + " is not a valid directory\n")
+            print_log(args.input_directory + " is not a valid directory")
         else:
             for file in os.listdir(args.input_directory):
                 if file.endswith(args.input_extension):
                     input_files_from_directory.append(os.path.join(args.input_directory, file))
-            print_log(str(len(input_files_from_directory)) + " file(s) [" + args.input_extension + "] found in " + args.input_directory + "\n")
+            print_log(str(len(input_files_from_directory)) + " file(s) [" + args.input_extension + "] found in " + args.input_directory)
 
     # remove non existent files from input list
     if args.input_files: 
@@ -926,17 +927,17 @@ def validate_input_files(args):
 def validate_args(args):
     if args.which in ['build','update']:
         if args.taxdump_file and ((len(args.taxdump_file)==1 and not args.taxdump_file[0].endswith(".tar.gz")) or len(args.taxdump_file)>3):
-            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download \n")
+            print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
             return False
 
         if not args.input_files and not args.input_directory:
-            print_log("Please provide files with --input-files and/or --input-directory with --input-extension \n")
+            print_log("Please provide files with --input-files and/or --input-directory with --input-extension")
             return False
         elif args.input_directory and not args.input_extension:
-            print_log("Please provide the --input-extension when using --input-directory \n")
+            print_log("Please provide the --input-extension when using --input-directory")
             return False
         elif args.input_directory and "*" in args.input_extension:
-            print_log("Please do not use wildcards (*) in the --input-extension\n")
+            print_log("Please do not use wildcards (*) in the --input-extension")
             return False
 
         if args.which=='update':
@@ -945,11 +946,11 @@ def validate_args(args):
 
         if args.which=='build': #If set (!=0), should be smaller than fragment
             if args.fragment_length>0 and args.overlap_length > args.fragment_length:
-                print_log("--overlap-length cannot be bigger than --fragment-length\n")
+                print_log("--overlap-length cannot be bigger than --fragment-length")
                 return False
 
             if args.fixed_bloom_size and not args.bin_length:
-                print_log("please set the --bin-length to use --fixed-bloom-size\n")
+                print_log("please set the --bin-length to use --fixed-bloom-size")
                 return False
         
     elif args.which=='classify':
@@ -958,7 +959,7 @@ def validate_args(args):
                 return False
 
         if not args.single_reads and not args.paired_reads:
-            print_log("Please provide file[s] with --single-reads or --paired-reads\n")
+            print_log("Please provide file[s] with --single-reads or --paired-reads")
             return False
 
         len_single_reads = 0
@@ -971,7 +972,7 @@ def validate_args(args):
             len_paired_reads = len(args.paired_reads)
         
         if len_single_reads+len_paired_reads==0:
-            print_log("No valid input files found\n")
+            print_log("No valid input files found")
             return False
 
     elif args.which=='report':
@@ -980,7 +981,7 @@ def validate_args(args):
                 return False
 
         if not os.path.isfile(args.rep_file):
-            print_log("File not found [" + args.rep_file + "]\n")
+            print_log("File not found [" + args.rep_file + "]")
             return False
 
     return True
@@ -988,18 +989,18 @@ def validate_args(args):
 def check_files(files):
     checked_files = [file for file in files if os.path.isfile(file)]
     if len(checked_files)<len(files):
-        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found\n")
+        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found")
     return checked_files
 
 def check_db(prefix):
     for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
         if not os.path.isfile(prefix+db_file_type):
-            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)\n")
+            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)")
             return False
     return True
 
 def print_log(text):
-    sys.stderr.write(text)
+    sys.stderr.write(text+"\n")
     sys.stderr.flush()
 
 class Gnn:

@@ -94,35 +94,32 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
         // load filter
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
         stats.totalBinsFile = seqan::getNumberOfBins( filter );
-
         config.kmer_size = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
 
         // create new bins on the loaded filter
-        uint32_t length_new_bins = *bin_ids.rbegin() + 1; // get last binid in the set = total number of bins
-        stats.newBins            = length_new_bins - seqan::getNumberOfBins( filter );
+        // last element (set is ordered) plus one
+        uint32_t number_new_bins = *bin_ids.rbegin() + 1;
+        stats.newBins            = number_new_bins - stats.totalBinsFile;
 
+        // In case of new bins, resize filter
         if ( stats.newBins > 0 )
-            filter.resizeBins( length_new_bins );
+            filter.resizeBins( number_new_bins );
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
         {
             std::vector< uint32_t > updated_bins;
+            // For all binids in the file provided, only clean bins for the old bins
+            // new bins are already cleared
             for (auto const& binid : bin_ids)
             {
-                if( binid>=seqan::getNumberOfBins( filter )-stats.newBins ){
+                if( binid>=stats.totalBinsFile-1 ){
                     break;
                 }
                 updated_bins.emplace_back(binid);
             }
-
-            //updated_bins.insert( updated_bins.end(), bin_ids.begin(), bin_ids.end()-stats.newBins );
-            for ( auto const& b : updated_bins)
-            {
-                std::cerr << "Cleared bin: " << b << std::endl; 
-            } 
             seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
 
@@ -170,21 +167,18 @@ void print_time( const GanonBuild::Config& config,
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const GanonBuild::Config& config, const StopClock& timeBuild )
+void print_stats( Stats& stats, const StopClock& timeBuild )
 {
     double   elapsed_build = timeBuild.elapsed();
     uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
               << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed_build / 60.0 ) << " Mbp/m)" << std::endl;
-    std::cerr << " - " << stats.totalSeqsBinId << " sequences and " << stats.totalBinsBinId << " bins defined on "
-              << config.seqid_bin_file << std::endl;
-    std::cerr << " - " << stats.totalSeqsFile << " sequences (" << stats.invalidSeqs
-              << " invalid) were read from the input sequence files." << std::endl;
-    if ( !config.update_filter_file.empty() )
-        std::cerr << " - " << stats.newBins << " new bins were added to the existing " << stats.totalBinsFile
-                  << " bins." << std::endl;
-    std::cerr << " - " << validSeqs << " valid sequences in " << stats.totalBinsFile + stats.newBins
+    if ( stats.invalidSeqs > 0 )
+        std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
+    if ( stats.newBins > 0 )
+        std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences in " << stats.totalBinsFile + stats.newBins
               << " bins were written to the IBF" << std::endl;
 }
 
@@ -352,7 +346,7 @@ bool run( Config config )
             detail::print_time(
                 config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
         }
-        detail::print_stats( stats, config, timeBuild );
+        detail::print_stats( stats, timeBuild );
     }
     return true;
 }
