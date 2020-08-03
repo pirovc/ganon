@@ -43,7 +43,6 @@ def main(arguments=None):
     # Extra
     build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
     build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
-    build_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
     build_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -70,7 +69,6 @@ def main(arguments=None):
     # Extra
     update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
     update_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
-    update_group_optional.add_argument('--taxsbp-path', type=str, default="", help=argparse.SUPPRESS)
     update_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
     update_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -233,8 +231,9 @@ def main(arguments=None):
             taxsbp_params["overlap_len"] = args.overlap_length
         if use_assembly: taxsbp_params["specialization"] = "assembly"
         taxsbp_params["input_table"] = seqinfo.get_csv()
-
         bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
+        del taxsbp_params
+        # bin statistics
         actual_number_of_bins = bins.get_number_of_bins()
         optimal_number_of_bins = optimal_bins(actual_number_of_bins)
         max_length_bin = bins.get_max_bin_length()
@@ -355,10 +354,12 @@ def main(arguments=None):
         if not args.seq_info_file: 
             seqinfo = load_seqinfo(tmp_output_folder, seqinfo, path_exec, args.seq_info_mode, use_assembly)
 
+        # save set of current binids
         previous_binids = set(bins.get_binids())
         # remove seqids from bins if performing update complete
         if args.update_complete and removed_seqids:
             bins.remove_seqids(removed_seqids)
+        # save set of kept binids after removal
         kept_binids = set(bins.get_binids())
 
         # Set up taxonomy files
@@ -366,7 +367,6 @@ def main(arguments=None):
 
         tx = time.time()
         print_log("Running taxonomic clustering (TaxSBP)...\n")
-
         taxsbp_params={}
         taxsbp_params["update_table"] = bins.get_csv()
         taxsbp_params["nodes_file"] = ncbi_nodes_file
@@ -379,11 +379,12 @@ def main(arguments=None):
         if use_assembly: taxsbp_params["specialization"] = "assembly"
         taxsbp_params["input_table"] = seqinfo.get_csv()
         updated_bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
-        binids = set(updated_bins.get_binids())
-        removed_binids = len(previous_binids.difference(kept_binids))
-        new_binids = len(binids.difference(kept_binids))
-        updated_binids = len(kept_binids.intersection(binids))
-        print_log(str(new_binids) + " bins added, " + str(updated_binids) + " bins updated, " + str(removed_binids) + " bins removed.")
+        # bin statistics
+        taxsbp_binids = set(updated_bins.get_binids())
+        removed_binids = previous_binids.difference(kept_binids)
+        new_binids = taxsbp_binids.difference(kept_binids)
+        updated_binids = kept_binids.intersection(taxsbp_binids)
+        print_log(str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed\n")
         print_log("Done. Elapsed time: " + str("%.2f" % (time.time() - tx)) + " seconds.\n")
 
         tx = time.time()
@@ -392,7 +393,7 @@ def main(arguments=None):
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         # Update and write .tax file
         tax.filter(updated_bins.get_taxids()) # filter only used taxids
-        if use_assembly: tax.add_nodes(updated_bins.get_group_taxid(), "assembly") # add assembly nodes
+        if use_assembly: tax.add_nodes(updated_bins.get_specialization_taxid(), "assembly") # add assembly nodes
         # Load old .tax file into new taxonomy
         tax.merge(Tax([db_prefix_tax]))
         # Write .tax file
@@ -415,21 +416,16 @@ def main(arguments=None):
         print_log("Updating index (ganon-build)... \n")
 
         # Write aux. file for ganon
+        # This file has to contain all new sequences
+        # in case of update_complete, all sequences from the bins with added/removed sequences
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        # write all new sequences
-        updated_bins.write_acc_bin_file(acc_bin_file)
-
-        # write complete old bins entries which had sequences added or removed
-        # ganon-build needs the information to reset changed bins
-        if args.update_complete:
-            bins_changed = set(updated_bins.get_binids())
-            if removed_seqids:
-                bins_changed.update(bins.get_subset(seqids=removed_seqids).get_binids())
-            bins.get_subset(binids=bins_changed).write_acc_bin_file(acc_bin_file, append=True)
+        if args.update_complete and removed_seqids:
+            bins.get_subset(binids=taxsbp_binids.union(removed_binids)).write_acc_bin_file(acc_bin_file)
+        else:
+            updated_bins.write_acc_bin_file(acc_bin_file)
 
         # Temporary output filter 
         tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
-
         run_ganon_build_cmd = " ".join([path_exec['build'],
                                         "--update-filter-file " + db_prefix_ibf,
                                         "--seqid-bin-file " + acc_bin_file,
@@ -872,7 +868,7 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     if final_report_file: frfile.close()
 
 def set_paths(args):
-    path_exec = {'build': "", 'classify': "", 'get_len_taxid': "", 'taxsbp': ""}
+    path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
 
     if args.which=='build' or args.which=='update':
         args.ganon_path = args.ganon_path + "/" if args.ganon_path else ""
@@ -892,16 +888,6 @@ def set_paths(args):
             if path_exec['get_len_taxid'] is not None: break
         if path_exec['get_len_taxid'] is None:
             print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path\n")
-            return False
-
-        taxsbp_paths = [args.taxsbp_path + "/"] if args.taxsbp_path else [None, "taxsbp/"]
-        for p in taxsbp_paths:
-            path_exec['taxsbp'] = shutil.which("taxsbp", path=p)
-            if path_exec['taxsbp'] is not None: break
-            path_exec['taxsbp'] = shutil.which("taxsbp.py", path=p)
-            if path_exec['taxsbp'] is not None: break
-        if path_exec['taxsbp'] is None:
-            print_log("TaxSBP script (taxsbp or taxsbp.py) were not found. Please inform the path of the scripts with --taxsbp-path\n")
             return False
 
     elif args.which=='classify':
@@ -1202,8 +1188,8 @@ class Bins:
     def merge(self, bins):
         self.bins = pd.concat([self.bins, bins.get_bins()])
 
-    def write_acc_bin_file(self, acc_bin_file, append=False):
-        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t', mode='w' if not append else 'a')
+    def write_acc_bin_file(self, acc_bin_file):
+        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
 
     def write_map_file(self, map_file, use_assembly):
         if use_assembly:
