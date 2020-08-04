@@ -169,7 +169,11 @@ def main(arguments=None):
 
 
     tx_total = time.time()
-    print_log("--- ganon version " + str(version) + " ---")
+    print_log("- - - - - - - - - -")
+    print_log("   _  _  _  _  _   ")
+    print_log("  (_|(_|| |(_)| |  ")
+    print_log("   _|   v. "+ str(version))
+    print_log("- - - - - - - - - -")
 
 #################################################################################################################################
 #################################################################################################################################
@@ -374,9 +378,9 @@ def main(arguments=None):
         updated_bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
         # bin statistics
         taxsbp_binids = set(updated_bins.get_binids())
-        removed_binids = previous_binids.difference(kept_binids)
-        new_binids = taxsbp_binids.difference(kept_binids)
-        updated_binids = kept_binids.intersection(taxsbp_binids)
+        removed_binids = previous_binids.difference(kept_binids | taxsbp_binids)
+        new_binids = taxsbp_binids.difference(previous_binids)
+        updated_binids = taxsbp_binids.intersection(previous_binids)
         print_log(" - " + str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed")
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
@@ -413,11 +417,21 @@ def main(arguments=None):
 
         # Write aux. file for ganon
         # This file has to contain all new sequences
-        # in case of update_complete, all sequences from the bins with added/removed sequences
+        # in case of update_complete, 
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
-        if args.update_complete and removed_seqids:
-            bins.get_subset(binids=taxsbp_binids.union(removed_binids)).write_acc_bin_file(acc_bin_file)
+        
+        if args.update_complete:
+            # all sequences from the bins with added/removed sequences should be written
+            bins.write_acc_bin_file(acc_bin_file, new_binids | updated_binids)
+            # If all sequences of a bin were removed and no new sequence added
+            # insert a dummy entry for ganon-build to clear the bin
+            if removed_binids: 
+                with open(acc_bin_file,"a") as abf:
+                    for b in removed_binids:
+                        print(0,0,0,b,sep="\t",file=abf)
+
         else:
+            # Only new sequences (updated_bins) either on old or new binids
             updated_bins.write_acc_bin_file(acc_bin_file)
 
         # Temporary output filter 
@@ -1189,8 +1203,11 @@ class Bins:
     def merge(self, bins):
         self.bins = pd.concat([self.bins, bins.get_bins()])
 
-    def write_acc_bin_file(self, acc_bin_file):
-        self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
+    def write_acc_bin_file(self, acc_bin_file, binids: set=None):
+        if binids is None:
+            self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
+        else:
+            self.bins.loc[self.bins['binid'].isin(binids)].to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
 
     def write_map_file(self, map_file, use_assembly):
         if use_assembly:

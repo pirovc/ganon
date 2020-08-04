@@ -93,19 +93,21 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
     {
         // load filter
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
+        // totalBinsFile account for all bins, even empty
         stats.totalBinsFile = seqan::getNumberOfBins( filter );
         config.kmer_size    = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
 
-        // create new bins on the loaded filter
         // last element (set is ordered) plus one
         uint32_t number_new_bins = *bin_ids.rbegin() + 1;
-        stats.newBins            = number_new_bins - stats.totalBinsFile;
-
-        // In case of new bins, resize filter
-        if ( stats.newBins > 0 )
+        if ( number_new_bins > stats.totalBinsFile )
+        {
+            // just resize if number of bins is bigger than amount on IBF
+            // when updating an IBF with empty bins or removing the last bins, this will not be true
             filter.resizeBins( number_new_bins );
+            stats.newBins = number_new_bins - stats.totalBinsFile;
+        }
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
@@ -120,9 +122,9 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
                     break;
                 }
                 updated_bins.emplace_back( binid );
-                // std::cerr << "Cleared: " << binid << std::endl;
+                std::cerr << "Cleared: " << binid << std::endl;
             }
-            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
+            // seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
     }
     else
