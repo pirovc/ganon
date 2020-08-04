@@ -1,8 +1,4 @@
-- - - - - - - - - - [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon)
-   _  _  _  _  _   
-  (_|(_|| |(_)| |  
-   _|              
-- - - - - - - - - -
+# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon)
 
 a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
 
@@ -464,50 +460,42 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	  -i [ [ ...]], --input-files [ [ ...]]
 	                        Input reference sequence fasta files [.gz]
 
-
 ### update
 
-	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-t]
-	                    [--seq-info [[...]]] [--seq-info-file]
-	                    [--taxdump-file [[...]]] [--input-directory]
-	                    [--input-extension] [--verbose]
+	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-c] [-t] [--seq-info-mode [[...]]] [--seq-info-file]
+                    [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--verbose]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -o , --output-db-prefix 
-	                        Output database prefix (.ibf, .map, .tax, .gnn).
-	                        Default: overwrite current --db-prefix
+	                        Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix
+	  -c, --update-complete
+	                        Update adding and removing sequences. Input files should represent the complete updated set of
+	                        references, not only new sequences.
 	  -t , --threads        Number of subprocesses/threads to use. Default: 2
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided, ganon requires taxonomic and seq.
-	                        length information. If a small number of sequences is
-	                        provided (<50000) or when --rank assembly, ganon will
-	                        automatically obtained data with NCBI E-utils
-	                        websevices (eutils). Offline mode will download batch
-	                        files from NCBI Taxonomy and look for taxonomic ids in
-	                        the order provided. Options: [nucl_gb nucl_wgs
-	                        nucl_est nucl_gss pdb prot dead_nucl dead_wgs
-	                        dead_prot], eutils (force webservices) or auto (uses
-	                        eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
+	  --seq-info-mode [ [ ...]]
+	                        Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic
+	                        and seq. length information. If a small number of sequences is provided (<50000) or when --rank
+	                        assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline
+	                        mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order
+	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot],
+	                        eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
 	                        exclusive --seq-info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid
-	                        <tab> seq.len <tab> taxid [<tab> assembly id])
-	                        [Mutually exclusive --seq-info]
+	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly
+	                        id]) [Mutually exclusive --seq-info]
 	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the
-	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be
-	                        automatically downloaded)
+	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory
-	                        (provide it without * expansion, e.g. ".fna.gz")
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
 	  --verbose             Verbose mode for ganon-build
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
 	                        Database input prefix (.ibf, .map, .tax, .gnn)
 	  -i [ [ ...]], --input-files [ [ ...]]
-	                        Input reference sequence fasta files [.gz]
+	                        Input reference sequence fasta files [.gz] to be included to the database. Complete set of
+	                        updated sequences should be provided when using --update-complete
 
 ### classify
 
