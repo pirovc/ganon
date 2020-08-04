@@ -94,7 +94,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
         // load filter
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
         stats.totalBinsFile = seqan::getNumberOfBins( filter );
-        config.kmer_size = seqan::getKmerSize( filter );
+        config.kmer_size    = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
 
@@ -113,16 +113,17 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
             std::vector< uint32_t > updated_bins;
             // For all binids in the file provided, only clean bins for the old bins
             // new bins are already cleared
-            for (auto const& binid : bin_ids)
+            for ( auto const& binid : bin_ids )
             {
-                if( binid>=stats.totalBinsFile-1 ){
+                if ( binid >= stats.totalBinsFile - 1 )
+                {
                     break;
                 }
-                updated_bins.emplace_back(binid);
+                updated_bins.emplace_back( binid );
+                // std::cerr << "Cleared: " << binid << std::endl;
             }
             seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
-
     }
     else
     {
@@ -130,7 +131,6 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
         stats.totalBinsFile = seqan::getNumberOfBins( filter );
     }
 
-    
 
     return filter;
 }
