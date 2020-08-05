@@ -94,7 +94,11 @@ Updating the index based on the files of the example above:
 
 If `--output-db-prefix` is not set, the database files `ganon_db.*` will be overwritten with the updated version. The `find` command will only look for files `-type f` inside the `v2/files/`, ignoring symbolic links from sequences which were not changing in this version.
 
-By default, `ganon update` will only add new sequences provided to the index. To perform a full update, also removing sequences for the index, use the option `--update-complete` and provide the full set of updated references instead of only the new sequences. 
+By default, `ganon update` will only add new sequences provided to the index. To perform a full update, also removing sequences for the index, use the option `--update-complete` and provide the full set of updated references instead of only the new sequences, as below:
+
+	ganon update --db-prefix ganon_db --output-db-prefix ganon_db_updated \
+				 --update-complete \
+	             --input-files $(find RefSeqCG_arc_bac/v2/files/ -name *.genomic.fna.gz)
 
 ### Using extra files to build and update
 
@@ -300,62 +304,50 @@ By default `ganon update` will only add sequences provided with `--input-files` 
 
 ## Manual Installation
 
-### Dependencies
-
-#### build
+### build dependencies
 
 System packages:
 - gcc >=7 (check [gcc7 with conda](#installing-gcc7-in-a-separate-environment-with-conda)) or clang>=7
 - cmake >=3.10
 - zlib
 
-Specific packages:
-- Catch2 >=2.7.0 ([d63307](https://github.com/catchorg/Catch2/commit/d63307279412de3870cf97cc6802bae8ab36089e))
-- cxxopts >=2.2.0 ([073dd3](https://github.com/jarro2783/cxxopts/commit/073dd3e645fa0c853c3836f3788ca21c39af319d))
-- sdsl-lite 3.0 ([d6ed14](https://github.com/xxsds/sdsl-lite/commit/d6ed14d5d731ed4a4ec12627c1ed7154b396af48))
-- seqan 2.4.0 ([d8b3fc](https://github.com/eseiler/seqan/commit/d8b3fcd55858c150bc1dd95fa3cf4c8ebb640829))
-
-#### run
+### run dependencies
 
 System packages:
 - python >=3.4
-- pandas
+- pandas >=0.22.0
 - wget
 - curl
 - tar
 - GNU core utilities (gawk, zcat)
 
-Specific packages:
-- taxsbp >=0.1.2 ([6e1481](https://github.com/pirovc/taxsbp/commit/6e14819791a960273a191b3e1e028b084ed2d945))
-- binpacking >=1.4.1 ([v1.4.1](https://pypi.org/project/binpacking/1.4.1/))
-
 ** Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
 
-### Obtaining packages
+### Installing taxsbp, binpacking and pylca
 
 ```shh
-git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catch2, cxxopts, sdsl-lite, seqan
-git clone https://github.com/pirovc/taxsbp.git # taxsbp
+git clone https://github.com/pirovc/pylca.git
+cd pylca
+python3 setup.py install
 ```
 
-### Installing 
-
-#### taxsbp
+```shh
+pip3 install binpacking==1.4.3
+binpacking -h
+```
 
 ```shh
+git clone https://github.com/pirovc/taxsbp.git
 cd taxsbp
 python3 setup.py install
 taxsbp -h
 ```
 
-#### binpacking
+### Downloading and building ganon
 
 ```shh
-pip3 install binpacking==1.4.1
-binpacking -h
+git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catch2, cxxopts, sdsl-lite, seqan
 ```
-
-### Building
 	
 ```shh
 cd ganon
