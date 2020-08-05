@@ -63,9 +63,18 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - python3 -m pip install --user --upgrade pip
-  - python3 -m pip install --user pandas>=1.0.0
-  - python3 -m pip install --user binpacking==1.4.1
+  - python3 -m pip install --user pandas>=0.22.0
+  - python3 -m pip install --user binpacking==1.4.3
+  - git clone https://github.com/pirovc/pylca.git
+  - cd pylca
+  - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
+  - python3 setup.py install --user --prefix=
+  - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
+  - cd taxsbp
+  - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
+  - python3 setup.py install --user --prefix=
+  - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install --user coverage;
     fi
