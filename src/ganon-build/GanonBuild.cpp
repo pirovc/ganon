@@ -122,9 +122,9 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
                     break;
                 }
                 updated_bins.emplace_back( binid );
-                std::cerr << "Cleared: " << binid << std::endl;
+                //std::cerr << "Cleared: " << binid << std::endl;
             }
-            // seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
+            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
     }
     else
