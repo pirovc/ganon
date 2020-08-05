@@ -187,9 +187,9 @@ def main(arguments=None):
         use_assembly=True if args.rank=="assembly" else False
 
         # Set up taxonomy
-        tx = time.time()
-        print_log("Loading taxonomy")
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
+        tx = time.time()
+        print_log("Parsing taxonomy")
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
@@ -576,7 +576,7 @@ def load_seqids(files: list=[], seq_info_file: str=None):
         # Count number of input sequences to define method or retrieve accessions for forced eutils
         seqinfo = SeqInfo()
         seqinfo.parse_seqid(files)
-    print_log(" - "  + str(seqinfo.size()) + " sequences successfuly retrieved")
+    print_log(" - "  + str(seqinfo.size()) + " sequences successfully retrieved")
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     return seqinfo
 
@@ -601,7 +601,7 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
         seqid_file = tmp_output_folder + "seqids.txt"
         seqinfo.write_seqid_file(seqid_file)
         seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
-        print_log(" - " + str(seqinfo.size()) + " sequences successfuly retrieved")
+        print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved")
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     else:
         # acc2taxid - offline mode
@@ -611,7 +611,7 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
         tx = time.time()
         print_log("Extracting sequence lengths")
         seqinfo.parse_seqid_length(input_files)
-        print_log(" - " + str(seqinfo.size()) + " sequences successfuly retrieved")
+        print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved")
         # Check if retrieved lengths are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
             print_log(" - could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences")
@@ -666,8 +666,11 @@ def get_taxdump(tmp_output_folder):
     return taxdump_file
 
 def unpack_taxdump(taxdump_file, tmp_output_folder):
+    tx = time.time()
+    print_log("Unpacking taxdump")
     unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
     stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
 def get_accession2taxid(acc2txid, tmp_output_folder):
