@@ -227,7 +227,12 @@ def main(arguments=None):
         taxsbp_params={}
         taxsbp_params["nodes_file"] = ncbi_nodes_file
         taxsbp_params["bin_len"] = bin_length
-        taxsbp_params["bin_exclusive"] = "assembly" if use_assembly else args.rank
+        if use_assembly:
+            taxsbp_params["bin_exclusive"] = "assembly"
+        elif args.rank=="taxid":
+            taxsbp_params["bin_exclusive"] = "leaves"
+        else:
+            taxsbp_params["bin_exclusive"] =  args.rank
         if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
         if fragment_length: 
             taxsbp_params["fragment_len"] = fragment_length
@@ -368,7 +373,12 @@ def main(arguments=None):
         taxsbp_params["update_table"] = bins.get_csv()
         taxsbp_params["nodes_file"] = ncbi_nodes_file
         taxsbp_params["bin_len"] = gnn.bin_length
-        taxsbp_params["bin_exclusive"] = "assembly" if use_assembly else gnn.rank
+        if use_assembly:
+            taxsbp_params["bin_exclusive"] = "assembly"
+        elif gnn.rank=="taxid":
+            taxsbp_params["bin_exclusive"] = "leaves"
+        else:
+            taxsbp_params["bin_exclusive"] =  gnn.rank
         if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
         if gnn.fragment_length: 
             taxsbp_params["fragment_len"] = gnn.fragment_length
