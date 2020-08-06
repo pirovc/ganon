@@ -141,7 +141,7 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version `0.1.X` are **NOT** compatible with `0.2.X`. If you want to convert a database, please use the script `scripts/convert-db-0.1-0.2.py`
+-  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `scripts/convert-db-0.1-0.2.py` or `scripts/convert-db-0.2-0.3.py`
 
 ### classify
 
@@ -286,7 +286,8 @@ The strata filter is active by default. For every read, the best match - meaning
 
 ### --offset (classify)
 
-`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that offset will affect the sensitivity and precision of your classsification.
+`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that higher offset values will affect the sensitivity and precision of your classsification, specially when using 
+`--min-kmers 0`.
 
 ### --max-bloom-size and --bin-length (build)
 
