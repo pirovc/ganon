@@ -979,6 +979,10 @@ def validate_args(args):
             if args.fixed_bloom_size and not args.bin_length:
                 print_log("please set the --bin-length to use --fixed-bloom-size")
                 return False
+
+            if args.max_fp==0:
+                print_log("--max-fp has to be bigger than 0")
+                return False
         
     elif args.which=='classify':
         for prefix in args.db_prefix:

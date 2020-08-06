@@ -625,20 +625,23 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
     std::cerr << " - " << stats.classifiedReads << " sequences classified ("
               << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
-    std::cerr << " - " << stats.matches << " matches (avg. "
-              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 
-
-    if ( config.parsed_hierarchy.size() > 1 )
+    if ( stats.matches > 0 )
     {
-        for ( auto& h : config.parsed_hierarchy )
+        std::cerr << " - " << stats.matches << " matches (avg. "
+                  << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
+        if ( config.parsed_hierarchy.size() > 1 )
         {
-            std::cerr << "    " << h.first << ": " << stats.classifiedReads_hierarchy[h.first] << " sequences ("
-                      << ( stats.classifiedReads_hierarchy[h.first] / static_cast< double >( stats.totalReads ) ) * 100
-                      << "%) " << stats.matches_hierarchy[h.first] << " matches (avg. "
-                      << ( stats.matches_hierarchy[h.first]
-                           / static_cast< double >( stats.classifiedReads_hierarchy[h.first] ) )
-                      << ")" << std::endl;
+            for ( auto& h : config.parsed_hierarchy )
+            {
+                std::cerr << "    " << h.first << ": " << stats.classifiedReads_hierarchy[h.first] << " sequences ("
+                          << ( stats.classifiedReads_hierarchy[h.first] / static_cast< double >( stats.totalReads ) )
+                                 * 100
+                          << "%) " << stats.matches_hierarchy[h.first] << " matches (avg. "
+                          << ( stats.matches_hierarchy[h.first]
+                               / static_cast< double >( stats.classifiedReads_hierarchy[h.first] ) )
+                          << ")" << std::endl;
+            }
         }
     }
 

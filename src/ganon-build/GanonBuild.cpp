@@ -122,7 +122,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
                     break;
                 }
                 updated_bins.emplace_back( binid );
-                //std::cerr << "Cleared: " << binid << std::endl;
+                // std::cerr << "Cleared: " << binid << std::endl;
             }
             seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
@@ -254,7 +254,7 @@ bool run( Config config )
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
-                    if ( seqan::length( seqs[i] ) < config.kmer_size )
+                    if ( config.verbose && seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
                         std::cerr << "WARNING: sequence smaller than k-mer size"
@@ -265,7 +265,7 @@ bool run( Config config )
                     }
                     std::string cid   = seqan::toCString( ids[i] );
                     std::string seqid = cid.substr( 0, cid.find( ' ' ) );
-                    if ( seq_bin.count( seqid ) == 0 )
+                    if ( config.verbose && seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
                         std::cerr << "WARNING: sequence not defined on seqid-bin-file"
