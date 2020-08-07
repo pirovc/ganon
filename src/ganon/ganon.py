@@ -701,27 +701,9 @@ def parse_rep(rep_file):
                 reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
     return seq_cla, seq_unc, reports
 
-def ibf_size_mb(args, bp, bins):
-    return (math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*(bp-args.kmer_size+1)))-1)))*bins)/8388608
-
-def optimal_bins(nbins):
-    return (math.floor(nbins/64)+1)*64
-
-def bins_group(groups_len, fragment_size, overlap_length):
-    group_nbins = {}
-    # ignore overlap_length if too close to the size of the fragment size (*2) to avoid extreme numbers
-    if fragment_size<=overlap_length*2: overlap_length=0
-    for group, group_len in groups_len.items():
-        # approximate extension in size with overlap_length (should be done by each sequence for the group)
-        g_len = group_len + (math.floor(group_len/fragment_size)*overlap_length)
-        group_nbins[group] = math.ceil(g_len/(fragment_size-overlap_length))
-    return group_nbins
-
-
 def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
     return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*n_bins)/8388608
 
-# Independent function
 def approx_n_bins(bin_len, overlap_len, groups_len): 
     frag_len=bin_len-overlap_len
     n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
