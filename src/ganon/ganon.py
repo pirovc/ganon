@@ -2,6 +2,7 @@
 
 import argparse, os, sys, subprocess, time, shlex, shutil, gzip, pickle, math
 import pandas as pd
+import numpy as np
 from io import StringIO
 from collections import defaultdict, OrderedDict
 import taxsbp.taxsbp
@@ -206,7 +207,7 @@ def main(arguments=None):
         else:
             tx = time.time()
             print_log("Calculating best bin length")
-            bin_length = estimate_bin_len(args, seqinfo, tax, use_assembly)
+            bin_length = estimate_bin_len2(args, seqinfo, tax, use_assembly)
             if bin_length<=0: 
                 bin_length=1000000
                 print_log(" - could not estimate bin length, using default (" + str(bin_length) + ")")
@@ -525,7 +526,7 @@ def main(arguments=None):
 #################################################################################################################################
 #################################################################################################################################
 
-def run(cmd, output_file=None, print_stderr=False, shell=False):
+def run(cmd, output_file=None, print_stderr=False, shell=False, exit_on_error: bool=True):
     errcode=0
     stdout=""
     stderr=""
@@ -539,8 +540,7 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         errcode = process.returncode
         if errcode!=0: raise Exception()
         if print_stderr and stderr: print_log(stderr)
-        return stdout, stderr
-
+ 
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
@@ -551,7 +551,9 @@ def run(cmd, output_file=None, print_stderr=False, shell=False):
         if stdout: print_log(stdout)
         print_log("Error: ")
         if stderr: print_log(stderr)
-        sys.exit(errcode)
+        if exit_on_error: sys.exit(errcode)
+
+    return stdout, stderr
 
 def check_updated_seqids(new_seqids, old_seqids):
     # remove repeated from old bins
@@ -715,96 +717,47 @@ def bins_group(groups_len, fragment_size, overlap_length):
         group_nbins[group] = math.ceil(g_len/(fragment_size-overlap_length))
     return group_nbins
 
-def estimate_bin_len(args, seqinfo, tax, use_assembly):
-    groups_len = defaultdict(int)
-    
+
+def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
+    return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*n_bins)/8388608
+
+# Independent function
+def approx_n_bins(bin_len, overlap_len, groups_len): 
+    frag_len=bin_len-overlap_len
+    n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
+    return (math.floor(n_bins/64)+1)*64 #return optimal number of bins for the IBF (multiples of 64)
+
+def estimate_bin_len2(args, seqinfo, tax, use_assembly):
+    groups_len = {}
     if use_assembly:
         groups_len = seqinfo.seqinfo.groupby('assembly').sum().to_dict()['length']
     else:
         groups_len = pd.concat([seqinfo.seqinfo['taxid'].apply(lambda x: tax.get_rank(x, args.rank)), seqinfo.seqinfo['length']], axis=1).groupby('taxid').sum().to_dict()['length']
 
-    # number of groups and aux. variables
-    ngroups = len(groups_len)
-    min_group_len = min(groups_len.values())
-    max_group_len = max(groups_len.values())
-    sum_group_len = sum(groups_len.values())
-
-    # special case with one group
-    if ngroups==1:
-        return math.floor(sum_group_len/64)
-
-    # minimum number of bins possible (= number of groups) will generate a big and sparse IBF
-    min_bins_optimal = optimal_bins(ngroups)
-    # maximum number of bins possible (bin_length = min_group_len) will generate the smallest possible IBF
-    max_bins_optimal = optimal_bins(sum(bins_group(groups_len, min_group_len, args.overlap_length).values()))
-    # Min. possible size based on the maxium number of bins
-    min_size_possible = ibf_size_mb(args, min_group_len, max_bins_optimal)
-
-    if args.verbose:
-        print_log("Group sizes for %s in bp: min %d, max %d, avg %d, sum %d" % (args.rank, min_group_len, max_group_len, math.ceil(sum_group_len/min_bins_optimal), sum_group_len))
-        print_log("Minimum optimal number of bins %d (from %d bins)" % (min_bins_optimal,ngroups))
-        print_log("Minimum estimated size %.2fMB in 1 bin" % ibf_size_mb(args, sum_group_len, 1))
-        print_log("%d bins necessary to achieve %.2fMB (%dbp per bin)" % (max_bins_optimal, min_size_possible, min_group_len))
-        print_log("%.2fMB necessary to achieve %d bins (%dbp per bin)" % (ibf_size_mb(args, max_group_len, min_bins_optimal), min_bins_optimal, max_group_len))
-
-    # define maximum size based on an user input
-    if args.max_bloom_size:
-        if args.max_bloom_size < math.ceil(min_size_possible):
-            print_log("--max-bloom-size is smaller than minimum possible %.2f. Try increasing --max-fp/--hash-functions" % min_size_possible)
-            return 0
-        max_bloom_size = args.max_bloom_size # user provided size limit
-        min_nbins = min_bins_optimal # use the optimal
-    else:
-        max_bloom_size = 0 # no size limit
-        min_nbins = min_bins_optimal*2 # define a threshold for stoping
-
-    # Try to estimate best fit for size and number of bins
-    bin_length = min_group_len  # start length on the minimun possible, max bins (biggest filter)
-    bin_increment = math.ceil(sum_group_len/min_bins_optimal) # increment filter based on the avg.
-    attempts=30 # number of iterations
-    att_cont=0
-    decrease_iter = 1 
-    if args.verbose: print_log("\nmax_bloom_size %d, min_nbins %d" % (max_bloom_size, min_nbins))
-    while att_cont<=attempts:
-        att_cont+=1
-
-        nbins = optimal_bins(sum(bins_group(groups_len, bin_length, args.overlap_length).values()))
-        size_mb = ibf_size_mb(args, bin_length, nbins)
-  
-        if args.verbose: print_log("bin_length %d will generate %d bins with %.2fMB" % (bin_length, nbins, size_mb))
-
-        if max_bloom_size: # has user input size limit
-            if math.ceil(size_mb)>=max_bloom_size*0.99 and math.floor(size_mb)<=max_bloom_size*1.01: # if achieved in the goal range
-                break
-            elif size_mb>max_bloom_size: # index too big, step back and reduce increment
-                decrease_iter=2 # on first time passing max_bloom_size start to decrease increment on every iteration
-                bin_increment = -abs(math.floor(bin_increment/decrease_iter))
-            elif size_mb<max_bloom_size:
-                bin_increment = abs(math.floor(bin_increment/decrease_iter))
-        else:
-            if nbins>=min_nbins-64 and nbins<=min_nbins+64: # achieved low number of bins
-                break
-            elif nbins>min_nbins:
-                bin_increment = abs(math.floor(bin_increment/decrease_iter))
-            elif nbins<min_nbins:
-                decrease_iter=2  # on first time below min_nbins start to decrease increment on every iteration
-                bin_increment = -abs(math.floor(bin_increment/decrease_iter))
-
-        if bin_increment==0: break
-
-        bin_length+=bin_increment
-
-        # if bin_length is growing bigger than the max group len. or smaller than overlap
-        if bin_length>=max_group_len: 
-            bin_length=max_group_len
-            break
-        elif bin_length<=args.overlap_length:
-            bin_length=args.overlap_length+1
-            break
+    # Set limits
+    min_bin_len = min(groups_len.values())+args.overlap_length
+    max_bin_len = max(groups_len.values())
     
-    if args.verbose: print_log("-- %d bins -> %.2fMB (%dbp per bin) -- " % (nbins, size_mb , bin_length))
+    # Define intervals of bin_length
+    # geometric space to have more simulations on smaller filters
+    bin_lens = np.geomspace(min_bin_len, max_bin_len, num=200)
+    filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
 
-    return bin_length
+    # keep only positives
+    pos_idx = filter_sizes>0
+    bin_lens = bin_lens[pos_idx]
+    filter_sizes = filter_sizes[pos_idx]
+    if args.max_bloom_size:
+        idx_below_max_size = filter_sizes<=args.max_bloom_size
+        # if maxsize chosen is smaller than max, recalculate curve
+        if idx_below_max_size.any() and sum(idx_below_max_size)>1: 
+            # linear space of subset
+            bin_lens = np.linspace(bin_lens[idx_below_max_size].min(), bin_lens[idx_below_max_size].max(), 200)
+            filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
+        else:
+            print("max size too small, min around " + str(min(filter_sizes)) + "MB")
+
+    return int(np.percentile(bin_lens, 75))
 
 def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
     if not ranks:  
@@ -1133,7 +1086,7 @@ class SeqInfo:
                                     seqid_file,
                                     "-a" if get_assembly else "",
                                     "-s" if skip_len_taxid else "")
-        stdout, stderr = run(run_get_len_taxid_cmd, print_stderr=True)
+        stdout, stderr = run(run_get_len_taxid_cmd, print_stderr=True, exit_on_error=False)
         
         if get_assembly and skip_len_taxid:
             # todo - order is always the same?
