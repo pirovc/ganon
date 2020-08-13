@@ -207,12 +207,12 @@ def main(arguments=None):
         else:
             tx = time.time()
             print_log("Calculating best bin length")
-            bin_length = estimate_bin_len2(args, seqinfo, tax, use_assembly)
+            bin_length, approx_size, n_bins = estimate_bin_len_size(args, seqinfo, tax, use_assembly)
             if bin_length<=0: 
                 bin_length=1000000
-                print_log(" - could not estimate bin length, using default (" + str(bin_length) + ")")
+                print_log(" - could not estimate bin length, using default of " + str(bin_length) + "bp")
             else:
-                print_log(" - " + str(bin_length) + "bp")
+                print_log(" - bin length: " + str(bin_length) + "bp (approx: " + str(n_bins) + " bins / " + str("{0:.2f}".format(approx_size)) + "MB)")
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         # Set fragment length
@@ -282,11 +282,11 @@ def main(arguments=None):
         print_log(" - max unique " + str(args.kmer_size) +  "-mers: " + str(max_kmer_count))
         if not args.fixed_bloom_size:
             bin_size_bits = math.ceil(-(1/((1-args.max_fp**(1/float(args.hash_functions)))**(1/float(args.hash_functions*max_kmer_count))-1)))   
-            print_log(" - IBF calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.4f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])")
+            print_log(" - IBF calculated size with fp<=" + str(args.max_fp) + ": " + str("{0:.2f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])")
         else:
             bin_size_bits = math.ceil((args.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
             estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(args.hash_functions*max_kmer_count)))**args.hash_functions
-            print_log(" - IBF calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.4f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])"))
+            print_log(" - IBF calculated max. fp with size=" + str(args.fixed_bloom_size) + "MB: " + str("{0:.2f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])"))
 
         # Write aux. file for ganon
         acc_bin_file = tmp_output_folder + "acc_bin.txt"
@@ -702,14 +702,21 @@ def parse_rep(rep_file):
     return seq_cla, seq_unc, reports
 
 def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
-    return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*n_bins)/8388608
+    return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*optimal_bins(n_bins))/8388608
 
 def approx_n_bins(bin_len, overlap_len, groups_len): 
     frag_len=bin_len-overlap_len
     n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
-    return (math.floor(n_bins/64)+1)*64 #return optimal number of bins for the IBF (multiples of 64)
+    return n_bins
 
-def estimate_bin_len2(args, seqinfo, tax, use_assembly):
+def optimal_bins(n): 
+    #return optimal number of bins for the IBF (multiples of 64)
+    return (math.floor(n/64)+1)*64 
+
+def estimate_bin_len_size(args, seqinfo, tax, use_assembly):
+    # Simulate bins that will be created by taxsbp with many bin lenghts
+    # Select the best trade-off on size and n. of bins
+
     groups_len = {}
     if use_assembly:
         groups_len = seqinfo.seqinfo.groupby('assembly').sum().to_dict()['length']
@@ -717,29 +724,50 @@ def estimate_bin_len2(args, seqinfo, tax, use_assembly):
         groups_len = pd.concat([seqinfo.seqinfo['taxid'].apply(lambda x: tax.get_rank(x, args.rank)), seqinfo.seqinfo['length']], axis=1).groupby('taxid').sum().to_dict()['length']
 
     # Set limits
-    min_bin_len = min(groups_len.values())+args.overlap_length
+    # fixed start size (too low generates few possible cases for analysis)
+    min_bin_len = 500
+    # Biggest group as max
     max_bin_len = max(groups_len.values())
-    
-    # Define intervals of bin_length
-    # geometric space to have more simulations on smaller filters
-    bin_lens = np.geomspace(min_bin_len, max_bin_len, num=200)
+    # Try to find min. size by simulating points in geometric space 
+    # between min. and max. bin length. Use geometric to have more simulations on smaller sizes
+    # Necessary to calculate instead of getting first lowest
+    # since it may be a local minimum
+    bin_lens = np.geomspace(min_bin_len, max_bin_len, num=300)
+
+    # Caculate filter sizes based on bin_lens
     filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
+    # keep only valid positive entries to define min. filter size
+    idx_above_min = filter_sizes>0
+    filter_sizes = filter_sizes[idx_above_min]
+    bin_lens = bin_lens[idx_above_min]
+    min_filter_size=filter_sizes.min()
 
-    # keep only positives
-    pos_idx = filter_sizes>0
-    bin_lens = bin_lens[pos_idx]
-    filter_sizes = filter_sizes[pos_idx]
-    if args.max_bloom_size:
-        idx_below_max_size = filter_sizes<=args.max_bloom_size
-        # if maxsize chosen is smaller than max, recalculate curve
-        if idx_below_max_size.any() and sum(idx_below_max_size)>1: 
-            # linear space of subset
-            bin_lens = np.linspace(bin_lens[idx_below_max_size].min(), bin_lens[idx_below_max_size].max(), 200)
-            filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
-        else:
-            print("max size too small, min around " + str(min(filter_sizes)) + "MB")
+    print_log(" - Approx. min. size possible: " + str("{0:.2f}".format(min_filter_size)) + "MB")
+    # Define max size
+    # if none defined or too small, Define the max as 1.5 time size of the min
+    if args.max_bloom_size is None:
+        max_filter_size = min_filter_size*1.5
+    elif args.max_bloom_size<min_filter_size:
+        max_filter_size = min_filter_size*1.5
+        print_log(" - --max-bloom-size " + str(args.max_bloom_size) + "MB is too small, using max. default (1.5x min.): " + str("{0:.2f}".format(max_filter_size)) + "MB")
+    else:
+        max_filter_size = args.max_bloom_size
+    
+    # keep only valid points below max_filter_size
+    idx_below_max = filter_sizes<=max_filter_size
 
-    return int(np.percentile(bin_lens, 75))
+    # If more than one valid point
+    if sum(idx_below_max)>1: 
+        # points between min and max to define good fit
+        bin_lens = np.linspace(bin_lens[idx_below_max].min(), bin_lens[idx_below_max].max(), num=300)
+        filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
+        # 95 percentile end of dist. based on max size
+        final_bin_len = math.ceil(np.percentile(bin_lens, 95))
+        final_filter_size = np.percentile(filter_sizes, 95)
+        n_bins = approx_n_bins(final_bin_len, args.overlap_length, groups_len)
+        return final_bin_len, final_filter_size, n_bins    
+    else:
+        return 0,0,0
 
 def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
     if not ranks:  
