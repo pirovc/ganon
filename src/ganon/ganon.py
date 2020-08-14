@@ -526,7 +526,7 @@ def main(arguments=None):
 #################################################################################################################################
 #################################################################################################################################
 
-def run(cmd, output_file=None, print_stderr=False, shell=False, exit_on_error: bool=True):
+def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=True):
     errcode=0
     stdout=""
     stderr=""
@@ -534,7 +534,7 @@ def run(cmd, output_file=None, print_stderr=False, shell=False, exit_on_error: b
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd, 
                                     shell=shell, 
                                     universal_newlines=True, 
-                                    stdout=subprocess.PIPE if output_file is None else open(output_file, 'w'), 
+                                    stdout=subprocess.PIPE, 
                                     stderr=subprocess.PIPE)   
         stdout, stderr = process.communicate() # wait for the process to terminate
         errcode = process.returncode
@@ -717,9 +717,12 @@ def estimate_bin_len_size(args, seqinfo, tax, use_assembly):
     # Simulate bins that will be created by taxsbp with many bin lenghts
     # Select the best trade-off on size and n. of bins
 
+    # Generate dict with groups:total_length
     groups_len = {}
     if use_assembly:
         groups_len = seqinfo.seqinfo.groupby('assembly').sum().to_dict()['length']
+    elif args.rank=="taxid":
+        groups_len = seqinfo.seqinfo.groupby('taxid').sum().to_dict()['length']
     else:
         groups_len = pd.concat([seqinfo.seqinfo['taxid'].apply(lambda x: tax.get_rank(x, args.rank)), seqinfo.seqinfo['length']], axis=1).groupby('taxid').sum().to_dict()['length']
 
@@ -758,14 +761,14 @@ def estimate_bin_len_size(args, seqinfo, tax, use_assembly):
 
     # If more than one valid point
     if sum(idx_below_max)>1: 
-        # points between min and max to define good fit
+        # reduce space in between min. and max. filter size to get better
         bin_lens = np.linspace(bin_lens[idx_below_max].min(), bin_lens[idx_below_max].max(), num=300)
-        filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, args.overlap_length, groups_len), args.max_fp, args.hash_functions, args.kmer_size) for b in bin_lens])
-        # 95 percentile end of dist. based on max size
-        final_bin_len = math.ceil(np.percentile(bin_lens, 95))
-        final_filter_size = np.percentile(filter_sizes, 95)
-        n_bins = approx_n_bins(final_bin_len, args.overlap_length, groups_len)
-        return final_bin_len, final_filter_size, n_bins    
+        # Estimate n_bins
+        n_bins = [approx_n_bins(b, args.overlap_length, groups_len) for b in bin_lens]
+        filter_sizes = [ibf_size_mb(b, n_bins[i], args.max_fp, args.hash_functions, args.kmer_size) for i,b in enumerate(bin_lens)]
+        # Get value with min. number of bins from this distribution
+        idx_min = np.where(n_bins == np.amin(n_bins))[0][0]
+        return int(bin_lens[idx_min]), filter_sizes[idx_min], n_bins[idx_min]    
     else:
         return 0,0,0
 
