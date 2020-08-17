@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import argparse, os, sys, subprocess, time, shlex, shutil, math
 from collections import defaultdict
 import pandas as pd
@@ -7,7 +6,6 @@ import numpy as np
 
 import taxsbp.taxsbp
 
-#sys.path.append(os.path.abspath("src"))
 from src.ganon.bins import Bins
 from src.ganon.gnn import Gnn
 from src.ganon.seqinfo import SeqInfo
@@ -153,6 +151,7 @@ def main(arguments=None):
     # set path for executables
     path_exec = set_paths(args)
     if not path_exec: sys.exit(1)
+
     # validate arguments
     if not validate_args(args): sys.exit(1)
 
@@ -162,18 +161,6 @@ def main(arguments=None):
         if len(input_files)==0 and len(input_files_from_directory)==0:
             print_log("No valid input files found")
             sys.exit(1)
-
-        # set output files
-        db_prefix = args.db_prefix
-        if args.which=='update' and args.output_db_prefix:
-            tmp_output_folder = args.output_db_prefix + "_tmp/"
-        else:
-            tmp_output_folder = db_prefix + "_tmp/"
-        db_prefix_ibf = db_prefix + ".ibf"
-        db_prefix_map = db_prefix + ".map"
-        db_prefix_tax = db_prefix + ".tax"
-        db_prefix_gnn = db_prefix + ".gnn"
-
 
     tx_total = time.time()
     print_log("- - - - - - - - - -")
@@ -187,15 +174,19 @@ def main(arguments=None):
 #################################################################################################################################
 #################################################################################################################################
 
-    if args.which=='build':  
-
-        set_tmp_folder(tmp_output_folder)
+    if args.which=='build':
+        # Set db prefixes
+        db_prefix = {prefix:args.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
+        
+        # Set temporary working folder 
+        tmp_output_folder = set_tmp_folder(args)
 
         # Set assembly mode
         use_assembly=True if args.rank=="assembly" else False
 
         # Set up taxonomy
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(args, tmp_output_folder)
+        
         tx = time.time()
         print_log("Parsing taxonomy")
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
@@ -261,17 +252,17 @@ def main(arguments=None):
         print_log("Building database files")
         
         # Write .map file
-        print_log(" - " + db_prefix_map)
-        bins.write_map_file(db_prefix_map, use_assembly)
+        print_log(" - " + db_prefix["map"])
+        bins.write_map_file(db_prefix["map"], use_assembly)
 
         # Write .tax file
-        print_log(" - " + db_prefix_tax)
+        print_log(" - " + db_prefix["tax"])
         tax.filter(bins.get_taxids()) # filter only used taxids
         if use_assembly: tax.add_nodes(bins.get_specialization_taxid(), "assembly") # add assembly nodes
-        tax.write(db_prefix_tax)
+        tax.write(db_prefix["tax"])
 
         # Write .gnn file
-        print_log(" - " + db_prefix_gnn)
+        print_log(" - " + db_prefix["gnn"])
         gnn = Gnn(kmer_size=args.kmer_size, 
                 hash_functions=args.hash_functions, 
                 number_of_bins=actual_number_of_bins, 
@@ -280,7 +271,7 @@ def main(arguments=None):
                 fragment_length=fragment_length,
                 overlap_length=args.overlap_length,
                 bins=bins.get_list())
-        gnn.write(db_prefix_gnn)
+        gnn.write(db_prefix["gnn"])
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         print_log("Building index (ganon-build)")
@@ -305,7 +296,7 @@ def main(arguments=None):
                                         "--kmer-size " + str(args.kmer_size),
                                         "--hash-functions " + str(args.hash_functions),
                                         "--threads " + str(args.threads),
-                                        "--output-filter-file " + db_prefix_ibf,
+                                        "--output-filter-file " + db_prefix["ibf"],
                                         "--verbose" if args.verbose else "",
                                         "--n-refs " + str(args.n_refs) if args.n_refs is not None else "",
                                         "--n-batches " + str(args.n_batches) if args.n_batches is not None else "",
@@ -315,7 +306,7 @@ def main(arguments=None):
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
 
         # Delete temp files
-        shutil.rmtree(tmp_output_folder)
+        rm_tmp_folder(tmp_output_folder)
         
 #################################################################################################################################
 #################################################################################################################################
@@ -324,10 +315,15 @@ def main(arguments=None):
 
     elif args.which=='update':  
         tx = time.time()
-        set_tmp_folder(tmp_output_folder)
+
+        # Set db prefixes
+        db_prefix = {prefix:args.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
+        
+        # Set temporary working folder 
+        tmp_output_folder = set_tmp_folder(args)
 
         # Load .gnn file   
-        gnn = Gnn(file=db_prefix_gnn)
+        gnn = Gnn(file=db_prefix["gnn"])
         # Set assembly mode
         use_assembly=True if gnn.rank=="assembly" else False
 
@@ -405,29 +401,29 @@ def main(arguments=None):
         tx = time.time()
         print_log("Updating database files")
         # load new taxonomy
-        print_log(" - " + args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
+        print_log(" - " + args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix["tax"])
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         # Update and write .tax file
         tax.filter(updated_bins.get_taxids()) # filter only used taxids
         if use_assembly: tax.add_nodes(updated_bins.get_specialization_taxid(), "assembly") # add assembly nodes
         # Load old .tax file into new taxonomy
-        tax.merge(Tax([db_prefix_tax]))
+        tax.merge(Tax([db_prefix["tax"]]))
         # Write .tax file
-        tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix_tax)
+        tax.write(args.output_db_prefix + ".tax" if args.output_db_prefix else db_prefix["tax"])
         # TODO - remove entries from .tax from removed entries of the db
 
         # merge updated and old bins together
         bins.merge(updated_bins)
         
         # Write .gnn file
-        print_log(" - " + args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
+        print_log(" - " + args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix["gnn"])
         gnn.bins = bins.get_list() # save updated bins
         gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
-        gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix_gnn)
+        gnn.write(args.output_db_prefix + ".gnn" if args.output_db_prefix else db_prefix["gnn"])
 
         # Recreate .map file based on the new bins
-        print_log(" - " + args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map)
-        bins.write_map_file(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix_map, use_assembly)
+        print_log(" - " + args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix["map"])
+        bins.write_map_file(args.output_db_prefix + ".map" if args.output_db_prefix else db_prefix["map"], use_assembly)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
         tx = time.time()
@@ -455,7 +451,7 @@ def main(arguments=None):
         # Temporary output filter 
         tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
         run_ganon_build_cmd = " ".join([path_exec['build'],
-                                        "--update-filter-file " + db_prefix_ibf,
+                                        "--update-filter-file " + db_prefix["ibf"],
                                         "--seqid-bin-file " + acc_bin_file,
                                         "--output-filter-file " + tmp_db_prefix_ibf,
                                         "--threads " + str(args.threads),                                
@@ -469,10 +465,11 @@ def main(arguments=None):
         stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
         
         # move IBF to final location
-        shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix_ibf)
+        shutil.move(tmp_db_prefix_ibf, args.output_db_prefix + ".ibf" if args.output_db_prefix else db_prefix["ibf"])
 
         # Delete temp files
-        shutil.rmtree(tmp_output_folder)
+        rm_tmp_folder(tmp_output_folder)
+        
 
 #################################################################################################################################
 #################################################################################################################################
@@ -570,10 +567,20 @@ def check_updated_seqids(new_seqids, old_seqids):
 
     return added_seqids, removed_seqids, kept_seqids
 
-def set_tmp_folder(tmp_output_folder):
+def set_tmp_folder(args):
+    if args.which=='update' and args.output_db_prefix:
+        tmp_output_folder = args.output_db_prefix + "_tmp/"
+    else:
+        tmp_output_folder = args.db_prefix + "_tmp/"
+
     # Create temporary working directory
-    if os.path.exists(tmp_output_folder): shutil.rmtree(tmp_output_folder) # delete if already exists
+    if os.path.exists(tmp_output_folder): rm_tmp_folder(tmp_output_folder) # delete if already exists
     os.makedirs(tmp_output_folder)
+
+    return tmp_output_folder
+
+def rm_tmp_folder(fld):
+    shutil.rmtree(fld)
 
 def load_seqids(files: list=[], seq_info_file: str=None):
     tx = time.time()

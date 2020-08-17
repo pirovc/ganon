@@ -14,7 +14,7 @@ a k-mer based read classification tool which uses Interleaved Bloom Filters in c
 conda install -c bioconda -c conda-forge ganon
 ```
 
-* There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
+* There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [Install without conda](#install-without-conda)
 
 * Ganon runs on osx only with a [manual installation](#manual-installation). It was tested with gcc 7 and 8, but conda does not support those compilers for osx yet.
 
@@ -303,7 +303,7 @@ Such adjustment is necessary to equalize the size of each bin, since the IBF req
 
 By default `ganon update` will only add sequences provided with `--input-files` to an previosly generated index. Using `--update-complete` it is possible to add and remove sequences from an index. When activating this option, ganon will consider that the files provided in `--input-files` are an actual representation of the index to build. It will automatically detect sequences that should be kept, inserted or removed given the input files and the information contained on the index to be updated.
 
-## Manual Installation
+## Install without conda
 
 ### build dependencies
 
@@ -317,6 +317,7 @@ System packages:
 System packages:
 - python >=3.4
 - pandas >=0.22.0
+- numpy
 - wget
 - curl
 - tar
