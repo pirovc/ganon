@@ -141,7 +141,7 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `scripts/convert-db-0.1-0.2.py` or `scripts/convert-db-0.2-0.3.py`
+-  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `ganon-convert-db-0.1-0.2.py` or `ganon-convert-db-0.2-0.3.py`
 
 ### classify
 
