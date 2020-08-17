@@ -352,25 +352,32 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catc
 	
 ```shh
 cd ganon
+python3 setup.py install --record files.txt
+
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
+make install
 ```
 
 in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality. use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 
-### Testing
+If everything was properly installed, the following commands should show the help pages without errors:
+
+```shh
+ganon -h
+ganon-build -h
+ganon-classify -h
+```
+
+### Run tests
 
 ```shh
 cd ganon
-./ganon -h
 python3 -m unittest discover -s tests/ganon/unit/
 python3 -m unittest discover -s tests/ganon/integration/
-
-cd build
-./ganon-build -h
-./ganon-classify -h
+cd build/
 ctest -VV .
 ```
 

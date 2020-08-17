@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 
-import argparse, os, sys, subprocess, time, shlex, shutil, gzip, pickle, math
+import argparse, os, sys, subprocess, time, shlex, shutil, math
+from collections import defaultdict
 import pandas as pd
 import numpy as np
-from io import StringIO
-from collections import defaultdict, OrderedDict
+
 import taxsbp.taxsbp
+
+#sys.path.append(os.path.abspath("src"))
+from src.ganon.bins import Bins
+from src.ganon.gnn import Gnn
+from src.ganon.seqinfo import SeqInfo
+from src.ganon.tax import Tax
 
 def main(arguments=None):
 
@@ -181,7 +187,8 @@ def main(arguments=None):
 #################################################################################################################################
 #################################################################################################################################
 
-    if args.which=='build':              
+    if args.which=='build':  
+
         set_tmp_folder(tmp_output_folder)
 
         # Set assembly mode
@@ -999,295 +1006,6 @@ def check_db(prefix):
 def print_log(text):
     sys.stderr.write(text+"\n")
     sys.stderr.flush()
-
-class Gnn:
-    def __init__(self,
-                kmer_size: int = None, 
-                hash_functions: int = None, 
-                number_of_bins: int = None,
-                bin_length: int = None,
-                fragment_length: int = None,
-                overlap_length: int = None,
-                rank: str = None,
-                bins: list = None,
-                file: str=None):
-        if file:
-            self.parse(file)
-        else:
-            self.kmer_size = kmer_size
-            self.hash_functions = hash_functions
-            self.number_of_bins = number_of_bins
-            self.rank = rank
-            self.bin_length = bin_length
-            self.fragment_length = fragment_length
-            self.overlap_length = overlap_length
-            self.bins = bins
-
-    def __repr__(self):
-        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'Gnn({})'.format(', '.join(args))
-
-    def parse(self, file):
-        gnn = pickle.load(gzip.open(file, "rb"))
-        self.kmer_size = gnn['kmer_size']
-        self.hash_functions = gnn['hash_functions']
-        self.number_of_bins = gnn['number_of_bins']
-        self.rank = gnn['rank']
-        self.bin_length = gnn['bin_length']
-        self.fragment_length = gnn['fragment_length']
-        self.overlap_length = gnn['overlap_length']
-        self.bins = gnn['bins']
-
-    def write(self, file):
-        gnn = {'kmer_size': self.kmer_size, 
-        'hash_functions': self.hash_functions, 
-        'number_of_bins': self.number_of_bins, 
-        'rank': self.rank,
-        'bin_length': self.bin_length,
-        'fragment_length': self.fragment_length,
-        'overlap_length': self.overlap_length,
-        'bins': self.bins }
-        with gzip.open(file, 'wb') as f: pickle.dump(gnn, f)
-
-class SeqInfo:
-    seq_info_colums=['seqid','length','taxid', 'assembly']
-    seq_info_types={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'assembly': 'str'}
-    seqinfo = pd.DataFrame(columns=seq_info_colums)
-
-    def __init__(self, seq_info_file: str=None):
-        if seq_info_file:
-            self.seqinfo = pd.read_csv(seq_info_file, sep='\t', header=None, skiprows=0, names=self.seq_info_colums, dtype=self.seq_info_types)
-
-    def __repr__(self):
-        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'SeqInfo({})'.format(', '.join(args))
-    
-    def get_csv(self):
-        return self.seqinfo.to_csv(sep="\t",header=False, index=False)
-
-    def size(self):
-        return self.seqinfo.shape[0]
-
-    def get_seqids(self):
-        return self.seqinfo.seqid
-
-    def remove_seqids(self, seqids):
-        self.seqinfo = self.seqinfo[~self.seqinfo['seqid'].isin(seqids)]
-
-    def write_seqid_file(self, seqid_file):
-        self.seqinfo["seqid"].to_csv(seqid_file, header=False, index=False)
-
-    def parse_seqid(self, input_files):
-        for file in input_files:
-            # cat | zcat | gawk -> compability with osx
-            run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr = run(run_get_header, print_stderr=False, shell=True)
-            self.seqinfo = self.seqinfo.append(pd.read_csv(StringIO(stdout), header=None, names=['seqid']), ignore_index=True)
-
-    def parse_seqid_length(self, input_files):
-        for file in input_files:
-            # cat | zcat | gawk -> compability with osx
-            run_get_length = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr = run(run_get_length, print_stderr=False, shell=True)
-            self.seqinfo = self.seqinfo.append(pd.read_csv(StringIO(stdout), sep="\t", header=None, names=['seqid', 'length']), ignore_index=True)
-            # remove entries with length 0
-            self.seqinfo = self.seqinfo[self.seqinfo['length']>0]
-
-    def parse_ncbi_eutils(self, seqid_file, path_exec_get_len_taxid, skip_len_taxid=False, get_assembly=False):
-        run_get_len_taxid_cmd = '{0} -i {1} {2} {3} -r'.format(
-                                    path_exec_get_len_taxid,
-                                    seqid_file,
-                                    "-a" if get_assembly else "",
-                                    "-s" if skip_len_taxid else "")
-        stdout, stderr = run(run_get_len_taxid_cmd, print_stderr=True, exit_on_error=False)
-        
-        if get_assembly and skip_len_taxid:
-            # todo - order is always the same?
-            self.seqinfo.assembly = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','assembly'], dtype=self.seq_info_types)['assembly']
-        else:
-            self.seqinfo = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=self.seq_info_colums, dtype=self.seq_info_types)
-
-    def parse_acc2txid(self, acc2txid_files):
-        count_acc2txid = {}
-        set_seqids = set(self.seqinfo.seqid)
-        for acc2txid in acc2txid_files:
-            tmp_seqid_taxids = pd.read_csv(acc2txid, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['seqid','taxid'], converters={'seqid':lambda x: x if x in set_seqids else ""}, dtype={'taxid': 'str'})
-            tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['seqid']!=""] #keep only seqids used
-            tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['taxid']!="0"] # filter out taxid==0
-            # save count to return
-            count_acc2txid[acc2txid] = tmp_seqid_taxids.shape[0]
-            # append to main file (will match col names)
-            self.seqinfo = self.seqinfo.append(tmp_seqid_taxids, sort=False, ignore_index=True)
-            del tmp_seqid_taxids
-            #if already found all taxid for the seqids (no need to parse all files till the end)
-            if sum(count_acc2txid.values()) == self.size(): 
-                break 
-        return count_acc2txid
-
-
-class Bins:
-    # bins columns pandas dataframe
-    columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
-    bins = pd.DataFrame([], columns=columns)
-
-    def __init__(self, taxsbp_ret: list=[]):
-        if taxsbp_ret: 
-            self.parse_bins(taxsbp_ret)
-
-    def __repr__(self):
-        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'Bins({})'.format(', '.join(args))
-    
-    def parse_bins(self, taxsbp_ret):
-        self.bins = pd.DataFrame(taxsbp_ret, columns=self.columns)
-
-    def size(self):
-        return self.bins.shape[0]
-
-    def get_subset(self,seqids: list=[], binids: list=[]):
-        subBins = Bins()
-        if seqids: subBins.bins = self.bins.loc[self.bins['seqid'].isin(seqids)]
-        elif binids: subBins.bins = self.bins.loc[self.bins['binid'].isin(binids)]
-        return subBins
-
-    def get_csv(self):
-        return self.bins.to_csv(sep="\t",header=False, index=False)
-
-    def get_list(self):
-        return self.bins.values.tolist()
-
-    def get_bins(self):
-        return self.bins
-
-    def remove_seqids(self, seqids):
-        self.bins = self.bins.loc[~self.bins['seqid'].isin(seqids)]
-
-    def get_number_of_bins(self):
-        return self.get_binids().size
-    
-    def get_taxids(self):
-        return self.bins.taxid.unique()
-
-    def get_binids(self):
-        return self.bins.binid.unique()
-
-    def get_seqids(self):
-        return self.bins.seqid.unique()
-
-    def get_binid_length_sum(self):
-        return self.bins.groupby(['binid'])['length'].sum()
-        
-    def get_max_bin_length(self):
-        return self.get_binid_length_sum().max()
-
-    def get_specialization_taxid(self):
-        return self.bins[['specialization','taxid']].drop_duplicates().set_index('specialization')
-
-    def merge(self, bins):
-        self.bins = pd.concat([self.bins, bins.get_bins()])
-
-    def write_acc_bin_file(self, acc_bin_file, binids: set=None):
-        if binids is None:
-            self.bins.to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
-        else:
-            self.bins.loc[self.bins['binid'].isin(binids)].to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
-
-    def write_map_file(self, map_file, use_assembly):
-        if use_assembly:
-            self.bins[['specialization','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')
-        else:
-            self.bins[['taxid','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')
-       
-class Tax:
-    def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
-        # nodes[node] = (parent, rank, name)
-        self.nodes = {}
-        # default root node
-        self.nodes["1"] = ("0", "no rank", "root")
-        if tax_files is not None:
-            self.parse(tax_files)
-        elif ncbi_nodes is not None:
-            self.parse_ncbi(ncbi_nodes, ncbi_names)
-
-    def __repr__(self):
-        args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
-        return 'Tax({})'.format(', '.join(args))
-
-    def add_nodes(self, new_nodes, label):
-        # add nodes from a pandas dataframe [group taxid]
-        for node,parent in new_nodes.iterrows():
-            if node not in self.nodes:
-                self.nodes[node] = (parent['taxid'],label,node) # repeat node on name
-
-    def merge(self, extra_tax): # duplicates solved by current tax
-        for node in extra_tax.nodes:
-            if node not in self.nodes: # if present in the current tax
-                self.nodes[node] = extra_tax.nodes[node]
-
-    def filter(self, filter_nodes):
-        new_nodes = {}
-        # Filter nodes for used taxids
-        for node in filter_nodes:
-            if node in self.nodes: # if present in the current tax
-                t = node
-                while t!="0": # while not at root, get lineage
-                    if t in new_nodes: break # branch already added
-                    new_nodes[t] = self.nodes[t] # copy node
-                    t = self.nodes[t][0] # get parent
-        self.nodes = new_nodes
-
-    def parse(self, tax_files):
-        for tax_file in tax_files:
-            with open(tax_file , 'r') as file:
-                for line in file:
-                    node, parent, rank, name = line.rstrip().split("\t")
-                    if node not in self.nodes:
-                        self.nodes[node] = (parent,rank,name)
-
-    def parse_ncbi(self, ncbi_nodes, ncbi_names):
-        names = defaultdict(lambda: "")
-        if ncbi_names is not None:
-            with open(ncbi_names,'r') as file:
-                for line in file:
-                    node, name, _, name_class = line.split('\t|\t') # READ names -> fields (1:TAXID 2:NAME 3:UNIQUE NAME 4:NAME CLASS)
-                    if name_class.replace('\t|\n','')=="scientific name":
-                        names[node] = name
-        with open(ncbi_nodes , 'r') as file:
-            for line in file:
-                node, parent, rank, _ = line.split('\t|\t', 3) # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
-                if node not in self.nodes:
-                    self.nodes[node] = (parent,rank,names[node])
-
-    def write(self, file):
-        # .tax: taxid/assembly <tab> parent taxid <tab> rank <tab> name
-        tax_file = open(file,'w')
-        for node,(parent, rank, name) in self.nodes.items():
-            print(node, parent, rank, name, sep="\t", file=tax_file)
-        tax_file.close()
-
-    def get_rank(self, node, rank):
-        t = node
-        try:
-            while self.nodes[t][1]!=rank and t!="1": t = self.nodes[t][0]
-        except:
-            return node
-        return t if t!="1" else node
-
-    def get_node_rank_fixed(self, node, fixed_ranks):
-        if node!="0":
-            original_rank = self.nodes[node][1]
-            original_taxid = node
-            while node!="0":
-                if(self.nodes[node][1] in fixed_ranks):
-                    #everything below species (not being assembly) is counted as species+
-                    if "species+" in fixed_ranks and original_rank!="species" and original_rank!="assembly" and self.nodes[node][1]=="species":
-                        return original_taxid, "species+"
-                    else:
-                        return node, self.nodes[node][1]
-                node = self.nodes[node][0]
-            return "1", "root" #no standard rank identified
-        else:
-            return "0", ""
 
 if __name__ == '__main__':
     main()
