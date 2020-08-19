@@ -1,6 +1,6 @@
 import unittest
 
-from src.ganon.ganon import Tax
+from src.ganon.tax import Tax
 
 class TestTax(unittest.TestCase):
     def testTax(self):
