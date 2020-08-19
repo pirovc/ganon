@@ -10,8 +10,13 @@ class TestReport(unittest.TestCase):
         """
         path_data = "tests/ganon/integration/data/"
         output_file = "test_report.tre"
-        ret = ganon.main(shlex.split("./ganon report --output-report "+output_file+" --db-prefix "+path_data+"sample_bacteria --rep-file "+path_data+"results.rep --rank all"))
-        
+
+        ret = ganon.main("report", 
+                        output_report=output_file, 
+                        db_prefix=path_data+"sample_bacteria",
+                        rep_file=path_data+"results.rep",
+                        rank="all")
+
         # check if ran okay
         self.assertFalse(ret, "ganon report finish with an error")
        

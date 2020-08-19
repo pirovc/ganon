@@ -1,4 +1,4 @@
-import sys, subprocess, shlex
+import sys, subprocess, shlex, shutil, os, time
 
 def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=True):
     errcode=0
@@ -32,3 +32,25 @@ def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=Tr
 def print_log(text):
     sys.stderr.write(text+"\n")
     sys.stderr.flush()
+
+def set_tmp_folder(tmp_output_folder):
+    # Create temporary working directory
+    if os.path.exists(tmp_output_folder): rm_tmp_folder(tmp_output_folder) # delete if already exists
+    os.makedirs(tmp_output_folder)
+
+def rm_tmp_folder(fld):
+    shutil.rmtree(fld)
+
+def check_files(files):
+    checked_files = [file for file in files if os.path.isfile(file)]
+    if len(checked_files)<len(files):
+        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found")
+    return checked_files
+
+def check_db(prefix):
+    for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
+        if not os.path.isfile(prefix+db_file_type):
+            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)")
+            return False
+    return True
+

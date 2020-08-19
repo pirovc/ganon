@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-import argparse, sys
+import argparse, sys, shutil
+from src.ganon.util import *
 
 class Config:
 
     version = '0.3.0'
+    path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -130,23 +132,128 @@ class Config:
         report = subparsers.add_parser('report', help='Generate reports', parents=[report_parser])
         report.set_defaults(which='report')
 
-        # Passing arguments internally
+        # Passing arguments internally from call main(which, **kwargs)
         if which is not None:
+            # Set which as the first parameter (mandatory)
             list_kwargs = [which]
             for arg,value in kwargs.items():
-                list_kwargs.append("--" + arg.replace('_', '-'))
+                # convert all others to argparse format (eg: input_files to --input-files)
+                arg_formatted = "--" + arg.replace('_', '-')
                 if isinstance(value, list): # unpack if list
+                    list_kwargs.append(arg_formatted)
                     list_kwargs.extend(value)
+                elif type(value)==bool and value is True: # add only arg if boolean flag activated
+                    list_kwargs.append(arg_formatted)
                 else:
+                    list_kwargs.append(arg_formatted)
                     list_kwargs.append(value)
+            # Parse from list saving arguments to this class
             parser.parse_args(list_kwargs, namespace=self)
         else:
-            parser.parse_args(namespace=self) # from CLI
-            if len(sys.argv[1:])==0: # Print help calling script without parameters
+            # parse from default CLI sys.argv saving arguments to this class
+            parser.parse_args(namespace=self) 
+            if len(sys.argv)==1: # Print help calling script without parameters (./ganon)
                 parser.print_help() 
                 sys.exit(0)
-    
-        
+
+        # Set paths
+        self.set_paths()
+
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Config({})'.format(', '.join(args))
+
+    def validate(self):
+        if self.which in ['build','update']:
+            if self.taxdump_file and ((len(self.taxdump_file)==1 and not self.taxdump_file[0].endswith(".tar.gz")) or len(self.taxdump_file)>3):
+                print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
+                return False
+
+            if not self.input_files and not self.input_directory:
+                print_log("Please provide files with --input-files and/or --input-directory with --input-extension")
+                return False
+            elif self.input_directory and not self.input_extension:
+                print_log("Please provide the --input-extension when using --input-directory")
+                return False
+            elif self.input_directory and "*" in self.input_extension:
+                print_log("Please do not use wildcards (*) in the --input-extension")
+                return False
+
+            if self.which=='update':
+                if not check_db(self.db_prefix):
+                    return False
+
+            if self.which=='build': #If set (!=0), should be smaller than fragment
+                if self.fragment_length>0 and self.overlap_length > self.fragment_length:
+                    print_log("--overlap-length cannot be bigger than --fragment-length")
+                    return False
+
+                if self.fixed_bloom_size and not self.bin_length:
+                    print_log("please set the --bin-length to use --fixed-bloom-size")
+                    return False
+
+                if self.max_fp<=0:
+                    print_log("--max-fp has to be bigger than 0")
+                    return False
+            
+        elif self.which=='classify':
+            for prefix in self.db_prefix:
+                if not check_db(prefix):
+                    return False
+
+            if not self.single_reads and not self.paired_reads:
+                print_log("Please provide file[s] with --single-reads or --paired-reads")
+                return False
+
+            len_single_reads = 0
+            if self.single_reads: 
+                self.single_reads = check_files(self.single_reads)
+                len_single_reads = len(self.single_reads)
+            len_paired_reads = 0
+            if self.paired_reads: 
+                self.paired_reads = check_files(self.paired_reads)
+                len_paired_reads = len(self.paired_reads)
+            
+            if len_single_reads+len_paired_reads==0:
+                print_log("No valid input files found")
+                return False
+
+        elif self.which=='report':
+            for prefix in self.db_prefix:
+                if not check_db(prefix):
+                    return False
+
+            if not os.path.isfile(self.rep_file):
+                print_log("File not found [" + self.rep_file + "]")
+                return False
+
+        return True
+
+    def set_paths(self):
+        if self.which in ['build','update']:
+            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
+
+            # if path is given, look for binaries only there
+            ganon_build_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
+            for p in ganon_build_paths:
+                self.path_exec['build'] = shutil.which("ganon-build", path=p)
+                if self.path_exec['build'] is not None: break
+            if self.path_exec['build'] is None:
+                print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
+
+            ganon_get_len_taxid_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
+            for p in ganon_get_len_taxid_paths:
+                self.path_exec['get_len_taxid'] = shutil.which("ganon-get-len-taxid.sh", path=p)
+                if self.path_exec['get_len_taxid'] is not None: break
+            if self.path_exec['get_len_taxid'] is None:
+                print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path")
+
+        elif self.which in ['classify']:
+            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
+
+            ganon_classify_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
+            for p in ganon_classify_paths:
+                self.path_exec['classify'] = shutil.which("ganon-classify", path=p)
+                if self.path_exec['classify'] is not None: break
+            if self.path_exec['classify'] is None:
+                print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path")
