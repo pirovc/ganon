@@ -128,7 +128,6 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     frfile = open(final_report_file, 'w') if final_report_file else None
     print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
     
-    
     if all_ranks:
         sorted_assignments = sorted(lineage, key=lineage.get)
     else:

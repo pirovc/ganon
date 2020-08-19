@@ -18,7 +18,7 @@ def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=Tr
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
     #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
     except Exception as e:
-        print_log('The following command failed to execute:\n'+cmd)
+        print_log('The following command failed to run:\n'+cmd)
         print_log(str(e))
         print_log("Error code: "+str(errcode))
         print_log("Out: ")
@@ -33,10 +33,10 @@ def print_log(text):
     sys.stderr.write(text+"\n")
     sys.stderr.flush()
 
-def set_tmp_folder(tmp_output_folder):
+def set_tmp_folder(fld):
     # Create temporary working directory
-    if os.path.exists(tmp_output_folder): rm_tmp_folder(tmp_output_folder) # delete if already exists
-    os.makedirs(tmp_output_folder)
+    if os.path.exists(fld): rm_tmp_folder(fld) # delete if already exists
+    os.makedirs(fld)
 
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)

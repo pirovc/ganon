@@ -438,7 +438,6 @@ def get_accession2taxid(acc2txid, tmp_output_folder):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
     return acc2txid_file
 
-
 def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
     return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*optimal_bins(n_bins))/8388608
 
