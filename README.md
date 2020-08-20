@@ -359,10 +359,14 @@ mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
-make install
+sudo make install 
 ```
 
-in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality. use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
+- to change install location (e.g. `/usr/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/usr/ `
+
+- in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality
+
+- use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 
 If everything was properly installed, the following commands should show the help pages without errors:
 
