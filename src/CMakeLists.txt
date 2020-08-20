@@ -81,5 +81,4 @@ target_link_libraries( ganon-classify ganon-classify-lib )
 # -----------------------------------------------------------------------------
 
 install(TARGETS ganon-classify ganon-build
-        CONFIGURATIONS Release
         DESTINATION bin)
