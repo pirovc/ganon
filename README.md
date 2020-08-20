@@ -353,16 +353,15 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catc
 	
 ```shh
 cd ganon
-python3 setup.py install --record files.txt
-
+python3 setup.py install --record files.txt #optional
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
-sudo make install 
+sudo make install #optional
 ```
 
-- to change install location (e.g. `/usr/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/usr/ `
+- to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `
 
 - in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality
 
@@ -379,7 +378,6 @@ ganon-classify -h
 ### Run tests
 
 ```shh
-cd ganon
 python3 -m unittest discover -s tests/ganon/unit/
 python3 -m unittest discover -s tests/ganon/integration/
 cd build/

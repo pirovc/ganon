@@ -293,7 +293,7 @@ bool run( Config config )
     std::vector< std::future< void > > tasks;
     for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs, &mtx, &config] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs] {
             while ( true )
             {
                 detail::Seqs val = queue_refs.pop();
@@ -307,10 +307,6 @@ bool run( Config config )
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid );
-
-                        // mtx.lock();
-                        // std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
-                        // << std::endl; mtx.unlock();
                     }
                 }
                 else
