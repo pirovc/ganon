@@ -14,7 +14,7 @@ a k-mer based read classification tool which uses Interleaved Bloom Filters in c
 conda install -c bioconda -c conda-forge ganon
 ```
 
-* There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [manual installation](#manual-installation)
+* There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [Install without conda](#install-without-conda)
 
 * Ganon runs on osx only with a [manual installation](#manual-installation). It was tested with gcc 7 and 8, but conda does not support those compilers for osx yet.
 
@@ -141,7 +141,7 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `scripts/convert-db-0.1-0.2.py` or `scripts/convert-db-0.2-0.3.py`
+-  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `ganon-convert-db-0.1-0.2.py` or `ganon-convert-db-0.2-0.3.py`
 
 ### classify
 
@@ -303,7 +303,7 @@ Such adjustment is necessary to equalize the size of each bin, since the IBF req
 
 By default `ganon update` will only add sequences provided with `--input-files` to an previosly generated index. Using `--update-complete` it is possible to add and remove sequences from an index. When activating this option, ganon will consider that the files provided in `--input-files` are an actual representation of the index to build. It will automatically detect sequences that should be kept, inserted or removed given the input files and the information contained on the index to be updated.
 
-## Manual Installation
+## Install without conda
 
 ### build dependencies
 
@@ -317,6 +317,7 @@ System packages:
 System packages:
 - python >=3.4
 - pandas >=0.22.0
+- numpy
 - wget
 - curl
 - tar
@@ -352,25 +353,34 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catc
 	
 ```shh
 cd ganon
+python3 setup.py install --record files.txt #optional
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
+sudo make install #optional
 ```
 
-in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality. use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
+- to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `
 
-### Testing
+- in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality
+
+- use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
+
+If everything was properly installed, the following commands should show the help pages without errors:
 
 ```shh
-cd ganon
-./ganon -h
+ganon -h
+ganon-build -h
+ganon-classify -h
+```
+
+### Run tests
+
+```shh
 python3 -m unittest discover -s tests/ganon/unit/
 python3 -m unittest discover -s tests/ganon/integration/
-
-cd build
-./ganon-build -h
-./ganon-classify -h
+cd build/
 ctest -VV .
 ```
 

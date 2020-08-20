@@ -75,3 +75,10 @@ target_include_directories( ganon-classify-lib
 
 add_executable( ganon-classify ganon-classify/main.cpp )
 target_link_libraries( ganon-classify ganon-classify-lib )
+
+# -----------------------------------------------------------------------------
+# Install
+# -----------------------------------------------------------------------------
+
+install(TARGETS ganon-classify ganon-build
+        DESTINATION bin)

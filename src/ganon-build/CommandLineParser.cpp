@@ -40,7 +40,12 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     const auto argcCopy = argc;
     const auto args     = options.parse( argc, argv );
 
-    if ( args.count( "help" ) || argcCopy == 1 )
+    if ( argcCopy == 1 )
+    {
+        std::cerr << "Try 'ganon-build -h/--help' for more information." << std::endl;
+        return std::nullopt;
+    }
+    else if ( args.count( "help" ) )
     {
         std::cerr << options.help() << std::endl;
         return std::nullopt;

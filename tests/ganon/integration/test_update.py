@@ -1,7 +1,7 @@
-import unittest
-import shlex, pickle
+import unittest, shlex, pickle, sys
 from pathlib import Path
-from src.ganon import ganon
+sys.path.append('src')
+from ganon import ganon
 
 class TestUpdate(unittest.TestCase):
     def test_update(self):
@@ -10,8 +10,14 @@ class TestUpdate(unittest.TestCase):
         """
         path_data = "tests/ganon/integration/data/"
         prefix = "test_update"
-        ret = ganon.main(shlex.split("ganon update --db-prefix "+path_data+"sample_bacteria --output-db-prefix "+prefix+" --taxdump-file "+path_data+"mini_nodes.dmp "+path_data+"mini_names.dmp --seq-info-file "+path_data+"virus_acc_len_taxid.txt --input-files "+path_data+"virus_NC_003676.1.fasta.gz "+path_data+"virus_NC_011646.1.fasta.gz "+path_data+"virus_NC_032412.1.fasta.gz "+path_data+"virus_NC_035470.1.fasta.gz"))
-        
+
+        ret = ganon.main("update", 
+                            db_prefix=path_data+"sample_bacteria", 
+                            output_db_prefix=prefix,
+                            taxdump_file=[path_data+"mini_nodes.dmp", path_data+"mini_names.dmp"], 
+                            seq_info_file=path_data+"virus_acc_len_taxid.txt", 
+                            input_files=[path_data+"virus_NC_003676.1.fasta.gz", path_data+"virus_NC_011646.1.fasta.gz", path_data+"virus_NC_032412.1.fasta.gz", path_data+"virus_NC_035470.1.fasta.gz"])
+
         # check if ran okay
         self.assertFalse(ret, "ganon update finish with an error")
        

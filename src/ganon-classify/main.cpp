@@ -10,6 +10,8 @@ int main( int argc, char** argv )
     {
         return GanonClassify::run( std::move( config.value() ) ) ? EXIT_SUCCESS : EXIT_FAILURE;
     }
-
-    return EXIT_FAILURE;
+    else
+    {
+        return argc == 1 ? EXIT_FAILURE : EXIT_SUCCESS;
+    }
 }

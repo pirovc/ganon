@@ -1,7 +1,7 @@
-import unittest
-import shlex, pickle
+import unittest, shlex, pickle, sys
 from pathlib import Path
-from src.ganon import ganon
+sys.path.append('src')
+from ganon import ganon
 
 class TestBuild(unittest.TestCase):
     def test_build(self):
@@ -10,7 +10,12 @@ class TestBuild(unittest.TestCase):
         """
         path_data = "tests/ganon/integration/data/"
         prefix = "test_build"
-        ret = ganon.main(shlex.split("ganon build --db-prefix "+prefix+" --taxdump-file "+path_data+"mini_nodes.dmp "+path_data+"mini_names.dmp --seq-info-file "+path_data+"bacteria_acc_len_taxid.txt --input-files "+path_data+"bacteria_NC_010333.1.fasta.gz "+path_data+"bacteria_NC_017164.1.fasta.gz "+path_data+"bacteria_NC_017163.1.fasta.gz "+path_data+"bacteria_NC_017543.1.fasta.gz"))
+
+        ret = ganon.main("build", 
+                            db_prefix=prefix, 
+                            taxdump_file=[path_data+"mini_nodes.dmp", path_data+"mini_names.dmp"], 
+                            seq_info_file=path_data+"bacteria_acc_len_taxid.txt", 
+                            input_files=[path_data+"bacteria_NC_010333.1.fasta.gz", path_data+"bacteria_NC_017164.1.fasta.gz", path_data+"bacteria_NC_017163.1.fasta.gz", path_data+"bacteria_NC_017543.1.fasta.gz"])
         
         # check if ran okay
         self.assertFalse(ret, "ganon build finish with an error")

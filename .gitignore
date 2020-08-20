@@ -39,3 +39,7 @@
 
 # Python byte code
 *.pyc
+
+# python setuptools
+*.egg-info/
+dist/
