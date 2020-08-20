@@ -65,6 +65,7 @@ before_install:
   - python3 -m pip install --user --upgrade pip
   - python3 -m pip install --user pandas>=0.22.0
   - python3 -m pip install --user binpacking==1.4.3
+  - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
@@ -74,21 +75,26 @@ before_install:
   - cd taxsbp
   - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
   - python3 setup.py install --user --prefix=
+  - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install --user coverage;
     fi
 
 script:
-  - mkdir build && cd build
+  - mkdir build && cd build # C++
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
-  - sudo make install
   - ctest -VV .
+  - sudo make install
+  - ganon-build -h # ret 0
+  - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/
+  - python3 -m unittest discover -s tests/ganon/unit/ # Python
   - python3 -m unittest discover -s tests/ganon/integration/
+  - python3 setup.py install --user --prefix=
+  - ganon -h # ret 0
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 

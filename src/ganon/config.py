@@ -154,7 +154,7 @@ class Config:
             parser.parse_args(namespace=self) 
             if len(sys.argv)==1: # Print help calling script without parameters (./ganon)
                 parser.print_help() 
-                sys.exit(0)
+                sys.exit(1)
 
         # Set paths
         self.set_paths()
