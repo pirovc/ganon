@@ -91,9 +91,9 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/ # Python
+  - python3 setup.py install --user --prefix= # Python
+  - python3 -m unittest discover -s tests/ganon/unit/ 
   - python3 -m unittest discover -s tests/ganon/integration/
-  - python3 setup.py install --user --prefix=
   - ganon -h # ret 0
 
 after_success:

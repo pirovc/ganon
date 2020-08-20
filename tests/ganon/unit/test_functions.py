@@ -1,6 +1,6 @@
-import unittest
-
-from src.ganon.tax import Tax
+import unittest, sys
+sys.path.append('src')
+from ganon.tax import Tax
 
 class TestTax(unittest.TestCase):
     def testTax(self):

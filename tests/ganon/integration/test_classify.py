@@ -1,7 +1,7 @@
-import unittest
-import shlex, pickle
+import unittest, shlex, pickle, sys
 from pathlib import Path
-from src.ganon import ganon
+sys.path.append('src')
+from ganon import ganon
 
 class TestClassify(unittest.TestCase):
     def test_classify(self):
