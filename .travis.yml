@@ -3,56 +3,56 @@ dist: xenial
 
 matrix:
   include:
-    - name: "osx xcode11"
-      os: osx
-      osx_image: xcode11
-      env: MATRIX_EVAL="BUILD_TYPE=Release"
+    # - name: "osx xcode11"
+    #   os: osx
+    #   osx_image: xcode11
+    #   env: MATRIX_EVAL="BUILD_TYPE=Release"
 
-    - name: "osx gcc-7"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "osx gcc-7"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "osx gcc-8"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "linux gcc-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7 (coverage)"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
+    # - name: "linux gcc-7 (coverage)"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
 
-    - name: "linux gcc-8"
-      os: linux
-      addons:
-        apt: { packages: [g++-8, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "linux gcc-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-8, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
-      os: linux
-      addons:
-        apt: { packages: [g++-9, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    # - name: "linux gcc-9"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    - name: "linux clang-7"
-      os: linux
-      addons:
-        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
-
+    # - name: "linux clang-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+    #            sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
+    
     - name: "linux clang-8"
       os: linux
       addons:
@@ -84,6 +84,7 @@ script:
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
+  - make install
   - ctest -VV .
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/
