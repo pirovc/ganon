@@ -3,7 +3,11 @@ from pathlib import Path
 sys.path.append('src')
 from ganon import ganon
 
-class TestBuild(unittest.TestCase):
+class TestOffline(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
     def test_build(self):
         """
         Test if build on sample data is working
@@ -24,5 +28,10 @@ class TestBuild(unittest.TestCase):
         for ext in ["ibf", "map", "tax", "gnn"]:
             self.assertTrue(Path(prefix+"."+ext).is_file() , "File (" + ext +") was not created") # TODO check file contents
 
+class TestOnline(unittest.TestCase):
+
+    def setUp(self):
+        pass
+        
 if __name__ == '__main__':
     unittest.main()
