@@ -3,78 +3,78 @@ dist: xenial
 
 matrix:
   include:
-    - name: "osx xcode11"
-      os: osx
-      osx_image: xcode11
-      env: MATRIX_EVAL="BUILD_TYPE=Release"
+    # - name: "osx xcode11"
+    #   os: osx
+    #   osx_image: xcode11
+    #   env: MATRIX_EVAL="BUILD_TYPE=Release"
 
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
       env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "osx gcc-8"
+    #   os: osx
+    #   osx_image: xcode10
+    #   env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "linux gcc-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7 (coverage)"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
+    # - name: "linux gcc-7 (coverage)"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
 
-    - name: "linux gcc-8"
-      os: linux
-      addons:
-        apt: { packages: [g++-8, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "linux gcc-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-8, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
-      os: linux
-      addons:
-        apt: { packages: [g++-9, python3-pip, python3-setuptools],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    # - name: "linux gcc-9"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9, python3-pip, python3-setuptools],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    - name: "linux clang-7"
-      os: linux
-      addons:
-        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
+    # - name: "linux clang-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+    #            sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
 
-    - name: "linux clang-8"
-      os: linux
-      addons:
-        apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
+    # - name: "linux clang-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
+    #            sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - python3 -m pip install --user --upgrade pip
-  - python3 -m pip install --user pandas>=0.22.0
-  - python3 -m pip install --user binpacking==1.4.3
+  - sudo python3 -m pip install --upgrade pip
+  - sudo python3 -m pip install pandas>=0.22.0
+  - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - python3 setup.py install --user --prefix=
+  - sudo python3 setup.py install
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
-  - python3 setup.py install --user --prefix=
+  - sudo python3 setup.py install
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
@@ -93,7 +93,7 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ # Python
   - python3 -m unittest discover -s tests/ganon/integration/
-  - python3 setup.py install --user --prefix= 
+  - sudo python3 setup.py install
   - ganon -h # ret 0
 
 after_success:
