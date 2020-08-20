@@ -1,7 +1,7 @@
 import time
 from collections import defaultdict
-from src.ganon.tax import Tax
-from src.ganon.util import *
+from ganon.tax import Tax
+from ganon.util import *
 
 def classify(cfg):
     print_log("Classifying reads (ganon-classify)")

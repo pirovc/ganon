@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse, sys, shutil
-from src.ganon.util import *
+from ganon.util import *
 
 class Config:
 

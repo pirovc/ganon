@@ -23,10 +23,10 @@ setup(
     description="ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme.",
     long_description=read("README.md"),
 
-    packages=find_packages("src"),
-    package_dir={"": "src"},
+    package_dir={'':'src'},
+    packages=["ganon"],
     entry_points = {'console_scripts': ['ganon=ganon.ganon:main']},
-
+    
     scripts=['scripts/ganon-convert-db-0.1-0.2.py',
             'scripts/ganon-convert-db-0.2-0.3.py',
             'scripts/ganon-get-len-taxid.sh'],

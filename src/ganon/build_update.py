@@ -2,11 +2,11 @@ import time, math
 import pandas as pd
 import numpy as np
 import taxsbp.taxsbp
-from src.ganon.bins import Bins
-from src.ganon.gnn import Gnn
-from src.ganon.seqinfo import SeqInfo
-from src.ganon.tax import Tax
-from src.ganon.util import *
+from ganon.bins import Bins
+from ganon.gnn import Gnn
+from ganon.seqinfo import SeqInfo
+from ganon.tax import Tax
+from ganon.util import *
 
 def build(cfg):
     # validate input files

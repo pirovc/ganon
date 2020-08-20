@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import pandas as pd
 from io import StringIO
-from src.ganon.util import *
+from ganon.util import *
 
 class SeqInfo:
     seq_info_colums=['seqid','length','taxid', 'assembly']

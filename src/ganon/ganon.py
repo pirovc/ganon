@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import sys, time
 
-from src.ganon.build_update import build, update
-from src.ganon.classify_report import classify, report
-from src.ganon.config import Config
-from src.ganon.util import print_log
+from ganon.build_update import build, update
+from ganon.classify_report import classify, report
+from ganon.config import Config
+from ganon.util import print_log
 
 def main(which: str=None, **kwargs):
 
