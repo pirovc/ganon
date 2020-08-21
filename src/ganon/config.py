@@ -38,6 +38,7 @@ class Config:
         build_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
         # Extra
+        build_group_optional.add_argument('--write-seq-info-file', default=False, action='store_true', help='Write sequence information aquired during build to prefix.seqinfo.txt')
         build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
         build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)

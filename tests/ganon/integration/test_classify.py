@@ -18,7 +18,7 @@ class TestClassify(unittest.TestCase):
                         output_prefix=prefix)
 
         # check if ran okay
-        self.assertFalse(ret, "ganon classify finish with an error")
+        self.assertTrue(ret, "ganon classify finish with an error")
        
         # check if files were created
         for ext in ["lca", "all", "rep", "tre"]:

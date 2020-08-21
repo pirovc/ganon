@@ -37,11 +37,15 @@ def classify(cfg):
         print_final_report(reports, tax, classified_reads, unclassified_reads, cfg.output_prefix+".tre", cfg.ranks, 0, 0, [])
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
 
+    return True
+
 def report(cfg):
     classified_reads, unclassified_reads, reports = parse_rep(cfg.rep_file)
     tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
     print_final_report(reports, tax, classified_reads, unclassified_reads, cfg.output_report, cfg.ranks, cfg.min_matches, cfg.min_matches_perc, cfg.taxids)
 
+    return True
+    
 def parse_rep(rep_file):
     reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
     with open(rep_file, 'r') as rep_file:

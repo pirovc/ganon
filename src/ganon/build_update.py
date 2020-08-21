@@ -39,6 +39,7 @@ def build(cfg):
     else:
         seqinfo = load_seqids(files=input_files + input_files_from_directory) 
         load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly)
+        if cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
 
     # Set bin length
     if cfg.bin_length: # user defined
@@ -148,6 +149,8 @@ def build(cfg):
 
     # Delete temp files
     rm_tmp_folder(tmp_output_folder)
+
+    return True
 
 def update(cfg):
     tx = time.time()
@@ -311,6 +314,8 @@ def update(cfg):
 
     # Delete temp files
     rm_tmp_folder(tmp_output_folder)
+    
+    return True
     
 def check_updated_seqids(new_seqids, old_seqids):
     # remove repeated from old bins

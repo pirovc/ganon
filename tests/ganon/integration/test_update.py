@@ -19,7 +19,7 @@ class TestUpdate(unittest.TestCase):
                             input_files=[path_data+"virus_NC_003676.1.fasta.gz", path_data+"virus_NC_011646.1.fasta.gz", path_data+"virus_NC_032412.1.fasta.gz", path_data+"virus_NC_035470.1.fasta.gz"])
 
         # check if ran okay
-        self.assertFalse(ret, "ganon update finish with an error")
+        self.assertTrue(ret, "ganon update finish with an error")
        
         # check if files were created
         for ext in ["ibf", "map", "tax", "gnn"]:

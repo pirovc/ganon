@@ -23,15 +23,16 @@ def main(which: str=None, **kwargs):
     print_log("- - - - - - - - - -")
 
     if cfg.which=='build':
-        build(cfg)
+        ret=build(cfg)
     elif cfg.which=='update': 
-        update(cfg) 
+        ret=update(cfg) 
     elif cfg.which=='classify':
-        classify(cfg)
+        ret=classify(cfg)
     elif cfg.which=='report':
-        report(cfg)
+        ret=report(cfg)
 
     print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.")
+    return ret
 
 if __name__ == '__main__':
     main()

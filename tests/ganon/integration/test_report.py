@@ -18,7 +18,7 @@ class TestReport(unittest.TestCase):
                         rank="all")
 
         # check if ran okay
-        self.assertFalse(ret, "ganon report finish with an error")
+        self.assertTrue(ret, "ganon report finish with an error")
        
         # check if files were created
         self.assertTrue(Path(output_file).is_file() , "File (" + output_file +") was not created")
