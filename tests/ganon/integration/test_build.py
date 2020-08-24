@@ -71,6 +71,8 @@ class TestOffline(unittest.TestCase):
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Specific test
+        print(res)
 
 class TestOnline(unittest.TestCase):
     
@@ -99,6 +101,7 @@ class TestOnline(unittest.TestCase):
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
+        
 
 def setup_build(results_dir):
     shutil.rmtree(results_dir, ignore_errors=True)
@@ -141,6 +144,11 @@ def sanity_check_and_parse(params):
         print("Missing sequence accessions on bins")
         return None
 
+    # Check if all taxids (chosen rank) are present in the .tax
+    if not res["tax_pd"]['taxid'].apply(lambda x: res["tax"].get_rank(x, params["rank"])).isin(res["tax_pd"]["taxid"]).all():
+        print("Missing taxonomic entries")
+        return None
+    
     # Check if all taxids (chosen rank) are present in the .tax
     if not res["tax_pd"]['taxid'].apply(lambda x: res["tax"].get_rank(x, params["rank"])).isin(res["tax_pd"]["taxid"]).all():
         print("Missing taxonomic entries")
