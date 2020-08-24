@@ -6,7 +6,7 @@ matrix:
     - name: "osx xcode11"
       os: osx
       osx_image: xcode11
-      env: MATRIX_EVAL="brew install gawk grep && PATH=\"/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install coreutils gawk grep && PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
 
     # - name: "osx gcc-7"
     #   os: osx
