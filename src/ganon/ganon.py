@@ -6,21 +6,27 @@ from ganon.classify_report import classify, report
 from ganon.config import Config
 from ganon.util import print_log
 
-def main(which: str=None, **kwargs):
+def main(which: str=None, cfg=None, **kwargs):
+    # 3 entry points: 
+    # main() without args, cfg is parsed from sys.argv
+    # main(which, **kwargs), generate config and run
+    # main(cfg) run directly
 
-    # sys.argv by default or get args from call
-    cfg = Config(which, **kwargs)
+    if cfg is None: cfg = Config(which, **kwargs)
 
-    # validate arguments
+    # Validate
     if not cfg.validate(): sys.exit(1)
+
+    # Set paths
+    if not cfg.set_paths(): sys.exit(1)
 
     tx_total = time.time()
     
-    print_log("- - - - - - - - - -")
-    print_log("   _  _  _  _  _   ")
-    print_log("  (_|(_|| |(_)| |  ")
-    print_log("   _|   v. "+ str(cfg.version))
-    print_log("- - - - - - - - - -")
+    print_log("- - - - - - - - - -", cfg.quiet)
+    print_log("   _  _  _  _  _   ", cfg.quiet)
+    print_log("  (_|(_|| |(_)| |  ", cfg.quiet)
+    print_log("   _|   v. "+ str(cfg.version), cfg.quiet)
+    print_log("- - - - - - - - - -", cfg.quiet)
 
     if cfg.which=='build':
         ret=build(cfg)
@@ -31,7 +37,7 @@ def main(which: str=None, **kwargs):
     elif cfg.which=='report':
         ret=report(cfg)
 
-    print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.")
+    print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.", cfg.quiet)
     return ret
 
 if __name__ == '__main__':

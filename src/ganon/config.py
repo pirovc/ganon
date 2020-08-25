@@ -6,6 +6,7 @@ class Config:
 
     version = '0.3.0'
     path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
+    empty = False
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -39,8 +40,10 @@ class Config:
 
         # Extra
         build_group_optional.add_argument('--write-seq-info-file', default=False, action='store_true', help='Write sequence information aquired during build to prefix.seqinfo.txt')
-        build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
+        build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose output mode')
+        build_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
+        
         build_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
 
@@ -65,7 +68,8 @@ class Config:
         update_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
         # Extra
-        update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose mode for ganon-build')
+        update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose output mode')
+        update_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         update_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
         update_group_optional.add_argument('--n-refs', type=int, help=argparse.SUPPRESS)
         update_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
@@ -97,7 +101,8 @@ class Config:
         classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads to use. Default: 3')
         classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
         classify_group_optional.add_argument('--n-batches', type=int, help=argparse.SUPPRESS)
-        classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose mode for ganon-classify')
+        classify_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
+        classify_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS) 
 
         ####################################################################################################
@@ -116,7 +121,8 @@ class Config:
         report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
         report_group_optional.add_argument('-t', '--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
         report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
-
+        report_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
+        
         ####################################################################################################
 
         subparsers = parser.add_subparsers()
@@ -153,18 +159,19 @@ class Config:
         else:
             # parse from default CLI sys.argv saving arguments to this class
             parser.parse_args(namespace=self) 
-            if len(sys.argv)==1: # Print help calling script without parameters (./ganon)
-                parser.print_help() 
-                sys.exit(1)
-
-        # Set paths
-        self.set_paths()
+            if len(sys.argv)==1: 
+                parser.print_help()
+                self.empty = True
 
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Config({})'.format(', '.join(args))
 
     def validate(self):
+        if self.empty is True:
+            print_log("Please provide one or more arguments")
+            return False
+
         if self.which in ['build','update']:
             if self.taxdump_file and ((len(self.taxdump_file)==1 and not self.taxdump_file[0].endswith(".tar.gz")) or len(self.taxdump_file)>3):
                 print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
@@ -231,6 +238,7 @@ class Config:
         return True
 
     def set_paths(self):
+        missing_path = False
         if self.which in ['build','update']:
             self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
 
@@ -241,6 +249,7 @@ class Config:
                 if self.path_exec['build'] is not None: break
             if self.path_exec['build'] is None:
                 print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
 
             ganon_get_len_taxid_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
             for p in ganon_get_len_taxid_paths:
@@ -248,6 +257,7 @@ class Config:
                 if self.path_exec['get_len_taxid'] is not None: break
             if self.path_exec['get_len_taxid'] is None:
                 print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
 
         elif self.which in ['classify']:
             self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
@@ -258,3 +268,6 @@ class Config:
                 if self.path_exec['classify'] is not None: break
             if self.path_exec['classify'] is None:
                 print_log("ganon-classify binary was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
+
+        return True if not missing_path else False

@@ -15,7 +15,8 @@ class TestClassify(unittest.TestCase):
                         output_all=True, 
                         db_prefix=path_data+"sample_bacteria",
                         single_reads=path_data+"bacteria.simulated.1.fq",
-                        output_prefix=prefix)
+                        output_prefix=prefix,
+                        quiet=True)
 
         # check if ran okay
         self.assertTrue(ret, "ganon classify finish with an error")

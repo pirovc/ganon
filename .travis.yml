@@ -6,17 +6,17 @@ matrix:
     - name: "osx xcode11"
       os: osx
       osx_image: xcode11
-      env: MATRIX_EVAL="brew install coreutils gawk grep && PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install coreutils gawk grep && export PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
 
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 coreutils gawk grep && CC=gcc-7 && CXX=g++-7 && PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@7 coreutils gawk grep && CC=gcc-7 && CXX=g++-7 && export PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
 
     - name: "osx gcc-8"
       os: osx
       osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 coreutils gawk grep && CC=gcc-8 && CXX=g++-8 && PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
+      env: MATRIX_EVAL="brew install gcc@8 coreutils gawk grep && CC=gcc-8 && CXX=g++-8 && export PATH=\"/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/gnubin:$PATH\" && BUILD_TYPE=Release"
 
     - name: "linux gcc-7"
       os: linux

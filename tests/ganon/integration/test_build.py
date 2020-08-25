@@ -3,7 +3,6 @@ from pathlib import Path
 import pandas as pd
 sys.path.append('src')
 from ganon import ganon
-from ganon.build_update import build
 from ganon.bins import Bins
 from ganon.config import Config
 from ganon.gnn import Gnn
@@ -19,7 +18,8 @@ class TestOffline(unittest.TestCase):
                       "input_files": [data_dir+"bacteria_NC_010333.1.fasta.gz", data_dir+"bacteria_NC_017164.1.fasta.gz", data_dir+"bacteria_NC_017163.1.fasta.gz", data_dir+"bacteria_NC_017543.1.fasta.gz"],
                       "seq_info_file": data_dir+"bacteria_seqinfo.txt",
                       "write_seq_info_file": True,
-                      "rank": "species"}
+                      "rank": "species",
+                      "quiet": True}
     
     @classmethod
     def setUpClass(self):
@@ -31,27 +31,12 @@ class TestOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "TestOffline_test_default"
-        
         # Build config from params
         cfg = Config("build", **params)
-        # Validate
-        self.assertTrue(cfg.validate(), "Invalid configuration")
         # Run
-        self.assertTrue(build(cfg), "ganon build exited with an error")
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon build has inconsistent results")
-
-    def test_default_main(self):
-        """
-        With default parameters going through ganon.main()
-        """
-        params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "TestOffline_test_default_main"
-        # Run
-        self.assertTrue(ganon.main("build", **params), "ganon build exited with an error")
-        # General sanity check of results
-        res = sanity_check_and_parse(params)
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_assembly(self):
@@ -64,22 +49,22 @@ class TestOffline(unittest.TestCase):
         
         # Build config from params
         cfg = Config("build", **params)
-        # Validate
-        self.assertTrue(cfg.validate(), "Invalid configuration")
         # Run
-        self.assertTrue(build(cfg), "ganon build exited with an error")
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
-        print(res)
+        #print(res)
 
+@unittest.skip("Skip Online test if not directly called")
 class TestOnline(unittest.TestCase):
     
     results_dir = base_dir + "results/test_build/TestOnline/"
     default_params = {"input_files": [data_dir+"bacteria_NC_010333.1.fasta.gz", data_dir+"bacteria_NC_017164.1.fasta.gz", data_dir+"bacteria_NC_017163.1.fasta.gz", data_dir+"bacteria_NC_017543.1.fasta.gz"],
                       "write_seq_info_file": True,
-                      "rank": "species"}
+                      "rank": "species",
+                      "quiet": True}
 
     @classmethod
     def setUpClass(self):
@@ -94,10 +79,8 @@ class TestOnline(unittest.TestCase):
         
         # Build config from params
         cfg = Config("build", **params)
-        # Validate
-        self.assertTrue(cfg.validate(), "Invalid configuration")
         # Run
-        self.assertTrue(build(cfg), "ganon build exited with an error")
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
@@ -128,12 +111,14 @@ def sanity_check_and_parse(params):
         res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
          
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
-    res["tax"] = Tax(tax_files=[params["db_prefix"]+".tax"])
+    res["tax"] = Tax(ncbi_nodes=params["taxdump_file"][0],ncbi_names=params["taxdump_file"][1])
     res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
     res["bins_pd"] = res["bins"].bins
-
+    
+    use_assembly = True if res["gnn"].rank=="assembly" else False
+    
     # Check number of bins
     if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
         print("Number of bins do not match between .gnn and .map")
@@ -144,14 +129,17 @@ def sanity_check_and_parse(params):
         print("Missing sequence accessions on bins")
         return None
 
+    if use_assembly:
+        unique_targets = res["seq_info"]["specialization"].drop_duplicates() 
+    else:
+        unique_targets = res["seq_info"]["taxid"].apply(lambda x: res["tax"].get_rank(x, params["rank"])).drop_duplicates()
+
     # Check if all taxids (chosen rank) are present in the .tax
-    if not res["tax_pd"]['taxid'].apply(lambda x: res["tax"].get_rank(x, params["rank"])).isin(res["tax_pd"]["taxid"]).all():
-        print("Missing taxonomic entries")
+    if not unique_targets.isin(res["tax_pd"]["taxid"]).all():
+        print("Input entries with missing taxonomic nodes")
         return None
-    
-    # Check if all taxids (chosen rank) are present in the .tax
-    if not res["tax_pd"]['taxid'].apply(lambda x: res["tax"].get_rank(x, params["rank"])).isin(res["tax_pd"]["taxid"]).all():
-        print("Missing taxonomic entries")
+    if not unique_targets.isin(res["bins_pd"]["specialization" if use_assembly else "taxid"]).all():
+        print("Input entries with missing bins")
         return None
 
     return res

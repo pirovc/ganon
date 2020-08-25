@@ -15,7 +15,8 @@ class TestReport(unittest.TestCase):
                         output_report=output_file, 
                         db_prefix=path_data+"sample_bacteria",
                         rep_file=path_data+"results.rep",
-                        rank="all")
+                        rank="all",
+                        quiet=True)
 
         # check if ran okay
         self.assertTrue(ret, "ganon report finish with an error")

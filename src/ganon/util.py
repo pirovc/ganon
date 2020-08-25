@@ -29,9 +29,10 @@ def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=Tr
 
     return stdout, stderr
 
-def print_log(text):
-    sys.stderr.write(text+"\n")
-    sys.stderr.flush()
+def print_log(text, quiet: bool=False):
+    if not quiet:
+        sys.stderr.write(text+"\n")
+        sys.stderr.flush()
 
 def set_tmp_folder(fld):
     # Create temporary working directory

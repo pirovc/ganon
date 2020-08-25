@@ -4,7 +4,7 @@ from ganon.tax import Tax
 from ganon.util import *
 
 def classify(cfg):
-    print_log("Classifying reads (ganon-classify)")
+    print_log("Classifying reads (ganon-classify)", cfg.quiet)
     run_ganon_classify = " ".join([cfg.path_exec['classify'],
                                    "--single-reads " +  ",".join(cfg.single_reads) if cfg.single_reads else "",
                                    "--paired-reads " +  ",".join(cfg.paired_reads) if cfg.paired_reads else "",
@@ -24,18 +24,19 @@ def classify(cfg):
                                    "--threads " + str(cfg.threads) if cfg.threads else "",
                                    "--n-reads " + str(cfg.n_reads) if cfg.n_reads is not None else "",
                                    "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
-                                   "--verbose" if cfg.verbose else ""])
+                                   "--verbose" if cfg.verbose else "",
+                                   "--quiet" if cfg.quiet else ""])
     stdout, stderr = run(run_ganon_classify)
     if not cfg.output_prefix: print(stdout)
-    print_log(stderr)
+    print_log(stderr, cfg.quiet)
 
     if cfg.output_prefix:
         tx = time.time()
-        print_log("Generating report")
+        print_log("Generating report", cfg.quiet)
         tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
         classified_reads, unclassified_reads, reports = parse_rep(cfg.output_prefix+".rep")
         print_final_report(reports, tax, classified_reads, unclassified_reads, cfg.output_prefix+".tre", cfg.ranks, 0, 0, [])
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n")
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
 
