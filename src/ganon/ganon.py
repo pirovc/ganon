@@ -9,8 +9,8 @@ from ganon.util import print_log
 def main(which: str=None, cfg=None, **kwargs):
     # 3 entry points: 
     # main() without args, cfg is parsed from sys.argv
-    # main(which, **kwargs), generate config and run
-    # main(cfg) run directly
+    # main(which, **kwargs) -> main("build", db_prefix="test", ...) generate config and run
+    # main(cfg) run directly with Config()
 
     if cfg is None: cfg = Config(which, **kwargs)
 

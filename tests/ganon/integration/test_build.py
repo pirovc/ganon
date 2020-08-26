@@ -27,7 +27,7 @@ class TestOffline(unittest.TestCase):
        
     def test_default(self):
         """
-        With default parameters
+        With default parameters offline
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "TestOffline_test_default"
@@ -57,7 +57,7 @@ class TestOffline(unittest.TestCase):
         # Specific test
         #print(res)
 
-@unittest.skip("Skip Online test if not directly called")
+#@unittest.skip("Skip Online test if not directly called")
 class TestOnline(unittest.TestCase):
     
     results_dir = base_dir + "results/test_build/TestOnline/"
@@ -72,7 +72,7 @@ class TestOnline(unittest.TestCase):
 
     def test_default(self):
         """
-        With default parameters
+        With default parameters online
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "TestOnline_test_default"
@@ -111,7 +111,6 @@ def sanity_check_and_parse(params):
         res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
          
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
-    res["tax"] = Tax(ncbi_nodes=params["taxdump_file"][0],ncbi_names=params["taxdump_file"][1])
     res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
@@ -129,17 +128,9 @@ def sanity_check_and_parse(params):
         print("Missing sequence accessions on bins")
         return None
 
-    if use_assembly:
-        unique_targets = res["seq_info"]["specialization"].drop_duplicates() 
-    else:
-        unique_targets = res["seq_info"]["taxid"].apply(lambda x: res["tax"].get_rank(x, params["rank"])).drop_duplicates()
-
-    # Check if all taxids (chosen rank) are present in the .tax
-    if not unique_targets.isin(res["tax_pd"]["taxid"]).all():
-        print("Input entries with missing taxonomic nodes")
-        return None
-    if not unique_targets.isin(res["bins_pd"]["specialization" if use_assembly else "taxid"]).all():
-        print("Input entries with missing bins")
+    # Check if all taxids/assembly on .map appear on .tax
+    if res["tax_pd"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all():
+        print("Inconsistent entries between taxonomy (.tax) and bin map (.map)")
         return None
 
     return res
