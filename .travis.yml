@@ -11,7 +11,7 @@ matrix:
           packages: [coreutils gawk grep],
           update: false }
       env: 
-        - PATH=$(brew --prefix coreutils)"libexec/gnubin:"$(brew --prefix grep)"libexec/gnubin:$PATH" 
+        - PATH="$(brew --prefix coreutils)libexec/gnubin:$(brew --prefix grep)libexec/gnubin:$PATH" 
         - BUILD_TYPE=Release
 
     # - name: "osx gcc-7"
