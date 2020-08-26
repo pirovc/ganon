@@ -85,7 +85,6 @@ class TestOnline(unittest.TestCase):
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         
-
 def setup_build(results_dir):
     shutil.rmtree(results_dir, ignore_errors=True)
     os.makedirs(results_dir)
