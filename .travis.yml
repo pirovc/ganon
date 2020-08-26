@@ -10,9 +10,9 @@ matrix:
         homebrew: { packages: [coreutils, gawk, grep],
                     update: false }
       env: 
-        - PATH="$(brew --prefix coreutils)libexec/gnubin:$(brew --prefix grep)libexec/gnubin:$PATH" 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
         - MATRIX_EVAL="BUILD_TYPE=Release"
-        
+
     - name: "osx gcc-7"
       os: osx
       osx_image: xcode10
@@ -20,7 +20,7 @@ matrix:
         homebrew: { packages: [gcc@7, coreutils, gawk, grep],
                     update: false }
       env: 
-        - PATH="$(brew --prefix coreutils)libexec/gnubin:$(brew --prefix grep)libexec/gnubin:$PATH" 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "osx gcc-8"
