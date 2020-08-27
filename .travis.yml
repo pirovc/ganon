@@ -3,77 +3,78 @@ dist: xenial
 
 matrix:
   include:
+    #### Disabled due to long runtime (brew update necessary) and conflicts with default grep version (without -P)
+    #### Installing grep and setting the path does not work
+    # - name: "osx gcc-7"
+    #   os: osx
+    #   osx_image: xcode10
+    #   addons:
+    #     homebrew: { packages: [gcc@7, coreutils, gawk, grep],
+    #                 update: true }
+    #   env:
+    #     - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
+    #     - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "osx gcc-8"
+    #   os: osx
+    #   osx_image: xcode10
+    #   addons:
+    #     homebrew: { packages: [gcc@8, coreutils, gawk, grep],
+    #                 update: true }
+    #   env: 
+    #     - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
+    #     - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+
     - name: "osx xcode11"
       os: osx
       osx_image: xcode11
       addons:
-        homebrew: { packages: [coreutils, gawk, grep],
+        homebrew: { packages: [gawk, grep],
                     update: false }
       env: 
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
+        - PATH="$(brew --prefix grep)/libexec/gnubin:$PATH" 
         - MATRIX_EVAL="BUILD_TYPE=Release"
 
-    - name: "osx gcc-7"
-      os: osx
-      osx_image: xcode10
+    - name: "linux gcc-7"
+      os: linux
       addons:
-        homebrew: { packages: [gcc@7, coreutils, gawk, grep],
-                    update: true }
-      env:
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+        apt: { packages: [g++-7, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
+    - name: "linux gcc-7 (coverage)"
+      os: linux
       addons:
-        homebrew: { packages: [gcc@8, coreutils, gawk, grep],
-                    update: true }
-      env: 
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+        apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
 
-    # - name: "linux gcc-7"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-7, python3-pip, python3-setuptools],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    - name: "linux gcc-8"
+      os: linux
+      addons:
+        apt: { packages: [g++-8, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-7 (coverage)"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
+    - name: "linux gcc-9"
+      os: linux
+      addons:
+        apt: { packages: [g++-9, python3-pip, python3-setuptools],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-8"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-8, python3-pip, python3-setuptools],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    - name: "linux clang-7"
+      os: linux
+      addons:
+        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+               sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-9"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-9, python3-pip, python3-setuptools],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
-
-    # - name: "linux clang-7"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
-    #            sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
-
-    # - name: "linux clang-8"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
-    #            sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
+    - name: "linux clang-8"
+      os: linux
+      addons:
+        apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
+               sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
