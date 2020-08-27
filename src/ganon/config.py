@@ -121,6 +121,7 @@ class Config:
         report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
         report_group_optional.add_argument('-t', '--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
         report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
+        report_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
         report_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         
         ####################################################################################################
@@ -151,9 +152,9 @@ class Config:
                     list_kwargs.extend(value)
                 elif type(value)==bool and value is True: # add only arg if boolean flag activated
                     list_kwargs.append(arg_formatted)
-                else:
+                elif value:
                     list_kwargs.append(arg_formatted)
-                    list_kwargs.append(value)
+                    list_kwargs.append(str(value))
             # Parse from list saving arguments to this class
             parser.parse_args(list_kwargs, namespace=self)
         else:
@@ -172,6 +173,11 @@ class Config:
             print_log("Please provide one or more arguments")
             return False
 
+        if self.verbose is True: 
+            self.quiet=False
+        elif self.quiet is True:
+            self.verbose=False
+            
         if self.which in ['build','update']:
             if self.taxdump_file and ((len(self.taxdump_file)==1 and not self.taxdump_file[0].endswith(".tar.gz")) or len(self.taxdump_file)>3):
                 print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")

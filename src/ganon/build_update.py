@@ -40,6 +40,11 @@ def build(cfg):
         seqinfo = load_seqids(files=input_files + input_files_from_directory, quiet=cfg.quiet) 
         load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
         if cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
+    # check sequences compared to bins
+    added_seqids, _, _ = check_updated_seqids(set(seqinfo.get_seqids()), set())
+    # Ignore removed sequences if not doing complete update
+    print_log("Build: adding " + str(len(added_seqids)) + " sequences", cfg.quiet)
+    print_log("", cfg.quiet)
 
     # Set bin length
     if cfg.bin_length: # user defined
@@ -334,11 +339,12 @@ def load_seqids(files: list=[], seq_info_file: str=None, quiet: bool=False):
     # Load or create seqinfo
     if seq_info_file is not None: # file already provided 
         seqinfo = SeqInfo(seq_info_file=seq_info_file)
+        print_log(" - "  + str(seqinfo.size()) + " entries in the --seq-info-file", quiet)
     else: # retrieve info
         # Count number of input sequences to define method or retrieve accessions for forced eutils
         seqinfo = SeqInfo()
         seqinfo.parse_seqid(files)
-    print_log(" - "  + str(seqinfo.size()) + " sequences successfully retrieved", quiet)
+        print_log(" - "  + str(seqinfo.size()) + " sequence headers successfully retrieved from the input files" , quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return seqinfo
 
