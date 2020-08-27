@@ -10,27 +10,27 @@ matrix:
         homebrew: { packages: [coreutils, gawk, grep],
                     update: false }
       env: 
-        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="BUILD_TYPE=Release"
 
     - name: "osx gcc-7"
       os: osx
-      osx_image: xcode11
+      osx_image: xcode10
       addons:
         homebrew: { packages: [gcc@7, coreutils, gawk, grep],
-                    update: false }
-      env: 
-        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+                    update: true }
+      env:
+        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "osx gcc-8"
       os: osx
-      osx_image: xcode11
+      osx_image: xcode10
       addons:
         homebrew: { packages: [gcc@8, coreutils, gawk, grep],
-                    update: false }
+                    update: true }
       env: 
-        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     # - name: "linux gcc-7"
@@ -76,11 +76,6 @@ matrix:
     #   env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
-  - echo "${PATH}"
-  - export PATH
-  - echo "${PATH}"
-  - whereis grep
-  - whereis echo
   - eval "${MATRIX_EVAL}"
   - sudo python3 -m pip install --upgrade pip
   - sudo python3 -m pip install pandas>=0.22.0
