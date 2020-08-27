@@ -77,6 +77,8 @@ matrix:
 
 before_install:
   - echo "${PATH}"
+  - export PATH
+  - echo "${PATH}"
   - whereis grep
   - whereis echo
   - eval "${MATRIX_EVAL}"
