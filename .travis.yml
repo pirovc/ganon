@@ -15,7 +15,7 @@ matrix:
 
     - name: "osx gcc-7"
       os: osx
-      osx_image: xcode10
+      osx_image: xcode11
       addons:
         homebrew: { packages: [gcc@7, coreutils, gawk, grep],
                     update: false }
@@ -25,7 +25,7 @@ matrix:
 
     - name: "osx gcc-8"
       os: osx
-      osx_image: xcode10
+      osx_image: xcode11
       addons:
         homebrew: { packages: [gcc@8, coreutils, gawk, grep],
                     update: false }
