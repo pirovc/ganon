@@ -28,10 +28,10 @@ matrix:
       os: osx
       osx_image: xcode11
       addons:
-        homebrew: { packages: [gawk, grep],
+        homebrew: { packages: [coreutils, gawk, grep],
                     update: false }
       env: 
-        - PATH="$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
         - MATRIX_EVAL="BUILD_TYPE=Release"
 
     - name: "linux gcc-7"

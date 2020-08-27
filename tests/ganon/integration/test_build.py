@@ -57,7 +57,7 @@ class TestOffline(unittest.TestCase):
         # Specific test
         #print(res)
 
-#@unittest.skip("Skip Online test if not directly called")
+@unittest.skip("Skip Online test if not directly called")
 class TestOnline(unittest.TestCase):
     
     results_dir = base_dir + "results/test_build/TestOnline/"
