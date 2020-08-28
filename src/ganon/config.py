@@ -39,7 +39,7 @@ class Config:
         build_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
         # Extra
-        build_group_optional.add_argument('--write-seq-info-file', default=False, action='store_true', help='Write sequence information aquired during build to prefix.seqinfo.txt')
+        build_group_optional.add_argument('--write-seq-info-file', default=False, action='store_true', help='Write sequence information to DB_PREFIX.seqinfo.txt')
         build_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose output mode')
         build_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         build_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)
@@ -68,6 +68,7 @@ class Config:
         update_group_optional.add_argument('--input-extension',       type=str,                    metavar='', help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
 
         # Extra
+        update_group_optional.add_argument('--write-seq-info-file', default=False, action='store_true', help='Write sequence information to DB_PREFIX.seqinfo.txt')
         update_group_optional.add_argument('--verbose', default=False, action='store_true', help='Verbose output mode')
         update_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         update_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS)

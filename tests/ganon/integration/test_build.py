@@ -1,31 +1,34 @@
-import unittest, shlex, pickle, sys, os, shutil
-from pathlib import Path
-import pandas as pd
+import unittest, sys
 sys.path.append('src')
 from ganon import ganon
 from ganon.bins import Bins
 from ganon.config import Config
 from ganon.gnn import Gnn
-from ganon.tax import Tax
+sys.path.append('tests/ganon/integration/')
+from utils import *
 
 base_dir = "tests/ganon/integration/"
 data_dir = base_dir + "data/"
 
-class TestBuild(unittest.TestCase):
-        
-    results_dir = base_dir + "results/test_build/"
-    default_params = {"taxdump_file": [data_dir+"mini_nodes.dmp", data_dir+"mini_names.dmp"],
-                      "input_files": [data_dir+"bacteria_NC_010333.1.fasta.gz", data_dir+"bacteria_NC_017164.1.fasta.gz", data_dir+"bacteria_NC_017163.1.fasta.gz", data_dir+"bacteria_NC_017543.1.fasta.gz"],
-                      "seq_info_file": data_dir+"bacteria_seqinfo.txt",
+class TestBuildOffline(unittest.TestCase):
+
+    results_dir = base_dir + "results/build/"
+    default_params = {"taxdump_file": [data_dir+"mini_nodes.dmp", 
+                                       data_dir+"mini_names.dmp"],
+                      "input_files": [data_dir+"build/bacteria_NC_010333.1.fasta.gz",
+                                      data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017543.1.fasta.gz"],
+                      "seq_info_file": data_dir+"build/bacteria_seqinfo.txt",
                       "write_seq_info_file": True,
                       "rank": "species",
                       "quiet": True}
     
     @classmethod
     def setUpClass(self):
-        setup_build(self.results_dir)
+        setup_dir(self.results_dir)
        
-    def test_default(self):
+    def test_default_offline(self):
         """
         Test run with default parameters
         """
@@ -185,8 +188,7 @@ class TestBuild(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_duplicated_entries_seqinfo"
-        params["seq_info_file"] = data_dir+"bacteria_seqinfo_duplicated.txt"
-        #params["verbose"] = True
+        params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_duplicated.txt"
 
         # Build config from params
         cfg = Config("build", **params)
@@ -199,17 +201,39 @@ class TestBuild(unittest.TestCase):
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
+    def test_input_directory(self):
+        """
+        Test duplicated entries on the seqinfo file
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_directory"
+        del params["input_files"]
+        params["input_directory"] = data_dir+"build/"
+        params["input_extension"] = ".fasta.gz"
+       
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+
+
 class TestBuildOnline(unittest.TestCase):
     
-    results_dir = base_dir + "results/test_build/online/"
-    default_params = {"input_files": [data_dir+"bacteria_NC_010333.1.fasta.gz", data_dir+"bacteria_NC_017164.1.fasta.gz", data_dir+"bacteria_NC_017163.1.fasta.gz", data_dir+"bacteria_NC_017543.1.fasta.gz"],
+    results_dir = base_dir + "results/build/online/"
+    default_params = {"input_files": [data_dir+"build/bacteria_NC_010333.1.fasta.gz",
+                                      data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017543.1.fasta.gz"],
                       "write_seq_info_file": True,
                       "rank": "species",
                       "quiet": True}
 
     @classmethod
     def setUpClass(self):
-        setup_build(self.results_dir)
+        setup_dir(self.results_dir)
 
     def test_default(self):
         """
@@ -225,23 +249,28 @@ class TestBuildOnline(unittest.TestCase):
         # General sanity check of results
         res = sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
-        
-def setup_build(results_dir):
-    shutil.rmtree(results_dir, ignore_errors=True)
-    os.makedirs(results_dir)
+       
+    def test_assembly(self):
+        """
+        Test rank as assembly online
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_assembly"
+        params["rank"] = "assembly"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results") 
 
 def sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
-    # Check if files were created
-    for ext in ["ibf", "map", "tax", "gnn"]:
-        f=params["db_prefix"]+"."+ext
-        if not Path(f).is_file():
-            print("File (" + f +") was not created")
-            return None
-        elif Path(f).stat().st_size==0:
-            print("File (" + f +") is empty")
-            return None
+    if not check_files(params["db_prefix"], ["ibf", "map", "tax", "gnn"]):
+        return None
 
     res = {}
     # Parse in and out files
@@ -272,21 +301,6 @@ def sanity_check_and_parse(params):
         return None
 
     return res
-
-def parse_seq_info(seq_info_file):
-    colums=['seqid', 'length', 'taxid', 'specialization']
-    types={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'specialization': 'str'}
-    return pd.read_table(seq_info_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
-
-def parse_map(map_file):
-    colums=['target', 'binid']
-    types={'target': 'str', 'binid': 'uint64'}
-    return pd.read_table(map_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
-
-def parse_tax(tax_file):
-    colums=['taxid', 'parent', 'rank', 'name']
-    types={'taxid': 'str', 'parent': 'str', 'rank': 'str', 'name': 'str'}
-    return pd.read_table(tax_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 if __name__ == '__main__':
     unittest.main()

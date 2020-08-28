@@ -209,8 +209,10 @@ def update(cfg):
         seqinfo.remove_seqids(kept_seqids)
 
     # load seqinfo file with data (after removing ids)
-    if not cfg.seq_info_file: load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
-
+    if not cfg.seq_info_file: 
+        load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
+        if cfg.write_seq_info_file: seqinfo.write(cfg.output_db_prefix+".seqinfo.txt" if cfg.output_db_prefix else cfg.db_prefix+".seqinfo.txt")
+    
     # save set of current binids
     previous_binids = set(bins.get_binids())
     # remove seqids from bins if performing update complete
