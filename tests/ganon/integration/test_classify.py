@@ -12,7 +12,7 @@ class TestClassifyOffline(unittest.TestCase):
 
     results_dir = base_dir + "results/classify/"
     default_params = {"db_prefix": data_dir+"bacteria_default",
-                      "single_reads": data_dir+"classify/bacteria.simulated.1.fq",
+                      "single_reads": data_dir+"bac.sim.1.fq",
                       "output_all": True,
                       "quiet": True}
     
@@ -32,11 +32,11 @@ class TestClassifyOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon classify exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
 
 
-def sanity_check_and_parse(params):
+def classify_classify_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
     if not check_files(params["output_prefix"], ["lca","all","rep","tre"]):

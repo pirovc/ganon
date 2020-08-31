@@ -1,9 +1,7 @@
 import unittest, sys
 sys.path.append('src')
 from ganon import ganon
-from ganon.bins import Bins
 from ganon.config import Config
-from ganon.gnn import Gnn
 sys.path.append('tests/ganon/integration/')
 from utils import *
 
@@ -39,7 +37,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_assembly(self):
@@ -55,7 +53,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Check if all assembly ids are on bins and map and tax
@@ -76,7 +74,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Check max size of fragments on bins
@@ -95,7 +93,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Check max size of fragments on bins
@@ -115,7 +113,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Check max size of fragments on bins
@@ -136,7 +134,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Check max size of fragments on bins
@@ -157,7 +155,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         # Specific test
         # Unique entries on bins (not duplicated)
@@ -179,7 +177,7 @@ class TestBuildOffline(unittest.TestCase):
         # Sanity check passes because ganon build (using --seq-info-file)
         # does not iterate through sequences, just works with metadata
         # ganon-build will simply leave bins empty
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_duplicated_entries_seqinfo(self):
@@ -198,7 +196,7 @@ class TestBuildOffline(unittest.TestCase):
         # Sanity check passes because ganon build (using --seq-info-file)
         # does not iterate through sequences, just works with metadata
         # ganon-build will simply add the unique provided entries
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_input_directory(self):
@@ -216,7 +214,7 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
 
@@ -247,7 +245,7 @@ class TestBuildOnline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
        
     def test_assembly(self):
@@ -263,44 +261,10 @@ class TestBuildOnline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results") 
 
-def sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
-    if not check_files(params["db_prefix"], ["ibf", "map", "tax", "gnn"]):
-        return None
-
-    res = {}
-    # Parse in and out files
-    if "seq_info_file" in params and params["seq_info_file"]:
-        res["seq_info"] = parse_seq_info(params["seq_info_file"])
-    else:
-        res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
-         
-    res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
-    res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
-    res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
-    res["map_pd"] = parse_map(params["db_prefix"]+".map")
-    res["bins_pd"] = res["bins"].bins
-
-    # Check number of bins
-    if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
-        print("Number of bins do not match between .gnn and .map")
-        return None
-
-    # Check if all input accession made it to the bins
-    if not res["seq_info"]["seqid"].isin(res["bins_pd"]["seqid"]).all():
-        print("Missing sequence accessions on bins")
-        return None
-
-    # Check if all taxids/assembly on .map appear on .tax
-    if res["tax_pd"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all():
-        print("Inconsistent entries between taxonomy (.tax) and bin map (.map)")
-        return None
-
-    return res
 
 if __name__ == '__main__':
     unittest.main()

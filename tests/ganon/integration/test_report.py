@@ -32,19 +32,9 @@ class TestReportOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
-def sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
-
-    if not check_files(params["output_report"], [""]):
-        return None
-
-    res = {}
-    # Sequence information from database to be updated
-    res["tre_pd"] =  parse_tre(params["output_report"])
-    return res
 
 if __name__ == '__main__':
     unittest.main()

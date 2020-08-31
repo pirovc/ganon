@@ -1,9 +1,8 @@
 import unittest, sys
 sys.path.append('src')
 from ganon import ganon
-from ganon.bins import Bins
 from ganon.config import Config
-from ganon.gnn import Gnn
+
 sys.path.append('tests/ganon/integration/')
 from utils import *
 
@@ -39,8 +38,26 @@ class TestUpdateOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
+
+        # Classify simulated virus against updated index
+        params_classify = {}
+        params_classify["db_prefix"] = params["output_db_prefix"] #params["output_db_prefix"]
+        params_classify["single_reads"] = data_dir+"vir.sim.1.fq"
+        params_classify["max_error"] = 0
+        params_classify["output_all"] = True
+        params_classify["quiet"] = True
+        params_classify["output_prefix"] = self.results_dir + "test_default"
+        # Build config from params
+        cfg_classify = Config("classify", **params_classify)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg_classify), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg_classify))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+        # Specific tes - should return Viruses matches on the updated index
+        self.assertEqual(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].values[0], "Viruses", "classification on updated index failed")
 
     def test_assembly(self):
         """
@@ -55,8 +72,10 @@ class TestUpdateOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
 
 class TestUpdateOnline(unittest.TestCase):
     
@@ -84,8 +103,27 @@ class TestUpdateOnline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
+        
+        # Classify simulated virus against updated index
+        params_classify = {}
+        params_classify["db_prefix"] = params["output_db_prefix"] #params["output_db_prefix"]
+        params_classify["single_reads"] = data_dir+"vir.sim.1.fq"
+        params_classify["max_error"] = 0
+        params_classify["output_all"] = True
+        params_classify["quiet"] = True
+        params_classify["output_prefix"] = self.results_dir + "test_default"
+        # Build config from params
+        cfg_classify = Config("classify", **params_classify)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg_classify), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg_classify))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+        # Specific tes - should return Viruses matches on the updated index
+        self.assertEqual(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].values[0], "Viruses", "classification on updated index failed")
+
 
     def test_assembly(self):
         """
@@ -100,46 +138,10 @@ class TestUpdateOnline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
         # General sanity check of results
-        res = sanity_check_and_parse(vars(cfg))
+        res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
-
-def sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
-
-    if not check_files(params["output_db_prefix"], ["ibf", "map", "tax", "gnn"]):
-        return None
-
-    res = {}
-    # Sequence information from database to be updated
-    res["seq_info"] =  parse_seq_info(params["db_prefix"]+".seqinfo.txt")
-    # Parse in and out files
-    if "seq_info_file" in params and params["seq_info_file"]:
-        res["seq_info"] = res["seq_info"].append(parse_seq_info(params["seq_info_file"]), ignore_index=True)
-    else:
-        res["seq_info"] = res["seq_info"].append(parse_seq_info(params["output_db_prefix"]+".seqinfo.txt"), ignore_index=True)
-
-    res["gnn"] = Gnn(file=params["output_db_prefix"]+".gnn")
-    res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
-    res["tax_pd"] = parse_tax(params["output_db_prefix"]+".tax")
-    res["map_pd"] = parse_map(params["output_db_prefix"]+".map")
-    res["bins_pd"] = res["bins"].bins
-
-    # Check number of bins
-    if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
-        print("Number of bins do not match between .gnn and .map")
-        return None
-
-    # Check if all input accession made it to the bins
-    if not res["seq_info"]["seqid"].isin(res["bins_pd"]["seqid"]).all():
-        print("Missing sequence accessions on bins")
-        return None
-
-    # Check if all taxids/assembly on .map appear on .tax
-    if res["tax_pd"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all():
-        print("Inconsistent entries between taxonomy (.tax) and bin map (.map)")
-        return None
-
-    return res
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
 
 if __name__ == '__main__':
     unittest.main()
