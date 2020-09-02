@@ -23,7 +23,6 @@ matrix:
     #   env: 
     #     - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
     #     - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
-
     - name: "osx xcode11"
       os: osx
       osx_image: xcode11
@@ -98,7 +97,7 @@ before_install:
     fi
 
 script:
-  - mkdir build && cd build # C++
+  - mkdir build && cd build 
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
@@ -107,8 +106,11 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/ # Python
-  - python3 -m unittest discover -s tests/ganon/integration/
+  - python3 -m unittest discover -s tests/ganon/unit/
+  - python3 -m unittest discover -s tests/ganon/integration/ -k Offline -v
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m unittest discover -s tests/ganon/integration/ -k Online -v;
+    fi
   - sudo python3 setup.py install
   - ganon -h # ret 0
 
