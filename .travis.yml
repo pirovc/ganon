@@ -23,7 +23,6 @@ matrix:
     #   env: 
     #     - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
     #     - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
-
     - name: "osx xcode11"
       os: osx
       osx_image: xcode11
