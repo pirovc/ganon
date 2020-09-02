@@ -108,9 +108,6 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/
   - python3 -m unittest discover -s tests/ganon/integration/ -k "*Offline*" -v #Offline tests all builds
-  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m unittest discover -s tests/ganon/integration/ -k "*Online*" -v;  #Online for coverage only
-    fi
   - sudo python3 setup.py install
   - ganon -h # ret 0
 
