@@ -13,7 +13,7 @@ def build(cfg):
     input_files, input_files_from_directory = validate_input_files(cfg)
     if len(input_files)==0 and len(input_files_from_directory)==0:
         print_log("ERROR: No valid input files found")
-        sys.exit(1)
+        return False
 
     # Set db prefixes
     db_prefix = {prefix:cfg.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
@@ -164,7 +164,7 @@ def update(cfg):
     input_files, input_files_from_directory = validate_input_files(cfg)
     if len(input_files)==0 and len(input_files_from_directory)==0:
         print_log("ERROR: No valid input files found")
-        sys.exit(1)
+        return False
 
     # Set db prefixes
     db_prefix = {prefix:cfg.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
@@ -199,7 +199,7 @@ def update(cfg):
 
     if not added_seqids and not removed_seqids:
         print_log("ERROR: Nothing to update")
-        sys.exit(0)
+        return False
 
     if cfg.update_complete:           
         # Remove already included seqids to just retrieve information for added sequences

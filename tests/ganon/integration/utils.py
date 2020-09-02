@@ -122,7 +122,7 @@ def update_sanity_check_and_parse(params):
 
     res = {}
     # Sequence information from database to be updated
-    res["seq_info"] =  parse_seq_info(params["db_prefix"]+".seqinfo.txt")
+    res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
     # Parse in and out files
     if "seq_info_file" in params and params["seq_info_file"]:
         res["seq_info"] = res["seq_info"].append(parse_seq_info(params["seq_info_file"]), ignore_index=True)
