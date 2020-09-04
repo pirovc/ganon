@@ -19,6 +19,13 @@ def check_files(prefix, extensions):
             return False
     return True
     
+def parse_bins(bins):
+    #columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
+    #types={'seqid': 'str', 'seqstart': 'uint64', 'seqend': 'uint64', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64', 'specialization': 'str'}
+    bins.bins['binid'] = pd.to_numeric(bins.bins['binid'])
+    bins.bins['length'] = pd.to_numeric(bins.bins['length'])
+    return bins.bins
+
 def parse_seq_info(seq_info_file):
     colums=['seqid', 'length', 'taxid', 'specialization']
     types={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'specialization': 'str'}
@@ -64,10 +71,9 @@ def build_sanity_check_and_parse(params):
         res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
          
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
-    res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
-    res["bins_pd"] = res["bins"].bins
+    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins))
 
     # Check number of bins
     if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
@@ -122,7 +128,11 @@ def update_sanity_check_and_parse(params):
 
     res = {}
     # Sequence information from database to be updated
-    res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
+    if not params["update_complete"]:
+        res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
+    else: # Do not load it in case of update_complete, where all sequences must be provided
+        res["seq_info"] = pd.DataFrame()
+
     # Parse in and out files
     if "seq_info_file" in params and params["seq_info_file"]:
         res["seq_info"] = res["seq_info"].append(parse_seq_info(params["seq_info_file"]), ignore_index=True)
@@ -130,10 +140,9 @@ def update_sanity_check_and_parse(params):
         res["seq_info"] = res["seq_info"].append(parse_seq_info(params["output_db_prefix"]+".seqinfo.txt"), ignore_index=True)
 
     res["gnn"] = Gnn(file=params["output_db_prefix"]+".gnn")
-    res["bins"] = Bins(taxsbp_ret=res["gnn"].bins)
     res["tax_pd"] = parse_tax(params["output_db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["output_db_prefix"]+".map")
-    res["bins_pd"] = res["bins"].bins
+    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins))
 
     # Check number of bins
     if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:

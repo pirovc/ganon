@@ -2,16 +2,15 @@ import unittest, sys
 sys.path.append('src')
 from ganon import ganon
 from ganon.config import Config
-sys.path.append('tests/ganon/integration/')
+
+base_dir = "tests/ganon/"
+sys.path.append(base_dir)
 from utils import *
-
-base_dir = "tests/ganon/integration/"
 data_dir = base_dir + "data/"
-
 
 class TestReportOffline(unittest.TestCase):
 
-    results_dir = base_dir + "results/report/"
+    results_dir = base_dir + "results/integration/report/"
     default_params = {"db_prefix": data_dir+"bacteria_assembly",
                       "rep_file": data_dir+"report/results.rep",
                       "quiet": True}

@@ -100,6 +100,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
 
         // last element (set is ordered) plus one
+
         uint32_t number_new_bins = *bin_ids.rbegin() + 1;
         if ( number_new_bins > stats.totalBinsFile )
         {
@@ -107,7 +108,7 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
             // when updating an IBF with empty bins or removing the last bins, this will not be true
             filter.resizeBins( number_new_bins );
             stats.newBins = number_new_bins - stats.totalBinsFile;
-        }
+        } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
