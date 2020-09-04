@@ -85,7 +85,7 @@ class TestUpdateOffline(unittest.TestCase):
         params = self.default_params.copy()
 
         params["output_db_prefix"] = self.results_dir + "test_duplicated"
-        params["input_files"].append([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
+        params["input_files"].extend([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
                                       data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
                                       data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
                                       data_dir+"build/bacteria_NC_017543.1.fasta.gz"])
@@ -217,10 +217,10 @@ class TestUpdateOffline(unittest.TestCase):
         params["output_db_prefix"] = self.results_dir + "test_update_complete_add"
         params["update_complete"] = True
         params["seq_info_file"] = data_dir+"update/bacteria_virus_seqinfo.txt"
-        params["input_files"].append([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
-                              data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
-                              data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
-                              data_dir+"build/bacteria_NC_017543.1.fasta.gz"])
+        params["input_files"].extend([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
+                                      data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
+                                      data_dir+"build/bacteria_NC_017543.1.fasta.gz"])
 
         # Build config from params
         cfg = Config("update", **params)
