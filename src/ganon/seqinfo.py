@@ -29,7 +29,10 @@ class SeqInfo:
         self.seqinfo = self.seqinfo[~self.seqinfo['seqid'].isin(seqids)]
 
     def write_seqid_file(self, seqid_file):
-        self.seqinfo["seqid"].to_csv(seqid_file, header=False, index=False)
+        self.seqinfo["seqid"].to_csv(seqid_file, sep="\t", header=False, index=False)
+
+    def write(self, file):
+        self.seqinfo.to_csv(file, sep="\t", header=False, index=False)
 
     def parse_seqid(self, input_files):
         for file in input_files:
