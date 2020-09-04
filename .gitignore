@@ -29,7 +29,7 @@
 *.app
 
 # Build
-**/build
+/build/
 
 # User temp
 **/CMakeLists.txt.user
