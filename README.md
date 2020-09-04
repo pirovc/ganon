@@ -16,8 +16,6 @@ conda install -c bioconda -c conda-forge ganon
 
 * There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions at [Install without conda](#install-without-conda)
 
-* Ganon runs on osx only with a [manual installation](#manual-installation). It was tested with gcc 7 and 8, but conda does not support those compilers for osx yet.
-
 ## Running ganon with sample data
 
 ### build
@@ -401,72 +399,60 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ### build
 
-	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m]
-	                   [-l] [-t] [--fixed-bloom-size] [--fragment-length]
-	                   [--overlap-length] [--seq-info [[...]]] [--seq-info-file]
-	                   [--taxdump-file [[...]]] [--input-directory]
-	                   [--input-extension] [--verbose]
+	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t] [--fixed-bloom-size]
+                   [--fragment-length] [--overlap-length] [--seq-info-mode [[...]]] [--seq-info-file]
+                   [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--write-seq-info-file] [--verbose]
+                   [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -r , --rank           Target taxonomic rank for classification
-	                        [assembly,taxid,species,genus,...]. Default: species
-	  -k , --kmer-size      The k-mer size for the interleaved bloom filter.
-	                        Default: 19
+	  -r , --rank           Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species
+	  -k , --kmer-size      The k-mer size for the interleaved bloom filter. Default: 19
 	  -n , --hash-functions 
-	                        The number of hash functions for the interleaved bloom
-	                        filter. Default: 3
-	  -f , --max-fp         Max. false positive rate for k-mer classification.
-	                        Default: 0.05
+	                        The number of hash functions for the interleaved bloom filter. Default: 3
+	  -f , --max-fp         Max. false positive rate for k-mer classification. Default: 0.05
 	  -m , --max-bloom-size 
-	                        Approx. maximum filter size in Megabytes (MB). Will
-	                        estimate best --bin-length based on --kmer-size,
-	                        --hash-functions and --max-fp [Mutually exclusive
-	                        --fixed-bloom-size]
+	                        Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-
+	                        size, --hash-functions and --max-fp [Mutually exclusive --fixed-bloom-size]
 	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
 	  -t , --threads        Number of subprocesses/threads to use. Default: 2
-	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore
-	                        --max-fp [Mutually exclusive --max-bloom-size]
-	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment
-	                        sequences. Default: --bin-length - --overlap-length
-	  --overlap-length      Fragment overlap length (in bp). Should be bigger than
-	                        the read length used for classification. Default: 300
-	  --seq-info [ [ ...]]  Mode to obtain sequence information. For each sequence
-	                        entry provided, ganon requires taxonomic and seq.
-	                        length information. If a small number of sequences is
-	                        provided (<50000) or when --rank assembly, ganon will
-	                        automatically obtain data with NCBI E-utils websevices
-	                        (eutils). Offline mode will download batch files from
-	                        NCBI Taxonomy and look for taxonomic ids in the order
-	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss
-	                        pdb prot dead_nucl dead_wgs dead_prot], eutils (force
-	                        webservices) or auto (uses eutils or [nucl_gb
-	                        nucl_wgs]). Default: auto [Mutually exclusive --seq-
-	                        info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid
-	                        <tab> seq.len <tab> taxid [<tab> assembly id])
-	                        [Mutually exclusive --seq-info]
+	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-
+	                        size]
+	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-
+	                        length
+	  --overlap-length      Fragment overlap length (in bp). Should be bigger than the read length used for classification.
+	                        Default: 300
+	  --seq-info-mode [ [ ...]]
+	                        Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic
+	                        and seq. length information. If a small number of sequences is provided (<50000) or when --rank
+	                        assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline
+	                        mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order
+	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot],
+	                        eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
+	                        exclusive --seq-info-file]
+	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly
+	                        id]) [Mutually exclusive --seq-info]
 	  --taxdump-file [ [ ...]]
-	                        Force use of a specific version of the
-	                        (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
-	                        file(s) from NCBI Taxonomy (otherwise it will be
-	                        automatically downloaded)
+	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory
-	                        (provide it without * expansion, e.g. ".fna.gz")
-	  --verbose             Verbose mode for ganon-build
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --write-seq-info-file
+	                        Write sequence information to DB_PREFIX.seqinfo.txt
+	  --verbose             Verbose output mode
+	  --quiet               Quiet output mode (only errors and warnings to the stderr)
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
-	                        Database output prefix (.ibf, .map, .tax, .gnn will be
-	                        created)
+	                        Database output prefix (.ibf, .map, .tax, .gnn will be created)
 	  -i [ [ ...]], --input-files [ [ ...]]
 	                        Input reference sequence fasta files [.gz]
 
 ### update
 
 	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-c] [-t] [--seq-info-mode [[...]]] [--seq-info-file]
-                    [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--verbose]
+                    [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--write-seq-info-file] [--verbose]
+                    [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -491,7 +477,10 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
 	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
-	  --verbose             Verbose mode for ganon-build
+	  --write-seq-info-file
+	                        Write sequence information to DB_PREFIX.seqinfo.txt
+	  --verbose             Verbose output mode
+	  --quiet               Quiet output mode (only errors and warnings to the stderr)
 
 	required arguments:
 	  -d db_prefix, --db-prefix db_prefix
