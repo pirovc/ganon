@@ -1,4 +1,4 @@
-# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon)
+# ganon [![Build Status](https://travis-ci.org/pirovc/ganon.svg?branch=master)](https://travis-ci.org/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon)
 
 a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme. 
 
@@ -315,11 +315,12 @@ System packages:
 System packages:
 - python >=3.4
 - pandas >=0.22.0
-- numpy
-- wget
-- curl
+- gawk
+- grep
 - tar
-- GNU core utilities (gawk, zcat)
+- curl
+- wget
+- coreutils (zcat)
 
 ** Please make sure that the system packages are supported/installed in your environment. All other packages are installed in the next steps.
 
@@ -352,8 +353,8 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catc
 ```shh
 cd ganon
 python3 setup.py install --record files.txt #optional
-mkdir build
-cd build
+mkdir build_cpp
+cd build_cpp
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
 sudo make install #optional
@@ -378,7 +379,8 @@ ganon-classify -h
 ```shh
 python3 -m unittest discover -s tests/ganon/unit/
 python3 -m unittest discover -s tests/ganon/integration/
-cd build/
+python3 -m unittest discover -s tests/ganon/integration_online/
+cd build_cpp/
 ctest -VV .
 ```
 
