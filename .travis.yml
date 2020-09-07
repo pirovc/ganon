@@ -3,8 +3,8 @@ dist: xenial
 
 matrix:
   include:
-    # osx xcode10 image: issues replacing grep on PATH, online tests do not pass
-    - name: "osx gcc-7"
+    ## osx xcode10 image: issues replacing grep on PATH, online tests do not pass
+    - name: "osx gcc-7 (xcode10/macOS 10.13)"
       os: osx
       osx_image: xcode10
       addons:
@@ -14,7 +14,7 @@ matrix:
         - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
     
-    - name: "osx gcc-8"
+    - name: "osx gcc-8 (xcode10/macOS 10.13)"
       os: osx
       osx_image: xcode10
       addons:
@@ -24,7 +24,17 @@ matrix:
         - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "osx xcode11"
+    - name: "osx AppleClang 10 (xcode10.2/macOS 10.14)"
+      os: osx
+      osx_image: xcode10.2
+      addons:
+        homebrew: { packages: [coreutils, gawk, grep],
+                    update: false }
+      env: 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - MATRIX_EVAL="BUILD_TYPE=Release"
+
+    - name: "osx AppleClang 11 (xcode11/macOS 10.14.6)"
       os: osx
       osx_image: xcode11
       addons:
