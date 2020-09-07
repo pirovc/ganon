@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
-from src.ganon import ganon
+import sys
+sys.path.append('src')
+from ganon import ganon
 ganon.main()
-

@@ -93,32 +93,47 @@ Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin
     {
         // load filter
         seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
-
-        config.kmer_size = seqan::getKmerSize( filter );
+        // totalBinsFile account for all bins, even empty
+        stats.totalBinsFile = seqan::getNumberOfBins( filter );
+        config.kmer_size    = seqan::getKmerSize( filter );
         // config.hash_functions = seqan::get...( filter ); // not avail.
         // config.filter_size_bits = seqan::get...( filter ); // not avail.
+
+        // last element (set is ordered) plus one
+
+        uint32_t number_new_bins = *bin_ids.rbegin() + 1;
+        if ( number_new_bins > stats.totalBinsFile )
+        {
+            // just resize if number of bins is bigger than amount on IBF
+            // when updating an IBF with empty bins or removing the last bins, this will not be true
+            filter.resizeBins( number_new_bins );
+            stats.newBins = number_new_bins - stats.totalBinsFile;
+        } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
 
         // Reset bins if complete set of sequences is provided (re-create updated bins)
         if ( config.update_complete )
         {
             std::vector< uint32_t > updated_bins;
-            updated_bins.insert( updated_bins.end(), bin_ids.begin(), bin_ids.end() );
+            // For all binids in the file provided, only clean bins for the old bins
+            // new bins are already cleared
+            for ( auto const& binid : bin_ids )
+            {
+                if ( binid >= stats.totalBinsFile - 1 )
+                {
+                    break;
+                }
+                updated_bins.emplace_back( binid );
+                // std::cerr << "Cleared: " << binid << std::endl;
+            }
             seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
         }
-
-        // create new bins on the loaded filter
-        uint32_t length_new_bins = *bin_ids.rbegin() + 1; // get last binid in the set = total number of bins
-        stats.newBins            = length_new_bins - seqan::getNumberOfBins( filter );
-
-        if ( stats.newBins > 0 )
-            filter.resizeBins( length_new_bins );
     }
     else
     {
         filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size_bits );
+        stats.totalBinsFile = seqan::getNumberOfBins( filter );
     }
 
-    stats.totalBinsFile = seqan::getNumberOfBins( filter );
 
     return filter;
 }
@@ -155,22 +170,19 @@ void print_time( const GanonBuild::Config& config,
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const GanonBuild::Config& config, const StopClock& timeBuild )
+void print_stats( Stats& stats, const StopClock& timeBuild )
 {
     double   elapsed_build = timeBuild.elapsed();
     uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
               << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed_build / 60.0 ) << " Mbp/m)" << std::endl;
-    std::cerr << " - " << stats.totalSeqsBinId << " sequences and " << stats.totalBinsBinId << " bins defined on "
-              << config.seqid_bin_file << std::endl;
-    std::cerr << " - " << stats.totalSeqsFile << " sequences (" << stats.invalidSeqs
-              << " invalid) were read from the input sequence files." << std::endl;
-    if ( !config.update_filter_file.empty() )
-        std::cerr << " - " << stats.newBins << " new bins were added to the existing " << stats.totalBinsFile
-                  << " bins." << std::endl;
-    std::cerr << " - " << validSeqs << " valid sequences in " << stats.totalBinsFile + stats.newBins
-              << " bins were written to " << config.output_filter_file << std::endl;
+    if ( stats.invalidSeqs > 0 )
+        std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
+    if ( stats.newBins > 0 )
+        std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences in " << stats.totalBinsFile + stats.newBins
+              << " bins were written to the IBF" << std::endl;
 }
 
 } // namespace detail
@@ -243,7 +255,7 @@ bool run( Config config )
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
-                    if ( seqan::length( seqs[i] ) < config.kmer_size )
+                    if ( config.verbose && seqan::length( seqs[i] ) < config.kmer_size )
                     { // sequence too small
                         mtx.lock();
                         std::cerr << "WARNING: sequence smaller than k-mer size"
@@ -254,7 +266,7 @@ bool run( Config config )
                     }
                     std::string cid   = seqan::toCString( ids[i] );
                     std::string seqid = cid.substr( 0, cid.find( ' ' ) );
-                    if ( seq_bin.count( seqid ) == 0 )
+                    if ( config.verbose && seq_bin.count( seqid ) == 0 )
                     {
                         mtx.lock();
                         std::cerr << "WARNING: sequence not defined on seqid-bin-file"
@@ -282,7 +294,7 @@ bool run( Config config )
     std::vector< std::future< void > > tasks;
     for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs, &mtx, &config] {
+        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs] {
             while ( true )
             {
                 detail::Seqs val = queue_refs.pop();
@@ -296,10 +308,6 @@ bool run( Config config )
                         // fragend -1+1 to fix offset and not exclude last position
                         seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
                         seqan::insertKmer( filter, fragment, binid );
-
-                        // mtx.lock();
-                        // std::cerr << val.seqid << " [" << fragstart << ":" << fragend << "] added to bin " << binid
-                        // << std::endl; mtx.unlock();
                     }
                 }
                 else
@@ -337,7 +345,7 @@ bool run( Config config )
             detail::print_time(
                 config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
         }
-        detail::print_stats( stats, config, timeBuild );
+        detail::print_stats( stats, timeBuild );
     }
     return true;
 }

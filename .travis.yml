@@ -3,20 +3,46 @@ dist: xenial
 
 matrix:
   include:
-    - name: "osx xcode11"
+    ## osx xcode10 image: issues replacing grep on PATH, online tests do not pass
+    - name: "osx gcc-7 (xcode10/macOS 10.13)"
+      os: osx
+      osx_image: xcode10
+      addons:
+        homebrew: { packages: [gcc@7, coreutils, gawk, grep],
+                    update: true }
+      env:
+        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    
+    - name: "osx gcc-8 (xcode10/macOS 10.13)"
+      os: osx
+      osx_image: xcode10
+      addons:
+        homebrew: { packages: [gcc@8, coreutils, gawk, grep],
+                    update: true }
+      env: 
+        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+
+    - name: "osx AppleClang 10 (xcode10.2/macOS 10.14)"
+      os: osx
+      osx_image: xcode10.2
+      addons:
+        homebrew: { packages: [coreutils, gawk, grep],
+                    update: false }
+      env: 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - MATRIX_EVAL="BUILD_TYPE=Release"
+
+    - name: "osx AppleClang 11 (xcode11/macOS 10.14.6)"
       os: osx
       osx_image: xcode11
-      env: MATRIX_EVAL="BUILD_TYPE=Release"
-
-    - name: "osx gcc-7"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@7 gawk && CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
-
-    - name: "osx gcc-8"
-      os: osx
-      osx_image: xcode10
-      env: MATRIX_EVAL="brew install gcc@8 gawk && CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+      addons:
+        homebrew: { packages: [coreutils, gawk, grep],
+                    update: false }
+      env: 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - MATRIX_EVAL="BUILD_TYPE=Release"
 
     - name: "linux gcc-7"
       os: linux
@@ -62,29 +88,48 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - python3 -m pip install --user --upgrade pip
-  - python3 -m pip install --user pandas>=1.0.0
-  - python3 -m pip install --user binpacking==1.4.1
+  - sudo python3 -m pip install --upgrade pip
+  - sudo python3 -m pip install pandas>=0.22.0
+  - sudo python3 -m pip install binpacking==1.4.3
+  - binpacking -h # ret 0
+  - git clone https://github.com/pirovc/pylca.git
+  - cd pylca
+  - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
+  - sudo python3 setup.py install
+  - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
+  - cd taxsbp
+  - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
+  - sudo python3 setup.py install
+  - taxsbp -h # ret 0
+  - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m pip install --user coverage;
+      sudo python3 -m pip install coverage;
     fi
 
 script:
-  - mkdir build && cd build
+  - mkdir build && cd build 
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
+  - sudo make install
+  - ganon-build -h # ret 0
+  - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/
-  - python3 -m unittest discover -s tests/ganon/integration/
+  - python3 -m unittest discover -s tests/ganon/unit/ -v
+  - python3 -m unittest discover -s tests/ganon/integration/ -v
+  #- if [ "$BUILD_TYPE" == "Coverage" ]; then 
+  #    travis_wait 30 python3 -m unittest discover -s tests/ganon/integration_online/ -v;
+  #  fi
+  - sudo python3 setup.py install
+  - ganon -h # ret 0
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
-      coverage run --append -m unittest discover -s tests/ganon/unit/;
-      coverage run --append -m unittest discover -s tests/ganon/integration/;
+      coverage run --append -m unittest discover -s tests/ganon/unit/ -v;
+      coverage run --append -m unittest discover -s tests/ganon/integration/ -v;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
     fi
 

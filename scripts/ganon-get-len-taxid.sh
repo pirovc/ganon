@@ -1,6 +1,6 @@
 #!/bin/bash
 # Number of attempts to request data from e-utils
-att=10
+att=3
 batch=200
 
 retrieve_summary_xml()
@@ -34,7 +34,9 @@ function showhelp {
 	echo $' -i [str] input file with accessions (use - to read from STDIN)' 
 	echo $' -l [str] list of accesions (space separated)'
 	echo $' -n [str] ncbi_api_key'
+	echo $' -s skip_len_taxid'
 	echo $' -a get_assembly_accession'
+	echo $' -r replace_not_found_accession'
 	echo
 }
 
@@ -42,14 +44,18 @@ input_file=""
 list_acc=""
 ncbi_api_key=""
 get_assembly_accession=0
+skip_len_taxid=0
+replace_not_found_accession=0
 
 OPTIND=1 # Reset getopts
-while getopts "i:l:n:a" opt; do
+while getopts "i:l:n:asr" opt; do
   case ${opt} in
     i) input_file=${OPTARG} ;;
     l) list_acc=${OPTARG} ;;
     n) ncbi_api_key=${OPTARG} ;;
     a) get_assembly_accession=1 ;;
+	s) skip_len_taxid=1 ;;
+	r) replace_not_found_accession=1 ;;
     h|\?) showhelp; exit 1 ;;
     :) echo "Option -${OPTARG} requires an argument." >&2; exit 1 ;;
   esac
@@ -57,6 +63,10 @@ done
 if [ ${OPTIND} -eq 1 ]; then showhelp; exit 1; fi
 shift $((OPTIND-1))
 [ "$1" = "--" ] && shift
+
+if [ "${skip_len_taxid}" -eq 1 ];  then
+	get_assembly_accession=1
+fi
 
 if [[ "${input_file}" == "-" ]]; then
 	tmp_file="$(mktemp)"
@@ -83,66 +93,71 @@ while [[ ! -z "${acc}" ]];
 do
 	out=""
 
-	for i in $(seq 1 ${att});
-	do
-		# First try to get from summary, lighter resource 
-		# replacing \n for , 
-		xml_summary="$(retrieve_summary_xml "${acc//$'\n'/,}" "${ncbi_api_key}")"
-		acc_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="AccessionVersion" Type="String">)[^<]+')"
-		# if no accession returned, try again
-		if [[ -z "${acc_summary}" ]]; then 
-			#(>&2 printf "Continue summary ${i}\n")
-			sleep ${i} # wait to not oveload ncbi server
-			continue
-		else
-			len_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="Length" Type="Integer">)[^<]+')"
-			taxid_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="TaxId" Type="Integer">)[^<]+')"
-			out="$(paste <(echo "${acc_summary}") <(echo "${len_summary}") <(echo "${taxid_summary}") --delimiters '\t')"
-			break
-		fi
-	done
-	# if there are less output lines than input accessions, get accessions difference (or return is empty)
-	if [[ "$(echo "${acc_summary}" | wc -l)" -lt "$(echo "${acc}" | wc -l)" ||  -z "${acc_summary}"  ]];
-	then
-		acc_diff="$(diff --changed-group-format='%>' --unchanged-group-format='' <(echo "${acc_summary}") <(echo "$acc"))"
-	else
-		acc_diff=""
-	fi
-
-	# If there are accessions left
-	if [[ ! -z "${acc_diff}" ]]; then
-	        #(>&2 printf "Fetch\n")	
+	# if -s active
+	if [ "${skip_len_taxid}" -eq 0 ]; then
 		for i in $(seq 1 ${att});
 		do
-			# try another method
-			xml_fetch="$(retrieve_nucleotide_fasta_xml "${acc_diff//$'\n'/,}" "${ncbi_api_key}")"
-			acc_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_accver>)[^<]+')"
+			# First try to get from summary, lighter resource 
+			# replacing \n for , 
+			xml_summary="$(retrieve_summary_xml "${acc//$'\n'/,}" "${ncbi_api_key}")"
+			acc_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="AccessionVersion" Type="String">)[^<]+')"
 			# if no accession returned, try again
-			if [[ -z "${acc_fetch}" ]]; then 
-				#(>&2 printf "Continue fetch ${i}\n")
+			if [[ -z "${acc_summary}" ]]; then 
+				#(>&2 printf "Continue summary ${i}\n")
 				sleep ${i} # wait to not oveload ncbi server
 				continue
 			else
-				len_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_length>)[^<]+')"
-				taxid_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_taxid>)[^<]+')"
-				if [[ ! -z "${out}" ]]; then 
-					out="${out}"$'\n'
-				fi
-				out="${out}$(paste <(echo "${acc_fetch}") <(echo "${len_fetch}") <(echo "${taxid_fetch}") --delimiters '\t')"
+				len_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="Length" Type="Integer">)[^<]+')"
+				taxid_summary="$(echo "${xml_summary}" | grep -oP '(?<=Name="TaxId" Type="Integer">)[^<]+')"
+				out="$(paste <(echo "${acc_summary}") <(echo "${len_summary}") <(echo "${taxid_summary}") --delimiters '\t')"
 				break
 			fi
 		done
-		# if there are less output lines than input accessions, get accessions missing (or return is empty)
-		if [[ "$(echo "${acc_fetch}" | wc -l)" -lt "$(echo "${acc_diff}" | wc -l)" ||  -z "${acc_fetch}" ]];
+		# if there are less output lines than input accessions, get accessions difference (or return is empty)
+		if [[ "$(echo "${acc_summary}" | wc -l)" -lt "$(echo "${acc}" | wc -l)" ||  -z "${acc_summary}"  ]];
 		then
-			acc_missing="$(diff --changed-group-format='%>' --unchanged-group-format='' <(echo "${acc_fetch}") <(echo "$acc_diff"))"
-			failed="${failed}${acc_missing}\n"
+			acc_diff="$(diff --changed-group-format='%>' --unchanged-group-format='' <(echo "${acc_summary}") <(echo "$acc"))"
+		else
+			acc_diff=""
 		fi
+
+		# If there are accessions left
+		if [[ ! -z "${acc_diff}" ]]; then
+		        #(>&2 printf "Fetch\n")	
+			for i in $(seq 1 ${att});
+			do
+				# try another method
+				xml_fetch="$(retrieve_nucleotide_fasta_xml "${acc_diff//$'\n'/,}" "${ncbi_api_key}")"
+				acc_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_accver>)[^<]+')"
+				# if no accession returned, try again
+				if [[ -z "${acc_fetch}" ]]; then 
+					#(>&2 printf "Continue fetch ${i}\n")
+					sleep ${i} # wait to not oveload ncbi server
+					continue
+				else
+					len_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_length>)[^<]+')"
+					taxid_fetch="$(echo "${xml_fetch}" | grep -oP '(?<=<TSeq_taxid>)[^<]+')"
+					if [[ ! -z "${out}" ]]; then 
+						out="${out}"$'\n'
+					fi
+					out="${out}$(paste <(echo "${acc_fetch}") <(echo "${len_fetch}") <(echo "${taxid_fetch}") --delimiters '\t')"
+					break
+				fi
+			done
+			# if there are less output lines than input accessions, get accessions missing (or return is empty)
+			if [[ "$(echo "${acc_fetch}" | wc -l)" -lt "$(echo "${acc_diff}" | wc -l)" ||  -z "${acc_fetch}" ]];
+			then
+				acc_missing="$(diff --changed-group-format='%>' --unchanged-group-format='' <(echo "${acc_fetch}") <(echo "$acc_diff"))"
+				failed="${failed}${acc_missing}\n"
+			fi
+		fi
+	else
+		# print all accessions to out
+		out="${acc}"
 	fi
 
 	# if should retrieve assembly accessions
-	if [ "${get_assembly_accession}" -eq 0 ]; 
-	then
+	if [ "${get_assembly_accession}" -eq 0 ]; then
 		echo "${out}"
 	else
 		# Get assembly uid
@@ -216,8 +231,21 @@ do
 
 		# link uids (not found for esummary)
 		acc_assembly="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyaccession_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e NOT_FOUND)"
-		# print final (not found for elink)
-		echo "$(join -1 1 -2 1 <(echo "${out}" | sort -k 1,1) <(echo "${acc_assembly}" | sort -k 1,1) -t$'\t' -o "0,1.2,1.3,2.2" -a 1 -e NOT_FOUND)"
+		# check for entries without assembly found (not found for elink)
+		if [ "${skip_len_taxid}" -eq 0 ]; then
+			final="$(join -1 1 -2 1 <(echo "${out}" | sort -k 1,1) <(echo "${acc_assembly}" | sort -k 1,1) -t$'\t' -o "0,1.2,1.3,2.2" -a 1 -e NOT_FOUND)"
+		else
+			# skip len taxid
+			final="$(join -1 1 -2 1 <(echo "${out}" | sort -k 1,1) <(echo "${acc_assembly}" | sort -k 1,1) -t$'\t' -o "0,2.2" -a 1 -e NOT_FOUND)"
+		fi
+
+		# Print final
+		if [ "${replace_not_found_accession}" -eq 1 ]; then
+			echo "$(echo "${final}" | awk 'BEGIN{FS="\t";OFS="\t"}{if($NF=="NOT_FOUND"){$NF=$1}; print}')"
+		else
+			echo "${final}"
+		fi
+
 	fi
 
 	# read new batch
@@ -232,11 +260,11 @@ fi
 # Print errors to STDERR
 if [[ ! -z "${failed}" ]];
 then
-	(>&2 printf "Failed to get taxid and sequence length:\n${failed}")
+	(>&2 printf "Failed to get taxid and sequence length for:\n${failed}")
 fi
 if [[ ! -z "${failed_assembly}" ]];
 then
-	(>&2 printf "Failed to get assembly accession:\n${failed_assembly}")
+	(>&2 printf "Failed to get assembly accession for:\n${failed_assembly}")
 fi
 if [[ ! -z "${failed}" || ! -z "${failed_assembly}" ]];
 then

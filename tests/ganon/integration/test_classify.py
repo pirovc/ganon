@@ -1,23 +1,51 @@
-import unittest
-import shlex, pickle
-from pathlib import Path
-from src.ganon import ganon
+import unittest, sys
+sys.path.append('src')
+from ganon import ganon
+from ganon.config import Config
 
-class TestClassify(unittest.TestCase):
-    def test_classify(self):
-        """
-        Test if classify on sample data is working
-        """
-        path_data = "tests/ganon/integration/data/"
-        prefix = "test_classify"
-        ret = ganon.main(shlex.split("./ganon classify --output-all --db-prefix "+path_data+"sample_bacteria --single-reads "+path_data+"bacteria.simulated.1.fq -o "+prefix))
-        
-        # check if ran okay
-        self.assertFalse(ret, "ganon classify finish with an error")
+base_dir = "tests/ganon/"
+sys.path.append(base_dir)
+from utils import *
+data_dir = base_dir + "data/"
+
+class TestClassifyOffline(unittest.TestCase):
+
+    results_dir = base_dir + "results/integration/classify/"
+    default_params = {"db_prefix": data_dir+"bacteria_default",
+                      "single_reads": data_dir+"bac.sim.1.fq",
+                      "output_all": True,
+                      "quiet": True}
+    
+    @classmethod
+    def setUpClass(self):
+        setup_dir(self.results_dir)
        
-        # check if files were created
-        for ext in ["lca", "all", "rep", "tre"]:
-            self.assertTrue(Path(prefix+"."+ext).is_file() , "File (" + ext +") was not created") # TODO check file contents
+    def test_default(self):
+        """
+        Test run with default parameters
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_default.tre"
+        
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+
+
+def classify_classify_sanity_check_and_parse(params):
+    # Provide sanity checks for outputs (not specific to a test) and return loaded data
+
+    if not check_files(params["output_prefix"], ["lca","all","rep","tre"]):
+        return None
+
+    res = {}
+    # Sequence information from database to be updated
+    res["tre_pd"] =  parse_tre(params["output_prefix"]+".tre")
+    return res
 
 if __name__ == '__main__':
     unittest.main()

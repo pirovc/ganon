@@ -109,6 +109,29 @@ SCENARIO( "Update", "[ganon-build]" )
     REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/bacteria_upd_virus_build.ibf" ) );
 }
 
+SCENARIO( "Update complete", "[ganon-build]" )
+{
+    // update complete bacteria filter with virus
+    // removing NC_017164.1 bin 63
+    auto cfg               = config_build::defaultConfig();
+    cfg.seqid_bin_file     = "filters/bacteria_upd_complete_virus_acc_bin.txt";
+    cfg.reference_files    = { "sequences/bacteria_NC_010333.1.fasta.gz", "sequences/bacteria_NC_017163.1.fasta.gz",
+                            "sequences/bacteria_NC_017543.1.fasta.gz", "sequences/virus_NC_003676.1.fasta.gz",
+                            "sequences/virus_NC_011646.1.fasta.gz",    "sequences/virus_NC_032412.1.fasta.gz",
+                            "sequences/virus_NC_035470.1.fasta.gz" };
+    cfg.update_complete    = true;
+    cfg.update_filter_file = config_build::bacteria_filter;
+
+    REQUIRE( GanonBuild::run( cfg ) );
+
+    // should have the same size since number of new bins does not pass the multiple of 64 threshold
+    // bacteria 67 bins + virus 8 bins
+    REQUIRE( aux::fileSize( cfg.output_filter_file ) == aux::fileSize( cfg.update_filter_file ) );
+
+    // check file
+    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/bacteria_upd_complete_virus_build.ibf" ) );
+}
+
 SCENARIO( "Update increasing filter size", "[ganon-build]" )
 {
     // update virus filter with bacteria and archaea

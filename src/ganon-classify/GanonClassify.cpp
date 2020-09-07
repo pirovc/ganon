@@ -226,7 +226,10 @@ void select_matches( TMatches&                matches,
                      uint16_t&                maxKmerCountRead )
 {
     // for each bin
-    for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
+    // for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
+    // loop in map structure to avoid extra validations when map.size() < filter.ibf.noOfBins when ibf is updated and
+    // sequences removed also avoid the error of spurius results from empty bins (bug reported)
+    for ( auto const& [binNo, target] : filter.map )
     {
         // if kmer count is higher than threshold
         if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
@@ -235,11 +238,10 @@ void select_matches( TMatches&                matches,
             uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
             // keep only the best match target/read when same targets are split in several
             // bins
-
-            if ( matches.count( filter.map.at( binNo ) ) == 0 || maxKmerCountBin > matches[filter.map.at( binNo )] )
+            if ( matches.count( target ) == 0 || maxKmerCountBin > matches[target] )
             {
                 // store match to target
-                matches[filter.map.at( binNo )] = maxKmerCountBin;
+                matches[target] = maxKmerCountBin;
                 if ( maxKmerCountBin > maxKmerCountRead )
                     maxKmerCountRead = maxKmerCountBin;
             }
@@ -572,13 +574,13 @@ bool load_filters( std::vector< Filter >& filters,
             // target <tab> binid
             map[std::stoul( fields[1] )] = fields[0];
             unique_targets.insert( fields[0] );
-
-            // std::cerr << std::stoul( fields[1] ) << " -- " << fields[0] << std::endl;
         }
         infile.close();
 
+
         // Check consistency of map file and ibf file
-        if ( map.size() != filter.noOfBins )
+        // map.size can be smaller than bins set on IBF if sequences were removed
+        if ( map.size() > filter.noOfBins )
         {
             std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
             return false;
@@ -594,8 +596,6 @@ bool load_filters( std::vector< Filter >& filters,
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
             tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
-            // std::cerr << fields[0]  << " -- " << fields[1]  << " -- " << fields[2]  << " -- " << fields[3] <<
-            // std::endl;
         }
         infile.close();
 
@@ -625,20 +625,23 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << ( stats.sumReadLen / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
     std::cerr << " - " << stats.classifiedReads << " sequences classified ("
               << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
-    std::cerr << " - " << stats.matches << " matches (avg. "
-              << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
 
-
-    if ( config.parsed_hierarchy.size() > 1 )
+    if ( stats.matches > 0 )
     {
-        for ( auto& h : config.parsed_hierarchy )
+        std::cerr << " - " << stats.matches << " matches (avg. "
+                  << ( stats.matches / static_cast< double >( stats.classifiedReads ) ) << " match/read)" << std::endl;
+        if ( config.parsed_hierarchy.size() > 1 )
         {
-            std::cerr << "    " << h.first << ": " << stats.classifiedReads_hierarchy[h.first] << " sequences ("
-                      << ( stats.classifiedReads_hierarchy[h.first] / static_cast< double >( stats.totalReads ) ) * 100
-                      << "%) " << stats.matches_hierarchy[h.first] << " matches (avg. "
-                      << ( stats.matches_hierarchy[h.first]
-                           / static_cast< double >( stats.classifiedReads_hierarchy[h.first] ) )
-                      << ")" << std::endl;
+            for ( auto& h : config.parsed_hierarchy )
+            {
+                std::cerr << "    " << h.first << ": " << stats.classifiedReads_hierarchy[h.first] << " sequences ("
+                          << ( stats.classifiedReads_hierarchy[h.first] / static_cast< double >( stats.totalReads ) )
+                                 * 100
+                          << "%) " << stats.matches_hierarchy[h.first] << " matches (avg. "
+                          << ( stats.matches_hierarchy[h.first]
+                               / static_cast< double >( stats.classifiedReads_hierarchy[h.first] ) )
+                          << ")" << std::endl;
+            }
         }
     }
 

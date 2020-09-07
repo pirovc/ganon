@@ -3,7 +3,7 @@
 # =============================================================================
 
 cmake_minimum_required( VERSION 3.10 FATAL_ERROR )
-project( ganon VERSION 0.2.3 LANGUAGES CXX )
+project( ganon VERSION 0.3.0 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup
@@ -140,16 +140,20 @@ endif()
 
 if( VERBOSE_CONFIG )
     message( STATUS "SeqAn symbols")
-    message( STATUS "  SEQAN_DEFINITIONS : ${SEQAN_DEFINITIONS}" )
-    message( STATUS "  SEQAN_CXX_FLAGS   : ${SEQAN_CXX_FLAGS}" )
-    message( STATUS "  SEQAN_INCLUDE_DIRS: ${SEQAN_INCLUDE_DIRS}" )
-    message( STATUS "  SEQAN_LIBRARIES   : ${SEQAN_LIBRARIES}" )
+    message( STATUS "  SEQAN_DEFINITIONS   : ${SEQAN_DEFINITIONS}" )
+    message( STATUS "  SEQAN_CXX_FLAGS     : ${SEQAN_CXX_FLAGS}" )
+    message( STATUS "  SEQAN_INCLUDE_DIRS  : ${SEQAN_INCLUDE_DIRS}" )
+    message( STATUS "  SEQAN_LIBRARIES     : ${SEQAN_LIBRARIES}" )
     message( STATUS "Misc symbols")
-    message( STATUS "  Build type        : ${CMAKE_BUILD_TYPE}" )
-    message( STATUS "  CMAKE_CXX_FLAGS   : ${CMAKE_CXX_FLAGS}" )
-    message( STATUS "  INCLUDE_DIRS      : ${INCLUDE_DIRS}" )
+    message( STATUS "  Build type          : ${CMAKE_BUILD_TYPE}" )
+    message( STATUS "  CMAKE_CXX_FLAGS     : ${CMAKE_CXX_FLAGS}" )
+    message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
+    message( STATUS "  CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}" )
+    message( STATUS "  CONDA               : ${CONDA}" )
+    message( STATUS "  GANON_OFFSET        : ${GANON_OFFSET}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
+
 endif()
 
 # -----------------------------------------------------------------------------

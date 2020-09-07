@@ -29,7 +29,7 @@
 *.app
 
 # Build
-**/build
+/build/
 
 # User temp
 **/CMakeLists.txt.user
@@ -39,3 +39,7 @@
 
 # Python byte code
 *.pyc
+
+# python setuptools
+*.egg-info/
+dist/
