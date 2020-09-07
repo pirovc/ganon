@@ -24,6 +24,16 @@ matrix:
     #     - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
     #     - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
+    - name: "osx xcode10.3"
+      os: osx
+      osx_image: xcode10.3
+      addons:
+        homebrew: { packages: [coreutils, gawk, grep],
+                    update: false }
+      env: 
+        - PATH="$(brew --prefix coreutils)/libexec/gnubin:$(brew --prefix grep)/libexec/gnubin:$PATH" 
+        - MATRIX_EVAL="BUILD_TYPE=Release"
+
     # - name: "osx xcode11"
     #   os: osx
     #   osx_image: xcode11
@@ -75,13 +85,6 @@ matrix:
     #     apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
     #            sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
     #   env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
-
-    - name: "linux clang-9"
-      os: linux
-      addons:
-        apt: { packages: [clang-9, g++-9, python3-pip, python3-setuptools],
-               sources:  [llvm-toolchain-xenial-9, ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=clang-9 && CXX=clang++-9 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
