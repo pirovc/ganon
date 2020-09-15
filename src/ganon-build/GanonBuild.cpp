@@ -246,32 +246,35 @@ bool run( Config config )
                 }
                 catch ( seqan::Exception const& e )
                 {
-                    mtx.lock();
+                    std::scoped_lock lock( mtx );
                     std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
                               << std::endl;
-                    mtx.unlock();
                 }
 
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
                 {
                     stats.totalSeqsFile += 1;
-                    if ( config.verbose && seqan::length( seqs[i] ) < config.kmer_size )
-                    { // sequence too small
-                        mtx.lock();
-                        std::cerr << "WARNING: sequence smaller than k-mer size"
-                                  << " [" << ids[i] << "]" << std::endl;
-                        mtx.unlock();
+                    if ( seqan::length( seqs[i] ) < config.kmer_size )
+                    {
+                        if ( config.verbose )
+                        {
+                            std::scoped_lock lock( mtx );
+                            std::cerr << "WARNING: sequence smaller than k-mer size"
+                                      << " [" << ids[i] << "]" << std::endl;
+                        }
                         stats.invalidSeqs += 1;
                         continue;
                     }
                     std::string cid   = seqan::toCString( ids[i] );
                     std::string seqid = cid.substr( 0, cid.find( ' ' ) );
-                    if ( config.verbose && seq_bin.count( seqid ) == 0 )
+                    if ( seq_bin.count( seqid ) == 0 )
                     {
-                        mtx.lock();
-                        std::cerr << "WARNING: sequence not defined on seqid-bin-file"
-                                  << " [" << seqid << "]" << std::endl;
-                        mtx.unlock();
+                        if ( config.verbose )
+                        {
+                            std::scoped_lock lock( mtx );
+                            std::cerr << "WARNING: sequence not defined on seqid-bin-file"
+                                      << " [" << seqid << "]" << std::endl;
+                        }
                         stats.invalidSeqs += 1;
                         continue;
                     }
@@ -300,9 +303,9 @@ bool run( Config config )
                 detail::Seqs val = queue_refs.pop();
                 if ( val.seqid != "" )
                 {
-                    for ( uint64_t i = 0; i < seq_bin[val.seqid].size(); i++ )
+                    for ( uint64_t i = 0; i < seq_bin.at( val.seqid ).size(); i++ )
                     {
-                        auto [fragstart, fragend, binid] = seq_bin[val.seqid][i];
+                        auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
                         // For infixes, we have to provide both the including start and the excluding end position.
                         // fragstart -1 to fix offset
                         // fragend -1+1 to fix offset and not exclude last position

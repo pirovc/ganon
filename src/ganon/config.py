@@ -4,7 +4,7 @@ from ganon.util import *
 
 class Config:
 
-    version = '0.3.0'
+    version = '0.3.1'
     path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
     empty = False
 
