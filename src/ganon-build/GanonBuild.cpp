@@ -246,10 +246,9 @@ bool run( Config config )
                 }
                 catch ( seqan::Exception const& e )
                 {
-                    mtx.lock();
+                    std::scoped_lock lock( mtx );
                     std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
                               << std::endl;
-                    mtx.unlock();
                 }
 
                 for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
@@ -259,10 +258,9 @@ bool run( Config config )
                     {
                         if ( config.verbose )
                         {
-                            mtx.lock();
+                            std::scoped_lock lock( mtx );
                             std::cerr << "WARNING: sequence smaller than k-mer size"
                                       << " [" << ids[i] << "]" << std::endl;
-                            mtx.unlock();
                         }
                         stats.invalidSeqs += 1;
                         continue;
@@ -273,10 +271,9 @@ bool run( Config config )
                     {
                         if ( config.verbose )
                         {
-                            mtx.lock();
+                            std::scoped_lock lock( mtx );
                             std::cerr << "WARNING: sequence not defined on seqid-bin-file"
                                       << " [" << seqid << "]" << std::endl;
-                            mtx.unlock();
                         }
                         stats.invalidSeqs += 1;
                         continue;
