@@ -63,6 +63,8 @@ def parse_rep(rep_file):
     return seq_cla, seq_unc, reports
 
 def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
+    if not reports: return False
+
     if not ranks:  
         all_ranks = False
         fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
@@ -84,10 +86,8 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
                 merged_reports[target]['unique_reads'] += report[target]['unique_reads']
                 merged_reports[target]['lca_reads'] += report[target]['lca_reads']
 
-    if not merged_rep: return False
+    if not merged_reports: return False
 
-    final_rep = {}
-    
     # make cummulative sum of the counts on the lineage
     for leaf in merged_reports.keys():
         count = merged_reports[leaf]['unique_reads'] + merged_reports[leaf]['lca_reads']
