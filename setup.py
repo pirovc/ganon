@@ -25,7 +25,7 @@ setup(
 
     package_dir={'':'src'},
     packages=["ganon"],
-    entry_points = {'console_scripts': ['ganon=ganon.ganon:main']},
+    entry_points = {'console_scripts': ['ganon=ganon.ganon:main_cli']},
     
     scripts=['scripts/ganon-convert-db-0.1-0.2.py',
             'scripts/ganon-convert-db-0.2-0.3.py',
