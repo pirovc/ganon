@@ -86,8 +86,7 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
                 merged_reports[target]['unique_reads'] += report[target]['unique_reads']
                 merged_reports[target]['lca_reads'] += report[target]['lca_reads']
 
-    if not merged_reports: return False
-
+    final_rep = {}
     # make cummulative sum of the counts on the lineage
     for leaf in merged_reports.keys():
         count = merged_reports[leaf]['unique_reads'] + merged_reports[leaf]['lca_reads']
