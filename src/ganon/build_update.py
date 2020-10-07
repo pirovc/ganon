@@ -537,7 +537,8 @@ def validate_input_files(cfg):
                 if file.endswith(cfg.input_extension):
                     input_files_from_directory.append(os.path.join(cfg.input_directory, file))
             print_log(str(len(input_files_from_directory)) + " file(s) [" + cfg.input_extension + "] found in " + cfg.input_directory, cfg.quiet)
-
+            print_log("")
+            
     # remove non existent files from input list
     if cfg.input_files: 
         input_files = check_files(cfg.input_files)
