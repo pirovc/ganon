@@ -4,7 +4,7 @@ from ganon.util import *
 
 class Config:
 
-    version = '0.3.1'
+    version = '0.3.2'
     path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
     empty = False
 
@@ -229,8 +229,12 @@ class Config:
                 self.paired_reads = check_files(self.paired_reads)
                 len_paired_reads = len(self.paired_reads)
             
+            if len_paired_reads % 2 != 0:
+                print_log("Invalid paired reads")
+                return False
+
             if len_single_reads+len_paired_reads==0:
-                print_log("No valid input files found")
+                print_log("No valid input files to classify")
                 return False
 
         elif self.which=='report':

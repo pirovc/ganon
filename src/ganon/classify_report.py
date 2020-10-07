@@ -1,5 +1,4 @@
 import time
-from collections import defaultdict
 from ganon.tax import Tax
 from ganon.util import *
 
@@ -48,7 +47,7 @@ def report(cfg):
     return True
     
 def parse_rep(rep_file):
-    reports = defaultdict(lambda: defaultdict(lambda: {'direct_matches': 0, 'unique_reads': 0, 'lca_reads': 0}))
+    reports = {}
     with open(rep_file, 'r') as rep_file:
         for line in rep_file:
             fields = line.rstrip().split("\t")
@@ -58,12 +57,14 @@ def parse_rep(rep_file):
                 seq_unc = int(fields[1])
             else:
                 hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
-                reports[hierarchy_name][target]["direct_matches"]+=int(direct_matches)
-                reports[hierarchy_name][target]["unique_reads"]+=int(unique_reads)
-                reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
+                if hierarchy_name not in reports:
+                    reports[hierarchy_name] = {}
+                reports[hierarchy_name][target] = {"direct_matches":int(direct_matches), "unique_reads":int(unique_reads), "lca_reads":int(lca_reads)}
     return seq_cla, seq_unc, reports
 
 def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
+    if not reports: return False
+
     if not ranks:  
         all_ranks = False
         fixed_ranks = ['root','superkingdom','phylum','class','order','family','genus','species','species+','assembly']
@@ -74,19 +75,21 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
         all_ranks = False
         fixed_ranks = ['root'] + ranks
 
-    # sum counts of each report
-    merged_rep = defaultdict(int)
-    for rep in reports.values():
-        for leaf in rep.keys():
-            reads_assigned = rep[leaf]['unique_reads']+rep[leaf]['lca_reads']
-            if reads_assigned>0:
-                merged_rep[leaf]+=reads_assigned
+    # sum read assignments for all hiearchical classifications
+    merged_reports = {}
+    for report in reports.values():
+        for target in report.keys():
+            # Add to the merged report if there were reads assigned to the taxa (not only shared matches)
+            if report[target]['unique_reads'] + report[target]['lca_reads']:
+                if target not in merged_reports:
+                    merged_reports[target] = {'unique_reads':0, 'lca_reads': 0}
+                merged_reports[target]['unique_reads'] += report[target]['unique_reads']
+                merged_reports[target]['lca_reads'] += report[target]['lca_reads']
 
-    final_rep = defaultdict(lambda: {'count': 0, 'rank': ""})
-    
+    final_rep = {}
     # make cummulative sum of the counts on the lineage
-    for leaf in merged_rep.keys():
-        count = merged_rep[leaf]
+    for leaf in merged_reports.keys():
+        count = merged_reports[leaf]['unique_reads'] + merged_reports[leaf]['lca_reads']
         if all_ranks: # use all nodes on the tree
             t = leaf
             r = tax.nodes[t][1]
@@ -94,6 +97,7 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
             t, r = tax.get_node_rank_fixed(leaf, fixed_ranks)
 
         while t!="0":
+            if t not in final_rep: final_rep[t] = {'count': 0, 'rank': ""}
             final_rep[t]['count']+=count
             final_rep[t]['rank']=r
             if all_ranks:
@@ -141,8 +145,8 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
     for assignment in sorted_assignments:
         rank=final_rep[assignment]['rank'] 
         name=tax.nodes[assignment][2]
-        reads_unique = rep[assignment]['unique_reads']
-        reads = merged_rep[assignment] 
+        reads_unique = merged_reports[assignment]['unique_reads'] if assignment in merged_reports else 0
+        reads = merged_reports[assignment]['unique_reads'] + merged_reports[assignment]['lca_reads'] if assignment in merged_reports else 0
         matches=final_rep[assignment]['count']
         if matches < min_matches: continue
         matches_perc=(final_rep[assignment]['count']/total_reads)*100
