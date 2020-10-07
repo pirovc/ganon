@@ -234,7 +234,7 @@ class Config:
                 return False
 
             if len_single_reads+len_paired_reads==0:
-                print_log("No valid input to classify")
+                print_log("No valid input files to classify")
                 return False
 
         elif self.which=='report':
