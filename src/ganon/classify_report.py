@@ -82,6 +82,8 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
             if reads_assigned>0:
                 merged_rep[leaf]+=reads_assigned
 
+    if not merged_rep: return False
+
     final_rep = defaultdict(lambda: {'count': 0, 'rank': ""})
     
     # make cummulative sum of the counts on the lineage
