@@ -25,7 +25,26 @@ class TestClassifyOffline(unittest.TestCase):
         Test run with default parameters
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_default.tre"
+        params["output_prefix"] = self.results_dir + "test_default"
+        
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+
+    def test_multiple_databases(self):
+        """
+        Test run with default parameters
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_multiple_databases"
+        params["db_prefix"] = [data_dir+"bacteria_assembly", data_dir+"bacteria_default"]
+        params["min_kmers"] = ["0.25", "0.1"]
+        params["hierarchy_labels"] = ["1_assembly", "2_default"]
+        params["output_single"] = True
         
         # Build config from params
         cfg = Config("classify", **params)
