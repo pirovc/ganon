@@ -15,10 +15,10 @@ def main(which: str=None, cfg=None, **kwargs):
     if cfg is None: cfg = Config(which, **kwargs)
 
     # Validate
-    if not cfg.validate(): sys.exit(1)
+    if not cfg.validate(): return False
 
     # Set paths
-    if not cfg.set_paths(): sys.exit(1)
+    if not cfg.set_paths(): return False
 
     tx_total = time.time()
     
@@ -40,5 +40,8 @@ def main(which: str=None, cfg=None, **kwargs):
     print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.", cfg.quiet)
     return ret
 
+def main_cli():
+    sys.exit(0 if main() else 1)
+
 if __name__ == '__main__':
-    main()
+    sys.exit(0 if main() else 1)
