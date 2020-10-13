@@ -124,7 +124,31 @@ class Config:
         report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
         report_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
         report_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
-        
+        ####################################################################################################
+
+        table_parser = argparse.ArgumentParser(description='Table options', add_help=False)
+
+        # Required
+        table_group_required = table_parser.add_argument_group('required arguments')
+        table_group_required.add_argument('-i', '--tre-files',  required=True, type=str, nargs="*", help='Report files (.tre) from ganon classify/report to make the table')
+        table_group_required.add_argument('-o', '--output-file',  required=True, type=str, help='Table (tab-separated) output file name')
+    
+        # Defaults
+        table_group_optional = table_parser.add_argument_group('optional arguments')
+        table_group_optional.add_argument('-m', metavar='<min_matches>',      required=False, dest="min_matches",         type=int, default=0, help="Mininum number of matches. 0 for all. Default: 0")
+        table_group_optional.add_argument('-p', metavar='<min_perc_matches>', required=False, dest="min_perc_matches",    type=float, default=0, help="Mininum percentage of matches. 0 for all. Default: 0")
+        table_group_optional.add_argument('-t', metavar='<top_hits_sample>',  required=False, dest="top_hits_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
+        table_group_optional.add_argument('-a', metavar='<top_hits_all>',     required=False, dest="top_hits_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
+        table_group_optional.add_argument('-r', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
+        table_group_optional.add_argument('-s', metavar='<sort>',             required=False, dest="sort",        type=str, default="count", help="Sort elements inside bars [name, count]. Default: count")
+        table_group_optional.add_argument('-n', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism of the list.")
+        table_group_optional.add_argument('-x', metavar='<approximate_names>',required=False, dest="approximate_names",       type=str, nargs="*", default="", help="Show only organism containing any name of this list")
+        table_group_optional.add_argument('--ignore-unclassified-all', dest="ignore_unclassified_all", help='', action='store_true')
+        table_group_optional.add_argument('--ignore-unclassified-rank', dest="ignore_unclassified_rank", help='', action='store_true')
+        table_group_optional.add_argument('--ignore-filtered', dest="ignore_filtered", help='', action='store_true')
+        table_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
+        table_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
+               
         ####################################################################################################
 
         subparsers = parser.add_subparsers()
@@ -140,6 +164,9 @@ class Config:
 
         report = subparsers.add_parser('report', help='Generate reports', parents=[report_parser])
         report.set_defaults(which='report')
+
+        table = subparsers.add_parser('table', help='Generate table from reports', parents=[table_parser])
+        table.set_defaults(which='table')
 
         # Passing arguments internally from call main(which, **kwargs)
         if which is not None:
@@ -244,6 +271,12 @@ class Config:
 
             if not os.path.isfile(self.rep_file):
                 print_log("File not found [" + self.rep_file + "]")
+                return False
+
+        elif self.which=='table':
+            self.tre_files = check_files(self.tre_files)
+            if not len(self.tre_files):
+                print_log("No valid input files to generate the table")
                 return False
 
         return True
