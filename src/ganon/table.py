@@ -7,6 +7,7 @@ def table(cfg):
 
     tx = time.time()
     print_log("Generating table", cfg.quiet)
+    print_log(" - Parsing " + str(len(cfg.tre_files)) + " files" , cfg.quiet)
     results = OrderedDict()
     for file in sorted(cfg.tre_files): # sorted by file name
         results[file] = dict()
@@ -14,15 +15,15 @@ def table(cfg):
         results[file]["data"], results[file]["total_reads"], results[file]["unclassified_root_reads"], results[file]["unclassified_rank_reads"], results[file]["filtered_rank_reads"] = parse_tre(file, cfg)
     
     total_counts = get_total_counts(results)
-
+    print_log(" - " + str(len(total_counts)) + " taxa found at " + cfg.rank + " level", cfg.quiet)
+    
     # filter results based on top hits to all samples
     if cfg.top_hits_all:
         top_names = []
         for i,(name,_) in enumerate(sorted(total_counts.items(), key=lambda kv: kv[1], reverse=True)):
             if i<cfg.top_hits_all:
                 top_names.append(name)
-
-        print(top_names)
+                
         for d in results.values():
             tre, classified_read_count, filtered_read_count = filter_names(d["data"], top_names)
             d["data"] = tre
@@ -30,10 +31,14 @@ def table(cfg):
                 d["total_reads"]-=filtered_read_count
             else:
                 d["filtered_rank_reads"]+=filtered_read_count
+
+        print_log(" - keeping " + str(len(top_names)) + "/" + str(len(total_counts)) + " top taxa among all files", cfg.quiet)
+    
         # reset total counts
         total_counts = get_total_counts(results)
-        
-    write_tsv(results, total_counts.keys(), cfg.output_file)
+
+    lines = write_tsv(results, total_counts.keys(), cfg.output_file)
+    print_log(" - " + str(len(total_counts.keys())) + "x" + str(lines) + " table written to " + cfg.output_file, cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
@@ -134,6 +139,7 @@ def get_total_counts(results):
 
 def write_tsv(results, names, output_file):
     sorted_names = sorted(names)
+    lines=0
     tsv_file = open(output_file, "w")
     header = ["sample"] + [name for name in sorted_names]
     print(*header, sep="\t", file=tsv_file)
@@ -141,6 +147,10 @@ def write_tsv(results, names, output_file):
         tsv_data = [res["label"]]
         for name in sorted_names:
             tsv_data.append(res["data"][name]/res["total_reads"] if name in res["data"] else 0)
-        if max(tsv_data[1:]) > 0: # if there is any entry
+        if len(tsv_data) > 1 and max(tsv_data[1:]) > 0: # if there is any entry
             print(*tsv_data, sep="\t", file=tsv_file)
+            lines+=1
+        else:
+            print_log(" - Skipping line (" + res["label"] + ") with no valid entries >= 0")
     tsv_file.close()
+    return lines
