@@ -63,7 +63,7 @@ def parse_tre(file, cfg):
         elif rank == "root":
             classified_root_reads=read_count
         elif rank==cfg.rank:
-            if read_count>=cfg.min_reads and percentage>=cfg.min_perc_reads:
+            if read_count>=cfg.min_count and percentage>=cfg.min_percentage:
                 classified_rank_reads += read_count
                 tre[name] = read_count
             else:
