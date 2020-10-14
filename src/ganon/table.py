@@ -141,7 +141,7 @@ def write_tsv(results, names, cfg):
     sorted_names = sorted(names)
     lines=0
     tsv_file = open(cfg.output_file, "w")
-    header = ["sample"] + [name for name in sorted_names]
+    header = [""] + [name for name in sorted_names]
     print(*header, sep="\t", file=tsv_file)
     for res in results.values():
         tsv_data = [res["label"]]

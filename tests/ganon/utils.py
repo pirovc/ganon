@@ -46,6 +46,9 @@ def parse_tre(tre_file):
     types={'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'str', 'total': 'str', 'cumulative': 'str', 'cumulative_perc': 'str'}
     return pd.read_table(tre_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
+def parse_tsv(tsv_file):
+    return pd.read_table(tsv_file, sep='\t', index_col=0)
+
 def parse_all_lca(file):
     colums=['readid', 'target', 'count']
     types={'readid': 'str', 'target': 'str', 'count': 'uint64'}
@@ -118,6 +121,17 @@ def report_sanity_check_and_parse(params):
     res = {}
     # Sequence information from database to be updated
     res["tre_pd"] =  parse_tre(params["output_report"])
+    return res
+
+def table_sanity_check_and_parse(params):
+    # Provide sanity checks for outputs (not specific to a test) and return loaded data
+
+    if not check_files(params["output_file"], [""]):
+        return None
+
+    res = {}
+    # Sequence information from database to be updated
+    res["tsv_pd"] = parse_tsv(params["output_file"])
     return res
 
 def update_sanity_check_and_parse(params):

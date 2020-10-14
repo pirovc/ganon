@@ -18,15 +18,19 @@ conda install -c bioconda -c conda-forge ganon
 
 * ganon runs on macOS but it is not available on conda due to compiler limitations. To install ganon os osx please follow the instructions: [Install without conda](#install-without-conda)
 
-## Running ganon with sample data
+## Running ganon basic functions with sample data
 
 ### build
 
 ```shh
-ganon build --db-prefix sample_bacteria --input-files tests/ganon-build/data/sequences/bacteria*.fasta.gz
+ganon build --db-prefix sample_bacteria \
+            --input-files tests/ganon/data/build/bacteria_*.fasta.gz \
+            --taxdump-file tests/ganon/data/mini_nodes.dmp tests/ganon/data/mini_names.dmp \
+            --seq-info-file tests/ganon/data/build/bacteria_seqinfo.txt
 ```
 
-Obs: `ganon build` (with a space in between) is different from the `ganon-build` command.
+- `ganon build` (with a space in between) is different from the `ganon-build` command.
+- `--taxdump-file` and `--seq-info-file` files are optional and will be automatically downloaded/generated if not provided
 
 ### classify
 
@@ -34,10 +38,18 @@ Obs: `ganon build` (with a space in between) is different from the `ganon-build`
 ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
 ```
 
+## Further ganon functions with sample data
+
 ### report
 
 ```
 ganon report --db-prefix sample_bacteria --rep-file sample_results.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
+```
+
+### table
+
+```
+ganon table -i sample_results.tre -o sample_table.tsv
 ```
 
 ### update
