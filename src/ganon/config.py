@@ -118,8 +118,7 @@ class Config:
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
         report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
-        report_group_optional.add_argument('-m', '--min-matches', type=int, default=0, help='Min. number of matches to output. 0 for all. Default: 0')
-        report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
+        report_group_optional.add_argument('-e', '--report-type', type=str, default="reads", help='Type of report to generate [reads, matches]. Default: reads')
         report_group_optional.add_argument('-t', '--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
         report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
         report_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
@@ -136,8 +135,6 @@ class Config:
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
         table_group_optional.add_argument('-l', '--output-value', metavar='<output_value>',      required=False, dest="output_value",         type=str, default="percentage", help="Output value on the table [percentage, counts]. Default: percentage")
-        table_group_optional.add_argument('-c', '--min-count', metavar='<min_count>',      required=False, dest="min_count",         type=int, default=0, help="Mininum number of assigned reads for a taxa to be valid. 0 for all. Default: 0")
-        table_group_optional.add_argument('-p', '--min-percentage', metavar='<min_percentage>', required=False, dest="min_percentage",    type=float, default=0, help="Mininum percentage of assigned reads for a taxa to be valid. 0 for all. Default: 0")
         table_group_optional.add_argument('-t', '--top-sample', metavar='<top_sample>',  required=False, dest="top_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
         table_group_optional.add_argument('-a', '--top-all', metavar='<top_all>',     required=False, dest="top_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
         table_group_optional.add_argument('-r', '--rank', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
@@ -151,6 +148,11 @@ class Config:
                
         ####################################################################################################
 
+        filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
+        filter_arguments = filter_parser.add_argument_group('filter arguments')
+        filter_arguments.add_argument('-c', '--min-count', metavar='', required=False, dest="min_count", type=int, default=0, help="Mininum number of counts to keep the target. 0 for all. Default: 0")
+        filter_arguments.add_argument('-p', '--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target. 0 for all. Default: 0")
+        
         subparsers = parser.add_subparsers()
         
         build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
@@ -162,10 +164,10 @@ class Config:
         classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
         classify.set_defaults(which='classify')
 
-        report = subparsers.add_parser('report', help='Generate reports', parents=[report_parser])
+        report = subparsers.add_parser('report', help='Generate reports', parents=[filter_parser,report_parser])
         report.set_defaults(which='report')
 
-        table = subparsers.add_parser('table', help='Generate table from reports', parents=[table_parser])
+        table = subparsers.add_parser('table', help='Generate table from reports', parents=[filter_parser,table_parser])
         table.set_defaults(which='table')
 
         # Passing arguments internally from call main(which, **kwargs)

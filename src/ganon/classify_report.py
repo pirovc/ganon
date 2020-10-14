@@ -30,39 +30,42 @@ def classify(cfg):
     print_log(stderr, cfg.quiet)
 
     if cfg.output_prefix:
-        tx = time.time()
-        print_log("Generating report", cfg.quiet)
         tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
-        classified_reads, unclassified_reads, reports = parse_rep(cfg.output_prefix+".rep")
-        print_final_report(reports, tax, classified_reads, unclassified_reads, cfg.output_prefix+".tre", cfg.ranks, 0, 0, [])
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+        total_matches, classified_reads, unclassified_reads, reports = parse_rep(cfg.output_prefix+".rep")
+        print_final_report(reports, tax, total_matches, classified_reads, unclassified_reads, cfg.output_prefix+".tre", cfg.ranks, 0, 0, [], "reads")
 
     return True
 
 def report(cfg):
-    classified_reads, unclassified_reads, reports = parse_rep(cfg.rep_file)
+    tx = time.time()
+    print_log("Generating report", cfg.quiet)
+    total_matches, classified_reads, unclassified_reads, reports = parse_rep(cfg.rep_file)
     tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
-    print_final_report(reports, tax, classified_reads, unclassified_reads, cfg.output_report, cfg.ranks, cfg.min_matches, cfg.min_matches_perc, cfg.taxids)
+    print_final_report(reports, tax, total_matches, classified_reads, unclassified_reads, cfg.output_report, cfg.ranks, cfg.min_count, cfg.min_percentage, cfg.taxids, cfg.report_type)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
     
 def parse_rep(rep_file):
     reports = {}
+    total_matches = 0
     with open(rep_file, 'r') as rep_file:
         for line in rep_file:
             fields = line.rstrip().split("\t")
             if fields[0] == "#total_classified":
-                seq_cla = int(fields[1])
+                classified_reads = int(fields[1])
             elif fields[0] == "#total_unclassified":
-                seq_unc = int(fields[1])
+                unclassified_reads = int(fields[1])
             else:
                 hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
                 if hierarchy_name not in reports:
                     reports[hierarchy_name] = {}
-                reports[hierarchy_name][target] = {"direct_matches":int(direct_matches), "unique_reads":int(unique_reads), "lca_reads":int(lca_reads)}
-    return seq_cla, seq_unc, reports
+                direct_matches = int(direct_matches)
+                reports[hierarchy_name][target] = {"direct_matches":direct_matches, "unique_reads":int(unique_reads), "lca_reads":int(lca_reads)}
+                total_matches+=direct_matches
+    return total_matches, classified_reads, unclassified_reads, reports
 
-def print_final_report(reports, tax, classified_reads, unclassified_reads, final_report_file, ranks, min_matches, min_matches_perc, taxids):
+def print_final_report(reports, tax, total_matches, classified_reads, unclassified_reads, final_report_file, ranks, min_count, min_percentage, taxids, report_type):
     if not reports: return False
 
     if not ranks:  
@@ -75,82 +78,116 @@ def print_final_report(reports, tax, classified_reads, unclassified_reads, final
         all_ranks = False
         fixed_ranks = ['root'] + ranks
 
-    # sum read assignments for all hiearchical classifications
-    merged_reports = {}
-    for report in reports.values():
-        for target in report.keys():
-            # Add to the merged report if there were reads assigned to the taxa (not only shared matches)
-            if report[target]['unique_reads'] + report[target]['lca_reads']:
-                if target not in merged_reports:
-                    merged_reports[target] = {'unique_reads':0, 'lca_reads': 0}
-                merged_reports[target]['unique_reads'] += report[target]['unique_reads']
-                merged_reports[target]['lca_reads'] += report[target]['lca_reads']
+    # Count targets in the report by report type, merging multiple db hierarchical levels
+    # merged_report[target] = {'count': INT, 'unique': INT}
+    merged_report = count_targets(reports, report_type)
 
-    final_rep = {}
-    # make cummulative sum of the counts on the lineage
-    for leaf in merged_reports.keys():
-        count = merged_reports[leaf]['unique_reads'] + merged_reports[leaf]['lca_reads']
-        if all_ranks: # use all nodes on the tree
+    # Iterate over the taxonomic tree and sum the entries
+    # final_report[node] = {'cum_count': INT, 'rank': STR}
+    final_report = cummulative_count_tree(merged_report, tax, all_ranks, fixed_ranks)
+
+    # build lineage for each entry based on chosen ranks
+    # lineage[node] = ["1", "1224", ..., node]
+    lineage = build_lineage(final_report, tax, all_ranks, fixed_ranks, taxids)
+
+    frfile = open(final_report_file, 'w') if final_report_file else None
+    if report_type=="reads":
+        total = classified_reads + unclassified_reads
+        print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total)*100)), file=frfile)
+    else:
+        total = total_matches
+
+    # Sort entries
+    if all_ranks:
+        sorted_nodes = sorted(lineage, key=lineage.get)
+    else:
+        sorted_nodes = sorted(lineage, key=lambda k: (fixed_ranks.index(final_report[k]['rank']), -final_report[k]['cum_count']), reverse=False)
+    
+    for node in sorted_nodes:
+        rank=final_report[node]['rank'] 
+        name=tax.nodes[node][2]
+        unique = merged_report[node]['unique'] if node in merged_report else 0
+        all_count = merged_report[node]['unique'] + merged_report[node]['count'] if node in merged_report else 0
+        cum_count=final_report[node]['cum_count']
+        if cum_count < min_count: continue
+        cum_count_perc=(final_report[node]['cum_count']/total)*100
+        if cum_count_perc < min_percentage: continue
+        print(rank, node, "|".join(lineage[node]), name, unique, all_count, cum_count, "%.5f" % cum_count_perc, file=frfile, sep="\t")
+    
+    if final_report_file: frfile.close()
+
+def count_targets(reports, report_type):
+    merged_report = {}
+    if report_type=="reads":
+        for hierarchy_name,report in reports.items():
+            for target,rep in report.items():
+                # if there were reads assigned to the target (not only shared matches)
+                if rep['unique_reads'] + rep['lca_reads']:
+                    if target not in merged_report:
+                        merged_report[target] = {'unique':0, 'count': 0}
+                    merged_report[target]['unique'] += rep['unique_reads']
+                    merged_report[target]['count'] += rep['lca_reads']
+    else:
+        for hierarchy_name,report in reports.items():
+            for target,rep in report.items():
+                # If there were any matches to the target
+                if rep['direct_matches']:
+                    if target not in merged_report:
+                        merged_report[target] = {'unique':0, 'count': 0}
+                    merged_report[target]['unique'] += rep['unique_reads']
+                    # count already has unique, so it needs to be subtracted to fit the same model as the report type reads
+                    merged_report[target]['count'] += rep['direct_matches']-rep['unique_reads']
+
+    return merged_report
+
+def cummulative_count_tree(merged_report, tax, all_ranks, fixed_ranks):
+    final_report = {}
+    for leaf in merged_report.keys():
+        sum_count = merged_report[leaf]['unique'] + merged_report[leaf]['count']
+        if all_ranks: # Use all nodes of the tree
             t = leaf
             r = tax.nodes[t][1]
-        else: # use only nodes of the fixed ranks
-            t, r = tax.get_node_rank_fixed(leaf, fixed_ranks)
-
-        while t!="0":
-            if t not in final_rep: final_rep[t] = {'count': 0, 'rank': ""}
-            final_rep[t]['count']+=count
-            final_rep[t]['rank']=r
-            if all_ranks:
+            while t!="0":
+                if t not in final_report: final_report[t] = {'cum_count': 0, 'rank': ""}
+                final_report[t]['cum_count']+=sum_count
+                final_report[t]['rank']=r
                 t = tax.nodes[t][0]
                 r = tax.nodes[t][1] if t!="0" else ""
-            else:
+        else: # Use selected nodes
+            # get closest node of fixed ranks
+            t, r = tax.get_node_rank_fixed(leaf, fixed_ranks)
+            while t!="0":
+                if t not in final_report: final_report[t] = {'cum_count': 0, 'rank': ""}
+                final_report[t]['cum_count']+=sum_count
+                final_report[t]['rank']=r
                 t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
-    # build lineage after all entries were defined
+    return final_report
+
+def build_lineage(final_report, tax, all_ranks, fixed_ranks, taxids):
     lineage = {}
-    for assignment in final_rep.keys():
-        lineage[assignment]=[]
+    for node in final_report.keys():
+        lineage[node]=[]
         if all_ranks:
-            t=assignment
+            t=node
             while t!="0":
-                lineage[assignment].insert(0,t)
+                lineage[node].insert(0,t)
                 t = tax.nodes[t][0]
         else:
-            t, r = tax.get_node_rank_fixed(assignment, fixed_ranks)
+            t, r = tax.get_node_rank_fixed(node, fixed_ranks)
             max_rank_idx = fixed_ranks.index(r) # get index of current rank
             while t!="0":
                 # Add empty || if fixed rank is missing
                 for i in range(max_rank_idx-fixed_ranks.index(r)):
-                    lineage[assignment].insert(0,"")
+                    lineage[node].insert(0,"")
                     max_rank_idx-=1
-
-                lineage[assignment].insert(0,t)
+                lineage[node].insert(0,t)
                 max_rank_idx-=1
                 t, r = tax.get_node_rank_fixed(tax.nodes[t][0], fixed_ranks)
 
         # if taxids is provided, just keep entries with them (and root)
-        if taxids and assignment!="1":
-            if not any(t in taxids for t in lineage[assignment]):
-                del lineage[assignment]
+        if taxids and node!="1":
+            if not any(t in taxids for t in lineage[node]):
+                del lineage[node]
 
-    total_reads = classified_reads + unclassified_reads
-    frfile = open(final_report_file, 'w') if final_report_file else None
-    print("unclassified" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ "-" +"\t"+ str(unclassified_reads) +"\t"+ str("%.5f" % ((unclassified_reads/total_reads)*100)), file=frfile)
-    
-    if all_ranks:
-        sorted_assignments = sorted(lineage, key=lineage.get)
-    else:
-        sorted_assignments = sorted(lineage, key=lambda k: (fixed_ranks.index(final_rep[k]['rank']), -final_rep[k]['count']), reverse=False)
-    
-    for assignment in sorted_assignments:
-        rank=final_rep[assignment]['rank'] 
-        name=tax.nodes[assignment][2]
-        reads_unique = merged_reports[assignment]['unique_reads'] if assignment in merged_reports else 0
-        reads = merged_reports[assignment]['unique_reads'] + merged_reports[assignment]['lca_reads'] if assignment in merged_reports else 0
-        matches=final_rep[assignment]['count']
-        if matches < min_matches: continue
-        matches_perc=(final_rep[assignment]['count']/total_reads)*100
-        if matches_perc < min_matches_perc: continue
-        print(rank, assignment, "|".join(lineage[assignment]), name, reads_unique, reads, matches, "%.5f" % matches_perc, file=frfile, sep="\t")
-    
-    if final_report_file: frfile.close()
+    return lineage
