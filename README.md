@@ -22,13 +22,21 @@ conda install -c bioconda -c conda-forge ganon
 
 ### build
 
+Create index/database from reference genomic sequences
+
 ```shh
-ganon build --db-prefix sample_bacteria --input-files tests/ganon-build/data/sequences/bacteria*.fasta.gz
+ganon build --db-prefix sample_bacteria \
+            --input-files tests/ganon/data/build/bacteria_*.fasta.gz \
+            --taxdump-file tests/ganon/data/mini_nodes.dmp tests/ganon/data/mini_names.dmp \
+            --seq-info-file tests/ganon/data/build/bacteria_seqinfo.txt
 ```
 
-Obs: `ganon build` (with a space in between) is different from the `ganon-build` command.
+- `ganon build` (with a space in between) is different from the `ganon-build` command.
+- `--taxdump-file` and `--seq-info-file` files are optional and will be automatically downloaded/generated if not provided
 
 ### classify
+
+Classify reads against built index/database
 
 ```shh
 ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/data/reads/bacteria.simulated.1.fq -o sample_results
@@ -36,11 +44,23 @@ ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/d
 
 ### report
 
+Generate readable reports
+
 ```
 ganon report --db-prefix sample_bacteria --rep-file sample_results.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
 ```
 
+### table
+
+Generate a rank table (e.g.: samples X species) from multiple reports
+
+```
+ganon table -i sample_results.tre -o sample_table.tsv
+```
+
 ### update
+
+Update index/database adding and/or removing reference genomic sequences
 
 ```
 ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files tests/ganon-build/data/sequences/virus*.fasta.gz
@@ -165,6 +185,10 @@ Obs:
 
 Here only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous (e.g. at assembly level), some entries may have many matches, but all of them shared. In other words, no read will stay in this assignment. Those entries will not be present in the **.tre** file, but information about all matches can be found on **.rep**.
 
+### table
+
+ - {output_file}: a tab-separated file with counts/percentages of matches for multiple samples (rows) for a specific rank (cols)
+ 
 #### Example of classification output files
 
 The main output file is the `{prefix}.tre` which will summarize the results (too see the file in a nice format, use `column -s$'\t' -t -n {prefix}.tre`):
