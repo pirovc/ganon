@@ -88,23 +88,23 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - sudo -H python3 -m pip install --upgrade pip
-  - sudo -H python3 -m pip install pandas>=0.22.0
-  - sudo -H python3 -m pip install binpacking==1.4.3
+  - sudo python3 -m pip install --upgrade pip
+  - sudo python3 -m pip install pandas>=0.22.0
+  - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - sudo -H python3 setup.py install
+  - sudo python3 setup.py install
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
-  - sudo -H python3 setup.py install
+  - sudo python3 setup.py install
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      sudo -H python3 -m pip install coverage;
+      sudo python3 -m pip install coverage;
     fi
 
 script:
@@ -113,7 +113,7 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
-  - sudo -H make install
+  - sudo make install
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
@@ -122,7 +122,7 @@ script:
   #- if [ "$BUILD_TYPE" == "Coverage" ]; then 
   #    travis_wait 30 python3 -m unittest discover -s tests/ganon/integration_online/ -v;
   #  fi
-  - sudo -H python3 setup.py install
+  - sudo python3 setup.py install
   - ganon -h # ret 0
 
 after_success:
