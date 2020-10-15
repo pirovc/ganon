@@ -12,7 +12,7 @@ class TestReportOffline(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/report/"
     default_params = {"db_prefix": data_dir+"bacteria_assembly",
-                      "rep_file": data_dir+"report/results.rep",
+                      "rep_files": data_dir+"report/results.rep",
                       "quiet": True}
     
     @classmethod
@@ -24,7 +24,7 @@ class TestReportOffline(unittest.TestCase):
         Test run with default parameters
         """
         params = self.default_params.copy()
-        params["output_report"] = self.results_dir + "test_default.tre"
+        params["output_prefix"] = self.results_dir + "test_default"
         
         # Build config from params
         cfg = Config("report", **params)

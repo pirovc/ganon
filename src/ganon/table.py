@@ -43,7 +43,7 @@ def table(cfg):
 
     return True
 
-def parse_tre(file, cfg):
+def parse_tre(tre_file, cfg):
     tre = dict()
 
     unclassified_root_reads = 0
@@ -53,21 +53,21 @@ def parse_tre(file, cfg):
     classified_rank_reads = 0
     filtered_rank_reads=0
 
-    for line in open(file):
-
-        rank, taxid, _, name, _, _, read_count, percentage = line.rstrip().split("\t")
-        read_count = int(read_count)
-        percentage = float(percentage)/100
-        if rank == "unclassified" and not cfg.ignore_unclassified_all:
-            unclassified_root_reads=read_count
-        elif rank == "root":
-            classified_root_reads=read_count
-        elif rank==cfg.rank:
-            if read_count>=cfg.min_count and percentage>=cfg.min_percentage:
-                classified_rank_reads += read_count
-                tre[name] = read_count
-            else:
-                filtered_rank_reads += read_count
+    with open(tre_file, "r") as file:
+        for line in file:
+            rank, taxid, _, name, _, _, read_count, percentage = line.rstrip().split("\t")
+            read_count = int(read_count)
+            percentage = float(percentage)/100
+            if rank == "unclassified" and not cfg.ignore_unclassified_all:
+                unclassified_root_reads=read_count
+            elif rank == "root":
+                classified_root_reads=read_count
+            elif rank==cfg.rank:
+                if read_count>=cfg.min_count and percentage>=cfg.min_percentage:
+                    classified_rank_reads += read_count
+                    tre[name] = read_count
+                else:
+                    filtered_rank_reads += read_count
 
     # filter only top hits of each sample
     if cfg.top_sample:

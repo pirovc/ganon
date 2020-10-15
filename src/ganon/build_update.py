@@ -26,7 +26,7 @@ def build(cfg):
     use_assembly=True if cfg.rank=="assembly" else False
 
     # Set up taxonomy
-    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg, tmp_output_folder)
+    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
     
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
@@ -222,7 +222,7 @@ def update(cfg):
     kept_binids = set(bins.get_binids())
 
     # Set up taxonomy files
-    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg, tmp_output_folder)
+    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
@@ -413,35 +413,6 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
             seqinfo.write_seqid_file(seqid_file)
             seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=True, get_assembly=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-
-def set_taxdump_files(cfg, tmp_output_folder):
-    if not cfg.taxdump_file:
-        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, cfg.quiet), tmp_output_folder, cfg.quiet)
-    elif cfg.taxdump_file[0].endswith(".tar.gz"):
-        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(cfg.taxdump_file[0], tmp_output_folder, cfg.quiet)
-    else:
-        ncbi_nodes_file = cfg.taxdump_file[0]
-        ncbi_names_file = cfg.taxdump_file[1]
-        ncbi_merged_file =  cfg.taxdump_file[2] if len(cfg.taxdump_file)==3 else ""
-
-    return ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
-
-def get_taxdump(tmp_output_folder, quiet):
-    tx = time.time()
-    print_log("Downloading taxdump", quiet)
-    taxdump_file = tmp_output_folder+'taxdump.tar.gz'
-    run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
-    stdout, stderr = run(run_wget_taxdump_cmd, print_stderr=True)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-    return taxdump_file
-
-def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
-    tx = time.time()
-    print_log("Unpacking taxdump", quiet)
-    unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
-    stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-    return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     tx = time.time()
