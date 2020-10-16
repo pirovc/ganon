@@ -8,15 +8,16 @@ def report(cfg):
     if cfg.db_prefix:
         tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
     else:
-        tmp_output_folder = os.path.dirname(cfg.rep_files[0]) + "/"
+        tmp_output_folder = os.path.dirname(cfg.output_prefix)
+        if not tmp_output_folder: tmp_output_folder = "."
+        tmp_output_folder+="/ganon_report_tmp/"
+        if not set_tmp_folder(tmp_output_folder): return False
         # Set up taxonomy
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
         tx = time.time()
         print_log("Parsing taxonomy", cfg.quiet)
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
-        if not cfg.taxdump_file: # delete files if they were downloaded by ganon
-            for f in [tmp_output_folder+"taxdump.tar.gz", ncbi_nodes_file, ncbi_merged_file, ncbi_names_file]:
-                if os.path.exists(f): os.remove(f)
+        rm_tmp_folder(tmp_output_folder)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     any_rep = False
@@ -127,7 +128,7 @@ def print_final_report(reports, tax, total_matches, classified_reads, unclassifi
             print(*unclassified_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
             output_rows.append(unclassified_line)
-    
+
     # All entries
     for node in sorted_nodes:
         n = tax.get_node(node)
@@ -245,6 +246,8 @@ def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, 
     return unknown_taxa, filtered_cum_counts
 
 def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax, merged_counts):
+    
+    # Always keep root at the top
     # Sort report entries, return sorted keys of the dict
     if not sort: # not user-defined, use defaults
         if all_ranks:
@@ -263,4 +266,8 @@ def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax,
             sorted_nodes = sorted(filtered_cum_counts, key=lambda k: (-merged_counts[k]['unique'] if k in merged_counts else 0, -filtered_cum_counts[k]), reverse=False)
         else: # sort=="count"
             sorted_nodes = sorted(filtered_cum_counts, key=lambda k: -filtered_cum_counts[k], reverse=False)
+    
+    # Move root to the front to print always first first
+    sorted_nodes.insert(0, sorted_nodes.pop(sorted_nodes.index("1")))
+
     return sorted_nodes

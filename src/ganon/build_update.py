@@ -20,7 +20,7 @@ def build(cfg):
     
     # Set temporary working folder 
     tmp_output_folder = cfg.db_prefix + "_tmp/"
-    set_tmp_folder(tmp_output_folder)
+    if not set_tmp_folder(tmp_output_folder): return False
 
     # Set assembly mode
     use_assembly=True if cfg.rank=="assembly" else False
@@ -171,7 +171,7 @@ def update(cfg):
     
     # Set temporary working folder (current or new output)
     tmp_output_folder = cfg.output_db_prefix + "_tmp/" if cfg.output_db_prefix else cfg.db_prefix + "_tmp/"
-    set_tmp_folder(tmp_output_folder)
+    if not set_tmp_folder(tmp_output_folder): return False
 
     # Load .gnn file   
     gnn = Gnn(file=db_prefix["gnn"])

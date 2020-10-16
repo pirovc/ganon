@@ -36,8 +36,12 @@ def print_log(text, quiet: bool=False):
 
 def set_tmp_folder(fld):
     # Create temporary working directory
-    if os.path.exists(fld): rm_tmp_folder(fld) # delete if already exists
-    os.makedirs(fld)
+    if os.path.exists(fld): 
+        print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
+        return False
+    else:
+        os.makedirs(fld)
+        return True
 
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)

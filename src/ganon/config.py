@@ -111,16 +111,16 @@ class Config:
 
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
-        report_group_required.add_argument('-i', '--rep-files', nargs="*", required=True, type=str, help='{prefix}.rep file output from ganon classify')
+        report_group_required.add_argument('-i', '--rep-files', nargs="*", required=True, type=str, help='{prefix}.rep file(s) from ganon classify to report')
         report_group_required.add_argument('-o', '--output-prefix', required=True, type=str, help='Output prefix for report ({prefix}.tre). In case of multiple files output is in the format {prefix}{filename}.tre')
     
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
-        report_group_optional.add_argument('-d', '--db-prefix', type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification. If not provided, new taxonomy will be downloaded but inconsistences may occur.')
+        report_group_optional.add_argument('-d', '--db-prefix', type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be downloaded')
         report_group_optional.add_argument('-e', '--report-type', type=str, default="reads", help='Type of report to generate [reads, matches]. Default: reads')
-        report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly')
+        report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: ""')
         report_group_optional.add_argument('-s', '--sort', type=str, default="", help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) / lineage (--ranks all)')
-        report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, default=[], nargs="*", help='List of hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
+        report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, default=[], nargs="*", help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels). Default: ""')
         report_group_optional.add_argument('-f', '--output-format', type=str, default="text", help='Output format [text, tsv, csv]. Default: text')
         report_group_optional.add_argument('--taxdump-file', type=str, nargs="*",  metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         report_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
@@ -150,11 +150,11 @@ class Config:
 
         filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
         filter_arguments = filter_parser.add_argument_group('filter arguments')
-        filter_arguments.add_argument('--min-count', metavar='', required=False, dest="min_count", type=int, default=0, help="Mininum number of counts to keep the target. 0 for all. Default: 0")
-        filter_arguments.add_argument('--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target [0-100]. 0 for all. Default: 0")
-        filter_arguments.add_argument('--names', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism of the list.")
-        filter_arguments.add_argument('--names-with', metavar='<names_with>',required=False, dest="names_with",       type=str, nargs="*", default="", help="Show only organism containing any name of this list")
-        filter_arguments.add_argument('--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
+        filter_arguments.add_argument('--min-count', metavar='', required=False, dest="min_count", type=int, default=0, help="Mininum number of counts to keep the target. 0 for all")
+        filter_arguments.add_argument('--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target [0-100]. 0 for all")
+        filter_arguments.add_argument('--names', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism matching names of the provided list")
+        filter_arguments.add_argument('--names-with', metavar='<names_with>',required=False, dest="names_with",       type=str, nargs="*", default="", help="Show only organism containing any name of the provided list")
+        filter_arguments.add_argument('--taxids', type=str, default=[], nargs="*", help='One or more taxids to report. Example: 562 2157 report only E. Coli and Archaea matches')
         
         subparsers = parser.add_subparsers()
         
