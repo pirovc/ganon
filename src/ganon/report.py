@@ -15,7 +15,7 @@ def report(cfg):
         print_log("Parsing taxonomy", cfg.quiet)
         tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
         if not cfg.taxdump_file: # delete files if they were downloaded by ganon
-            for f in [tmp_output_folder+"taxdump.tar.gz", ncbi_nodes_file, ncbi_merged_file, ncbi_names_file, tmp_output_folder]:
+            for f in [tmp_output_folder+"taxdump.tar.gz", ncbi_nodes_file, ncbi_merged_file, ncbi_names_file]:
                 if os.path.exists(f): os.remove(f)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -122,7 +122,7 @@ def print_final_report(reports, tax, total_matches, classified_reads, unclassifi
 
     # Reporting reads, first line prints unclassified entries
     if cfg.report_type=="reads":
-        unclassified_line = ["unclassified","-","-","-","-","-",str(unclassified_reads),str("%.5f" % ((unclassified_reads/total)*100))]
+        unclassified_line = ["unclassified","","","unclassified","0","0",str(unclassified_reads),str("%.5f" % ((unclassified_reads/total)*100))]
         if cfg.output_format in ["tsv","csv"]:
             print(*unclassified_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
@@ -158,7 +158,7 @@ def print_final_report(reports, tax, total_matches, classified_reads, unclassifi
             print("\t".join(['{0: <{width}}'.format(field, width=max_width[i]) for i,field in enumerate(row)]), file=tre_file)
   
     if output_file: tre_file.close()
-    if unknown_taxa: print_log(" - " + str(unknown_taxa) + " taxa not found in the taxonomy. Those entries are counted as orphan nodes (with root as parent node). Too report them, use --ranks all or add 'na' to the ranks list (e.g. --ranks na genus species)", cfg.quiet)
+    if unknown_taxa: print_log(" - " + str(unknown_taxa) + " taxa not found in the taxonomy. Those entries are counted as orphan nodes (with root as parent node). Too report them, use --ranks all or add 'na' to the end of ranks list (e.g. --ranks genus species na)", cfg.quiet)
     print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
     return True
 
@@ -228,6 +228,9 @@ def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, 
     unknown_taxa = 0
     for node,cum_count in tree_cum_counts.items():
         r = tax.get_node(node)
+        # always keep root
+        if r['rank'] == "root": filtered_cum_counts[node] = cum_count
+
         if r['rank'] == "na": unknown_taxa+=1
         # keep only selected fixed_ranks
         if not all_ranks and r['rank'] not in fixed_ranks: continue
@@ -237,6 +240,7 @@ def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, 
         if cfg.taxids and node!="1" and not any(t in cfg.taxids for t in lineage[node]): continue
         if cfg.names and not r["name"] in cfg.names: continue
         if cfg.names_with and not any(n in r["name"] for n in cfg.names_with): continue
+        
         filtered_cum_counts[node] = cum_count
     return unknown_taxa, filtered_cum_counts
 
