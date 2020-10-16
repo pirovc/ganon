@@ -97,7 +97,7 @@ class Config:
         classify_group_optional.add_argument('-a', '--output-all',          default=False, action='store_true', help='Output an additional file with all matches (.all). File can be very large.')
         classify_group_optional.add_argument('-n', '--output-unclassified', default=False, action='store_true', help='Output an additional file with unclassified read headers (.unc)')
         classify_group_optional.add_argument('-s', '--output-single',       default=False, action='store_true', help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
-        classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly. This file can be re-generated with the ganon report command.')
+        classify_group_optional.add_argument('--ranks', type=str, default=[], nargs="*", help='Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly. This file can be re-generated with the ganon report command.')
 
         classify_group_optional.add_argument('-t', '--threads', type=int, help='Number of subprocesses/threads to use. Default: 3')
         classify_group_optional.add_argument('--n-reads', type=int, help=argparse.SUPPRESS)
@@ -107,21 +107,22 @@ class Config:
         classify_group_optional.add_argument('--ganon-path', type=str, default="", help=argparse.SUPPRESS) 
 
         ####################################################################################################
-
         report_parser = argparse.ArgumentParser(description='Report options', add_help=False)
 
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
-        report_group_required.add_argument('-i', '--rep-file',  required=True, type=str, help='{prefix}.rep file output from ganon classify')
-        report_group_required.add_argument('-d', '--db-prefix', required=True, type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification.')
-        
+        report_group_required.add_argument('-i', '--rep-files', nargs="*", required=True, type=str, help='{prefix}.rep file(s) from ganon classify to report')
+        report_group_required.add_argument('-o', '--output-prefix', required=True, type=str, help='Output prefix for report ({prefix}.tre). In case of multiple files output is in the format {prefix}{filename}.tre')
+    
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
-        report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species species+ assembly')
-        report_group_optional.add_argument('-m', '--min-matches', type=int, default=0, help='Min. number of matches to output. 0 for all. Default: 0')
-        report_group_optional.add_argument('-p', '--min-matches-perc', type=float, default=0, help='Min. percentage of matches to output. 0 for all. Default: 0')
-        report_group_optional.add_argument('-t', '--taxids', type=str, default=[], nargs="*", help='One or more taxids to filter report. Example: 562 2157 report only E. Coli and Archaea matches')
-        report_group_optional.add_argument('-o', '--output-report', type=str, help='Output file for report. Default: STDOUT')
+        report_group_optional.add_argument('-d', '--db-prefix', type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be downloaded')
+        report_group_optional.add_argument('-e', '--report-type', type=str, default="reads", help='Type of report to generate [reads, matches]. Default: reads')
+        report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: ""')
+        report_group_optional.add_argument('-s', '--sort', type=str, default="", help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) / lineage (--ranks all)')
+        report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, default=[], nargs="*", help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels). Default: ""')
+        report_group_optional.add_argument('-f', '--output-format', type=str, default="text", help='Output format [text, tsv, csv]. Default: text')
+        report_group_optional.add_argument('--taxdump-file', type=str, nargs="*",  metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         report_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
         report_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
         ####################################################################################################
@@ -136,13 +137,9 @@ class Config:
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
         table_group_optional.add_argument('-l', '--output-value', metavar='<output_value>',      required=False, dest="output_value",         type=str, default="percentage", help="Output value on the table [percentage, counts]. Default: percentage")
-        table_group_optional.add_argument('-c', '--min-count', metavar='<min_count>',      required=False, dest="min_count",         type=int, default=0, help="Mininum number of assigned reads for a taxa to be valid. 0 for all. Default: 0")
-        table_group_optional.add_argument('-p', '--min-percentage', metavar='<min_percentage>', required=False, dest="min_percentage",    type=float, default=0, help="Mininum percentage of assigned reads for a taxa to be valid. 0 for all. Default: 0")
         table_group_optional.add_argument('-t', '--top-sample', metavar='<top_sample>',  required=False, dest="top_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
         table_group_optional.add_argument('-a', '--top-all', metavar='<top_all>',     required=False, dest="top_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
         table_group_optional.add_argument('-r', '--rank', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
-        table_group_optional.add_argument('-n', '--names', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism of the list.")
-        table_group_optional.add_argument('-x', '--names-with', metavar='<names_with>',required=False, dest="names_with",       type=str, nargs="*", default="", help="Show only organism containing any name of this list")
         table_group_optional.add_argument('--ignore-unclassified-all', dest="ignore_unclassified_all", help='', action='store_true')
         table_group_optional.add_argument('--ignore-unclassified-rank', dest="ignore_unclassified_rank", help='', action='store_true')
         table_group_optional.add_argument('--ignore-filtered', dest="ignore_filtered", help='', action='store_true')
@@ -151,6 +148,14 @@ class Config:
                
         ####################################################################################################
 
+        filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
+        filter_arguments = filter_parser.add_argument_group('filter arguments')
+        filter_arguments.add_argument('--min-count', metavar='', required=False, dest="min_count", type=int, default=0, help="Mininum number of counts to keep the target. 0 for all")
+        filter_arguments.add_argument('--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target [0-100]. 0 for all")
+        filter_arguments.add_argument('--names', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism matching names of the provided list")
+        filter_arguments.add_argument('--names-with', metavar='<names_with>',required=False, dest="names_with",       type=str, nargs="*", default="", help="Show only organism containing any name of the provided list")
+        filter_arguments.add_argument('--taxids', type=str, default=[], nargs="*", help='One or more taxids to report. Example: 562 2157 report only E. Coli and Archaea matches')
+        
         subparsers = parser.add_subparsers()
         
         build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
@@ -162,10 +167,10 @@ class Config:
         classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
         classify.set_defaults(which='classify')
 
-        report = subparsers.add_parser('report', help='Generate reports', parents=[report_parser])
+        report = subparsers.add_parser('report', help='Generate reports', parents=[filter_parser,report_parser])
         report.set_defaults(which='report')
 
-        table = subparsers.add_parser('table', help='Generate table from reports', parents=[table_parser])
+        table = subparsers.add_parser('table', help='Generate table from reports', parents=[filter_parser,table_parser])
         table.set_defaults(which='table')
 
         # Passing arguments internally from call main(which, **kwargs)
@@ -265,12 +270,14 @@ class Config:
                 return False
 
         elif self.which=='report':
-            for prefix in self.db_prefix:
-                if not check_db(prefix):
-                    return False
+            if self.db_prefix:
+                for prefix in self.db_prefix:
+                    if not check_db(prefix):
+                        return False
 
-            if not os.path.isfile(self.rep_file):
-                print_log("File not found [" + self.rep_file + "]")
+            self.rep_files = check_files(self.rep_files)
+            if not len(self.rep_files):
+                print_log("No valid input files to report")
                 return False
 
         elif self.which=='table':

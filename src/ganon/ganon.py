@@ -2,7 +2,8 @@
 import sys, time
 
 from ganon.build_update import build, update
-from ganon.classify_report import classify, report
+from ganon.classify import classify
+from ganon.report import report
 from ganon.table import table
 from ganon.config import Config
 from ganon.util import print_log

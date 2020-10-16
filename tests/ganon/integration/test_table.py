@@ -11,7 +11,8 @@ data_dir = base_dir + "data/"
 class TestTableOffline(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/table/"
-    default_params = {"tre_file": data_dir+"table/results.tre"}
+    default_params = {"tre_file": data_dir+"table/results.tre",
+                      "quiet": True}
     
     @classmethod
     def setUpClass(self):

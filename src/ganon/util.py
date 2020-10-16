@@ -36,8 +36,12 @@ def print_log(text, quiet: bool=False):
 
 def set_tmp_folder(fld):
     # Create temporary working directory
-    if os.path.exists(fld): rm_tmp_folder(fld) # delete if already exists
-    os.makedirs(fld)
+    if os.path.exists(fld): 
+        print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
+        return False
+    else:
+        os.makedirs(fld)
+        return True
 
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)
@@ -55,3 +59,31 @@ def check_db(prefix):
             return False
     return True
 
+def set_taxdump_files(taxdump_file, tmp_output_folder, quiet):
+    if not taxdump_file:
+        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, quiet), tmp_output_folder, quiet)
+    elif taxdump_file[0].endswith(".tar.gz"):
+        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(taxdump_file[0], tmp_output_folder, quiet)
+    else:
+        ncbi_nodes_file = taxdump_file[0]
+        ncbi_names_file = taxdump_file[1]
+        ncbi_merged_file =  taxdump_file[2] if len(taxdump_file)==3 else ""
+
+    return ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
+
+def get_taxdump(tmp_output_folder, quiet):
+    tx = time.time()
+    print_log("Downloading taxdump", quiet)
+    taxdump_file = tmp_output_folder+'taxdump.tar.gz'
+    run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
+    stdout, stderr = run(run_wget_taxdump_cmd, print_stderr=True)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+    return taxdump_file
+
+def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
+    tx = time.time()
+    print_log("Unpacking taxdump", quiet)
+    unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
+    stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+    return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'

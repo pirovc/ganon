@@ -3,6 +3,7 @@ import pandas as pd
 from pathlib import Path
 from ganon.bins import Bins
 from ganon.gnn import Gnn
+from math import floor
 
 def setup_dir(results_dir):
     shutil.rmtree(results_dir, ignore_errors=True)
@@ -43,7 +44,7 @@ def parse_tax(tax_file):
 
 def parse_tre(tre_file):
     colums=['rank', 'target', 'lineage', 'name', 'unique', 'total', 'cumulative', 'cumulative_perc']
-    types={'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'str', 'total': 'str', 'cumulative': 'str', 'cumulative_perc': 'str'}
+    types={'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'uint64', 'total': 'uint64', 'cumulative': 'uint64', 'cumulative_perc': 'float'}
     return pd.read_table(tre_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 def parse_tsv(tsv_file):
@@ -114,13 +115,48 @@ def classify_sanity_check_and_parse(params):
 
 def report_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
-
-    if not check_files(params["output_report"], [""]):
+    if not check_files(params["output_prefix"], ["tre"]):
         return None
 
     res = {}
     # Sequence information from database to be updated
-    res["tre_pd"] =  parse_tre(params["output_report"])
+    res["tre_pd"] = parse_tre(params["output_prefix"] + ".tre")
+
+    # get idx for root (idx_root) and root + unclassified (idx_base)
+    res["idx_root"] = res["tre_pd"]['rank'] == "root"
+    if params["report_type"] == "reads":
+        res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
+    else:
+        res["idx_base"] = res["idx_root"]
+    
+    # Check if total is 100%
+    if res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum()!=100:
+        print("Inconsistent total percentage")
+        return None
+
+    # check if sum of all counts is lower or equal to root and unclassified
+    if res["tre_pd"][~res["idx_base"]]["total"].sum() > res["tre_pd"][res["idx_base"]]["cumulative"].sum():
+        print("Inconsistent total counts")
+        return None
+
+    # Check if any cumulative_perc is higher than 100
+    if (res["tre_pd"]["cumulative_perc"] > 100).any():
+        print("Inconsistent percentage (>100%)")
+        return None
+
+    # check if sum of percentage for each rank is equal or lower than 100 (floor for rounding errors)
+    if(res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
+        print("Inconsistent percentage by rank (>100%)")
+        return None
+
+    # Check if total are consistent
+    if (res["tre_pd"]["unique"] > res["tre_pd"]["total"]).any():
+        print("Inconsistent unique counts (higher than total)")
+        return None
+    if (res["tre_pd"]["total"] > res["tre_pd"]["cumulative"]).any():
+        print("Inconsistent total counts (higher than cumulative)")
+        return None 
+
     return res
 
 def table_sanity_check_and_parse(params):
