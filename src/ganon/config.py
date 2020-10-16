@@ -119,7 +119,7 @@ class Config:
         report_group_optional.add_argument('-d', '--db-prefix', type=str, nargs="*", metavar='db_prefix', help='Database prefix[es] used for classification. If not provided, new taxonomy will be downloaded but inconsistences may occur.')
         report_group_optional.add_argument('-e', '--report-type', type=str, default="reads", help='Type of report to generate [reads, matches]. Default: reads')
         report_group_optional.add_argument('-r', '--ranks', type=str, default=[], nargs="*", help='Ranks for the final report. "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly')
-        report_group_optional.add_argument('-s', '--sort', type=str, default="", help='Sort report by [rank, lineage, count]. Default: rank (with custom --ranks) / lineage (--ranks all)')
+        report_group_optional.add_argument('-s', '--sort', type=str, default="", help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) / lineage (--ranks all)')
         report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, default=[], nargs="*", help='List of hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
         report_group_optional.add_argument('-f', '--output-format', type=str, default="text", help='Output format [text, tsv, csv]. Default: text')
         report_group_optional.add_argument('--taxdump-file', type=str, nargs="*",  metavar='', help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')

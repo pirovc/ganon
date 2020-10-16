@@ -38,7 +38,7 @@ def table(cfg):
         total_counts = get_total_counts(results)
 
     lines = write_tsv(results, total_counts.keys(), cfg)
-    print_log(" - " + str(len(total_counts.keys())) + "x" + str(lines) + " table written to " + cfg.output_file, cfg.quiet)
+    print_log(" - " + str(len(total_counts.keys())) + "x" + str(lines) + " table saved to " + cfg.output_file, cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
