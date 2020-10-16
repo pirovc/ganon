@@ -6,7 +6,7 @@ def report(cfg):
     tx = time.time()
 
     if cfg.db_prefix:
-        tax = Tax([db_prefix for db_prefix in cfg.db_prefix])
+        tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
     else:
         tmp_output_folder = os.path.dirname(cfg.rep_files[0]) + "/"
         # Set up taxonomy

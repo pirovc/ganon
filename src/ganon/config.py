@@ -270,10 +270,10 @@ class Config:
                 return False
 
         elif self.which=='report':
-            # if self.db_prefix:
-            #     for prefix in self.db_prefix:
-            #         if not check_db(prefix):
-            #             return False
+            if self.db_prefix:
+                for prefix in self.db_prefix:
+                    if not check_db(prefix):
+                        return False
 
             self.rep_files = check_files(self.rep_files)
             if not len(self.rep_files):
