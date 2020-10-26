@@ -136,10 +136,13 @@ class Config:
     
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
-        table_group_optional.add_argument('-l', '--output-value', metavar='<output_value>',      required=False, dest="output_value",         type=str, default="percentage", help="Output value on the table [percentage, counts]. Default: percentage")
+        table_group_optional.add_argument('-l', '--output-value', metavar='<output_value>',      required=False, dest="output_value",         type=str, default="percentage", help="Output value on the table [percentage, counts]. percentage values are outputed between [0-1]. Default: percentage")
         table_group_optional.add_argument('-t', '--top-sample', metavar='<top_sample>',  required=False, dest="top_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
         table_group_optional.add_argument('-a', '--top-all', metavar='<top_all>',     required=False, dest="top_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
         table_group_optional.add_argument('-r', '--rank', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
+        table_group_optional.add_argument('-m', '--min-occurence', required=False, dest="min_occurence",        type=int, default=0, help="Minimum occurance among reports to keep entries")
+
+              
         table_group_optional.add_argument('--add-unclassified', dest="add_unclassified",  action='store_true', help="Add column with unclassified count/percentage")
         table_group_optional.add_argument('--add-unclassified-rank', dest="add_unclassified_rank",action='store_true', help="Add column with unclassified count/percentage at the chosen rank (classified at a less specific rank)")
         table_group_optional.add_argument('--add-filtered', dest="add_filtered", action='store_true', help="Add column with filtered count/percentage")

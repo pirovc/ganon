@@ -16,11 +16,11 @@ def table(cfg):
     
     total_counts = get_total_counts(results)
     print_log(" - " + str(len(total_counts)) + " taxa found at " + cfg.rank + " level", cfg.quiet)
-    
+
     # filter results based on top hits to all samples
     if cfg.top_all:
         top_names = []
-        for i,(name,_) in enumerate(sorted(total_counts.items(), key=lambda kv: kv[1], reverse=True)):
+        for i,name in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
             if i<cfg.top_all:
                 top_names.append(name)
 
@@ -33,6 +33,23 @@ def table(cfg):
     
         # reset total counts
         total_counts = get_total_counts(results)
+
+    if cfg.min_occurence:
+        min_occ_names = []
+        for name,val in total_counts.items():
+            if val["occurence"]>=cfg.min_occurence:
+                min_occ_names.append(name)
+
+        for d in results.values():
+            tre, classified_read_count, filtered_read_count = filter_names(d["data"], min_occ_names)
+            d["data"] = tre
+            d["filtered_rank"]+=filtered_read_count
+
+        print_log(" - keeping " + str(len(min_occ_names)) + "/" + str(len(total_counts)) + " taxa occuring in " + str(cfg.min_occurence) + " or more files", cfg.quiet)
+    
+        # reset total counts
+        total_counts = get_total_counts(results)
+
 
     lines = write_tsv(results, total_counts.keys(), cfg)
     print_log(" - " + str(len(total_counts.keys())) + "x" + str(lines) + " table saved to " + cfg.output_file, cfg.quiet)
@@ -121,8 +138,9 @@ def get_total_counts(results):
     total_counts = {}
     for d in results.values():
         for name,count in d["data"].items():
-            if name not in total_counts: total_counts[name] = 0
-            total_counts[name] += count/d["total"]
+            if name not in total_counts: total_counts[name] = {"sum_percentage": 0, "occurence": 0}
+            total_counts[name]["sum_percentage"] += count/d["total"]
+            total_counts[name]["occurence"] += 1
     return total_counts
 
 def write_tsv(results, names, cfg):
