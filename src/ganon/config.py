@@ -140,9 +140,11 @@ class Config:
         table_group_optional.add_argument('-t', '--top-sample', metavar='<top_sample>',  required=False, dest="top_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
         table_group_optional.add_argument('-a', '--top-all', metavar='<top_all>',     required=False, dest="top_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
         table_group_optional.add_argument('-r', '--rank', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
-        table_group_optional.add_argument('--ignore-unclassified-all', dest="ignore_unclassified_all", help='', action='store_true')
-        table_group_optional.add_argument('--ignore-unclassified-rank', dest="ignore_unclassified_rank", help='', action='store_true')
-        table_group_optional.add_argument('--ignore-filtered', dest="ignore_filtered", help='', action='store_true')
+        table_group_optional.add_argument('--add-unclassified', dest="add_unclassified",  action='store_true', help="Add column with unclassified count/percentage")
+        table_group_optional.add_argument('--add-unclassified-rank', dest="add_unclassified_rank",action='store_true', help="Add column with unclassified count/percentage at the chosen rank (classified at a less specific rank)")
+        table_group_optional.add_argument('--add-filtered', dest="add_filtered", action='store_true', help="Add column with filtered count/percentage")
+        table_group_optional.add_argument('--skip-zeros', dest="skip_zeros", action='store_true', help="Do not print entries with lines of zeros (excluding unclassified/filtered)")
+        
         table_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
         table_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
                

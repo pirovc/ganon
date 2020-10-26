@@ -12,7 +12,7 @@ def table(cfg):
     for file in sorted(cfg.tre_files): # sorted by file name
         results[file] = dict()
         results[file]["label"] = file
-        results[file]["data"], results[file]["total_reads"], results[file]["unclassified_root_reads"], results[file]["unclassified_rank_reads"], results[file]["filtered_rank_reads"] = parse_tre(file, cfg)
+        results[file]["data"], results[file]["total"], results[file]["unclassified_root"], results[file]["unclassified_rank"], results[file]["filtered_rank"] = parse_tre(file, cfg)
     
     total_counts = get_total_counts(results)
     print_log(" - " + str(len(total_counts)) + " taxa found at " + cfg.rank + " level", cfg.quiet)
@@ -27,10 +27,7 @@ def table(cfg):
         for d in results.values():
             tre, classified_read_count, filtered_read_count = filter_names(d["data"], top_names)
             d["data"] = tre
-            if cfg.ignore_filtered:
-                d["total_reads"]-=filtered_read_count
-            else:
-                d["filtered_rank_reads"]+=filtered_read_count
+            d["filtered_rank"]+=filtered_read_count
 
         print_log(" - keeping " + str(len(top_names)) + "/" + str(len(total_counts)) + " top taxa among all files", cfg.quiet)
     
@@ -46,73 +43,60 @@ def table(cfg):
 def parse_tre(tre_file, cfg):
     tre = dict()
 
-    unclassified_root_reads = 0
-    classified_root_reads = 0
-    
-    unclassified_rank_reads = 0
-    classified_rank_reads = 0
-    filtered_rank_reads=0
+    unclassified_root = 0
+    classified_root = 0
+    unclassified_rank = 0
+    classified_rank = 0
+    filtered_rank = 0
 
     with open(tre_file, "r") as file:
         for line in file:
-            rank, taxid, lineage, name, _, _, read_count, percentage = line.rstrip().split("\t")
+            rank, taxid, _, name, _, _, read_count, percentage = line.rstrip().split("\t")
             read_count = int(read_count)
             percentage = float(percentage)/100
-            if rank == "unclassified" and not cfg.ignore_unclassified_all:
-                unclassified_root_reads=read_count
+            if rank == "unclassified":
+                unclassified_root=read_count
             elif rank == "root":
-                classified_root_reads=read_count
+                classified_root=read_count
             elif rank==cfg.rank:
                 if read_count<cfg.min_count or percentage<cfg.min_percentage:
-                    filtered_rank_reads += read_count
+                    filtered_rank += read_count
                     continue
                 elif cfg.taxids and taxid not in cfg.taxids:
-                    filtered_rank_reads += read_count
+                    filtered_rank += read_count
                     continue
-                classified_rank_reads += read_count
+                classified_rank += read_count
                 tre[name] = read_count
                     
 
     # filter only top hits of each sample
     if cfg.top_sample:
         top = dict()
-        classified_rank_reads = 0 #restart to count
+        classified_rank = 0 #restart to count
         for idx, (name, read_count) in enumerate(sorted(tre.items(), key=lambda kv: kv[1], reverse=True)): # sorted by read_count
             if idx<cfg.top_sample:
                 top[name] = read_count
-                classified_rank_reads += read_count
+                classified_rank += read_count
             else:
-                filtered_rank_reads += read_count # add to already filtered
+                filtered_rank += read_count # add to already filtered
         tre = top
 
     # keep only selected names
     if cfg.names:
         tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names)
-        classified_rank_reads = classified_read_count # restart to count
-        filtered_rank_reads+=filtered_read_count # just add elements removed from classified
+        classified_rank = classified_read_count # restart to count
+        filtered_rank+=filtered_read_count # just add elements removed from classified
     elif cfg.names_with:
         tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names_with, True)
-        classified_rank_reads = classified_read_count # restart to count
-        filtered_rank_reads+=filtered_read_count # just add elements removed from classified
+        classified_rank = classified_read_count # restart to count
+        filtered_rank+=filtered_read_count # just add elements removed from classified
 
     # read without a match on the chosen rank
-    unclassified_rank_reads = classified_root_reads-classified_rank_reads-filtered_rank_reads
+    unclassified_rank = classified_root-classified_rank-filtered_rank
 
-    total_reads = unclassified_root_reads + classified_root_reads
+    total = unclassified_root + classified_root
 
-    # show filtered or ignore it
-    if cfg.ignore_filtered:
-        total_reads = total_reads - filtered_rank_reads
-        classified_root_reads = classified_root_reads - filtered_rank_reads
-        filtered_rank_reads = 0
-
-    # show unclassified at rank or ignore it
-    if cfg.ignore_unclassified_rank:
-        total_reads = total_reads - unclassified_rank_reads
-        classified_root_reads = classified_root_reads - unclassified_rank_reads
-        unclassified_rank_reads = 0
-
-    return tre, total_reads, unclassified_root_reads, unclassified_rank_reads, filtered_rank_reads
+    return tre, total, unclassified_root, unclassified_rank, filtered_rank
 
 def filter_names(tre, names, name_with=False):
     selected_names = dict()
@@ -138,7 +122,7 @@ def get_total_counts(results):
     for d in results.values():
         for name,count in d["data"].items():
             if name not in total_counts: total_counts[name] = 0
-            total_counts[name] += count/d["total_reads"]
+            total_counts[name] += count/d["total"]
     return total_counts
 
 def write_tsv(results, names, cfg):
@@ -146,6 +130,11 @@ def write_tsv(results, names, cfg):
     lines=0
     tsv_file = open(cfg.output_file, "w")
     header = [""] + [name for name in sorted_names]
+
+    if cfg.add_unclassified_rank: header.append("unclassified_" + cfg.rank)
+    if cfg.add_unclassified: header.append("unclassified")
+    if cfg.add_filtered: header.append("filtered")
+
     print(*header, sep="\t", file=tsv_file)
     for res in results.values():
         tsv_data = [res["label"]]
@@ -153,14 +142,23 @@ def write_tsv(results, names, cfg):
             if name in res["data"]:
                 v = res["data"][name]
                 if cfg.output_value=="percentage":
-                    v = v/res["total_reads"]
+                    v = v/res["total"]
             else:
                 v = 0
             tsv_data.append(v)
-        if len(tsv_data) > 1 and max(tsv_data[1:]) > 0: # if there is any entry
+
+        if cfg.skip_zeros and (len(tsv_data) > 1 and max(tsv_data[1:]) == 0):
+            print_log(" - Skipping line (" + res["label"] + ") with only zeros")
+        else:
+            if cfg.add_unclassified_rank:
+                tsv_data.append(res["unclassified_rank"]/res["total"] if cfg.output_value=="percentage" else res["unclassified_rank"])
+            if cfg.add_unclassified:
+                tsv_data.append(res["unclassified_root"]/res["total"] if cfg.output_value=="percentage" else res["unclassified_root"])
+            if cfg.add_filtered:
+                tsv_data.append(res["filtered_rank"]/res["total"] if cfg.output_value=="percentage" else res["filtered_rank"])
+
             print(*tsv_data, sep="\t", file=tsv_file)
             lines+=1
-        else:
-            print_log(" - Skipping line (" + res["label"] + ") with no valid entries >= 0")
+            
     tsv_file.close()
     return lines
