@@ -76,7 +76,7 @@ def parse_tre(tre_file, cfg):
 
     with open(tre_file, "r") as file:
         for line in file:
-            rank, taxid, _, name, _, _, read_count, percentage = line.rstrip().split("\t")
+            rank, taxid, lineage, name, _, _, read_count, percentage = line.rstrip().split("\t")
             read_count = int(read_count)
             percentage = float(percentage)/100
             if rank == "unclassified":
@@ -87,7 +87,7 @@ def parse_tre(tre_file, cfg):
                 if read_count<cfg.min_count or percentage<cfg.min_percentage:
                     filtered_rank += read_count
                     continue
-                elif cfg.taxids and taxid not in cfg.taxids:
+                elif cfg.taxids and not any(t in cfg.taxids for t in lineage.split("|")):
                     filtered_rank += read_count
                     continue
                 classified_rank += read_count
@@ -175,7 +175,7 @@ def write_tsv(reports, names, cfg):
             tsv_data.append(v)
 
         if cfg.skip_zeros and (len(tsv_data) > 1 and max(tsv_data[1:]) == 0):
-            print_log(" - Skipping line (" + res["label"] + ") with only zeros")
+            print_log(" - Skipping line (" + res["label"] + ") with only zeros", cfg.quiet)
         else:
             if cfg.add_unclassified_rank:
                 tsv_data.append(res["unclassified_rank"]/res["total"] if cfg.output_value=="percentage" else res["unclassified_rank"])

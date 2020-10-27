@@ -155,7 +155,7 @@ class Config:
         filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
         filter_arguments = filter_parser.add_argument_group('filter arguments')
         filter_arguments.add_argument('--min-count', metavar='', required=False, dest="min_count", type=int, default=0, help="Mininum number of counts to keep the target. 0 for all")
-        filter_arguments.add_argument('--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target [0-100]. 0 for all")
+        filter_arguments.add_argument('--min-percentage', metavar='', required=False, dest="min_percentage", type=float, default=0, help="Mininum percentage of counts to keep the target [0-1]. 0 for all")
         filter_arguments.add_argument('--names', metavar='<names>',            required=False, dest="names",       type=str, nargs="*", default="", help="Show only organism matching names of the provided list")
         filter_arguments.add_argument('--names-with', metavar='<names_with>',required=False, dest="names_with",       type=str, nargs="*", default="", help="Show only organism containing any name of the provided list")
         filter_arguments.add_argument('--taxids', type=str, default=[], nargs="*", help='One or more taxids to report. Example: 562 2157 report only E. Coli and Archaea matches')
@@ -290,14 +290,14 @@ class Config:
                 print_log("No valid input files to generate the table")
                 return False
 
-            if cfg.min_occurence < 0:
+            if self.min_occurence < 0:
                 print_log("Invalid value for --min-occurence (>0)")
                 return False
 
-            if cfg.min_occurence_percentage < 0 or cfg.min_occurence_percentage > 1:
+            if self.min_occurence_percentage < 0 or self.min_occurence_percentage > 1:
                 print_log("Invalid value for --min-occurence-percentage [0-1]")
                 return False
-                
+
         return True
 
     def set_paths(self):

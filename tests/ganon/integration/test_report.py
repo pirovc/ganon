@@ -42,7 +42,7 @@ class TestReportOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_min_percentage"
-        params["min_percentage"] = 20
+        params["min_percentage"] = 0.2
         
         # Build config from params
         cfg = Config("report", **params)
@@ -79,7 +79,7 @@ class TestReportOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_min_count_and_percentages"
-        params["min_percentage"] = 20
+        params["min_percentage"] = 0.2
         params["min_count"] = 50
         
         # Build config from params

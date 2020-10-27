@@ -237,7 +237,7 @@ def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, 
         if not all_ranks and r['rank'] not in fixed_ranks: continue
         # Filter by value
         if cum_count < cfg.min_count: continue
-        if (cum_count/total)*100 < cfg.min_percentage: continue
+        if (cum_count/total) < cfg.min_percentage: continue
         if cfg.taxids and node!="1" and not any(t in cfg.taxids for t in lineage[node]): continue
         if cfg.names and not r["name"] in cfg.names: continue
         if cfg.names_with and not any(n in r["name"] for n in cfg.names_with): continue
