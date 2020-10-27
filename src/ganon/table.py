@@ -1,57 +1,65 @@
 import time
 from ganon.tax import Tax
 from ganon.util import *
-from collections import OrderedDict
 
 def table(cfg):
 
     tx = time.time()
     print_log("Generating table", cfg.quiet)
     print_log(" - Parsing " + str(len(cfg.tre_files)) + " files" , cfg.quiet)
-    results = OrderedDict()
-    for file in sorted(cfg.tre_files): # sorted by file name
-        results[file] = dict()
-        results[file]["label"] = file
-        results[file]["data"], results[file]["total"], results[file]["unclassified_root"], results[file]["unclassified_rank"], results[file]["filtered_rank"] = parse_tre(file, cfg)
+    reports = dict()
+    # reports[file] = {"data": {name: count,...}, 
+    #                  "label": filename, 
+    #                  "total": INT, 
+    #                  "unclassified_root": INT, 
+    #                  "filtered_rank": INT}
+    for file in cfg.tre_files:
+        reports[file] = dict()
+        reports[file]["label"] = file
+        # parse and filter input
+        reports[file]["data"], reports[file]["total"], reports[file]["unclassified_root"], reports[file]["unclassified_rank"], reports[file]["filtered_rank"] = parse_tre(file, cfg)
     
-    total_counts = get_total_counts(results)
-    print_log(" - " + str(len(total_counts)) + " taxa found at " + cfg.rank + " level", cfg.quiet)
+    total_counts = get_total_counts(reports)
+    print_log(" - " + str(len(total_counts)) + " total taxa selected at " + cfg.rank + " level after filtering", cfg.quiet)
 
-    # filter results based on top hits to all samples
+    # filter reports based on top hits to all samples
     if cfg.top_all:
         top_names = []
         for i,name in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
             if i<cfg.top_all:
                 top_names.append(name)
 
-        for d in results.values():
+        for d in reports.values():
             tre, classified_read_count, filtered_read_count = filter_names(d["data"], top_names)
             d["data"] = tre
             d["filtered_rank"]+=filtered_read_count
 
-        print_log(" - keeping " + str(len(top_names)) + "/" + str(len(total_counts)) + " top taxa among all files", cfg.quiet)
+        print_log(" - keeping " + str(len(top_names)) + "/" + str(len(total_counts)) + " top taxa among all reports", cfg.quiet)
     
         # reset total counts
-        total_counts = get_total_counts(results)
+        total_counts = get_total_counts(reports)
 
-    if cfg.min_occurence:
+    if cfg.min_occurence or cfg.min_occurence_percentage:
         min_occ_names = []
+        if cfg.min_occurence_percentage:
+            cfg.min_occurence = int(len(reports)*cfg.min_occurence_percentage)
+
         for name,val in total_counts.items():
             if val["occurence"]>=cfg.min_occurence:
                 min_occ_names.append(name)
 
-        for d in results.values():
+        for d in reports.values():
             tre, classified_read_count, filtered_read_count = filter_names(d["data"], min_occ_names)
             d["data"] = tre
             d["filtered_rank"]+=filtered_read_count
 
-        print_log(" - keeping " + str(len(min_occ_names)) + "/" + str(len(total_counts)) + " taxa occuring in " + str(cfg.min_occurence) + " or more files", cfg.quiet)
+        print_log(" - keeping " + str(len(min_occ_names)) + "/" + str(len(total_counts)) + " taxa occuring in " + str(cfg.min_occurence) + " or more reports", cfg.quiet)
     
         # reset total counts
-        total_counts = get_total_counts(results)
+        total_counts = get_total_counts(reports)
 
 
-    lines = write_tsv(results, total_counts.keys(), cfg)
+    lines = write_tsv(reports, total_counts.keys(), cfg)
     print_log(" - " + str(len(total_counts.keys())) + "x" + str(lines) + " table saved to " + cfg.output_file, cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -85,6 +93,16 @@ def parse_tre(tre_file, cfg):
                 classified_rank += read_count
                 tre[name] = read_count
                     
+    # keep only selected names
+    if cfg.names:
+        tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names)
+        classified_rank = classified_read_count # restart to count
+        filtered_rank+=filtered_read_count # just add elements removed from classified
+    
+    if cfg.names_with:
+        tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names_with, True)
+        classified_rank = classified_read_count # restart to count
+        filtered_rank+=filtered_read_count # just add elements removed from classified
 
     # filter only top hits of each sample
     if cfg.top_sample:
@@ -97,16 +115,6 @@ def parse_tre(tre_file, cfg):
             else:
                 filtered_rank += read_count # add to already filtered
         tre = top
-
-    # keep only selected names
-    if cfg.names:
-        tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names)
-        classified_rank = classified_read_count # restart to count
-        filtered_rank+=filtered_read_count # just add elements removed from classified
-    elif cfg.names_with:
-        tre, classified_read_count, filtered_read_count = filter_names(tre, cfg.names_with, True)
-        classified_rank = classified_read_count # restart to count
-        filtered_rank+=filtered_read_count # just add elements removed from classified
 
     # read without a match on the chosen rank
     unclassified_rank = classified_root-classified_rank-filtered_rank
@@ -133,28 +141,29 @@ def filter_names(tre, names, name_with=False):
     
     return selected_names, classified_read_count, filtered_read_count
 
-def get_total_counts(results):
+def get_total_counts(reports):
     # return sum of % of all samples
     total_counts = {}
-    for d in results.values():
+    for d in reports.values():
         for name,count in d["data"].items():
             if name not in total_counts: total_counts[name] = {"sum_percentage": 0, "occurence": 0}
             total_counts[name]["sum_percentage"] += count/d["total"]
             total_counts[name]["occurence"] += 1
     return total_counts
 
-def write_tsv(results, names, cfg):
+def write_tsv(reports, names, cfg):
     sorted_names = sorted(names)
     lines=0
-    tsv_file = open(cfg.output_file, "w")
+    out_file = open(cfg.output_file, "w")
     header = [""] + [name for name in sorted_names]
 
     if cfg.add_unclassified_rank: header.append("unclassified_" + cfg.rank)
     if cfg.add_unclassified: header.append("unclassified")
     if cfg.add_filtered: header.append("filtered")
 
-    print(*header, sep="\t", file=tsv_file)
-    for res in results.values():
+    print(*header, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+    for file in sorted(reports):
+        res = reports[file]
         tsv_data = [res["label"]]
         for name in sorted_names:
             if name in res["data"]:
@@ -175,8 +184,8 @@ def write_tsv(results, names, cfg):
             if cfg.add_filtered:
                 tsv_data.append(res["filtered_rank"]/res["total"] if cfg.output_value=="percentage" else res["filtered_rank"])
 
-            print(*tsv_data, sep="\t", file=tsv_file)
+            print(*tsv_data, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
             lines+=1
             
-    tsv_file.close()
+    out_file.close()
     return lines

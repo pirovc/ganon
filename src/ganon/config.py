@@ -132,22 +132,21 @@ class Config:
         # Required
         table_group_required = table_parser.add_argument_group('required arguments')
         table_group_required.add_argument('-i', '--tre-files',  required=True, type=str, nargs="*", help='Report files (.tre) from ganon classify/report to make the table')
-        table_group_required.add_argument('-o', '--output-file',  required=True, type=str, help='Table (tab-separated) output file name')
+        table_group_required.add_argument('-o', '--output-file',  required=True, type=str, help='Output filename for the table')
     
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
         table_group_optional.add_argument('-l', '--output-value', metavar='<output_value>',      required=False, dest="output_value",         type=str, default="percentage", help="Output value on the table [percentage, counts]. percentage values are outputed between [0-1]. Default: percentage")
+        table_group_optional.add_argument('-f', '--output-format', type=str, default="tsv", help='Output format [tsv, csv]. Default: tsv')
         table_group_optional.add_argument('-t', '--top-sample', metavar='<top_sample>',  required=False, dest="top_sample",     type=int, default=0, help="Top hits of each sample individually. 0 for all. Default: 0")
         table_group_optional.add_argument('-a', '--top-all', metavar='<top_all>',     required=False, dest="top_all",        type=int, default=0, help="Top hits of all samples. 0 for all. Default: 0") 
         table_group_optional.add_argument('-r', '--rank', metavar='<rank>',             required=False, dest="rank",        type=str, default="species", help="Evaluated rank. Default: species")
-        table_group_optional.add_argument('-m', '--min-occurence', required=False, dest="min_occurence",        type=int, default=0, help="Minimum occurance among reports to keep entries")
-
-              
+        table_group_optional.add_argument('-m', '--min-occurence', required=False, dest="min_occurence",        type=int, default=0, help="Number of occurences of a taxa among reports to be kept")
+        table_group_optional.add_argument('-p', '--min-occurence-percentage', required=False, dest="min_occurence_percentage",        type=float, default=0, help="Percentage of occurences of a taxa among reports to be kept [0-1]")
         table_group_optional.add_argument('--add-unclassified', dest="add_unclassified",  action='store_true', help="Add column with unclassified count/percentage")
         table_group_optional.add_argument('--add-unclassified-rank', dest="add_unclassified_rank",action='store_true', help="Add column with unclassified count/percentage at the chosen rank (classified at a less specific rank)")
         table_group_optional.add_argument('--add-filtered', dest="add_filtered", action='store_true', help="Add column with filtered count/percentage")
         table_group_optional.add_argument('--skip-zeros', dest="skip_zeros", action='store_true', help="Do not print entries with lines of zeros (excluding unclassified/filtered)")
-        
         table_group_optional.add_argument('--verbose', default=False, action='store_true',  help='Verbose output mode')
         table_group_optional.add_argument('--quiet', default=False, action='store_true', help='Quiet output mode (only errors and warnings to the stderr)')
                
@@ -291,6 +290,14 @@ class Config:
                 print_log("No valid input files to generate the table")
                 return False
 
+            if cfg.min_occurence < 0:
+                print_log("Invalid value for --min-occurence (>0)")
+                return False
+
+            if cfg.min_occurence_percentage < 0 or cfg.min_occurence_percentage > 1:
+                print_log("Invalid value for --min-occurence-percentage [0-1]")
+                return False
+                
         return True
 
     def set_paths(self):
