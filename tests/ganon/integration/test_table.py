@@ -150,7 +150,7 @@ class TestTableOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_names_with.tsv"
-        params["names"] = "Prevotella"
+        params["names_with"] = "Prevotella"
 
         # Build config from params
         cfg = Config("table", **params)
