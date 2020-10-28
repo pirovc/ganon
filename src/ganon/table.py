@@ -6,7 +6,7 @@ def table(cfg):
 
     tx = time.time()
     print_log("Generating table", cfg.quiet)
-    print_log(" - Parsing " + str(len(cfg.tre_files)) + " files" , cfg.quiet)
+    
     # reports[file] = {"taxa": {name: count,...}, 
     #                  "lineage": {name: ["1",...],...}, 
     #                  "label": filename, 
@@ -15,11 +15,12 @@ def table(cfg):
     #                  "unclassified_rank": INT, 
     #                  "filtered_rank": INT}
     reports, total_taxa = parse_reports(cfg)
+    print_log(" - " + str(len(reports)) + " files parsed" , cfg.quiet)
     print_log(" - " + str(total_taxa) + " total taxa selected at " + cfg.rank + " level", cfg.quiet)
 
     # filter reports
     filtered_total_taxa = filter_reports(reports, cfg)
-    if filtered_total_taxa: print_log(" - " + str(total_taxa-filtered_total_taxa) + " taxa filtered out", cfg.quiet)
+    if total_taxa-filtered_total_taxa: print_log(" - " + str(total_taxa-filtered_total_taxa) + " taxa filtered out", cfg.quiet)
 
     # top_sample and top_all are mutually exclusive
     if cfg.top_sample:
@@ -38,8 +39,8 @@ def table(cfg):
         print_log(" - keeping " + str(min_occurence_total_taxa) + "/" + str(filtered_total_taxa) + " (--min-occurence "+ str(cfg.min_occurence)+")", cfg.quiet)
         filtered_total_taxa = min_occurence_total_taxa
 
-    lines = write_tsv(reports, cfg)
-    print_log(" - " + str(filtered_total_taxa) + "x" + str(lines) + " table saved to " + cfg.output_file, cfg.quiet)
+    lines, cols = write_tsv(reports, cfg)
+    print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
@@ -172,17 +173,21 @@ def get_total_counts(reports):
 
 def write_tsv(reports, cfg):
     total_counts = get_total_counts(reports)
+
+    out_file = open(cfg.output_file, "w")
+
     sorted_names = sorted(total_counts.keys())
+    header = [""] + [name for name in sorted_names]
+    if cfg.add_unclassified_rank: 
+        header.append("unclassified_" + cfg.rank)
+    if cfg.add_unclassified: 
+        header.append("unclassified")
+    if cfg.add_filtered: 
+        header.append("filtered")
+    print(*header, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+    cols=len(header)-1
 
     lines=0
-    out_file = open(cfg.output_file, "w")
-    header = [""] + [name for name in sorted_names]
-
-    if cfg.add_unclassified_rank: header.append("unclassified_" + cfg.rank)
-    if cfg.add_unclassified: header.append("unclassified")
-    if cfg.add_filtered: header.append("filtered")
-
-    print(*header, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
     for file in sorted(reports):
         res = reports[file]
         tsv_data = [res["label"]]
@@ -209,4 +214,4 @@ def write_tsv(reports, cfg):
             lines+=1
             
     out_file.close()
-    return lines
+    return lines, cols
