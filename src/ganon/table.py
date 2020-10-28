@@ -6,7 +6,6 @@ def table(cfg):
 
     tx = time.time()
     print_log("Generating table", cfg.quiet)
-    
     # reports[file] = {"taxa": {name: count,...}, 
     #                  "lineage": {name: ["1",...],...}, 
     #                  "label": filename, 
@@ -39,8 +38,12 @@ def table(cfg):
         print_log(" - keeping " + str(min_occurence_total_taxa) + "/" + str(filtered_total_taxa) + " (--min-occurence "+ str(cfg.min_occurence)+")", cfg.quiet)
         filtered_total_taxa = min_occurence_total_taxa
 
-    lines, cols = write_tsv(reports, cfg)
-    print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
+    if not filtered_total_taxa: 
+        print_log(" - No taxa left to report", cfg.quiet)
+    else:
+        lines, cols = write_tsv(reports, cfg)
+        print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
+    
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True
