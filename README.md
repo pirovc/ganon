@@ -47,7 +47,7 @@ ganon classify --db-prefix sample_bacteria --single-reads tests/ganon-classify/d
 Generate readable reports
 
 ```
-ganon report --db-prefix sample_bacteria --rep-file sample_results.rep --min-matches-perc 50 --ranks all --output-report new_report.tre
+ganon report --db-prefix sample_bacteria --rep-file sample_results.rep --min-percentage 0.5 --ranks all --output-prefix new_report
 ```
 
 ### table
@@ -189,62 +189,61 @@ Obs:
 
 ### table
 
- - {output_file}: a tab-separated file with counts/percentages of matches for multiple samples (rows) for a specific rank (cols)
+ - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples (rows) for a specific rank (cols)
  
 #### Example of classification output files
 
-The main output file is the `{prefix}.tre` which will summarize the results (too see the file in a nice format, use `column -s$'\t' -t -n {prefix}.tre`):
+The main output file is the `{prefix}.tre` which will summarize the results:
 
 ```
-unclassified  -       -                                      -                        -   -   0    0.00000
-root          1       1                                      root                     0   0   100  100.00000
-superkingdom  2       1|2                                    Bacteria                 0   0   100  100.00000
-phylum        1239    1|2|1239                               Firmicutes               0   0   58   58.00000
-phylum        1224    1|2|1224                               Proteobacteria           0   0   42   42.00000
-class         91061   1|2|1239|91061                         Bacilli                  0   0   58   58.00000
-class         28211   1|2|1224|28211                         Alphaproteobacteria      0   0   29   29.00000
-class         1236    1|2|1224|1236                          Gammaproteobacteria      0   0   13   13.00000
-order         1385    1|2|1239|91061|1385                    Bacillales               0   0   58   58.00000
-order         204458  1|2|1224|28211|204458                  Caulobacterales          0   0   29   29.00000
-order         72274   1|2|1224|1236|72274                    Pseudomonadales          0   0   13   13.00000
-family        186822  1|2|1239|91061|1385|186822             Paenibacillaceae         0   0   58   58.00000
-family        76892   1|2|1224|28211|204458|76892            Caulobacteraceae         0   0   29   29.00000
-family        468     1|2|1224|1236|72274|468                Moraxellaceae            0   0   13   13.00000
-genus         44249   1|2|1239|91061|1385|186822|44249       Paenibacillus            0   0   58   58.00000
-genus         75      1|2|1224|28211|204458|76892|75         Caulobacter              0   0   29   29.00000
-genus         469     1|2|1224|1236|72274|468|469            Acinetobacter            0   0   13   13.00000
-species       1406    1|2|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa   58  58  58   58.00000
-species       366602  1|2|1224|28211|204458|76892|75|366602  Caulobacter sp. K31      29  29  29   29.00000
-species       470     1|2|1224|1236|72274|468|469|470        Acinetobacter baumannii  13  13  13   13.00000
+unclassified	      	                                     	unclassified           	0 	0 	1 	1.00000 
+root        	1     	1                                    	root                   	0 	0 	99	99.00000
+superkingdom	2     	1|2                                  	Bacteria               	0 	0 	99	99.00000
+phylum      	1239  	1|2|1239                             	Firmicutes             	0 	0 	57	57.00000
+phylum      	1224  	1|2|1224                             	Proteobacteria         	0 	0 	42	42.00000
+class       	91061 	1|2|1239|91061                       	Bacilli                	0 	0 	57	57.00000
+class       	28211 	1|2|1224|28211                       	Alphaproteobacteria    	0 	0 	29	29.00000
+class       	1236  	1|2|1224|1236                        	Gammaproteobacteria    	0 	0 	13	13.00000
+order       	1385  	1|2|1239|91061|1385                  	Bacillales             	0 	0 	57	57.00000
+order       	204458	1|2|1224|28211|204458                	Caulobacterales        	0 	0 	29	29.00000
+order       	72274 	1|2|1224|1236|72274                  	Pseudomonadales        	0 	0 	13	13.00000
+family      	186822	1|2|1239|91061|1385|186822           	Paenibacillaceae       	0 	0 	57	57.00000
+family      	76892 	1|2|1224|28211|204458|76892          	Caulobacteraceae       	0 	0 	29	29.00000
+family      	468   	1|2|1224|1236|72274|468              	Moraxellaceae          	0 	0 	13	13.00000
+genus       	44249 	1|2|1239|91061|1385|186822|44249     	Paenibacillus          	0 	0 	57	57.00000
+genus       	75    	1|2|1224|28211|204458|76892|75       	Caulobacter            	0 	0 	29	29.00000
+genus       	469   	1|2|1224|1236|72274|468|469          	Acinetobacter          	0 	0 	13	13.00000
+species     	1406  	1|2|1239|91061|1385|186822|44249|1406	Paenibacillus polymyxa 	57	57	57	57.00000
+species     	366602	1|2|1224|28211|204458|76892|75|366602	Caulobacter sp. K31    	29	29	29	29.00000
+species     	470   	1|2|1224|1236|72274|468|469|470      	Acinetobacter baumannii	13	13	13	13.00000
 ```
 
 running `ganon classify` or `ganon report` with `--ranks all`, the output will show all ranks used for classification, sorted by lineage:
 
 ```
-unclassified   -        -                                                     -                                              -   -   0    0.00000
-no rank        1        1                                                     root                                           0   0   100  100.00000
-no rank        131567   1|131567                                              cellular organisms                             0   0   100  100.00000
-superkingdom   2        1|131567|2                                            Bacteria                                       0   0   100  100.00000
-phylum         1224     1|131567|2|1224                                       Proteobacteria                                 0   0   42   42.00000
-class          1236     1|131567|2|1224|1236                                  Gammaproteobacteria                            0   0   13   13.00000
-order          72274    1|131567|2|1224|1236|72274                            Pseudomonadales                                0   0   13   13.00000
-family         468      1|131567|2|1224|1236|72274|468                        Moraxellaceae                                  0   0   13   13.00000
-genus          469      1|131567|2|1224|1236|72274|468|469                    Acinetobacter                                  0   0   13   13.00000
-species group  909768   1|131567|2|1224|1236|72274|468|469|909768             Acinetobacter calcoaceticus/baumannii complex  0   0   13   13.00000
-species        470      1|131567|2|1224|1236|72274|468|469|909768|470         Acinetobacter baumannii                        13  13  13   13.00000
-class          28211    1|131567|2|1224|28211                                 Alphaproteobacteria                            0   0   29   29.00000
-order          204458   1|131567|2|1224|28211|204458                          Caulobacterales                                0   0   29   29.00000
-family         76892    1|131567|2|1224|28211|204458|76892                    Caulobacteraceae                               0   0   29   29.00000
-genus          75       1|131567|2|1224|28211|204458|76892|75                 Caulobacter                                    0   0   29   29.00000
-no rank        2648921  1|131567|2|1224|28211|204458|76892|75|2648921         unclassified Caulobacter                       0   0   29   29.00000
-species        366602   1|131567|2|1224|28211|204458|76892|75|2648921|366602  Caulobacter sp. K31                            29  29  29   29.00000
-no rank        1783272  1|131567|2|1783272                                    Terrabacteria group                            0   0   58   58.00000
-phylum         1239     1|131567|2|1783272|1239                               Firmicutes                                     0   0   58   58.00000
-class          91061    1|131567|2|1783272|1239|91061                         Bacilli                                        0   0   58   58.00000
-order          1385     1|131567|2|1783272|1239|91061|1385                    Bacillales                                     0   0   58   58.00000
-family         186822   1|131567|2|1783272|1239|91061|1385|186822             Paenibacillaceae                               0   0   58   58.00000
-genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Paenibacillus                                  0   0   58   58.00000
-species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         58  58  58   58.00000
+unclassified 	       	                                                    	unclassified                                 	0 	0 	1 	1.00000 
+root         	1      	1                                                   	root                                         	0 	0 	99	99.00000
+no rank      	131567 	1|131567                                            	cellular organisms                           	0 	0 	99	99.00000
+superkingdom 	2      	1|131567|2                                          	Bacteria                                     	0 	0 	99	99.00000
+phylum       	1224   	1|131567|2|1224                                     	Proteobacteria                               	0 	0 	42	42.00000
+class        	1236   	1|131567|2|1224|1236                                	Gammaproteobacteria                          	0 	0 	13	13.00000
+order        	72274  	1|131567|2|1224|1236|72274                          	Pseudomonadales                              	0 	0 	13	13.00000
+family       	468    	1|131567|2|1224|1236|72274|468                      	Moraxellaceae                                	0 	0 	13	13.00000
+genus        	469    	1|131567|2|1224|1236|72274|468|469                  	Acinetobacter                                	0 	0 	13	13.00000
+species group	909768 	1|131567|2|1224|1236|72274|468|469|909768           	Acinetobacter calcoaceticus/baumannii complex	0 	0 	13	13.00000
+species      	470    	1|131567|2|1224|1236|72274|468|469|909768|470       	Acinetobacter baumannii                      	13	13	13	13.00000
+class        	28211  	1|131567|2|1224|28211                               	Alphaproteobacteria                          	0 	0 	29	29.00000
+order        	204458 	1|131567|2|1224|28211|204458                        	Caulobacterales                              	0 	0 	29	29.00000
+family       	76892  	1|131567|2|1224|28211|204458|76892                  	Caulobacteraceae                             	0 	0 	29	29.00000
+genus        	75     	1|131567|2|1224|28211|204458|76892|75               	Caulobacter                                  	0 	0 	29	29.00000
+species      	366602 	1|131567|2|1224|28211|204458|76892|75|366602        	Caulobacter sp. K31                          	29	29	29	29.00000
+no rank      	1783272	1|131567|2|1783272                                  	Terrabacteria group                          	0 	0 	57	57.00000
+phylum       	1239   	1|131567|2|1783272|1239                             	Firmicutes                                   	0 	0 	57	57.00000
+class        	91061  	1|131567|2|1783272|1239|91061                       	Bacilli                                      	0 	0 	57	57.00000
+order        	1385   	1|131567|2|1783272|1239|91061|1385                  	Bacillales                                   	0 	0 	57	57.00000
+family       	186822 	1|131567|2|1783272|1239|91061|1385|186822           	Paenibacillaceae                             	0 	0 	57	57.00000
+genus        	44249  	1|131567|2|1783272|1239|91061|1385|186822|44249     	Paenibacillus                                	0 	0 	57	57.00000
+species      	1406   	1|131567|2|1783272|1239|91061|1385|186822|44249|1406	Paenibacillus polymyxa                       	57	57	57	57.00000
 
 ```
 
@@ -429,12 +428,29 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 
 ## Parameters
 
-### build
+	usage: ganon [-h] [-v] {build,update,classify,report,table} ...
 
-	ganon build [-h] -d db_prefix [-i [[...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t] [--fixed-bloom-size]
-                   [--fragment-length] [--overlap-length] [--seq-info-mode [[...]]] [--seq-info-file]
-                   [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--write-seq-info-file] [--verbose]
-                   [--quiet]
+	ganon
+
+	positional arguments:
+	  {build,update,classify,report,table}
+	    build               Build ganon database
+	    update              Update ganon database
+	    classify            Classify reads
+	    report              Generate reports
+	    table               Generate table from reports
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -v, --version         Show program's version number and exit.
+
+<details>
+  <summary>ganon build</summary>
+
+	usage: ganon build [-h] -d DB_PREFIX [-i [INPUT_FILES [INPUT_FILES ...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t]
+	                   [--fixed-bloom-size] [--fragment-length] [--overlap-length] [--seq-info-mode [[...]]]
+	                   [--seq-info-file] [--taxdump-file [[...]]] [--input-directory] [--input-extension]
+	                   [--write-seq-info-file] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -475,24 +491,24 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	  --quiet               Quiet output mode (only errors and warnings to the stderr)
 
 	required arguments:
-	  -d db_prefix, --db-prefix db_prefix
+	  -d DB_PREFIX, --db-prefix DB_PREFIX
 	                        Database output prefix (.ibf, .map, .tax, .gnn will be created)
-	  -i [ [ ...]], --input-files [ [ ...]]
+	  -i [INPUT_FILES [INPUT_FILES ...]], --input-files [INPUT_FILES [INPUT_FILES ...]]
 	                        Input reference sequence fasta files [.gz]
 
-### update
+</details>
 
-	ganon update [-h] -d db_prefix [-i [[...]]] [-o] [-c] [-t] [--seq-info-mode [[...]]] [--seq-info-file]
-                    [--taxdump-file [[...]]] [--input-directory] [--input-extension] [--write-seq-info-file] [--verbose]
-                    [--quiet]
+<details>
+  <summary>ganon update</summary>
+
+	usage: ganon update [-h] -d DB_PREFIX [-i [INPUT_FILES [INPUT_FILES ...]]] [-o] [-t] [--seq-info-mode [[...]]]
+	                    [--seq-info-file] [--taxdump-file [[...]]] [--input-directory] [--input-extension]
+	                    [--update-complete] [--write-seq-info-file] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -o , --output-db-prefix 
 	                        Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix
-	  -c, --update-complete
-	                        Update adding and removing sequences. Input files should represent the complete updated set of
-	                        references, not only new sequences.
 	  -t , --threads        Number of subprocesses/threads to use. Default: 2
 	  --seq-info-mode [ [ ...]]
 	                        Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic
@@ -509,118 +525,162 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
 	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --update-complete     Update adding and removing sequences. Input files should represent the complete updated set of
+	                        references, not only new sequences.
 	  --write-seq-info-file
 	                        Write sequence information to DB_PREFIX.seqinfo.txt
 	  --verbose             Verbose output mode
 	  --quiet               Quiet output mode (only errors and warnings to the stderr)
 
 	required arguments:
-	  -d db_prefix, --db-prefix db_prefix
+	  -d DB_PREFIX, --db-prefix DB_PREFIX
 	                        Database input prefix (.ibf, .map, .tax, .gnn)
-	  -i [ [ ...]], --input-files [ [ ...]]
+	  -i [INPUT_FILES [INPUT_FILES ...]], --input-files [INPUT_FILES [INPUT_FILES ...]]
 	                        Input reference sequence fasta files [.gz] to be included to the database. Complete set of
 	                        updated sequences should be provided when using --update-complete
 
-### classify
+</details>
 
-	ganon classify [-h] -d [db_prefix [db_prefix ...]] [-r [reads.fq[.gz]
-	                      [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
-	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]]
-	                      [-c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]]
-	                      [-k [MIN_KMERS [MIN_KMERS ...]]]
-	                      [-e [MAX_ERROR [MAX_ERROR ...]]]
-	                      [-u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]]
-	                      [-l [STRATA_FILTER [STRATA_FILTER ...]]] [-f OFFSET]
-	                      [-o OUTPUT_PREFIX] [-a] [-n] [-s]
-	                      [--ranks [RANKS [RANKS ...]]] [-t THREADS] [--verbose]
+<details>
+  <summary>ganon classify</summary>
+
+	usage: ganon classify [-h] -d [DB_PREFIX [DB_PREFIX ...]] [-s [reads.fq[.gz] [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
+	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]] [-o] [-c [[...]]] [-k [[...]]] [-e [[...]]]
+	                      [-u [[...]]] [-l [[...]]] [-f] [-t] [-r [[...]]] [--output-all] [--output-unclassified]
+	                      [--output-single] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -c [HIERARCHY_LABELS [HIERARCHY_LABELS ...]], --hierarchy-labels [HIERARCHY_LABELS [HIERARCHY_LABELS ...]]
-	                        Hierarchy definition, one for each database input. Can
-	                        also be a string, but input will be sorted to define
-	                        order (e.g. 1 1 2 3). Default: 1
-	  -k [MIN_KMERS [MIN_KMERS ...]], --min-kmers [MIN_KMERS [MIN_KMERS ...]]
-	                        Min. percentage of k-mers matching to consider a read
-	                        assigned. Single value or one per database (e.g. 0.5
-	                        0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-
-	                        error]
-	  -e [MAX_ERROR [MAX_ERROR ...]], --max-error [MAX_ERROR [MAX_ERROR ...]]
-	                        Max. number of errors allowed. Single value or one per
-	                        database (e.g. 3 3 4 0) [Mutually exclusive --min-
-	                        kmers]
-	  -u [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]], --max-error-unique [MAX_ERROR_UNIQUE [MAX_ERROR_UNIQUE ...]]
-	                        Max. number of errors allowed for unique assignments
-	                        after filtering. Matches below this error rate will
-	                        not be discarded, but assigned to a parent taxonomic
-	                        level. Single value or one per hierarchy (e.g. 0 1 2).
-	                        -1 to disable. Default: -1
-	  -l [STRATA_FILTER [STRATA_FILTER ...]], --strata-filter [STRATA_FILTER [STRATA_FILTER ...]]
-	                        Additional errors allowed (relative to the best match)
-	                        to filter and select matches. Single value or one per
-	                        hierarchy (e.g. 0 1 2). -1 to disable filtering.
-	                        Default: 0
-	  -f OFFSET, --offset OFFSET
-	                        Number of k-mers to skip during classification. Can
-	                        speed up analysis but may reduce recall. (e.g. 1 = all
-	                        k-mers, 3 = every 3rd k-mer). Default: 2
-	  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-	                        Output prefix for .lca and .rep. Empty to output to
-	                        STDOUT (only .lca will be printed)
-	  -a, --output-all      Output an additional file with all matches (.all).
-	                        File can be very large.
-	  -n, --output-unclassified
-	                        Output an additional file with unclassified read
-	                        headers (.unc)
-	  -s, --output-single   When using multiple hierarchical levels, output
-	                        everything in one file instead of one per hierarchy
-	  --ranks [RANKS [RANKS ...]]
-	                        Ranks to show in the report (.tre). "all" for all
-	                        identified ranks. empty for default ranks:
-	                        superkingdom phylum class order family genus species
-	                        species+ assembly. This file can be re-generated with
+	  -o , --output-prefix 
+	                        Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)
+	  -c [ [ ...]], --hierarchy-labels [ [ ...]]
+	                        Hierarchy definition, one for each database input. Can also be a string, but input will be sorted
+	                        to define order (e.g. 1 1 2 3). Default: 1
+	  -k [ [ ...]], --min-kmers [ [ ...]]
+	                        Min. percentage of k-mers matching to consider a read assigned. Single value or one per database
+	                        (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]
+	  -e [ [ ...]], --max-error [ [ ...]]
+	                        Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually
+	                        exclusive --min-kmers]
+	  -u [ [ ...]], --max-error-unique [ [ ...]]
+	                        Max. number of errors allowed for unique assignments after filtering. Matches below this error
+	                        rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per
+	                        hierarchy (e.g. 0 1 2). -1 to disable. Default: -1
+	  -l [ [ ...]], --strata-filter [ [ ...]]
+	                        Additional errors allowed (relative to the best match) to filter and select matches. Single value
+	                        or one per hierarchy (e.g. 0 1 2). -1 to disable filtering. Default: 0
+	  -f , --offset         Number of k-mers to skip during classification. Can speed up analysis but may reduce recall.
+	                        (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2
+	  -t , --threads        Number of subprocesses/threads to use. Default: 3
+	  -r [ [ ...]], --ranks [ [ ...]]
+	                        Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks:
+	                        superkingdom phylum class order family genus species assembly. This file can be re-generated with
 	                        the ganon report command.
-	  -t THREADS, --threads THREADS
-	                        Number of subprocesses/threads to use. Default: 3
-	  --verbose             Verbose mode for ganon-classify
+	  --output-all          Output an additional file with all matches (.all). File can be very large.
+	  --output-unclassified
+	                        Output an additional file with unclassified read headers (.unc)
+	  --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
+	                        hierarchy
+	  --verbose             Verbose output mode
+	  --quiet               Quiet output mode (only errors and warnings to the stderr)
 
 	required arguments:
-	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
+	  -d [DB_PREFIX [DB_PREFIX ...]], --db-prefix [DB_PREFIX [DB_PREFIX ...]]
 	                        Database input prefix[es]
-	  -r [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
+	  -s [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
 	                        Multi-fastq[.gz] file[s] to classify
 	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
 	                        Multi-fastq[.gz] pairs of file[s] to classify
 
-### report
+</details>
 
-	ganon report [-h] -i REP_FILE -d [db_prefix [db_prefix ...]]
-	                    [-r [RANKS [RANKS ...]]] [-m MIN_MATCHES]
-	                    [-p MIN_MATCHES_PERC] [-t [TAXIDS [TAXIDS ...]]]
-	                    [-o OUTPUT_REPORT]
+<details>
+  <summary>ganon report</summary>
+
+	usage: ganon report [-h] [--min-count] [--min-percentage] [--names [[...]]] [--names-with [[...]]] [--taxids [[...]]] -i
+	                    [REP_FILES [REP_FILES ...]] -o OUTPUT_PREFIX [-d [[...]]] [-e] [-r [[...]]] [-s] [-k [[...]]] [-f]
+	                    [--taxdump-file [[...]]] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -r [RANKS [RANKS ...]], --ranks [RANKS [RANKS ...]]
-	                        Ranks for the final report. "all" for all identified
-	                        ranks. empty for default ranks: superkingdom phylum
-	                        class order family genus species species+ assembly
-	  -m MIN_MATCHES, --min-matches MIN_MATCHES
-	                        Min. number of matches to output. 0 for all. Default:
-	                        0
-	  -p MIN_MATCHES_PERC, --min-matches-perc MIN_MATCHES_PERC
-	                        Min. percentage of matches to output. 0 for all.
-	                        Default: 0
-	  -t [TAXIDS [TAXIDS ...]], --taxids [TAXIDS [TAXIDS ...]]
-	                        One or more taxids to filter report. Example: 562 2157
-	                        report only E. Coli and Archaea matches
-	  -o OUTPUT_REPORT, --output-report OUTPUT_REPORT
-	                        Output file for report. Default: STDOUT
+	  -d [ [ ...]], --db-prefix [ [ ...]]
+	                        Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be
+	                        downloaded
+	  -e , --report-type    Type of report to generate [reads, matches]. Default: reads
+	  -r [ [ ...]], --ranks [ [ ...]]
+	                        Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks.
+	                        empty for default ranks (superkingdom phylum class order family genus species assembly). Default:
+	                        ""
+	  -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
+	                        (with --ranks all)
+	  -k [ [ ...]], --skip-hierarchy [ [ ...]]
+	                        One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)
+	  -f , --output-format 
+	                        Output format [text, tsv, csv]. Default: text
+	  --taxdump-file [ [ ...]]
+	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
+	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	  --verbose             Verbose output mode
+	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+
+	filter arguments:
+	  --min-count           Mininum number of counts to keep the taxa
+	  --min-percentage      Mininum percentage of counts to keep the taxa [0-1]
+	  --names [ [ ...]]     Show only entries matching exact names of the provided list
+	  --names-with [ [ ...]]
+	                        Show entries containing full or partial names of the provided list
+	  --taxids [ [ ...]]    One or more taxids to report (including children taxa)
 
 	required arguments:
-	  -i REP_FILE, --rep-file REP_FILE
-	                        {prefix}.rep file output from ganon classify
-	  -d [db_prefix [db_prefix ...]], --db-prefix [db_prefix [db_prefix ...]]
-	                        Database prefix[es] used for classification.
+	  -i [REP_FILES [REP_FILES ...]], --rep-files [REP_FILES [REP_FILES ...]]
+	                        One or more *.rep files from ganon classify
+	  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
+	                        Output prefix for report (output_prefix.tre). In case of multiple files output is in the format
+	                        "output_prefix + filename + .tre"
 
+</details>
 
+<details>
+  <summary>ganon table</summary>
+
+	usage: ganon table [-h] [--min-count] [--min-percentage] [--names [[...]]] [--names-with [[...]]] [--taxids [[...]]] -i
+	                   [TRE_FILES [TRE_FILES ...]] -o OUTPUT_FILE [-l] [-f] [-t] [-a] [-r] [-m] [-p] [--add-unclassified]
+	                   [--add-unclassified-rank] [--add-filtered] [--skip-zeros] [--verbose] [--quiet]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1].
+	                        Default: percentage
+	  -f , --output-format 
+	                        Output format [tsv, csv]. Default: tsv
+	  -t , --top-sample     Top hits of each sample individually
+	  -a , --top-all        Top hits of all samples (ranked by percentage)
+	  -r , --rank           Rank to report. Default: species
+	  -m , --min-occurence 
+	                        Number of occurences of a taxa among reports to be kept
+	  -p , --min-occurence-percentage 
+	                        Percentage of occurences of a taxa among reports to be kept [0-1]
+	  --add-unclassified    Add column with unclassified count/percentage
+	  --add-unclassified-rank
+	                        Add column with unclassified count/percentage at the chosen rank but classified at a less
+	                        specific rank
+	  --add-filtered        Add column with filtered count/percentage
+	  --skip-zeros          Do not print lines with only zero count/percentage
+	  --verbose             Verbose output mode
+	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+
+	filter arguments:
+	  --min-count           Mininum number of counts to keep the taxa
+	  --min-percentage      Mininum percentage of counts to keep the taxa [0-1]
+	  --names [ [ ...]]     Show only entries matching exact names of the provided list
+	  --names-with [ [ ...]]
+	                        Show entries containing full or partial names of the provided list
+	  --taxids [ [ ...]]    One or more taxids to report (including children taxa)
+
+	required arguments:
+	  -i [TRE_FILES [TRE_FILES ...]], --tre-files [TRE_FILES [TRE_FILES ...]]
+	                        Report files (.tre) from ganon classify/report to make the table
+	  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+	                        Output filename for the table
+
+</details>

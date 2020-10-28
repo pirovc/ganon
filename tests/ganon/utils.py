@@ -167,7 +167,26 @@ def table_sanity_check_and_parse(params):
 
     res = {}
     # Sequence information from database to be updated
-    res["tsv_pd"] = parse_tsv(params["output_file"])
+    res["out_pd"] = parse_tsv(params["output_file"])
+
+    # check if all values are positive
+    if not (res["out_pd"].values>=0 ).all():
+        print("Invalid negative value")
+        return None
+
+    # specific for percentage output
+    if params["output_value"]=="percentage":
+        # check if all percentages are on the 0-1 range
+        if not (res["out_pd"].values<=1).all():
+            print("Invalid table percentage (>1)")
+            return None
+
+        # Check if sum of the lines do not pass 1
+        if not (res["out_pd"].sum(axis=1)<=1).all():
+            print("Invalid line value (>1)")
+            return None
+
+
     return res
 
 def update_sanity_check_and_parse(params):
