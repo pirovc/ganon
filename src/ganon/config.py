@@ -275,7 +275,6 @@ class Config:
                     if not check_db(prefix):
                         return False
 
-            self.rep_files = check_files(self.rep_files)
             if not len(self.rep_files):
                 print_log("No valid input files to report")
                 return False
