@@ -3,8 +3,6 @@ from ganon.tax import Tax
 from ganon.util import *
 
 def table(cfg):
-    tx = time.time()
-
     #validate input input files
     tre_files = validate_input_files(cfg.tre_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     
@@ -47,8 +45,6 @@ def table(cfg):
         lines, cols = write_tsv(reports, cfg)
         print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
     
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
     return True
 
 def parse_reports(tre_files, rank):

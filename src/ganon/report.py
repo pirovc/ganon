@@ -51,7 +51,6 @@ def report(cfg):
 
         print_log(" - report saved to " + output_file, cfg.quiet)
         any_rep = True
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True if any_rep else False
     
