@@ -214,31 +214,35 @@ class Config:
         elif self.quiet is True:
             self.verbose=False
             
-        if self.which in ['build','update']:
-            if self.taxdump_file and ((len(self.taxdump_file)==1 and not self.taxdump_file[0].endswith(".tar.gz")) or len(self.taxdump_file)>3):
-                print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
+        if self.which=='build':
+            if not check_taxdump(self.taxdump_file):
                 return False
 
             if not check_input_directory(self.input_files, self.input_directory, self.input_extension):
                 return False
- 
-            if self.which=='update':
-                if not check_db(self.db_prefix):
-                    return False
-
-            if self.which=='build': #If set (!=0), should be smaller than fragment
-                if self.fragment_length>0 and self.overlap_length > self.fragment_length:
-                    print_log("--overlap-length cannot be bigger than --fragment-length")
-                    return False
-
-                if self.fixed_bloom_size and not self.bin_length:
-                    print_log("please set the --bin-length to use --fixed-bloom-size")
-                    return False
-
-                if self.max_fp<=0:
-                    print_log("--max-fp has to be bigger than 0")
-                    return False
             
+            if self.fragment_length>0 and self.overlap_length > self.fragment_length:
+                print_log("--overlap-length cannot be bigger than --fragment-length")
+                return False
+
+            if self.fixed_bloom_size and not self.bin_length:
+                print_log("please set the --bin-length to use --fixed-bloom-size")
+                return False
+
+            if self.max_fp<=0:
+                print_log("--max-fp has to be bigger than 0")
+                return False
+            
+        elif self.which=='update':
+            if not check_taxdump(self.taxdump_file):
+                return False
+
+            if not check_input_directory(self.input_files, self.input_directory, self.input_extension):
+                return False
+
+            if not check_db(self.db_prefix):
+                return False
+
         elif self.which=='classify':
             for prefix in self.db_prefix:
                 if not check_db(prefix):
@@ -266,6 +270,8 @@ class Config:
                 return False
 
         elif self.which=='report':
+            if not check_taxdump(self.taxdump_file):
+                return False
 
             if not check_input_directory(self.rep_files, self.input_directory, self.input_extension):
                 return False
@@ -275,17 +281,8 @@ class Config:
                     if not check_db(prefix):
                         return False
 
-            if not len(self.rep_files):
-                print_log("No valid input files to report")
-                return False
-
         elif self.which=='table':
-
             if not check_input_directory(self.tre_files, self.input_directory, self.input_extension):
-                return False
-
-            if not len(self.tre_files):
-                print_log("No valid input files to generate the table")
                 return False
 
             if self.min_occurence < 0:
@@ -343,4 +340,17 @@ def check_input_directory(input_files, input_directory, input_extension):
     elif input_directory and "*" in input_extension:
         print_log("Please do not use wildcards (*) in the --input-extension")
         return False
+    return True
+
+def check_taxdump(taxdump_file):
+    if taxdump_file and ((len(taxdump_file)==1 and not taxdump_file[0].endswith(".tar.gz")) or len(taxdump_file)>3):
+        print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
+        return False
+    return True
+
+def check_db(prefix):
+    for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
+        if not os.path.isfile(prefix+db_file_type):
+            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)")
+            return False
     return True

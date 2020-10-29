@@ -46,19 +46,6 @@ def set_tmp_folder(fld):
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)
 
-def check_files(files):
-    checked_files = [file for file in files if os.path.isfile(file) and os.path.getsize(file) > 0]
-    if len(checked_files)<len(files):
-        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found/empty")
-    return checked_files
-
-def check_db(prefix):
-    for db_file_type in [".ibf", ".map", ".tax", ".gnn"]:
-        if not os.path.isfile(prefix+db_file_type):
-            print_log("Incomplete database [" + prefix  + "] (.ibf, .map, .tax and .gnn)")
-            return False
-    return True
-
 def set_taxdump_files(taxdump_file, tmp_output_folder, quiet):
     if not taxdump_file:
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, quiet), tmp_output_folder, quiet)
@@ -110,3 +97,9 @@ def validate_input_files(input_files, input_directory, input_extension, quiet):
         valid_input_files.extend(check_files(input_files))
 
     return valid_input_files
+
+def check_files(files):
+    checked_files = [file for file in files if os.path.isfile(file) and os.path.getsize(file) > 0]
+    if len(checked_files)<len(files):
+        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found/empty")
+    return checked_files
