@@ -34,7 +34,24 @@ class TestReportOffline(unittest.TestCase):
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
-        #print(res)
+
+    def test_input_directory(self):
+        """
+        Test run with default parameters using input directory and extension
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_input_directory"
+        del params["rep_files"]
+        params["input_directory"] = data_dir+"report/"
+        params["input_extension"] = ".rep"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
     
     def test_min_percentage(self):
         """

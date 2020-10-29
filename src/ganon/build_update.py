@@ -10,8 +10,8 @@ from ganon.util import *
 
 def build(cfg):
     # validate input files
-    input_files, input_files_from_directory = validate_input_files(cfg)
-    if len(input_files)==0 and len(input_files_from_directory)==0:
+    input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    if len(input_files)==0:
         print_log("ERROR: No valid input files found")
         return False
 
@@ -37,7 +37,7 @@ def build(cfg):
     if cfg.seq_info_file:
         seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
     else:
-        seqinfo = load_seqids(files=input_files + input_files_from_directory, quiet=cfg.quiet) 
+        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
         load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
         if cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
     # check sequences compared to bins
@@ -161,8 +161,8 @@ def build(cfg):
 def update(cfg):
     tx = time.time()
     # validate input files
-    input_files, input_files_from_directory = validate_input_files(cfg)
-    if len(input_files)==0 and len(input_files_from_directory)==0:
+    input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    if len(input_files)==0:
         print_log("ERROR: No valid input files found")
         return False
 
@@ -185,7 +185,7 @@ def update(cfg):
     if cfg.seq_info_file:
         seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
     else:
-        seqinfo = load_seqids(files=input_files + input_files_from_directory, quiet=cfg.quiet) 
+        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
 
     # check sequences compared to bins
     added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
@@ -494,24 +494,3 @@ def estimate_bin_len_size(cfg, seqinfo, tax, use_assembly):
         return int(bin_lens[idx_min]), filter_sizes[idx_min], n_bins[idx_min]    
     else:
         return 0,0,0
-
-def validate_input_files(cfg):
-    input_files_from_directory = []
-    input_files = []
-
-    # get files from directory
-    if cfg.input_directory and cfg.input_extension:
-        if not os.path.isdir(cfg.input_directory):
-            print_log(cfg.input_directory + " is not a valid directory", cfg.quiet)
-        else:
-            for file in os.listdir(cfg.input_directory):
-                if file.endswith(cfg.input_extension):
-                    input_files_from_directory.append(os.path.join(cfg.input_directory, file))
-            print_log(str(len(input_files_from_directory)) + " file(s) [" + cfg.input_extension + "] found in " + cfg.input_directory, cfg.quiet)
-            print_log("")
-            
-    # remove non existent files from input list
-    if cfg.input_files: 
-        input_files = check_files(cfg.input_files)
-
-    return input_files, input_files_from_directory

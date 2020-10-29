@@ -4,7 +4,9 @@ from ganon.util import *
 
 def report(cfg):
     tx = time.time()
-
+    #validate input input files
+    rep_files = validate_input_files(cfg.rep_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    
     if cfg.db_prefix:
         tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
     else:
@@ -23,7 +25,7 @@ def report(cfg):
     any_rep = False
     print_log("Generating report(s)", cfg.quiet)
     # Parse report file
-    for rep_file in cfg.rep_files:
+    for rep_file in rep_files:
         print_log("", cfg.quiet)
         total_matches, classified_reads, unclassified_reads, reports = parse_rep(rep_file, cfg.skip_hierarchy)
         
@@ -36,7 +38,7 @@ def report(cfg):
             if h in reports:
                 print_log(" - skipped " + str(reports[h]["1"]["unique_reads"]+reports[h]["1"]["lca_reads"])  + " reads with " + str(reports[h]["1"]["direct_matches"]) + " matches for " + h + " (counts assigned to root node)", cfg.quiet)
 
-        if len(cfg.rep_files) == 1:
+        if len(rep_files) == 1:
             output_file = cfg.output_prefix+".tre"
         else:
             file_pre = os.path.splitext(os.path.basename(rep_file))[0]
@@ -49,7 +51,6 @@ def report(cfg):
 
         print_log(" - report saved to " + output_file, cfg.quiet)
         any_rep = True
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return True if any_rep else False
     

@@ -3,8 +3,9 @@ from ganon.tax import Tax
 from ganon.util import *
 
 def table(cfg):
-
-    tx = time.time()
+    #validate input input files
+    tre_files = validate_input_files(cfg.tre_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    
     print_log("Generating table", cfg.quiet)
     # reports[file] = {"taxa": {name: count,...}, 
     #                  "lineage": {name: ["1",...],...}, 
@@ -13,7 +14,7 @@ def table(cfg):
     #                  "unclassified_root": INT, 
     #                  "unclassified_rank": INT, 
     #                  "filtered_rank": INT}
-    reports, total_taxa = parse_reports(cfg)
+    reports, total_taxa = parse_reports(tre_files, cfg.rank)
     print_log(" - " + str(len(reports)) + " files parsed" , cfg.quiet)
     print_log(" - " + str(total_taxa) + " total taxa selected at " + cfg.rank + " level", cfg.quiet)
 
@@ -44,16 +45,14 @@ def table(cfg):
         lines, cols = write_tsv(reports, cfg)
         print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
     
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
     return True
 
-def parse_reports(cfg):
+def parse_reports(tre_files, rank):
     reports = {}
     total_taxa = set()
-    for tre_file in cfg.tre_files:
+    for tre_file in tre_files:
         reports[tre_file] = {}
-        taxa, lineage, total, unclassified_root, unclassified_rank = parse_tre_rank(tre_file, cfg.rank)
+        taxa, lineage, total, unclassified_root, unclassified_rank = parse_tre_rank(tre_file, rank)
         total_taxa.update(taxa.keys())
         reports[tre_file]["label"] = tre_file
         reports[tre_file]["taxa"] = taxa
