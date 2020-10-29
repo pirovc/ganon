@@ -35,6 +35,24 @@ class TestTableOffline(unittest.TestCase):
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
 
+    def test_input_directory(self):
+        """
+        Test run with default parameters using input directory and extension
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_input_directory.tsv"
+        del params["tre_files"]
+        params["input_directory"] = data_dir+"table/"
+        params["input_extension"] = ".tre"
+       
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+
     def test_rank(self):
         """
         Test ganon table with --ranks
