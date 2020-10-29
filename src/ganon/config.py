@@ -35,8 +35,8 @@ class Config:
         build_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", metavar='', default=["auto"],  help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
         build_group_optional.add_argument('--seq-info-file',         type=str,            metavar='',                    help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
         build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*", metavar='',                    help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
-        build_group_optional.add_argument('--input-directory',       type=str,            metavar='',                    help='Directory containing input files')
-        build_group_optional.add_argument('--input-extension',       type=str,            metavar='',                    help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
+        build_group_optional.add_argument('--input-directory',       type=str,            metavar='', default="",        help='Directory containing input files')
+        build_group_optional.add_argument('--input-extension',       type=str,            metavar='', default="",        help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
         build_group_optional.add_argument('--write-seq-info-file',   action='store_true',                                help='Write sequence information to DB_PREFIX.seqinfo.txt')
         build_group_optional.add_argument('--verbose',               action='store_true',                                help='Verbose output mode')
         build_group_optional.add_argument('--quiet',                 action='store_true',                                help='Quiet output mode (only errors and warnings to the stderr)')
@@ -60,8 +60,8 @@ class Config:
         update_group_optional.add_argument('--seq-info-mode',          type=str, nargs="*", metavar='', default=["auto"], help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
         update_group_optional.add_argument('--seq-info-file',          type=str,            metavar='',                   help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
         update_group_optional.add_argument('--taxdump-file',           type=str, nargs="*", metavar='',                   help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
-        update_group_optional.add_argument('--input-directory',        type=str,            metavar='',                   help='Directory containing input files')
-        update_group_optional.add_argument('--input-extension',        type=str,            metavar='',                   help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
+        update_group_optional.add_argument('--input-directory',        type=str,            metavar='', default="",       help='Directory containing input files')
+        update_group_optional.add_argument('--input-extension',        type=str,            metavar='', default="",       help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
         update_group_optional.add_argument('--update-complete',        action='store_true',                               help='Update adding and removing sequences. Input files should represent the complete updated set of references, not only new sequences.')
         update_group_optional.add_argument('--write-seq-info-file',    action='store_true',                               help='Write sequence information to DB_PREFIX.seqinfo.txt')
         update_group_optional.add_argument('--verbose',                action='store_true',                               help='Verbose output mode')
@@ -106,8 +106,8 @@ class Config:
 
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
-        report_group_required.add_argument('-i', '--rep-files',     type=str, nargs="*", required=True, help='One or more *.rep files from ganon classify')
-        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True, help='Output prefix for report (output_prefix.tre). In case of multiple files output is in the format "output_prefix + filename + .tre"')
+        report_group_required.add_argument('-i', '--rep-files',     type=str, nargs="*", required=False, help='One or more *.rep files from ganon classify')
+        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report (output_prefix.tre). In case of multiple files output is in the format "output_prefix + filename + .tre"')
     
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
@@ -118,6 +118,8 @@ class Config:
         report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
         report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="text",  help='Output format [text, tsv, csv]. Default: text')
         report_group_optional.add_argument('--taxdump-file',         type=str, nargs="*", metavar='', default=[],      help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
+        report_group_optional.add_argument('--input-directory',      type=str,            metavar='', default="",      help='Directory containing input files')
+        report_group_optional.add_argument('--input-extension',      type=str,            metavar='', default="",      help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")')
         report_group_optional.add_argument('--verbose',              action='store_true',             default=False,   help='Verbose output mode')
         report_group_optional.add_argument('--quiet',                action='store_true',             default=False,   help='Quiet output mode (only errors and warnings to the stderr)')
         ####################################################################################################
@@ -126,8 +128,8 @@ class Config:
 
         # Required
         table_group_required = table_parser.add_argument_group('required arguments')
-        table_group_required.add_argument('-i', '--tre-files',   type=str, nargs="*", required=True, help='Report files (.tre) from ganon classify/report to make the table')
-        table_group_required.add_argument('-o', '--output-file', type=str,            required=True, help='Output filename for the table')
+        table_group_required.add_argument('-i', '--tre-files',   type=str, nargs="*", required=False, help='Report files (.tre) from ganon classify/report to make the table')
+        table_group_required.add_argument('-o', '--output-file', type=str,            required=True,  help='Output filename for the table')
     
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
@@ -142,6 +144,8 @@ class Config:
         table_group_optional.add_argument('--add-unclassified-rank',          action='store_true',    default=False,        help="Add column with unclassified count/percentage at the chosen rank but classified at a less specific rank")
         table_group_optional.add_argument('--add-filtered',                   action='store_true',    default=False,        help="Add column with filtered count/percentage")
         table_group_optional.add_argument('--skip-zeros',                     action='store_true',    default=False,        help="Do not print lines with only zero count/percentage")
+        table_group_optional.add_argument('--input-directory',                type=str,  metavar='',  default="",           help='Directory containing input files')
+        table_group_optional.add_argument('--input-extension',                type=str,  metavar='',  default="",           help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".tre")')
         table_group_optional.add_argument('--verbose',                        action='store_true',    default=False,        help='Verbose output mode')
         table_group_optional.add_argument('--quiet',                          action='store_true',    default=False,        help='Quiet output mode (only errors and warnings to the stderr)')
                  
@@ -215,16 +219,9 @@ class Config:
                 print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
                 return False
 
-            if not self.input_files and not self.input_directory:
-                print_log("Please provide files with --input-files and/or --input-directory with --input-extension")
+            if not check_input_directory(self.input_files, self.input_directory, self.input_extension):
                 return False
-            elif self.input_directory and not self.input_extension:
-                print_log("Please provide the --input-extension when using --input-directory")
-                return False
-            elif self.input_directory and "*" in self.input_extension:
-                print_log("Please do not use wildcards (*) in the --input-extension")
-                return False
-
+ 
             if self.which=='update':
                 if not check_db(self.db_prefix):
                     return False
@@ -269,6 +266,10 @@ class Config:
                 return False
 
         elif self.which=='report':
+
+            if not check_input_directory(self.rep_files, self.input_directory, self.input_extension):
+                return False
+
             if self.db_prefix:
                 for prefix in self.db_prefix:
                     if not check_db(prefix):
@@ -280,7 +281,10 @@ class Config:
                 return False
 
         elif self.which=='table':
-            self.tre_files = check_files(self.tre_files)
+
+            if not check_input_directory(self.tre_files, self.input_directory, self.input_extension):
+                return False
+
             if not len(self.tre_files):
                 print_log("No valid input files to generate the table")
                 return False
@@ -329,3 +333,15 @@ class Config:
                 missing_path = True
 
         return True if not missing_path else False
+
+def check_input_directory(input_files, input_directory, input_extension):         
+    if not input_files and not input_directory:
+        print_log("Please provide files with --input-files and/or --input-directory with --input-extension")
+        return False
+    elif input_directory and not input_extension:
+        print_log("Please provide the --input-extension when using --input-directory")
+        return False
+    elif input_directory and "*" in input_extension:
+        print_log("Please do not use wildcards (*) in the --input-extension")
+        return False
+    return True
