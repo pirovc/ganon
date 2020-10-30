@@ -1,5 +1,9 @@
-1_default	GCF_000237325.1	58	58	0	assembly	GCF_000237325.1
-1_default	GCF_000019145.1	29	29	0	assembly	GCF_000019145.1
-1_default	GCF_000188215.1	13	13	0	assembly	GCF_000188215.1
-#total_classified	100
-#total_unclassified	0
+1_assembly	GCF_000019145.1	28	28	0	assembly	GCF_000019145.1
+1_assembly	GCF_000237325.1	56	56	0	assembly	GCF_000237325.1
+1_assembly	GCF_000188215.1	12	12	0	assembly	GCF_000188215.1
+2_default	470	2	0	0	species	Acinetobacter baumannii
+2_default	2	0	0	2	superkingdom	Bacteria
+2_default	1406	3	1	0	species	Paenibacillus polymyxa
+2_default	366602	1	0	0	species	Caulobacter sp. K31
+#total_classified	99
+#total_unclassified	51

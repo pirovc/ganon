@@ -2,15 +2,17 @@
 from collections import defaultdict
 
 class Tax:
-    def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None):
+    def __init__(self, tax_files: list=None, ncbi_nodes: str=None, ncbi_names: str=None, ncbi_merged: str=None):
         # nodes[node] = (parent, rank, name)
         self.nodes = {}
+        self.merged = {}
         # default root node
-        self.nodes["1"] = ("0", "no rank", "root")
+        self.nodes["1"] = ("0", "root", "root")
         if tax_files is not None:
             self.parse(tax_files)
         elif ncbi_nodes is not None:
-            self.parse_ncbi(ncbi_nodes, ncbi_names)
+            self.parse_ncbi_nodes(ncbi_nodes, ncbi_names)
+            if ncbi_merged: self.parse_ncbi_merged(ncbi_merged)
 
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
@@ -47,7 +49,7 @@ class Tax:
                     if node not in self.nodes:
                         self.nodes[node] = (parent,rank,name)
 
-    def parse_ncbi(self, ncbi_nodes, ncbi_names):
+    def parse_ncbi_nodes(self, ncbi_nodes, ncbi_names):
         names = defaultdict(lambda: "")
         if ncbi_names is not None:
             with open(ncbi_names,'r') as file:
@@ -60,6 +62,13 @@ class Tax:
                 node, parent, rank, _ = line.split('\t|\t', 3) # READ nodes -> fields (1:TAXID 2:PARENT_TAXID 3:RANK)
                 if node not in self.nodes:
                     self.nodes[node] = (parent,rank,names[node])
+
+    def parse_ncbi_merged(self, ncbi_merged):
+        self.merged = {}
+        with open(ncbi_merged,'r') as file:
+            for line in file:
+                old_taxid, _, new_taxid, _ = line.split('\t',3)
+                self.merged[old_taxid] = new_taxid
 
     def write(self, file):
         # .tax: taxid/assembly <tab> parent taxid <tab> rank <tab> name
@@ -76,18 +85,24 @@ class Tax:
             return node
         return t if t!="1" else node
 
-    def get_node_rank_fixed(self, node, fixed_ranks):
-        if node!="0":
-            original_rank = self.nodes[node][1]
-            original_taxid = node
-            while node!="0":
-                if(self.nodes[node][1] in fixed_ranks):
-                    #everything below species (not being assembly) is counted as species+
-                    if "species+" in fixed_ranks and original_rank!="species" and original_rank!="assembly" and self.nodes[node][1]=="species":
-                        return original_taxid, "species+"
-                    else:
-                        return node, self.nodes[node][1]
-                node = self.nodes[node][0]
-            return "1", "root" #no standard rank identified
+    def get_node(self, node):
+        if node in self.nodes:
+            return {"parent": self.nodes[node][0], "rank": self.nodes[node][1], "name": self.nodes[node][2]} 
         else:
-            return "0", ""
+            if node in self.merged and self.merged[node] in self.nodes:
+                m = self.merged[node]
+                return {"parent": self.nodes[m][0], "rank": self.nodes[m][1], "name": self.nodes[m][2]} 
+            else:
+                # If node not found, return root as parent
+                return {"parent": "1", "rank": "na", "name": "na"}
+
+    def get_node_rank_fixed(self, node, fixed_ranks):
+        n = self.get_node(node)
+        rank = n["rank"]
+        while node!="0":
+            if rank in fixed_ranks:
+                return node, rank
+            node = n["parent"]
+            n = self.get_node(node)
+            rank = n["rank"]
+        return node, "na" #no standard rank identified

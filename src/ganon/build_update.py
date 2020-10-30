@@ -10,8 +10,8 @@ from ganon.util import *
 
 def build(cfg):
     # validate input files
-    input_files, input_files_from_directory = validate_input_files(cfg)
-    if len(input_files)==0 and len(input_files_from_directory)==0:
+    input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    if len(input_files)==0:
         print_log("ERROR: No valid input files found")
         return False
 
@@ -20,13 +20,13 @@ def build(cfg):
     
     # Set temporary working folder 
     tmp_output_folder = cfg.db_prefix + "_tmp/"
-    set_tmp_folder(tmp_output_folder)
+    if not set_tmp_folder(tmp_output_folder): return False
 
     # Set assembly mode
     use_assembly=True if cfg.rank=="assembly" else False
 
     # Set up taxonomy
-    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg, tmp_output_folder)
+    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
     
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
@@ -37,7 +37,7 @@ def build(cfg):
     if cfg.seq_info_file:
         seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
     else:
-        seqinfo = load_seqids(files=input_files + input_files_from_directory, quiet=cfg.quiet) 
+        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
         load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
         if cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
     # check sequences compared to bins
@@ -161,8 +161,8 @@ def build(cfg):
 def update(cfg):
     tx = time.time()
     # validate input files
-    input_files, input_files_from_directory = validate_input_files(cfg)
-    if len(input_files)==0 and len(input_files_from_directory)==0:
+    input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
+    if len(input_files)==0:
         print_log("ERROR: No valid input files found")
         return False
 
@@ -171,7 +171,7 @@ def update(cfg):
     
     # Set temporary working folder (current or new output)
     tmp_output_folder = cfg.output_db_prefix + "_tmp/" if cfg.output_db_prefix else cfg.db_prefix + "_tmp/"
-    set_tmp_folder(tmp_output_folder)
+    if not set_tmp_folder(tmp_output_folder): return False
 
     # Load .gnn file   
     gnn = Gnn(file=db_prefix["gnn"])
@@ -185,7 +185,7 @@ def update(cfg):
     if cfg.seq_info_file:
         seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
     else:
-        seqinfo = load_seqids(files=input_files + input_files_from_directory, quiet=cfg.quiet) 
+        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
 
     # check sequences compared to bins
     added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
@@ -222,7 +222,7 @@ def update(cfg):
     kept_binids = set(bins.get_binids())
 
     # Set up taxonomy files
-    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg, tmp_output_folder)
+    ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
@@ -414,35 +414,6 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
             seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=True, get_assembly=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
 
-def set_taxdump_files(cfg, tmp_output_folder):
-    if not cfg.taxdump_file:
-        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, cfg.quiet), tmp_output_folder, cfg.quiet)
-    elif cfg.taxdump_file[0].endswith(".tar.gz"):
-        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(cfg.taxdump_file[0], tmp_output_folder, cfg.quiet)
-    else:
-        ncbi_nodes_file = cfg.taxdump_file[0]
-        ncbi_names_file = cfg.taxdump_file[1]
-        ncbi_merged_file =  cfg.taxdump_file[2] if len(cfg.taxdump_file)==3 else ""
-
-    return ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
-
-def get_taxdump(tmp_output_folder, quiet):
-    tx = time.time()
-    print_log("Downloading taxdump", quiet)
-    taxdump_file = tmp_output_folder+'taxdump.tar.gz'
-    run_wget_taxdump_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz"'.format(taxdump_file)
-    stdout, stderr = run(run_wget_taxdump_cmd, print_stderr=True)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-    return taxdump_file
-
-def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
-    tx = time.time()
-    print_log("Unpacking taxdump", quiet)
-    unpack_taxdump_cmd = 'tar xf {0} -C "{1}" nodes.dmp merged.dmp names.dmp'.format(taxdump_file, tmp_output_folder)
-    stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-    return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
-
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     tx = time.time()
     acc2txid_file = acc2txid + ".accession2taxid.gz"
@@ -523,24 +494,3 @@ def estimate_bin_len_size(cfg, seqinfo, tax, use_assembly):
         return int(bin_lens[idx_min]), filter_sizes[idx_min], n_bins[idx_min]    
     else:
         return 0,0,0
-
-def validate_input_files(cfg):
-    input_files_from_directory = []
-    input_files = []
-
-    # get files from directory
-    if cfg.input_directory and cfg.input_extension:
-        if not os.path.isdir(cfg.input_directory):
-            print_log(cfg.input_directory + " is not a valid directory", cfg.quiet)
-        else:
-            for file in os.listdir(cfg.input_directory):
-                if file.endswith(cfg.input_extension):
-                    input_files_from_directory.append(os.path.join(cfg.input_directory, file))
-            print_log(str(len(input_files_from_directory)) + " file(s) [" + cfg.input_extension + "] found in " + cfg.input_directory, cfg.quiet)
-            print_log("")
-            
-    # remove non existent files from input list
-    if cfg.input_files: 
-        input_files = check_files(cfg.input_files)
-
-    return input_files, input_files_from_directory

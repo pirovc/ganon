@@ -2,7 +2,9 @@
 import sys, time
 
 from ganon.build_update import build, update
-from ganon.classify_report import classify, report
+from ganon.classify import classify
+from ganon.report import report
+from ganon.table import table
 from ganon.config import Config
 from ganon.util import print_log
 
@@ -36,6 +38,8 @@ def main(which: str=None, cfg=None, **kwargs):
         ret=classify(cfg)
     elif cfg.which=='report':
         ret=report(cfg)
+    elif cfg.which=='table':
+        ret=table(cfg)
 
     print_log("Total elapsed time: " + str("%.2f" % (time.time() - tx_total)) + " seconds.", cfg.quiet)
     return ret
