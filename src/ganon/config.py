@@ -115,7 +115,8 @@ class Config:
         report_group_optional.add_argument('-e', '--report-type',    type=str,            metavar='', default="reads", help='Type of report to generate [reads, matches]. Default: reads')
         report_group_optional.add_argument('-r', '--ranks',          type=str, nargs="*", metavar='', default=[],      help='Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: ""')
         report_group_optional.add_argument('-s', '--sort',           type=str,            metavar='', default="",      help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)')
-        report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
+        report_group_optional.add_argument('-p', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
+        report_group_optional.add_argument('-k', '--keep-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)')
         report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="text",  help='Output format [text, tsv, csv]. Default: text')
         report_group_optional.add_argument('--taxdump-file',         type=str, nargs="*", metavar='', default=[],      help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         report_group_optional.add_argument('--input-directory',      type=str,            metavar='', default="",      help='Directory containing input files')
@@ -270,6 +271,11 @@ class Config:
                 return False
 
         elif self.which=='report':
+
+            if self.skip_hierarchy and self.keep_hierarchy:
+                print_log("--skip-hierarchy and --keep-hierarchy are mutually exclusive")
+                return False
+
             if not check_taxdump(self.taxdump_file):
                 return False
 
@@ -343,9 +349,15 @@ def check_input_directory(input_files, input_directory, input_extension):
     return True
 
 def check_taxdump(taxdump_file):
-    if taxdump_file and ((len(taxdump_file)==1 and not taxdump_file[0].endswith(".tar.gz")) or len(taxdump_file)>3):
-        print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
-        return False
+    if taxdump_file:
+        if ((len(taxdump_file)==1 and not taxdump_file[0].endswith(".tar.gz")) or len(taxdump_file)>3):
+            print_log("Please provide --taxdump-file taxdump.tar.gz OR --taxdump-file nodes.dmp names.dmp OR --taxdump-file nodes.dmp names.dmp merged.dmp OR leave it empty for automatic download")
+            return False
+        else:
+            for f in taxdump_file:
+                if not os.path.isfile(f):
+                    print_log("File not found: " + f)
+                    return False
     return True
 
 def check_db(prefix):

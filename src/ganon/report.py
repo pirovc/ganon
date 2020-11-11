@@ -27,16 +27,17 @@ def report(cfg):
     # Parse report file
     for rep_file in rep_files:
         print_log("", cfg.quiet)
-        total_matches, classified_reads, unclassified_reads, reports = parse_rep(rep_file, cfg.skip_hierarchy)
+        total_matches, classified_reads, unclassified_reads, reports = parse_rep(rep_file, cfg.skip_hierarchy, cfg.keep_hierarchy)
         
         if not reports:
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
             continue
             
         # In case of skipped hiearchy, account all matches to root
-        for h in cfg.skip_hierarchy:
-            if h in reports:
-                print_log(" - skipped " + str(reports[h]["1"]["unique_reads"]+reports[h]["1"]["lca_reads"])  + " reads with " + str(reports[h]["1"]["direct_matches"]) + " matches for " + h + " (counts assigned to root node)", cfg.quiet)
+        if cfg.skip_hierarchy or cfg.keep_hierarchy:
+            for h in reports:
+                if h in cfg.skip_hierarchy or (cfg.keep_hierarchy and h not in cfg.keep_hierarchy):
+                    print_log(" - skipped " + str(reports[h]["1"]["unique_reads"]+reports[h]["1"]["lca_reads"])  + " reads with " + str(reports[h]["1"]["direct_matches"]) + " matches for " + h + " (counts assigned to root node)", cfg.quiet)
 
         if len(rep_files) == 1:
             output_file = cfg.output_prefix+".tre"
@@ -54,7 +55,7 @@ def report(cfg):
 
     return True if any_rep else False
     
-def parse_rep(rep_file, skip_hierarchy):
+def parse_rep(rep_file, skip_hierarchy, keep_hierarchy):
     reports = {}
     total_matches = 0
     with open(rep_file, 'r') as rep_file:
@@ -67,7 +68,13 @@ def parse_rep(rep_file, skip_hierarchy):
             else:
                 hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
                 direct_matches = int(direct_matches)
-                if hierarchy_name in skip_hierarchy: target="1"
+                    
+                #if skiping/keeping hierarchy, set all counts to root
+                if keep_hierarchy and hierarchy_name not in keep_hierarchy: 
+                    target="1"
+                elif hierarchy_name in skip_hierarchy: 
+                    target="1" 
+
                 if hierarchy_name not in reports: reports[hierarchy_name] = {}                
                 # entries should be unique by hiearchy_name
                 if target not in reports[hierarchy_name]:
