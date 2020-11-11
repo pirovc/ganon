@@ -183,6 +183,24 @@ class TestReportOffline(unittest.TestCase):
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
 
+    def test_keep_hierachy(self):
+        """
+        Test run keeping hierachies
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_keep_hierachy"
+        params["keep_hierarchy"] = ["2_default"]
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # should not have any assembly reported
+        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
+
     def test_names(self):
         """
         Test run filtering for specific names
