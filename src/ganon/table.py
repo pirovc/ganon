@@ -175,11 +175,23 @@ def get_total_counts(reports):
 
 def write_tsv(reports, cfg):
     total_counts = get_total_counts(reports)
-
     out_file = open(cfg.output_file, "w")
 
+    # order by name
     sorted_names = sorted(total_counts.keys())
-    header = [""] + [name for name in sorted_names]
+
+    if cfg.header=="taxid" or cfg.header=="lineage":
+        header = [""] + [name for name in sorted_names]
+        lineage = {}
+        for file in reports:
+            lineage.update(reports[file]["lineage"])
+        if cfg.header=="taxid":
+            header = [""] + [lineage[name][-1] for name in sorted_names]
+        elif cfg.header=="lineage":
+            header = [""] + ["|".join(lineage[name]) for name in sorted_names]
+    else:
+        header = [""] + [name for name in sorted_names]
+    
     if cfg.add_unclassified_rank: 
         header.append("unclassified_" + cfg.rank)
     if cfg.add_unclassified: 
