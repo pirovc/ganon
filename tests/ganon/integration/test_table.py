@@ -297,6 +297,35 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should have unclassified summing to 0 (not unclassified line reported)
         self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min occurence filter failed")
-
+    
+    def test_header(self):
+        """
+        Test ganon table with different headers
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_header.tsv"
+        params["header"] = "lineage"
+        
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # check if printed lineage
+        self.assertTrue(all(["|" in c for c in res["out_pd"].columns.values]), "ganon table headers are wrong (lineage)")
+    
+        params["header"] = "taxid"
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # check if printed taxid (just numeric for this specific test)
+        self.assertTrue(all([c.isdigit() for c in res["out_pd"].columns.values]), "ganon table headers are wrong (taxid)")
+    
 if __name__ == '__main__':
     unittest.main()

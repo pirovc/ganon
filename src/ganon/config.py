@@ -141,6 +141,7 @@ class Config:
         table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default="species",    help="Rank to report. Default: species")
         table_group_optional.add_argument('-m', '--min-occurence',            type=int,   metavar='', default=0,            help="Number of occurences of a taxa among reports to be kept")
         table_group_optional.add_argument('-p', '--min-occurence-percentage', type=float, metavar='', default=0,            help="Percentage of occurences of a taxa among reports to be kept [0-1]")
+        table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')
         table_group_optional.add_argument('--add-unclassified',               action='store_true',    default=False,        help="Add column with unclassified count/percentage")
         table_group_optional.add_argument('--add-unclassified-rank',          action='store_true',    default=False,        help="Add column with unclassified count/percentage at the chosen rank but classified at a less specific rank")
         table_group_optional.add_argument('--add-filtered',                   action='store_true',    default=False,        help="Add column with filtered count/percentage")
