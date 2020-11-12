@@ -15,7 +15,7 @@ retrieve_nucleotide_fasta_xml()
 
 retrieve_assembly_uid_xml()
 {
-	echo "$(curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nuccore&db=assembly&id=${1}${2}")"
+	echo "$(curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=nuccore&db=assembly&linkname=nuccore_assembly&id=${1}${2}")"
 }
 
 retrieve_assembly_accession_xml()
@@ -173,6 +173,7 @@ do
 				# request with several &id= instead of comma separated to get in order
 				all_id_link="$(echo "${xml_link}" | tr -d '\n' | grep -oP '(?<=<LinkSet>).*?(?=</LinkSet>)' | tr -d ' ' | tr -d '\t')"
 				
+				#echo $all_id_link
 				# link accession with link containing id, remove containing errors, just pass containing desired tag
 				# assuming that the results are returning on the same order of the input
 				out_link="$(paste <(echo "$acc_retrieved") <(echo "${all_id_link}") --delimiters '\t' | grep -v "ERROR" | grep "</Id></Link></LinkSetDb>" )"
@@ -184,8 +185,10 @@ do
 				if [[ -z "${acc_link}" ]]; then 
 					continue
 				else
-					# Get only last Id inside LinkSetDb (can have several assemblies)
-					uid_link="$(echo "${out_link}" | cut -f 2 | grep --color -oP '(?<=<Id>)[0-9]*?(?=</Id></Link></LinkSetDb>)')"
+					# Get only first id inside LinkSetDb of link nuccore_assembly (can have several assemblies)
+					# There is no way to know what is the latest or correct liked assembly accession for this sequence accession
+					# Later the latest assembly accession is chosen
+					uid_link="$(echo "${out_link}" | cut -f 2 | grep --color -oP '(?<=<LinkName>nuccore_assembly</LinkName><Link><Id>)[0-9]*?(?=</Id>)')"
 					acc_uid_link="$(paste <(echo "${acc_link}") <(echo "${uid_link}") --delimiters '\t')"
 					break
 				fi
@@ -214,7 +217,11 @@ do
 				if [[ -z "${uid_summary_assembly}" ]]; then 
 					continue
 				else
-					assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<AssemblyAccession>)[^<]+')"
+					# Get latest and current assembly accession
+					latest_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<LatestAccession)[^<]+')" 
+					current_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<AssemblyAccession>)[^<]+')"
+					# choose always latest assembly if present, since there is no way to link exact assembly accession to sequence with eutils
+					assemblyaccession_summary_assembly="$(paste <(echo "${current_assemblyaccession_summary_assembly}") <(echo "${latest_assemblyaccession_summary_assembly}" | sed "s/>//g") --delimiters '\t' | awk 'BEGIN{FS="\t"}{if($2){print $2}else{print $1}}')"
 					uid_assemblyaccession_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyaccession_summary_assembly}") --delimiters '\t')"
 					break
 				fi
