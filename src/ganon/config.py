@@ -5,7 +5,7 @@ from ganon.util import *
 class Config:
 
     version = '0.3.4'
-    path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
+    path_exec = {'build': "", 'classify': "", 'get_seq_info': ""}
     empty = False
 
     def __init__(self, which: str=None, **kwargs):
@@ -316,12 +316,12 @@ class Config:
                 print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-            ganon_get_len_taxid_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
-            for p in ganon_get_len_taxid_paths:
-                self.path_exec['get_len_taxid'] = shutil.which("ganon-get-len-taxid.sh", path=p)
-                if self.path_exec['get_len_taxid'] is not None: break
-            if self.path_exec['get_len_taxid'] is None:
-                print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path")
+            ganon_get_seq_info_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
+            for p in ganon_get_seq_info_paths:
+                self.path_exec['get_seq_info'] = shutil.which("ganon-get-seq-info.sh", path=p)
+                if self.path_exec['get_seq_info'] is not None: break
+            if self.path_exec['get_seq_info'] is None:
+                print_log("ganon-get-seq-info.sh script was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
         elif self.which in ['classify']:
