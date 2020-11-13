@@ -50,13 +50,13 @@ class SeqInfo:
             # remove entries with length 0
             self.seqinfo = self.seqinfo[self.seqinfo['length']>0]
 
-    def parse_ncbi_eutils(self, seqid_file, path_exec_get_len_taxid, skip_len_taxid=False, get_assembly=False):
-        run_get_len_taxid_cmd = '{0} -i {1} {2} {3} -r'.format(
-                                    path_exec_get_len_taxid,
+    def parse_ncbi_eutils(self, seqid_file, path_exec_get_seq_info, skip_len_taxid=False, get_assembly=False):
+        run_get_seq_info_cmd = '{0} -i {1} {2} {3} -r'.format(
+                                    path_exec_get_seq_info,
                                     seqid_file,
                                     "-a" if get_assembly else "",
                                     "-s" if skip_len_taxid else "")
-        stdout, stderr = run(run_get_len_taxid_cmd, print_stderr=True, exit_on_error=False)
+        stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True, exit_on_error=False)
         
         if get_assembly and skip_len_taxid:
             # todo - order is always the same?
