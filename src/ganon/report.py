@@ -111,7 +111,9 @@ def parse_rep(rep_file):
                 reports[hierarchy_name][target]["unique_reads"]+=unique_reads
                 reports[hierarchy_name][target]["lca_reads"]+=lca_reads
 
+
                 counts[hierarchy_name]["matches"]+=direct_matches
+                # sum up classified reads for the hiearchy
                 counts[hierarchy_name]["reads"]+=unique_reads+lca_reads
 
                 total_direct_matches+=direct_matches
@@ -138,7 +140,7 @@ def print_final_report(reports, counts, tax, output_file, cfg):
     else:
         total = counts["total"]["matches"]
 
-    # Count targets in the report by report type, merging multiple db hierarchical levels
+    # Count targets in the report by report type (counts or matches), merging multiple hierarchical levels
     # merged_counts[target] = {'count': INT, 'unique': INT}
     merged_counts = count_targets(reports, cfg.report_type)
 
@@ -222,7 +224,8 @@ def count_targets(reports, report_type):
                     if target not in merged_counts:
                         merged_counts[target] = {'unique':0, 'count': 0}
                     merged_counts[target]['unique'] += rep['unique_reads']
-                    # count already has unique, so it needs to be subtracted to fit the same model as the report type reads
+                    # count of matches already has unique included
+                    # it needs to be subtracted to fit the same model as the report type reads when printing
                     merged_counts[target]['count'] += rep['direct_matches']-rep['unique_reads']
     return merged_counts
 
@@ -335,8 +338,9 @@ def split_hierarchy(reports, counts):
     # In case of splitted reports, all hierarchies have to share the same root
     # so all reports sum up to 100%
     for hierarchy_reports, rep in reports.items():
-        matches=0
-        reads=0
+        # start counters with current assignments for root node in the hierarchy (if exists)
+        matches=rep["1"]["direct_matches"] if "1" in rep else 0
+        reads=rep["1"]["lca_reads"]+rep["1"]["unique_reads"] if "1" in rep else 0
         for hierarchy_counts in counts:
             if hierarchy_counts in ["total", hierarchy_reports]:
                 continue
