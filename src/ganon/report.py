@@ -47,7 +47,7 @@ def report(cfg):
         if cfg.split_hierarchy:
             reports = split_hierarchy(reports, counts)
 
-        # General output file
+                # General output file
         if len(rep_files) == 1:
             output_file = cfg.output_prefix
         else:
@@ -56,7 +56,7 @@ def report(cfg):
 
         if cfg.split_hierarchy:
             for h in reports:
-                if h not in cfg.skip_hierarchy and (cfg.keep_hierarchy and h in cfg.keep_hierarchy):
+                if h not in cfg.skip_hierarchy:
                     output_file_h=output_file+"."+h+".tre"
                     r = print_final_report({h:reports[h]}, counts, tax, output_file_h, cfg)
                     if not r:
