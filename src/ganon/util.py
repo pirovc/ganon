@@ -101,5 +101,5 @@ def validate_input_files(input_files, input_directory, input_extension, quiet):
 def check_files(files):
     checked_files = [file for file in files if os.path.isfile(file) and os.path.getsize(file) > 0]
     if len(checked_files)<len(files):
-        print_log(str(len(files)-len(checked_files)) + " input file(s) could not be found/empty")
+        print_log(str(len(files)-len(checked_files)) + " file(s) could not be found/empty")
     return checked_files

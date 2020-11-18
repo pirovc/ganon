@@ -347,6 +347,11 @@ By default `ganon update` will only add sequences provided with `--input-files` 
 
 By default, `ganon classify` and  `ganon report` generate a read-based report (`ganon report --report-type reads`) where each read classified is counted once, either to its unique or lca assignment. It is possible to generate the same report for all read matches (`ganon report --report-type matches`). In this case, multiple matches for each reads are reported to their targets (single or shared matches). Using `--report-type matches` will not show the unclassified number of reads and it will always sum up to 100% in the root node, since this reports the overall distribution of matches and not the amount of reads classified.
 
+#### --split-hierarchy, --keep-hierarchy or --skip-hierarchy
+
+When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separetly using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. In each hierarchical specific report, the counts of other hierarchies are going to be reported at the root level to keep consistency in the reports.
+It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
+
 ## Install without conda
 
 ### build dependencies

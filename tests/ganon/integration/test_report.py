@@ -35,23 +35,6 @@ class TestReportOffline(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
-    def test_input_directory(self):
-        """
-        Test run with default parameters using input directory and extension
-        """
-        params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_input_directory"
-        del params["rep_files"]
-        params["input_directory"] = data_dir+"report/"
-        params["input_extension"] = ".rep"
-
-        # Build config from params
-        cfg = Config("report", **params)
-        # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
-        # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon report has inconsistent results")
     
     def test_min_percentage(self):
         """
@@ -200,6 +183,87 @@ class TestReportOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
+
+    def test_split_hierachy(self):
+        """
+        Test run splitting hierachies
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_split_hierachy"
+        params["rep_files"] = [data_dir+"report/results2.rep"]
+        params["split_hierarchy"] = True
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        
+        total_root_split = 0
+        for file,r in res.items():
+            total_root_cum = r["tre_pd"][r["tre_pd"]['rank'] == "root"]["cumulative"].values[0]
+            total_root_split+=r["tre_pd"][r["tre_pd"]['rank'] == "root"]["total"].values[0]
+
+        # values reported on root of splitted reports should equal total
+        self.assertEqual(total_root_split/(len(res)-1), total_root_cum, "ganon report with wrong root counts")
+
+    def test_multiple_rep_files(self):
+        """
+        Test run with multiple rep files as input
+        """
+        params = self.default_params.copy()
+        params["rep_files"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
+        params["output_prefix"] = self.results_dir + "test_multiple_rep_files_"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # should have two outputs
+        self.assertEqual(len(res), len(params["rep_files"]), "ganon report did not generate multiple report files")
+
+    def test_multiple_rep_files_split_hierachy(self):
+        """
+        Test run with multiple rep files as input
+        """
+        params = self.default_params.copy()
+        params["rep_files"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
+        params["output_prefix"] = self.results_dir + "test_multiple_rep_files_split_hierachy_"
+        params["split_hierarchy"] = True
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        
+        # should have 2+4 outputs (6 hiearchies)
+        self.assertEqual(len(res),6,"ganon report did not generate multiple report files")
+
+    def test_input_directory(self):
+        """
+        Test run with default parameters using input directory and extension
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_input_directory_"
+        del params["rep_files"]
+        params["input_directory"] = data_dir+"report/"
+        params["input_extension"] = ".rep"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
 
     def test_names(self):
         """

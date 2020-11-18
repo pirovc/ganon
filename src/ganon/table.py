@@ -71,15 +71,15 @@ def parse_tre_rank(tre_file, rank):
     classified_rank = 0
     with open(tre_file, "r") as file:
         for line in file:
-            r, taxid, l, name, _, _, read_count, _ = line.rstrip().split("\t")
-            read_count = int(read_count)
+            r, taxid, l, name, _, _, cum_count, _ = line.rstrip().split("\t")
+            cum_count = int(cum_count)
             if r == "unclassified":
-                unclassified_root=read_count
+                unclassified_root=cum_count
             elif r == "root":
-                classified_root=read_count
+                classified_root=cum_count
             elif r==rank:
-                classified_rank += read_count
-                taxa[name] = read_count
+                classified_rank += cum_count
+                taxa[name] = cum_count
                 lineage[name] = l.split("|")
 
     unclassified_rank = classified_root-classified_rank

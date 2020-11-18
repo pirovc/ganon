@@ -107,17 +107,18 @@ class Config:
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
         report_group_required.add_argument('-i', '--rep-files',     type=str, nargs="*", required=False, help='One or more *.rep files from ganon classify')
-        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report (output_prefix.tre). In case of multiple files output is in the format "output_prefix + filename + .tre"')
+        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report file "{output_prefix}.tre". In case of multiple files, the base input filename will be appendend at the end of the output file "{output_prefix + FILENAME}.tre"')
     
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
-        report_group_optional.add_argument('-d', '--db-prefix',      type=str, nargs="*", metavar='', default=[],      help='Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be downloaded')
+        report_group_optional.add_argument('-d', '--db-prefix',      type=str, nargs="*", metavar='', default=[],      help='Database prefix[es] used for classification (in any order). Only ".tax" file is required. If not provided, new taxonomy will be downloaded')
+        report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="tsv",   help='Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization. Default: tsv')
         report_group_optional.add_argument('-e', '--report-type',    type=str,            metavar='', default="reads", help='Type of report to generate [reads, matches]. Default: reads')
         report_group_optional.add_argument('-r', '--ranks',          type=str, nargs="*", metavar='', default=[],      help='Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: ""')
         report_group_optional.add_argument('-s', '--sort',           type=str,            metavar='', default="",      help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)')
+        report_group_optional.add_argument('-y', '--split-hierarchy',action='store_true',                              help='Split output reports by hiearchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as "{output_prefix}.{hiearchy}.tre"')
         report_group_optional.add_argument('-p', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
         report_group_optional.add_argument('-k', '--keep-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)')
-        report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="text",  help='Output format [text, tsv, csv]. Default: text')
         report_group_optional.add_argument('--taxdump-file',         type=str, nargs="*", metavar='', default=[],      help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         report_group_optional.add_argument('--input-directory',      type=str,            metavar='', default="",      help='Directory containing input files')
         report_group_optional.add_argument('--input-extension',      type=str,            metavar='', default="",      help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")')
@@ -284,9 +285,19 @@ class Config:
                 return False
 
             if self.db_prefix:
+                dbp=[]
+                # add ".tax" if was passed as prefix
                 for prefix in self.db_prefix:
-                    if not check_db(prefix):
-                        return False
+                    if prefix.endswith(".tax"):
+                        dbp.append(prefix)
+                    else:
+                        dbp.append(prefix+".tax")
+                # check if files exists
+                dbp_ok = check_files(dbp)
+                # report files not found and stop
+                if len(dbp_ok)!=len(dbp):
+                    print_log(",".join(set(dbp).difference(dbp_ok)))
+                    return False
 
         elif self.which=='table':
             if not check_input_directory(self.tre_files, self.input_directory, self.input_extension):
