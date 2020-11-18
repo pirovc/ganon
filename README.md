@@ -192,7 +192,8 @@ Obs:
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous, some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+
 
 ### table
 
@@ -349,8 +350,7 @@ By default, `ganon classify` and  `ganon report` generate a read-based report (`
 
 #### --split-hierarchy, --keep-hierarchy or --skip-hierarchy
 
-When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separetly using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. In each hierarchical specific report, the counts of other hierarchies are going to be reported at the root level to keep consistency in the reports.
-It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
+When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separetly using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
 
 ## Install without conda
 

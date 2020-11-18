@@ -44,8 +44,8 @@ def report(cfg):
             reports = count_hierarchy(reports, counts, cfg.skip_hierarchy, cfg.keep_hierarchy, cfg.quiet)
 
         # If splitting output, root from other hiearchies should be accounted for all files
-        if cfg.split_hierarchy:
-            reports = split_hierarchy(reports, counts)
+        #if cfg.split_hierarchy:
+        #    reports = split_hierarchy(reports, counts)
 
                 # General output file
         if len(rep_files) == 1:
