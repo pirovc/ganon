@@ -113,7 +113,7 @@ def classify_sanity_check_and_parse(params):
     res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
     return res
 
-def report_sanity_check_and_parse(params):
+def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
     
     # get all output files referent to the run by name
     output_files = []
@@ -140,7 +140,7 @@ def report_sanity_check_and_parse(params):
             res["idx_base"] = res["idx_root"]
         
         # Check if total is 100%
-        if floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
+        if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
             print("Inconsistent total percentage")
             return None
 

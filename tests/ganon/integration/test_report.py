@@ -161,7 +161,7 @@ class TestReportOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
+        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
@@ -179,7 +179,7 @@ class TestReportOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
+        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
@@ -198,16 +198,17 @@ class TestReportOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
+        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         
+        # sum all root value
         total_root_split = 0
         for file,r in res.items():
-            total_root_cum = r["tre_pd"][r["tre_pd"]['rank'] == "root"]["cumulative"].values[0]
-            total_root_split+=r["tre_pd"][r["tre_pd"]['rank'] == "root"]["total"].values[0]
-
-        # values reported on root of splitted reports should equal total
-        self.assertEqual(total_root_split/(len(res)-1), total_root_cum, "ganon report with wrong root counts")
+            total_root_split+=r["tre_pd"][r["tre_pd"]['rank'] == "root"]["cumulative_perc"].values[0]
+        # sum one time unclassified
+        total_root_split+=r["tre_pd"][r["tre_pd"]['rank'] == "unclassified"]["cumulative_perc"].values[0]
+        # values reported on root of splitted reports should equal 100
+        self.assertEqual(int(total_root_split), 100, "ganon report with wrong root counts")
 
     def test_multiple_rep_files(self):
         """
@@ -241,7 +242,7 @@ class TestReportOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
+        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         
         # should have 2+4 outputs (6 hiearchies)
