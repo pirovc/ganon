@@ -39,15 +39,11 @@ def report(cfg):
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
             continue
 
-        # If skipping/keeping hiearchies, remove all assignments from reports and count all to root
+        # If skipping/keeping hiearchies, remove all assignments from reports
         if cfg.skip_hierarchy or cfg.keep_hierarchy:
-            reports = count_hierarchy(reports, counts, cfg.skip_hierarchy, cfg.keep_hierarchy, cfg.quiet)
+            reports = remove_hierarchy(reports, counts, cfg.skip_hierarchy, cfg.keep_hierarchy, cfg.quiet)
 
-        # If splitting output, root from other hiearchies should be accounted for all files
-        if cfg.split_hierarchy:
-            reports = split_hierarchy(reports, counts)
-
-                # General output file
+        # General output file
         if len(rep_files) == 1:
             output_file = cfg.output_prefix
         else:
@@ -317,41 +313,12 @@ def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax,
 
     return sorted_nodes
 
-def count_hierarchy(reports, counts, skip, keep, quiet):
-    hierarchy_reports = {}
+def remove_hierarchy(reports, counts, skip, keep, quiet):
     # In case of skipped hiearchy, account all matches to root node
-    if skip or keep:
-        for hierarchy_name in reports:
-            # Skiped report
-            if hierarchy_name in skip or (keep and hierarchy_name not in keep):
-                # set default root node and sum all counts to it
-                hierarchy_reports[hierarchy_name] = {"1": {"direct_matches": counts[hierarchy_name]["matches"], 
-                                                           "unique_reads": 0, 
-                                                           "lca_reads": counts[hierarchy_name]["reads"]}}
-                print_log(" - skipped " + str(counts[hierarchy_name]["reads"])  + " reads with " + str(counts[hierarchy_name]["matches"]) + " matches for " + hierarchy_name + " (counts assigned to root node)", quiet)
-            else:
-                hierarchy_reports[hierarchy_name] = reports[hierarchy_name]
-
-    return hierarchy_reports
-
-def split_hierarchy(reports, counts):
-    # In case of splitted reports, all hierarchies have to share the same root
-    # so all reports sum up to 100%
-    for hierarchy_reports, rep in reports.items():
-        # start counters with current assignments for root node in the hierarchy (if exists)
-        matches=rep["1"]["direct_matches"] if "1" in rep else 0
-        reads=rep["1"]["lca_reads"]+rep["1"]["unique_reads"] if "1" in rep else 0
-        for hierarchy_counts in counts:
-            if hierarchy_counts in ["total", hierarchy_reports]:
-                continue
-            else:
-                # Sum up counts from other hiearchies
-                matches+=counts[hierarchy_counts]["matches"]
-                reads+=counts[hierarchy_counts]["reads"]
-
-        # Set count to root of current hierarchy
-        rep["1"] = {"direct_matches": matches, 
-                    "unique_reads": 0, 
-                    "lca_reads": reads}
+    for hierarchy_name in list(reports.keys()):
+        # Skiped report
+        if hierarchy_name in skip or (keep and hierarchy_name not in keep):
+            del reports[hierarchy_name]
+            print_log(" - skipped " + str(counts[hierarchy_name]["reads"])  + " reads with " + str(counts[hierarchy_name]["matches"]) + " matches for " + hierarchy_name, quiet)
 
     return reports
