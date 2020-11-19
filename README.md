@@ -186,14 +186,15 @@ Obs:
 	3) target lineage *(e.g 1|2|1224|...)*
 	4) target name *(e.g. Paenibacillus polymyxa)*
 	5) \# unique assignments *(number of reads that matched exclusively to this target)*
-	6) \# reads/matches assignments *(number of reads/matches directly assigned to this target. Besides unique assignments, this number also includes lca assignments (in case of `--report-type reads`) or shared assignments (in case of `--report-type matches`))*
+	6) \# assignments *(number of reads or matches directly assigned to this target. This includes the number of unique assignments plus lca assignments (in case of `--report-type reads`) or shared assignments (in case of `--report-type matches`))*
 	7) \# cumulative assignments *(cumulative number of reads/matches assigned up-to this taxa)*
 	8) \% cumulative assignments
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+- The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is suceffully applied and/or hiearchical selection is selected (keep/skip/split).
 
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
 
 ### table
 
