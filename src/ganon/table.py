@@ -71,15 +71,15 @@ def parse_tre_rank(tre_file, rank):
     classified_rank = 0
     with open(tre_file, "r") as file:
         for line in file:
-            r, taxid, l, name, _, _, read_count, _ = line.rstrip().split("\t")
-            read_count = int(read_count)
+            r, taxid, l, name, _, _, cum_count, _ = line.rstrip().split("\t")
+            cum_count = int(cum_count)
             if r == "unclassified":
-                unclassified_root=read_count
+                unclassified_root=cum_count
             elif r == "root":
-                classified_root=read_count
+                classified_root=cum_count
             elif r==rank:
-                classified_rank += read_count
-                taxa[name] = read_count
+                classified_rank += cum_count
+                taxa[name] = cum_count
                 lineage[name] = l.split("|")
 
     unclassified_rank = classified_root-classified_rank
@@ -175,11 +175,23 @@ def get_total_counts(reports):
 
 def write_tsv(reports, cfg):
     total_counts = get_total_counts(reports)
-
     out_file = open(cfg.output_file, "w")
 
+    # order by name
     sorted_names = sorted(total_counts.keys())
-    header = [""] + [name for name in sorted_names]
+
+    if cfg.header=="taxid" or cfg.header=="lineage":
+        header = [""] + [name for name in sorted_names]
+        lineage = {}
+        for file in reports:
+            lineage.update(reports[file]["lineage"])
+        if cfg.header=="taxid":
+            header = [""] + [lineage[name][-1] for name in sorted_names]
+        elif cfg.header=="lineage":
+            header = [""] + ["|".join(lineage[name]) for name in sorted_names]
+    else:
+        header = [""] + [name for name in sorted_names]
+    
     if cfg.add_unclassified_rank: 
         header.append("unclassified_" + cfg.rank)
     if cfg.add_unclassified: 

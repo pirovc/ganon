@@ -4,8 +4,8 @@ from ganon.util import *
 
 class Config:
 
-    version = '0.3.3'
-    path_exec = {'build': "", 'classify': "", 'get_len_taxid': ""}
+    version = '0.3.4'
+    path_exec = {'build': "", 'classify': "", 'get_seq_info': ""}
     empty = False
 
     def __init__(self, which: str=None, **kwargs):
@@ -107,16 +107,18 @@ class Config:
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
         report_group_required.add_argument('-i', '--rep-files',     type=str, nargs="*", required=False, help='One or more *.rep files from ganon classify')
-        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report (output_prefix.tre). In case of multiple files output is in the format "output_prefix + filename + .tre"')
+        report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report file "{output_prefix}.tre". In case of multiple files, the base input filename will be appendend at the end of the output file "{output_prefix + FILENAME}.tre"')
     
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
-        report_group_optional.add_argument('-d', '--db-prefix',      type=str, nargs="*", metavar='', default=[],      help='Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be downloaded')
+        report_group_optional.add_argument('-d', '--db-prefix',      type=str, nargs="*", metavar='', default=[],      help='Database prefix[es] used for classification (in any order). Only ".tax" file is required. If not provided, new taxonomy will be downloaded')
+        report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="tsv",   help='Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization. Default: tsv')
         report_group_optional.add_argument('-e', '--report-type',    type=str,            metavar='', default="reads", help='Type of report to generate [reads, matches]. Default: reads')
         report_group_optional.add_argument('-r', '--ranks',          type=str, nargs="*", metavar='', default=[],      help='Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: ""')
         report_group_optional.add_argument('-s', '--sort',           type=str,            metavar='', default="",      help='Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)')
-        report_group_optional.add_argument('-k', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
-        report_group_optional.add_argument('-f', '--output-format',  type=str,            metavar='', default="text",  help='Output format [text, tsv, csv]. Default: text')
+        report_group_optional.add_argument('-y', '--split-hierarchy',action='store_true',                              help='Split output reports by hiearchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as "{output_prefix}.{hiearchy}.tre"')
+        report_group_optional.add_argument('-p', '--skip-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)')
+        report_group_optional.add_argument('-k', '--keep-hierarchy', type=str, nargs="*", metavar='', default=[],      help='One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)')
         report_group_optional.add_argument('--taxdump-file',         type=str, nargs="*", metavar='', default=[],      help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         report_group_optional.add_argument('--input-directory',      type=str,            metavar='', default="",      help='Directory containing input files')
         report_group_optional.add_argument('--input-extension',      type=str,            metavar='', default="",      help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")')
@@ -140,6 +142,7 @@ class Config:
         table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default="species",    help="Rank to report. Default: species")
         table_group_optional.add_argument('-m', '--min-occurence',            type=int,   metavar='', default=0,            help="Number of occurences of a taxa among reports to be kept")
         table_group_optional.add_argument('-p', '--min-occurence-percentage', type=float, metavar='', default=0,            help="Percentage of occurences of a taxa among reports to be kept [0-1]")
+        table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')
         table_group_optional.add_argument('--add-unclassified',               action='store_true',    default=False,        help="Add column with unclassified count/percentage")
         table_group_optional.add_argument('--add-unclassified-rank',          action='store_true',    default=False,        help="Add column with unclassified count/percentage at the chosen rank but classified at a less specific rank")
         table_group_optional.add_argument('--add-filtered',                   action='store_true',    default=False,        help="Add column with filtered count/percentage")
@@ -270,6 +273,11 @@ class Config:
                 return False
 
         elif self.which=='report':
+
+            if self.skip_hierarchy and self.keep_hierarchy:
+                print_log("--skip-hierarchy and --keep-hierarchy are mutually exclusive")
+                return False
+
             if not check_taxdump(self.taxdump_file):
                 return False
 
@@ -277,9 +285,19 @@ class Config:
                 return False
 
             if self.db_prefix:
+                dbp=[]
+                # add ".tax" if was passed as prefix
                 for prefix in self.db_prefix:
-                    if not check_db(prefix):
-                        return False
+                    if prefix.endswith(".tax"):
+                        dbp.append(prefix)
+                    else:
+                        dbp.append(prefix+".tax")
+                # check if files exists
+                dbp_ok = check_files(dbp)
+                # report files not found and stop
+                if len(dbp_ok)!=len(dbp):
+                    print_log(",".join(set(dbp).difference(dbp_ok)))
+                    return False
 
         elif self.which=='table':
             if not check_input_directory(self.tre_files, self.input_directory, self.input_extension):
@@ -309,12 +327,12 @@ class Config:
                 print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-            ganon_get_len_taxid_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
-            for p in ganon_get_len_taxid_paths:
-                self.path_exec['get_len_taxid'] = shutil.which("ganon-get-len-taxid.sh", path=p)
-                if self.path_exec['get_len_taxid'] is not None: break
-            if self.path_exec['get_len_taxid'] is None:
-                print_log("ganon-get-len-taxid.sh script was not found. Please inform a specific path with --ganon-path")
+            ganon_get_seq_info_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
+            for p in ganon_get_seq_info_paths:
+                self.path_exec['get_seq_info'] = shutil.which("ganon-get-seq-info.sh", path=p)
+                if self.path_exec['get_seq_info'] is not None: break
+            if self.path_exec['get_seq_info'] is None:
+                print_log("ganon-get-seq-info.sh script was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
         elif self.which in ['classify']:
@@ -343,9 +361,15 @@ def check_input_directory(input_files, input_directory, input_extension):
     return True
 
 def check_taxdump(taxdump_file):
-    if taxdump_file and ((len(taxdump_file)==1 and not taxdump_file[0].endswith(".tar.gz")) or len(taxdump_file)>3):
-        print_log("Please provide --taxdump-file taxdump.tar.gz or --taxdump-file nodes.dmp names.dmp [merged.dmp] or leave it empty for automatic download")
-        return False
+    if taxdump_file:
+        if ((len(taxdump_file)==1 and not taxdump_file[0].endswith(".tar.gz")) or len(taxdump_file)>3):
+            print_log("Please provide --taxdump-file taxdump.tar.gz OR --taxdump-file nodes.dmp names.dmp OR --taxdump-file nodes.dmp names.dmp merged.dmp OR leave it empty for automatic download")
+            return False
+        else:
+            for f in taxdump_file:
+                if not os.path.isfile(f):
+                    print_log("File not found: " + f)
+                    return False
     return True
 
 def check_db(prefix):

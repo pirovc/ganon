@@ -13,7 +13,7 @@ def read(filename):
 
 setup(
     name="ganon",
-    version="0.3.3",
+    version="0.3.4",
     url="https://www.github.com/pirovc/ganon",
     license='MIT',
 
@@ -29,7 +29,7 @@ setup(
     
     scripts=['scripts/ganon-convert-db-0.1-0.2.py',
             'scripts/ganon-convert-db-0.2-0.3.py',
-            'scripts/ganon-get-len-taxid.sh'],
+            'scripts/ganon-get-seq-info.sh'],
 
     classifiers=[
         'License :: OSI Approved :: MIT License',

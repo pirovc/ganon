@@ -370,7 +370,7 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
         print_log("Retrieving sequence information from NCBI E-utils", quiet)
         seqid_file = tmp_output_folder + "seqids.txt"
         seqinfo.write_seqid_file(seqid_file)
-        seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
+        seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_seq_info'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
         print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved", quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     else:
@@ -411,7 +411,7 @@ def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assem
             print_log("Retrieving assembly information from NCBI E-utils", quiet)
             seqid_file = tmp_output_folder + "seqids.txt"
             seqinfo.write_seqid_file(seqid_file)
-            seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_len_taxid'], skip_len_taxid=True, get_assembly=True)
+            seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_seq_info'], skip_len_taxid=True, get_assembly=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
 
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):

@@ -113,51 +113,67 @@ def classify_sanity_check_and_parse(params):
     res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
     return res
 
-def report_sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
-    if not check_files(params["output_prefix"], ["tre"]):
-        return None
-
-    res = {}
-    # Sequence information from database to be updated
-    res["tre_pd"] = parse_tre(params["output_prefix"] + ".tre")
-
-    # get idx for root (idx_root) and root + unclassified (idx_base)
-    res["idx_root"] = res["tre_pd"]['rank'] == "root"
-    if params["report_type"] == "reads":
-        res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
-    else:
-        res["idx_base"] = res["idx_root"]
+def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
     
-    # Check if total is 100%
-    if res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum()!=100:
-        print("Inconsistent total percentage")
-        return None
+    # get all output files referent to the run by name
+    output_files = []
+    directory = os.path.dirname(params["output_prefix"])
+    for file in os.listdir(directory):
+        if file.startswith(os.path.splitext(os.path.basename(params["output_prefix"]))[0]) and file.endswith(".tre"):
+            output_files.append(os.path.join(directory, file))
 
-    # check if sum of all counts is lower or equal to root and unclassified
-    if res["tre_pd"][~res["idx_base"]]["total"].sum() > res["tre_pd"][res["idx_base"]]["cumulative"].sum():
-        print("Inconsistent total counts")
-        return None
+    multi_res = {}
+    for out_tre in output_files:
+        # Provide sanity checks for outputs (not specific to a test) and return loaded data
+        if not check_files(out_tre, [""]):
+            return None
 
-    # Check if any cumulative_perc is higher than 100
-    if (res["tre_pd"]["cumulative_perc"] > 100).any():
-        print("Inconsistent percentage (>100%)")
-        return None
+        res = {}
+        # Sequence information from database to be updated
+        res["tre_pd"] = parse_tre(out_tre)
 
-    # check if sum of percentage for each rank is equal or lower than 100 (floor for rounding errors)
-    if(res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
-        print("Inconsistent percentage by rank (>100%)")
-        return None
+        # get idx for root (idx_root) and root + unclassified (idx_base)
+        res["idx_root"] = res["tre_pd"]['rank'] == "root"
+        if params["report_type"] == "reads":
+            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
+        else:
+            res["idx_base"] = res["idx_root"]
+        
+        # Check if total is 100%
+        if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
+            print("Inconsistent total percentage")
+            return None
 
-    # Check if total are consistent
-    if (res["tre_pd"]["unique"] > res["tre_pd"]["total"]).any():
-        print("Inconsistent unique counts (higher than total)")
-        return None
-    if (res["tre_pd"]["total"] > res["tre_pd"]["cumulative"]).any():
-        print("Inconsistent total counts (higher than cumulative)")
-        return None 
+        # check if sum of all counts is lower or equal to root and unclassified
+        if res["tre_pd"][~res["idx_base"]]["total"].sum() > res["tre_pd"][res["idx_base"]]["cumulative"].sum():
+            print("Inconsistent total counts")
+            return None
 
-    return res
+        # Check if any cumulative_perc is higher than 100
+        if (res["tre_pd"]["cumulative_perc"] > 100).any():
+            print("Inconsistent percentage (>100%)")
+            return None
+
+        # check if sum of percentage for each rank is equal or lower than 100 (floor for rounding errors)
+        if(res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
+            print("Inconsistent percentage by rank (>100%)")
+            return None
+
+        # Check if total are consistent
+        if (res["tre_pd"]["unique"] > res["tre_pd"]["total"]).any():
+            print("Inconsistent unique counts (higher than total)")
+            return None
+        if (res["tre_pd"]["total"] > res["tre_pd"]["cumulative"]).any():
+            print("Inconsistent total counts (higher than cumulative)")
+            return None 
+
+        multi_res[out_tre] = res
+
+    # If only one output, return directly
+    if len(multi_res)==1:
+        return res
+    else:
+        return multi_res
 
 def table_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data

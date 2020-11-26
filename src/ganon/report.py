@@ -8,7 +8,13 @@ def report(cfg):
     rep_files = validate_input_files(cfg.rep_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     
     if cfg.db_prefix:
-        tax = Tax([db_prefix+".tax" for db_prefix in cfg.db_prefix])
+        dbp=[]
+        for prefix in cfg.db_prefix:
+            if prefix.endswith(".tax"):
+                dbp.append(prefix)
+            else:
+                dbp.append(prefix+".tax")
+        tax = Tax(dbp)
     else:
         tmp_output_folder = os.path.dirname(cfg.output_prefix)
         if not tmp_output_folder: tmp_output_folder = "."
@@ -27,36 +33,51 @@ def report(cfg):
     # Parse report file
     for rep_file in rep_files:
         print_log("", cfg.quiet)
-        total_matches, classified_reads, unclassified_reads, reports = parse_rep(rep_file, cfg.skip_hierarchy)
-        
+
+        reports, counts = parse_rep(rep_file)
         if not reports:
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
             continue
-            
-        # In case of skipped hiearchy, account all matches to root
-        for h in cfg.skip_hierarchy:
-            if h in reports:
-                print_log(" - skipped " + str(reports[h]["1"]["unique_reads"]+reports[h]["1"]["lca_reads"])  + " reads with " + str(reports[h]["1"]["direct_matches"]) + " matches for " + h + " (counts assigned to root node)", cfg.quiet)
 
+        # If skipping/keeping hiearchies, remove all assignments from reports
+        if cfg.skip_hierarchy or cfg.keep_hierarchy:
+            reports = remove_hierarchy(reports, counts, cfg.skip_hierarchy, cfg.keep_hierarchy, cfg.quiet)
+
+        # General output file
         if len(rep_files) == 1:
-            output_file = cfg.output_prefix+".tre"
+            output_file = cfg.output_prefix
         else:
             file_pre = os.path.splitext(os.path.basename(rep_file))[0]
-            output_file = cfg.output_prefix+file_pre+".tre"
+            output_file = cfg.output_prefix+file_pre
 
-        r = print_final_report(reports, tax, total_matches, classified_reads, unclassified_reads, output_file, cfg)
-        if not r:
-            print_log(" - nothing to report for " + rep_file, cfg.quiet)
-            continue
+        if cfg.split_hierarchy:
+            for h in reports:
+                if h not in cfg.skip_hierarchy:
+                    output_file_h=output_file+"."+h+".tre"
+                    r = print_final_report({h:reports[h]}, counts, tax, output_file_h, cfg)
+                    if not r:
+                        print_log(" - nothing to report for hierarchy " + h + " in the " + rep_file, cfg.quiet)
+                        continue
+                    else:
+                        print_log(" - report saved to " + output_file_h, cfg.quiet)
+                        any_rep = True
 
-        print_log(" - report saved to " + output_file, cfg.quiet)
-        any_rep = True
+        else:
+            output_file=output_file+".tre"
+            r = print_final_report(reports, counts, tax, output_file, cfg)
+            if not r:
+                print_log(" - nothing to report for " + rep_file, cfg.quiet)
+                continue
+            else:
+                print_log(" - report saved to " + output_file, cfg.quiet)
+                any_rep = True
 
     return True if any_rep else False
     
-def parse_rep(rep_file, skip_hierarchy):
+def parse_rep(rep_file):
+    counts = {}
     reports = {}
-    total_matches = 0
+    total_direct_matches = 0
     with open(rep_file, 'r') as rep_file:
         for line in rep_file:
             fields = line.rstrip().split("\t")
@@ -67,21 +88,39 @@ def parse_rep(rep_file, skip_hierarchy):
             else:
                 hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
                 direct_matches = int(direct_matches)
-                if hierarchy_name in skip_hierarchy: target="1"
-                if hierarchy_name not in reports: reports[hierarchy_name] = {}                
+                unique_reads = int(unique_reads)
+                lca_reads = int(lca_reads)
+
+                if hierarchy_name not in reports: 
+                    reports[hierarchy_name] = {}   
+                    counts[hierarchy_name] = {"matches":0, 
+                                              "reads":0}   
+
                 # entries should be unique by hiearchy_name
                 if target not in reports[hierarchy_name]:
-                    reports[hierarchy_name][target] = {"direct_matches":direct_matches, "unique_reads":int(unique_reads), "lca_reads":int(lca_reads)}
-                else:
-                    # In case they are not (or target set to 1)
-                    reports[hierarchy_name][target]["direct_matches"]+=direct_matches
-                    reports[hierarchy_name][target]["unique_reads"]+=int(unique_reads)
-                    reports[hierarchy_name][target]["lca_reads"]+=int(lca_reads)
+                    reports[hierarchy_name][target] = {"direct_matches":0, 
+                                                       "unique_reads":0, 
+                                                       "lca_reads":0}
+                
 
-                total_matches+=direct_matches
-    return total_matches, classified_reads, unclassified_reads, reports
+                reports[hierarchy_name][target]["direct_matches"]+=direct_matches
+                reports[hierarchy_name][target]["unique_reads"]+=unique_reads
+                reports[hierarchy_name][target]["lca_reads"]+=lca_reads
 
-def print_final_report(reports, tax, total_matches, classified_reads, unclassified_reads, output_file, cfg):
+
+                counts[hierarchy_name]["matches"]+=direct_matches
+                # sum up classified reads for the hiearchy
+                counts[hierarchy_name]["reads"]+=unique_reads+lca_reads
+
+                total_direct_matches+=direct_matches
+
+    counts["total"] = {"matches":total_direct_matches, 
+                       "reads":classified_reads, 
+                       "unclassified":unclassified_reads}
+
+    return reports, counts
+
+def print_final_report(reports, counts, tax, output_file, cfg):
     if not cfg.ranks:  
         all_ranks = False
         fixed_ranks = ['root', 'superkingdom','phylum','class','order','family','genus','species','assembly']
@@ -93,11 +132,11 @@ def print_final_report(reports, tax, total_matches, classified_reads, unclassifi
         fixed_ranks = ['root'] + cfg.ranks
 
     if cfg.report_type=="reads":
-        total = classified_reads + unclassified_reads
+        total = counts["total"]["reads"] + counts["total"]["unclassified"]
     else:
-        total = total_matches
+        total = counts["total"]["matches"]
 
-    # Count targets in the report by report type, merging multiple db hierarchical levels
+    # Count targets in the report by report type (counts or matches), merging multiple hierarchical levels
     # merged_counts[target] = {'count': INT, 'unique': INT}
     merged_counts = count_targets(reports, cfg.report_type)
 
@@ -124,7 +163,7 @@ def print_final_report(reports, tax, total_matches, classified_reads, unclassifi
 
     # Reporting reads, first line prints unclassified entries
     if cfg.report_type=="reads":
-        unclassified_line = ["unclassified","","","unclassified","0","0",str(unclassified_reads),str("%.5f" % ((unclassified_reads/total)*100))]
+        unclassified_line = ["unclassified","","","unclassified","0","0",str(counts["total"]["unclassified"]),str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
         if cfg.output_format in ["tsv","csv"]:
             print(*unclassified_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
@@ -181,7 +220,8 @@ def count_targets(reports, report_type):
                     if target not in merged_counts:
                         merged_counts[target] = {'unique':0, 'count': 0}
                     merged_counts[target]['unique'] += rep['unique_reads']
-                    # count already has unique, so it needs to be subtracted to fit the same model as the report type reads
+                    # count of matches already has unique included
+                    # it needs to be subtracted to fit the same model as the report type reads when printing
                     merged_counts[target]['count'] += rep['direct_matches']-rep['unique_reads']
     return merged_counts
 
@@ -272,3 +312,13 @@ def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax,
     sorted_nodes.insert(0, sorted_nodes.pop(sorted_nodes.index("1")))
 
     return sorted_nodes
+
+def remove_hierarchy(reports, counts, skip, keep, quiet):
+    # In case of skipped hiearchy, account all matches to root node
+    for hierarchy_name in list(reports.keys()):
+        # Skiped report
+        if hierarchy_name in skip or (keep and hierarchy_name not in keep):
+            del reports[hierarchy_name]
+            print_log(" - skipped " + str(counts[hierarchy_name]["reads"])  + " reads with " + str(counts[hierarchy_name]["matches"]) + " matches for " + hierarchy_name, quiet)
+
+    return reports

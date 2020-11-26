@@ -186,13 +186,15 @@ Obs:
 	3) target lineage *(e.g 1|2|1224|...)*
 	4) target name *(e.g. Paenibacillus polymyxa)*
 	5) \# unique assignments *(number of reads that matched exclusively to this target)*
-	6) \# reads/matches assignments *(number of reads/matches directly assigned to this target. Besides unique assignments, this number also includes lca assignments (in case of `--report-type reads`) or shared assignments (in case of `--report-type matches`))*
+	6) \# assignments *(number of reads or matches directly assigned to this target. This includes the number of unique assignments plus lca assignments (in case of `--report-type reads`) or shared assignments (in case of `--report-type matches`))*
 	7) \# cumulative assignments *(cumulative number of reads/matches assigned up-to this taxa)*
 	8) \% cumulative assignments
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. In cases where the classification is very ambiguous, some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+- The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is suceffully applied and/or hiearchical selection is selected (keep/skip/split).
+
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
 
 ### table
 
@@ -346,6 +348,10 @@ By default `ganon update` will only add sequences provided with `--input-files` 
 #### --report-type
 
 By default, `ganon classify` and  `ganon report` generate a read-based report (`ganon report --report-type reads`) where each read classified is counted once, either to its unique or lca assignment. It is possible to generate the same report for all read matches (`ganon report --report-type matches`). In this case, multiple matches for each reads are reported to their targets (single or shared matches). Using `--report-type matches` will not show the unclassified number of reads and it will always sum up to 100% in the root node, since this reports the overall distribution of matches and not the amount of reads classified.
+
+#### --split-hierarchy, --keep-hierarchy or --skip-hierarchy
+
+When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separetly using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
 
 ## Install without conda
 
