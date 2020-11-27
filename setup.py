@@ -13,7 +13,7 @@ def read(filename):
 
 setup(
     name="ganon",
-    version="0.3.4",
+    version="0.3.5",
     url="https://www.github.com/pirovc/ganon",
     license='MIT',
 
