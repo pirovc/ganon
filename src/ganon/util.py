@@ -80,7 +80,7 @@ def validate_input_files(input_files, input_directory, input_extension, quiet):
     input_files_from_directory = []
     if input_directory and input_extension:
         if not os.path.isdir(input_directory):
-            print_log(input_directory + " is not a valid directory", cfg.quiet)
+            print_log(input_directory + " is not a valid directory", quiet)
         else:
             for file in os.listdir(input_directory):
                 if file.endswith(input_extension):
