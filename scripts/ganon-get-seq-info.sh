@@ -1,6 +1,7 @@
 #!/bin/bash
 # Number of attempts to request data from e-utils
-att=3
+#att=3
+att=1
 batch=200
 
 retrieve_summary_xml()
@@ -28,35 +29,44 @@ get_lines()
     echo "$(sed -n "${2},$((${2}+${3}-1))p" ${1})"
 }
 
+sort_in_out(){ # $1 file, $2 order
+    # Sort output in the same input order
+    awk 'BEGIN{FS="\t"} NR==FNR{a[$1]=$0; next} $1 in a{print a[$1]}' <(echo "${1}") <(echo "${2}")
+}
+
 function showhelp {
     echo "ganon-get-seq-info.sh"
     echo
-    echo "Uses NCBI E-utils http request to get sequence information (lenght, taxid, assembly accession/name)"
+    echo "Uses NCBI E-utils http request to get sequence information (lenght, taxid, assembly accession, assembly name)"
+    echo "outputs to STDOUT in the same order of the input (besides failed entries or all with -k)"
     echo
     echo $' -i [str] input file with one accessions per line (use - to read from STDIN)' 
     echo $' -l [str] list of accesions (comma separated)'
     echo $' -n [str] ncbi_api_key'
+    echo $' -k Keep all entries even if nothing is retrieved (report "na")'
     echo $' -s Skip sequence length and taxid requests'
     echo $' -a Get assembly accession (only latest for the sequence accession)'
     echo $' -m Get assembly name'
-    echo $' -r Use sequence accession for unavailable asssembly accessions/names (by default report NOT_FOUND)'
+    echo $' -r Use sequence accession for unavailable asssembly accessions/names (by default report "na")'
     echo
 }
 
 input_file=""
 list_acc=""
 ncbi_api_key=""
+keep_all=0
 get_assembly_accession=0
 get_assembly_name=0
 skip_len_taxid=0
 replace_not_found_accession=0
 
 OPTIND=1 # Reset getopts
-while getopts "i:l:n:amsr" opt; do
+while getopts "i:l:n:kamsr" opt; do
   case ${opt} in
     i) input_file=${OPTARG} ;;
     l) list_acc=${OPTARG} ;;
     n) ncbi_api_key=${OPTARG} ;;
+    k) keep_all=1 ;;
     a) get_assembly_accession=1 ;;
     m) get_assembly_name=1 ;;
     s) skip_len_taxid=1 ;;
@@ -71,8 +81,8 @@ shift $((OPTIND-1))
 
 # Activate assembly accession by default if all deactivated
 if [ "${skip_len_taxid}" -eq 1 ];  then
-	if [ "${get_assembly_accession}" -eq 0 ] & [ "${get_assembly_name}" -eq 0 ];  then
-    	get_assembly_accession=1
+    if [ "${get_assembly_accession}" -eq 0 ] & [ "${get_assembly_name}" -eq 0 ];  then
+        get_assembly_accession=1
     fi
 fi
 
@@ -130,8 +140,7 @@ do
         fi
 
         # If there are accessions left
-        if [[ ! -z "${acc_diff}" ]]; then
-                #(>&2 printf "Fetch\n")    
+        if [[ ! -z "${acc_diff}" ]]; then  
             for i in $(seq 1 ${att});
             do
                 # try another method
@@ -159,6 +168,12 @@ do
                 failed="${failed}${acc_missing}\n"
             fi
         fi
+
+        if [ "${keep_all}" -eq 1 ]; then
+            # Keep all output lines
+            out="$(join -1 1 -2 1 <(echo "${acc}" | sort -k 1,1 ) <(echo "${out}" | sort -k 1,1) -t$'\t' -o "1.1,2.2,2.3" -a 1 -e "na")"           
+        fi
+
     else
         # print all accessions to out
         out="${acc}"
@@ -166,7 +181,8 @@ do
 
     # if should retrieve assembly accessions/names
     if [ "${get_assembly_accession}" -eq 0 ] && [ "${get_assembly_name}" -eq 0 ]; then
-        echo "${out}"
+        # Print results sorted
+        echo "$(sort_in_out "${out}" "${acc}")"
     else
         # Get assembly uid
         acc_retrieved="$(echo "${out}" | cut -f 1)"
@@ -222,19 +238,19 @@ do
                 if [[ -z "${uid_summary_assembly}" ]]; then 
                     continue
                 else
-                	if [ "${get_assembly_accession}" -eq 1 ]; then 
-	                    # Get latest and current assembly accession
-	                    latest_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<LatestAccession)[^<]+')" 
-	                    current_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<AssemblyAccession>)[^<]+')"
-	                    # choose always latest assembly if present, since there is no way to link exact assembly accession to sequence with eutils
-	                    assemblyaccession_summary_assembly="$(paste <(echo "${current_assemblyaccession_summary_assembly}") <(echo "${latest_assemblyaccession_summary_assembly}" | sed "s/>//g") --delimiters '\t' | awk 'BEGIN{FS="\t"}{if($2){print $2}else{print $1}}')"
-	                    uid_assemblyaccession_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyaccession_summary_assembly}") --delimiters '\t')"
-                	fi
-                	if [ "${get_assembly_name}" -eq 1 ]; then 
-                		assemblyname_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<Organism>)[^<]+')"
-                		uid_assemblyname_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyname_summary_assembly}") --delimiters '\t')"
-                	fi
-                	break
+                    if [ "${get_assembly_accession}" -eq 1 ]; then 
+                        # Get latest and current assembly accession
+                        latest_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<LatestAccession)[^<]+')" 
+                        current_assemblyaccession_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<AssemblyAccession>)[^<]+')"
+                        # choose always latest assembly if present, since there is no way to link exact assembly accession to sequence with eutils
+                        assemblyaccession_summary_assembly="$(paste <(echo "${current_assemblyaccession_summary_assembly}") <(echo "${latest_assemblyaccession_summary_assembly}" | sed "s/>//g") --delimiters '\t' | awk 'BEGIN{FS="\t"}{if($2){print $2}else{print $1}}')"
+                        uid_assemblyaccession_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyaccession_summary_assembly}") --delimiters '\t')"
+                    fi
+                    if [ "${get_assembly_name}" -eq 1 ]; then 
+                        assemblyname_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<Organism>)[^<]+')"
+                        uid_assemblyname_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyname_summary_assembly}") --delimiters '\t')"
+                    fi
+                    break
                 fi
             done
             # if there are less output lines than input accessions, get accessions missing (or return is empty)
@@ -249,40 +265,43 @@ do
         final="${out}"
         # define output
         if [ "${skip_len_taxid}" -eq 0 ]; then
-        	out_fields="0,1.2,1.3,2.2";
+            out_fields="0,1.2,1.3,2.2";
         else
-        	out_fields="0,2.2";
+            out_fields="0,2.2";
         fi
 
         if [ "${get_assembly_accession}" -eq 1 ]; then 
-        	# link uids (not found for esummary)
-        	acc_assemblyaccession="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyaccession_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e NOT_FOUND)"
-        	# check for entries without assembly found (not found for elink)
-        	final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyaccession}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e NOT_FOUND)"
-        	
-        	# fix output for assembly name
-        	if [ "${get_assembly_name}" -eq 1 ]; then 
-	        	if [ "${skip_len_taxid}" -eq 0 ]; then
-		        	out_fields="0,1.2,1.3,1.4,2.2";
-		        else
-		        	out_fields="0,1.2,2.2";
-		        fi
-		    fi
+            # link uids (not found for esummary)
+            acc_assemblyaccession="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyaccession_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e PLACEHOLDER_NOT_FOUND)"
+            # check for entries without assembly found (not found for elink)
+            final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyaccession}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e PLACEHOLDER_NOT_FOUND)"
+            
+            # fix output for assembly name
+            if [ "${get_assembly_name}" -eq 1 ]; then 
+                if [ "${skip_len_taxid}" -eq 0 ]; then
+                    out_fields="0,1.2,1.3,1.4,2.2";
+                else
+                    out_fields="0,1.2,2.2";
+                fi
+            fi
         fi
 
         if [ "${get_assembly_name}" -eq 1 ]; then 
-        	#echo "${uid_assemblyname_summary_assembly}"
-        	acc_assemblyname="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyname_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e NOT_FOUND)"
-        	#echo "${acc_assemblyname}"
-        	final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyname}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e NOT_FOUND)"
+            #echo "${uid_assemblyname_summary_assembly}"
+            acc_assemblyname="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyname_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e PLACEHOLDER_NOT_FOUND)"
+            #echo "${acc_assemblyname}"
+            final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyname}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e PLACEHOLDER_NOT_FOUND)"
         fi
 
         # Print final
         if [ "${replace_not_found_accession}" -eq 1 ]; then
-            echo "$(echo "${final}" | awk 'BEGIN{FS="\t";OFS="\t"}{for(i=2; i<=NF; i++){if($i=="NOT_FOUND") $i=$1}; print}')"
+            final="$(awk 'BEGIN{FS="\t";OFS="\t"}{for(i=2; i<=NF; i++){if($i=="PLACEHOLDER_NOT_FOUND") $i=$1}; print}' <(echo "${final}"))"
         else
-            echo "${final}"
-        fi
+            final="$(awk 'BEGIN{FS="\t";OFS="\t"}{for(i=2; i<=NF; i++){if($i=="PLACEHOLDER_NOT_FOUND") $i="na"}; print}' <(echo "${final}"))"
+        fi     
+
+        # Print results sorted
+        echo "$(sort_in_out "${final}" "${acc}")"
 
     fi
 

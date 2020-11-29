@@ -69,8 +69,8 @@ class Bins:
         else:
             self.bins.loc[self.bins['binid'].isin(binids)].to_csv(acc_bin_file, header=False, index=False, columns=['seqid','seqstart','seqend','binid'], sep='\t')
 
-    def write_map_file(self, map_file, use_assembly):
-        if use_assembly:
+    def write_map_file(self, map_file, use_specialization: bool=False):
+        if use_specialization:
             self.bins[['specialization','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')
         else:
             self.bins[['taxid','binid']].drop_duplicates().to_csv(map_file,header=False, index=False, sep='\t')

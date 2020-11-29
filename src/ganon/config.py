@@ -22,7 +22,8 @@ class Config:
         
         # Defaults
         build_group_optional = build_parser.add_argument_group('optional arguments')
-        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species')
+        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for building index. Could either be any rank specified by taxonomy [species,genus,...] or special entries [leaves,specialization]. leaves uses the leaf entries as targets. specialization uses an extra taxonomic level defined by --specialization. Default: species')
+        build_group_optional.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Specialization to be used as target after taxonomic leaves [sequence,file,assembly]. "sequence" will use sequence accesion as target. "file" uses the filename as target. "assembly" will retrieve assemlby entries from NCBI as use them as target. "seq-info-file" will use the 4th column from --seq-info-file as target.')
         build_group_optional.add_argument('-k', '--kmer-size',       type=int,            metavar='', default=19,        help='The k-mer size for the interleaved bloom filter. Default: 19')
         build_group_optional.add_argument('-n', '--hash-functions',  type=int,            metavar='', default=3,         help='The number of hash functions for the interleaved bloom filter. Default: 3')
         build_group_optional.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for k-mer classification. Default: 0.05')
@@ -33,7 +34,7 @@ class Config:
         build_group_optional.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
         build_group_optional.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
         build_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", metavar='', default=["auto"],  help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
-        build_group_optional.add_argument('--seq-info-file',         type=str,            metavar='',                    help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
+        build_group_optional.add_argument('--seq-info-file',         type=str,            metavar='',                    help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> specialization]) [Mutually exclusive --seq-info-mode]')
         build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*", metavar='',                    help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         build_group_optional.add_argument('--input-directory',       type=str,            metavar='', default="",        help='Directory containing input files')
         build_group_optional.add_argument('--input-extension',       type=str,            metavar='', default="",        help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
@@ -235,7 +236,15 @@ class Config:
             if self.max_fp<=0:
                 print_log("--max-fp has to be bigger than 0")
                 return False
-            
+
+            if self.rank=="specialization":
+                if not self.specialization:
+                    print_log("Please provide a value to --specialization when using --rank specialization")
+                    return False
+                elif self.specialization not in ["sequence","file","assembly","seq-info-file"]:
+                    print_log("Invalid value of --specialization")
+                    return False
+
         elif self.which=='update':
             if not check_taxdump(self.taxdump_file):
                 return False

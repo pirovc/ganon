@@ -4,8 +4,9 @@ from io import StringIO
 from ganon.util import *
 
 class SeqInfo:
-    seq_info_colums=['seqid','length','taxid', 'assembly']
-    seq_info_types={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'assembly': 'str'}
+    seq_info_colums=['seqid','length','taxid', 'specialization']
+    # pd.Int64Dtype() nullable INT https://pandas.pydata.org/pandas-docs/stable/user_guide/integer_na.html#integer-na
+    seq_info_types={'seqid': 'str', 'length': pd.Int64Dtype(), 'taxid': 'str', 'specialization': 'str'}
     seqinfo = pd.DataFrame(columns=seq_info_colums)
 
     def __init__(self, seq_info_file: str=None):
@@ -34,12 +35,17 @@ class SeqInfo:
     def write(self, file):
         self.seqinfo.to_csv(file, sep="\t", header=False, index=False)
 
-    def parse_seqid(self, input_files):
+    def parse_seqid(self, input_files, specialization):
         for file in input_files:
             # cat | zcat | gawk -> compability with osx
             run_get_header = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
             stdout, stderr = run(run_get_header, print_stderr=False, shell=True)
-            self.seqinfo = self.seqinfo.append(pd.read_csv(StringIO(stdout), header=None, names=['seqid']), ignore_index=True)
+            parsed_stdout = pd.read_csv(StringIO(stdout), header=None, names=['seqid'])
+            if specialization=="file":
+                parsed_stdout["specialization"] = os.path.basename(file)
+            elif specialization=="sequence":
+                parsed_stdout["specialization"] = parsed_stdout["seqid"]
+            self.seqinfo = self.seqinfo.append(parsed_stdout, ignore_index=True)
 
     def parse_seqid_length(self, input_files):
         for file in input_files:
@@ -51,18 +57,29 @@ class SeqInfo:
             self.seqinfo = self.seqinfo[self.seqinfo['length']>0]
 
     def parse_ncbi_eutils(self, seqid_file, path_exec_get_seq_info, skip_len_taxid=False, get_assembly=False):
-        run_get_seq_info_cmd = '{0} -i {1} {2} {3} -r'.format(
+        run_get_seq_info_cmd = '{0} -k -r -i {1} {2} {3}'.format(
                                     path_exec_get_seq_info,
                                     seqid_file,
                                     "-a" if get_assembly else "",
                                     "-s" if skip_len_taxid else "")
         stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True, exit_on_error=False)
-        
-        if get_assembly and skip_len_taxid:
-            # todo - order is always the same?
-            self.seqinfo.assembly = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','assembly'], dtype=self.seq_info_types)['assembly']
+
+        # always return all entries in the same order (-k)
+        # set "na" as NaN with na_values="na"
+        if get_assembly:
+            if skip_len_taxid:
+                # Return only assembly
+                self.seqinfo.specialization = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','assembly'], dtype=self.seq_info_types, na_values="na")['assembly']
+            else:
+                # Return full seqinfo
+                self.seqinfo = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=self.seq_info_colums, dtype=self.seq_info_types, na_values="na")
         else:
-            self.seqinfo = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=self.seq_info_colums, dtype=self.seq_info_types)
+            # Return seqid, len and taxid - keep specialization in the seqinfo
+            self.seqinfo[["seqid","length","taxid"]] = pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','length','taxid'], dtype=self.seq_info_types, na_values="na")
+
+        # drop failed entries for lenght or taxid
+        self.seqinfo.dropna(subset=["length","taxid"], inplace=True)
+    
 
     def parse_acc2txid(self, acc2txid_files):
         count_acc2txid = {}
