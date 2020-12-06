@@ -22,8 +22,8 @@ class Config:
         
         # Defaults
         build_group_optional = build_parser.add_argument_group('optional arguments')
-        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for building index. Could either be any rank specified by taxonomy [species,genus,...] or special entries [leaves,specialization]. leaves uses the leaf entries as targets. specialization uses an extra taxonomic level defined by --specialization. Default: species')
-        build_group_optional.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Specialization to be used as target after taxonomic leaves [sequence,file,assembly]. "sequence" will use sequence accesion as target. "file" uses the filename as target. "assembly" will retrieve assemlby entries from NCBI as use them as target. "seq-info-file" will use the 4th column from --seq-info-file as target.')
+        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for building index. Could either be any rank specified by taxonomy [species,genus,...] or special entries [leaves,specialization]. leaves uses the leaf taxonomic nodes as targets. specialization uses an extra taxonomic level defined by --specialization. Default: species')
+        build_group_optional.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Specialization to be used as target after taxonomic leaf nodes [sequence,file,assembly,seq-info-file]. "sequence" will use sequence accesion as target. "file" uses the filename as target. "assembly" will retrieve assemlby entries from NCBI as use them as target. "seq-info-file" will use the 4th column from --seq-info-file as target.')
         build_group_optional.add_argument('-k', '--kmer-size',       type=int,            metavar='', default=19,        help='The k-mer size for the interleaved bloom filter. Default: 19')
         build_group_optional.add_argument('-n', '--hash-functions',  type=int,            metavar='', default=3,         help='The number of hash functions for the interleaved bloom filter. Default: 3')
         build_group_optional.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for k-mer classification. Default: 0.05')
@@ -33,7 +33,7 @@ class Config:
         build_group_optional.add_argument('--fixed-bloom-size',      type=int,            metavar='',                    help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
         build_group_optional.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
         build_group_optional.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
-        build_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", metavar='', default=["auto"],  help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+        build_group_optional.add_argument('--seq-info-mode',         type=str, nargs="*", metavar='', default=["auto"],  help='Automatic mode to retrieve taxonomic information and seq. length for each input sequence. Options: auto, eutils or one or more accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot]. When using --specialization assembly eutils is enforced. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs. Aternatively a file can be directly provided (see --seq-info-file). Default: auto')
         build_group_optional.add_argument('--seq-info-file',         type=str,            metavar='',                    help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> specialization]) [Mutually exclusive --seq-info-mode]')
         build_group_optional.add_argument('--taxdump-file',          type=str, nargs="*", metavar='',                    help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         build_group_optional.add_argument('--input-directory',       type=str,            metavar='', default="",        help='Directory containing input files')
@@ -58,7 +58,7 @@ class Config:
         update_group_optional = update_parser.add_argument_group('optional arguments')
         update_group_optional.add_argument('-o', '--output-db-prefix', type=str,            metavar='',                   help='Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix')
         update_group_optional.add_argument('-t', '--threads',          type=int,            metavar='', default=2,        help='Number of subprocesses/threads to use. Default: 2')
-        update_group_optional.add_argument('--seq-info-mode',          type=str, nargs="*", metavar='', default=["auto"], help='Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic and seq. length information. If a small number of sequences is provided (<50000) or when --rank assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot], eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually exclusive --seq-info-file]')
+        update_group_optional.add_argument('--seq-info-mode',          type=str, nargs="*", metavar='', default=["auto"], help='Automatic mode to retrieve taxonomic information and seq. length for each input sequence. Options: auto, eutils or one or more accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot]. When using --specialization assembly eutils is enforced. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs. Aternatively a file can be directly provided (see --seq-info-file). Default: auto')
         update_group_optional.add_argument('--seq-info-file',          type=str,            metavar='',                   help='Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]')
         update_group_optional.add_argument('--taxdump-file',           type=str, nargs="*", metavar='',                   help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)')
         update_group_optional.add_argument('--input-directory',        type=str,            metavar='', default="",       help='Directory containing input files')
@@ -209,6 +209,9 @@ class Config:
         return 'Config({})'.format(', '.join(args))
 
     def validate(self):
+
+        seq_info_mode_options = ["auto","eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
+        
         if self.empty is True:
             print_log("Please provide one or more arguments")
             return False
@@ -244,6 +247,13 @@ class Config:
                 elif self.specialization not in ["sequence","file","assembly","seq-info-file"]:
                     print_log("Invalid value of --specialization")
                     return False
+                elif self.specialization=="seq-info-file" and not self.seq_info_file:
+                    print_log("--seq-info-file should be provided to use --specialization 'seq-info-file'")
+                    return False
+
+            if not all([sim in seq_info_mode_options for sim in self.seq_info_mode]):
+                print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
+                return False
 
         elif self.which=='update':
             if not check_taxdump(self.taxdump_file):
