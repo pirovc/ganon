@@ -1,7 +1,6 @@
 #!/bin/bash
 # Number of attempts to request data from e-utils
-#att=3
-att=1
+att=3
 batch=200
 
 retrieve_summary_xml()

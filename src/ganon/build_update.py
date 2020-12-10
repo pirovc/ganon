@@ -86,22 +86,7 @@ def build(cfg):
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
-    taxsbp_params={}
-    taxsbp_params["nodes_file"] = ncbi_nodes_file
-    taxsbp_params["bin_len"] = bin_length
-    if cfg.specialization:
-        taxsbp_params["specialization"] = cfg.specialization
-        taxsbp_params["bin_exclusive"] = cfg.specialization
-    else: # either species,genus ... or "leaves"
-        taxsbp_params["bin_exclusive"] =  cfg.rank
-    if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
-    if fragment_length: 
-        taxsbp_params["fragment_len"] = fragment_length
-        taxsbp_params["overlap_len"] = cfg.overlap_length
-    taxsbp_params["input_table"] = seqinfo.to_csv()
-
-    bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
-    del taxsbp_params
+    bins = run_taxsbp(seqinfo, bin_length, fragment_length, cfg.overlap_length, cfg.rank, cfg.specialization, ncbi_nodes_file, ncbi_merged_file)
     # bin statistics
     actual_number_of_bins = bins.get_number_of_bins()
     optimal_number_of_bins = optimal_bins(actual_number_of_bins)
@@ -156,6 +141,12 @@ def build(cfg):
     # Write aux. file for ganon
     acc_bin_file = tmp_output_folder + "acc_bin.txt"
     bins.write_acc_bin_file(acc_bin_file)
+
+    # Free memory for build
+    del seqinfo
+    del bins
+    del tax
+    del gnn
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
@@ -260,24 +251,9 @@ def update(cfg):
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
-    taxsbp_params={}
-    taxsbp_params["update_table"] = bins.to_csv()
-    taxsbp_params["nodes_file"] = ncbi_nodes_file
-    taxsbp_params["bin_len"] = gnn.bin_length
     # Compability to nomenclature before 0.3.5
-    if gnn.rank=="taxid" or gnn.rank=="assembly": gnn.rank="leaves"    
-    if cfg.specialization:
-        taxsbp_params["specialization"] = cfg.specialization
-        taxsbp_params["bin_exclusive"] = cfg.specialization
-    else: # either species,genus ... or "leaves"
-        taxsbp_params["bin_exclusive"] = gnn.rank
-
-    if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
-    if gnn.fragment_length: 
-        taxsbp_params["fragment_len"] = gnn.fragment_length
-        taxsbp_params["overlap_len"] = gnn.overlap_length
-    taxsbp_params["input_table"] = seqinfo.to_csv()
-    updated_bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
+    if gnn.rank=="taxid" or gnn.rank=="assembly": gnn.rank="leaves"  
+    updated_bins = run_taxsbp(seqinfo, gnn.bin_length, gnn.fragment_length, gnn.overlap_length, gnn.rank, cfg.specialization, ncbi_nodes_file, ncbi_merged_file, bins=bins)
     # bin statistics
     taxsbp_binids = set(updated_bins.get_binids())
     removed_binids = previous_binids.difference(kept_binids | taxsbp_binids)
@@ -338,6 +314,13 @@ def update(cfg):
     else:
         # Only new sequences (updated_bins) either on old or new binids
         updated_bins.write_acc_bin_file(acc_bin_file)
+
+    # Free memory for build
+    del seqinfo
+    del bins
+    del updated_bins
+    del tax
+    del gnn
 
     # Temporary output filter 
     tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
@@ -483,7 +466,7 @@ def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     print_log("Downloading " + acc2txid_file, quiet)
     acc2txid_file = tmp_output_folder + acc2txid_file
     run_wget_acc2txid_file_cmd = 'wget -qO {0} "ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/{1}.accession2taxid.gz"'.format(acc2txid_file, acc2txid)
-    stdout, stderr = run(run_wget_acc2txid_file_cmd, print_stderr=False if quiet else True)
+    stdout, stderr = run(run_wget_acc2txid_file_cmd, print_stderr=True)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return acc2txid_file
 
@@ -576,4 +559,26 @@ def estimate_bin_len_size(cfg, seqinfo, tax):
     else:
         return 0,0,0
 
+def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, specialization, ncbi_nodes_file, ncbi_merged_file, bins: Bins=None):
+    taxsbp_params={}
 
+    taxsbp_params["input_table"] = seqinfo.to_csv()
+    if bins is not None:
+        taxsbp_params["update_table"] = bins.to_csv()
+
+    taxsbp_params["nodes_file"] = ncbi_nodes_file
+    if ncbi_merged_file: 
+        taxsbp_params["merged_file"] = ncbi_merged_file
+    
+    taxsbp_params["bin_len"] = bin_length
+    if fragment_length: 
+        taxsbp_params["fragment_len"] = fragment_length
+        taxsbp_params["overlap_len"] = overlap_length
+
+    if specialization:
+        taxsbp_params["specialization"] = specialization
+        taxsbp_params["bin_exclusive"] = specialization
+    else: # either species,genus ... or "leaves"
+        taxsbp_params["bin_exclusive"] =  rank
+
+    return Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
