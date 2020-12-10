@@ -4,7 +4,6 @@ import pandas as pd
 class Bins:
     # bins columns pandas dataframe
     columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
-    #types={'seqid': 'str', 'seqstart': 'uint64', 'seqend': 'uint64', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64', 'specialization': 'str'}
     bins = pd.DataFrame([], columns=columns)
 
     def __init__(self, taxsbp_ret: list=[]):
@@ -27,7 +26,7 @@ class Bins:
         elif binids: subBins.bins = self.bins.loc[self.bins['binid'].isin(binids)]
         return subBins
 
-    def get_csv(self):
+    def to_csv(self):
         return self.bins.to_csv(sep="\t",header=False, index=False)
 
     def get_list(self):

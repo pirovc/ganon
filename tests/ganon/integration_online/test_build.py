@@ -38,13 +38,13 @@ class TestBuildOnline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
        
-    def test_assembly(self):
+    def test_specialization_assembly(self):
         """
         Test rank as assembly online
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_assembly"
-        params["rank"] = "assembly"
+        params["db_prefix"] = self.results_dir + "test_specialization_assembly"
+        params["specialization"] = "assembly"
 
         # Build config from params
         cfg = Config("build", **params)
@@ -53,7 +53,6 @@ class TestBuildOnline(unittest.TestCase):
         # General sanity check of results
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results") 
-
 
 
 if __name__ == '__main__':

@@ -40,14 +40,14 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
-    def test_assembly(self):
+    def test_specialization_custom(self):
         """
-        Test rank as assembly
+        Test rank as assembly defined in the seq-info-file
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_assembly"
-        params["rank"] = "assembly"
-        
+        params["db_prefix"] = self.results_dir + "test_specialization_custom"
+        params["specialization"] = "custom"
+                
         # Build config from params
         cfg = Config("build", **params)
         # Run

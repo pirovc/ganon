@@ -55,13 +55,14 @@ class TestUpdateOnline(unittest.TestCase):
         # Specific tes - should return Viruses and Bacteria matches on the updated index
         self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
 
-    def test_assembly(self):
+    def test_specialization_assembly(self):
         """
         Test rank as assembly online
         """
         params = self.default_params.copy()
         params["db_prefix"] = data_dir+"bacteria_assembly"
-        params["output_db_prefix"] = self.results_dir + "test_assembly"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_assembly"
+        params["specialization"] = "assembly"
 
         # Build config from params
         cfg = Config("update", **params)

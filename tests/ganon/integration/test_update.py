@@ -60,13 +60,14 @@ class TestUpdateOffline(unittest.TestCase):
         # Specific tes - should return Viruses and Bacteria matches on the updated index
         self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
 
-    def test_assembly(self):
+    def test_specialization_custom(self):
         """
-        Test rank as assembly
+        Test update with specialization assembly
         """
         params = self.default_params.copy()
-        params["db_prefix"] = data_dir+"bacteria_assembly"
-        params["output_db_prefix"] = self.results_dir + "test_assembly"
+        params["db_prefix"] = data_dir+"bacteria_custom"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_custom"
+        params["specialization"] = "custom"
 
         # Build config from params
         cfg = Config("update", **params)
@@ -76,7 +77,7 @@ class TestUpdateOffline(unittest.TestCase):
         res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific test - count assemblies on tax (3 bac + 4 vir)
-        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 7, "error updating assemblies")
 
     def test_duplicated(self):
         """

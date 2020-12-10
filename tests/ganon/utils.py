@@ -154,8 +154,8 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
             print("Inconsistent percentage (>100%)")
             return None
 
-        # check if sum of percentage for each rank is equal or lower than 100 (floor for rounding errors)
-        if(res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
+        # check if sum of percentage for each rank (excluding "no rank") is equal or lower than 100 (floor for rounding errors)
+        if(res["tre_pd"][res["tre_pd"]["rank"]!="no rank"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
             print("Inconsistent percentage by rank (>100%)")
             return None
 
