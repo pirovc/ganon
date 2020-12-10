@@ -62,6 +62,11 @@ def build(cfg):
     print_log("Build: adding " + str(len(added_seqids)) + " sequences", cfg.quiet)
     print_log("", cfg.quiet)
 
+    if not added_seqids:
+        print_log("No valid seq. info to build", cfg.quiet)
+        rm_tmp_folder(tmp_output_folder)
+        return False
+
     # Set bin length
     if cfg.bin_length: # user defined
         bin_length = cfg.bin_length
@@ -221,6 +226,7 @@ def update(cfg):
 
     if not added_seqids and not removed_seqids:
         print_log("Nothing to update", cfg.quiet)
+        rm_tmp_folder(tmp_output_folder)
         return False
 
     if cfg.update_complete:           
