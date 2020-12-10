@@ -26,9 +26,9 @@ class TestBuildOffline(unittest.TestCase):
     def setUpClass(self):
         setup_dir(self.results_dir)
        
-    def test_default_offline(self):
+    def test_default(self):
         """
-        Test run with default parameters
+        ganon build with default parameters
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_default"
@@ -40,9 +40,46 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
+    def test_rank_genus(self):
+        """
+        ganon build --rank genus
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_rank_genus"
+        params["rank"] = "genus"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Check if did not report species from .tax
+        self.assertFalse((res["tax_pd"]["rank"]=="species").any(), "Species reported with rank genus")
+
+    def test_rank_leaves(self):
+        """
+        ganon build --rank leaves
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_rank_genus"
+        params["rank"] = "leaves"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Check if taxids provides are exactly the same used in .map
+        self.assertTrue(res["seq_info"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Did not use leaves on .map")
+
+
     def test_specialization_custom(self):
         """
-        Test rank as assembly defined in the seq-info-file
+        ganon build --specialization custom (with --seq-info-file)
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_specialization_custom"
@@ -60,6 +97,28 @@ class TestBuildOffline(unittest.TestCase):
         self.assertTrue(res["seq_info"]["specialization"].isin(res["bins_pd"]["specialization"]).all(), "Missing assembly ids on bins")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Missing assembly ids on .map")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["tax_pd"]["taxid"].drop_duplicates()).all(), "Missing assembly ids on .tax")
+
+    def test_specialization_file(self):
+        """
+        ganon build --specialization file (with --seq-info-file)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_specialization_custom"
+        params["specialization"] = "custom"
+                
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Specific test
+        # Check if all assembly ids are on bins and map and tax
+        self.assertTrue(res["seq_info"]["specialization"].isin(res["bins_pd"]["specialization"]).all(), "Missing assembly ids on bins")
+        self.assertTrue(res["seq_info"]["specialization"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Missing assembly ids on .map")
+        self.assertTrue(res["seq_info"]["specialization"].isin(res["tax_pd"]["taxid"].drop_duplicates()).all(), "Missing assembly ids on .tax")
+
 
     def test_bin_length(self):
         """

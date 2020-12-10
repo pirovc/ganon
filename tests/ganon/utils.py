@@ -19,7 +19,13 @@ def check_files(prefix, extensions):
             print("File (" + f +") is empty")
             return False
     return True
-    
+
+def merge_gz(files, output_file):
+    with open(output_file, 'wb') as outf:
+        for file in files:
+            with open(file, 'rb') as inf:
+                shutil.copyfileobj(inf, outf)
+                
 def parse_bins(bins):
     #columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
     #types={'seqid': 'str', 'seqstart': 'uint64', 'seqend': 'uint64', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64', 'specialization': 'str'}

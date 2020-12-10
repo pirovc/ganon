@@ -25,7 +25,7 @@ class TestBuildOnline(unittest.TestCase):
 
     def test_default(self):
         """
-        With default parameters online
+        ganon build with default parameters (online: eutils, taxdump)
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_default"
@@ -40,10 +40,12 @@ class TestBuildOnline(unittest.TestCase):
        
     def test_specialization_assembly(self):
         """
-        Test rank as assembly online
+        ganon build --specialization assembly (online: eutils)
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_specialization_assembly"
+        params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
+                                   data_dir+"mini_names.dmp"]
         params["specialization"] = "assembly"
 
         # Build config from params
@@ -53,7 +55,81 @@ class TestBuildOnline(unittest.TestCase):
         # General sanity check of results
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results") 
+        # Specific test - count assemblies on tax (3 bac)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 3, "error retrieving assembly accessions")
+        # Check if all targets starts with "GCF_"
+        self.assertTrue((res["map_pd"]["target"].map(lambda x: x.startswith("GCF_"))).all(), "failed to retrieve assembly accession")
 
+    def test_specialization_sequence(self):
+        """
+        ganon build --specialization sequence (online: eutils)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_specialization_sequence"
+        params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
+                                   data_dir+"mini_names.dmp"]
+        params["specialization"] = "sequence"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results") 
+        # Specific test - count sequences
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="sequence"), 4, "failed to use sequence accession as specialization")
+        # Check if all targets starts with "NC_"
+        self.assertTrue((res["map_pd"]["target"].map(lambda x: x.startswith("NC_"))).all(), "failed to use sequence accession as specialization")
+
+    def test_specialization_file(self):
+        """
+        ganon build --specialization file (online: eutils)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_specialization_file"
+        params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
+                                   data_dir+"mini_names.dmp"]
+        params["specialization"] = "file"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results") 
+        # Specific test - count files
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="file"), 4, "failed to use file name as specialization")
+        # Check if all targets ends with ".fasta.gz"
+        self.assertTrue((res["map_pd"]["target"].map(lambda x: x.endswith(".fasta.gz"))).all(), "failed to use file name as specialization")
+
+    # def test_specialization_file_single(self):
+    #     """
+    #     ganon build --specialization file (with one file only online: eutils)
+    #     """
+    #     params = self.default_params.copy()
+
+    #     merge_gz(params["input_files"], self.results_dir + "merged_input_files.fasta.gz")
+    #     params["input_files"] = self.results_dir + "merged_input_files.fasta.gz"
+    #     params["db_prefix"] = self.results_dir + "test_specialization_file"
+    #     params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
+    #                                data_dir+"mini_names.dmp"]
+    #     params["specialization"] = "file"
+
+    #     # Build config from params
+    #     cfg = Config("build", **params)
+    #     # Run
+    #     self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+    #     # General sanity check of results
+    #     res = build_sanity_check_and_parse(vars(cfg))
+    #     self.assertIsNotNone(res, "ganon build has inconsistent results") 
+
+    #     print(res)
+    #     # Specific test - count files
+    #     self.assertEqual(sum(res["tax_pd"]["rank"]=="file"), 4, "failed to use file name as specialization")
+    #     # Check if all targets ends with ".fasta.gz"
+    #     self.assertTrue((res["map_pd"]["target"].map(lambda x: x.endswith(".fasta.gz"))).all(), "failed to use file name as specialization")
 
 if __name__ == '__main__':
     unittest.main()

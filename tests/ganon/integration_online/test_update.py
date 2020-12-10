@@ -63,7 +63,7 @@ class TestUpdateOnline(unittest.TestCase):
         params["db_prefix"] = data_dir+"bacteria_assembly"
         params["output_db_prefix"] = self.results_dir + "test_specialization_assembly"
         params["specialization"] = "assembly"
-
+        
         # Build config from params
         cfg = Config("update", **params)
         # Run
