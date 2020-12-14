@@ -48,9 +48,27 @@ class SeqInfo:
 
     def parse_seq_info_file(self, seq_info_file, parse_specialization: bool=False):
         self.seqinfo = pd.read_csv(seq_info_file, sep='\t', header=None, skiprows=0, index_col=False, names=self.seq_info_colums if parse_specialization else self.seq_info_colums[:-1])
+        self.drop_duplicates()
 
-    def convert(self):
+    def drop_duplicates(self):
+        self.seqinfo.drop_duplicates('seqid', keep="first", inplace=True)
+
+    def validate_specialization(self):
+        # convert length col to numeric int 
+        # this is not set before due to issues of merging dataframes with different datatypes
         self.seqinfo['length'] = self.seqinfo['length'].astype(int)
-
-    def any_null(self, col):
-         return self.seqinfo[col].isnull().values.any()
+        if 'specialization' in self.seqinfo.columns:
+            # checl for invalid specialization
+            idx_null_spec = self.seqinfo.specialization.isnull()
+            # each specialization can have one parent taxid
+            # get unique tuples taxid specialization
+            taxid_spec = self.seqinfo[['taxid', 'specialization']].drop_duplicates()
+            # check for multiple
+            idx_multi_parent_spec = self.seqinfo.specialization.isin(taxid_spec.specialization[taxid_spec.specialization.duplicated(keep=False)].unique())
+            # merge indices
+            idx_replace = idx_null_spec | idx_multi_parent_spec
+            if idx_replace.any():
+                # replace duplicates with own seqid
+                self.seqinfo.loc[idx_replace,"specialization"] = self.seqinfo.loc[idx_replace,"seqid"]
+                return sum(idx_replace)
+        return 0

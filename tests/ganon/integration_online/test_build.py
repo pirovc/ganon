@@ -104,32 +104,31 @@ class TestBuildOnline(unittest.TestCase):
         # Check if all targets ends with ".fasta.gz"
         self.assertTrue((res["map_pd"]["target"].map(lambda x: x.endswith(".fasta.gz"))).all(), "failed to use file name as specialization")
 
-    # def test_specialization_file_single(self):
-    #     """
-    #     ganon build --specialization file (with one file only online: eutils)
-    #     """
-    #     params = self.default_params.copy()
+    def test_specialization_file_single(self):
+        """
+        ganon build --specialization file (with one file only online: eutils)
+        """
+        params = self.default_params.copy()
 
-    #     merge_gz(params["input_files"], self.results_dir + "merged_input_files.fasta.gz")
-    #     params["input_files"] = self.results_dir + "merged_input_files.fasta.gz"
-    #     params["db_prefix"] = self.results_dir + "test_specialization_file"
-    #     params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
-    #                                data_dir+"mini_names.dmp"]
-    #     params["specialization"] = "file"
+        merge_gz(params["input_files"], self.results_dir + "merged_input_files.fasta.gz")
+        params["input_files"] = self.results_dir + "merged_input_files.fasta.gz"
+        params["db_prefix"] = self.results_dir + "test_specialization_file"
+        params["taxdump_file"] =  [data_dir+"mini_nodes.dmp", 
+                                   data_dir+"mini_names.dmp"]
+        params["specialization"] = "file"
+        params["verbose"] = True
 
-    #     # Build config from params
-    #     cfg = Config("build", **params)
-    #     # Run
-    #     self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
-    #     # General sanity check of results
-    #     res = build_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon build has inconsistent results") 
-
-    #     print(res)
-    #     # Specific test - count files
-    #     self.assertEqual(sum(res["tax_pd"]["rank"]=="file"), 4, "failed to use file name as specialization")
-    #     # Check if all targets ends with ".fasta.gz"
-    #     self.assertTrue((res["map_pd"]["target"].map(lambda x: x.endswith(".fasta.gz"))).all(), "failed to use file name as specialization")
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results") 
+        # Specific test - count files
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="file"), 4, "failed to use file name as specialization")
+        # Check if all targets starts with "NC_" - should replace file with sequence accession
+        self.assertTrue((res["map_pd"]["target"].map(lambda x: x.startswith("NC_"))).all(), "failed to use sequence accession as specialization")
 
 if __name__ == '__main__':
     unittest.main()
