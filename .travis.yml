@@ -3,27 +3,6 @@ dist: xenial
 
 matrix:
   include:
-    ## osx xcode10 image: issues replacing grep on PATH, online tests do not pass
-    - name: "osx gcc-7 (xcode10.1/macOS 10.13)"
-      os: osx
-      osx_image: xcode10.1
-      addons:
-        homebrew: { packages: [gcc@7, coreutils, gawk, grep],
-                    update: false }
-      env:
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
-    
-    - name: "osx gcc-8 (xcode10.1/macOS 10.13)"
-      os: osx
-      osx_image: xcode10.1
-      addons:
-        homebrew: { packages: [gcc@8, coreutils, gawk, grep],
-                    update: false }
-      env: 
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
-
     - name: "osx AppleClang 10 (xcode10.2/macOS 10.14)"
       os: osx
       osx_image: xcode10.2
@@ -119,9 +98,6 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  #- if [ "$BUILD_TYPE" == "Coverage" ]; then 
-  #    travis_wait 30 python3 -m unittest discover -s tests/ganon/integration_online/ -v;
-  #  fi
   - sudo python3 setup.py install
   - ganon -h # ret 0
 
@@ -130,6 +106,7 @@ after_success:
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
       coverage run --append -m unittest discover -s tests/ganon/unit/ -v;
       coverage run --append -m unittest discover -s tests/ganon/integration/ -v;
+      coverage run --append -m unittest discover -s tests/ganon/integration_online/ -v;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
     fi
 
