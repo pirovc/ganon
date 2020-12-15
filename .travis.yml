@@ -9,7 +9,7 @@ matrix:
       osx_image: xcode10.1
       addons:
         homebrew: { packages: [gcc@7, coreutils, gawk, grep],
-                    update: true }
+                    update: false }
       env:
         - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
@@ -19,7 +19,7 @@ matrix:
       osx_image: xcode10.1
       addons:
         homebrew: { packages: [gcc@8, coreutils, gawk, grep],
-                    update: true }
+                    update: false }
       env: 
         - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"

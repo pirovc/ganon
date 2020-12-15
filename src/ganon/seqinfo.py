@@ -58,17 +58,17 @@ class SeqInfo:
         # this is not set before due to issues of merging dataframes with different datatypes
         self.seqinfo['length'] = self.seqinfo['length'].astype(int)
         if 'specialization' in self.seqinfo.columns:
-            # checl for invalid specialization
+            # check for invalid specialization entries
             idx_null_spec = self.seqinfo.specialization.isnull()
-            # each specialization can have one parent taxid
-            # get unique tuples taxid specialization
+            # each specialization can have only one parent taxid
+            # get unique tuples taxid-specialization
             taxid_spec = self.seqinfo[['taxid', 'specialization']].drop_duplicates()
-            # check for multiple
+            # check for duplicated specialization in the tuples
             idx_multi_parent_spec = self.seqinfo.specialization.isin(taxid_spec.specialization[taxid_spec.specialization.duplicated(keep=False)].unique())
-            # merge indices
+            # merge indices for invalid entries
             idx_replace = idx_null_spec | idx_multi_parent_spec
             if idx_replace.any():
-                # replace duplicates with own seqid
+                # replace invalid specialization entries with seqid
                 self.seqinfo.loc[idx_replace,"specialization"] = self.seqinfo.loc[idx_replace,"seqid"]
                 return sum(idx_replace)
         return 0

@@ -26,32 +26,28 @@ def build(cfg):
     # Set up taxonomy
     ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
     
+    # Parse .tax    
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
     tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    seqinfo = SeqInfo()
-    if cfg.seq_info_file:
-        tx = time.time()
-        print_log("Parsing seq-info-file", cfg.quiet)
-        seqinfo.parse_seq_info_file(cfg.seq_info_file, parse_specialization=True if cfg.specialization=="custom" else False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-    else:
-        tx = time.time()
-        print_log("Extracting sequence identifiers", cfg.quiet)
-        parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    # load seqinfo (file or seqids)
+    seqinfo = load_seqinfo(cfg, input_files)
+
+    # Retrieve sequence information
+    if not cfg.seq_info_file:    
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
         
-    # Convert cols data types
-    replaced_spec = seqinfo.validate_specialization()
-    if replaced_spec:
-        print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
+    # Check for valid specialization
+    if cfg.specialization:
+        replaced_spec = seqinfo.validate_specialization()
+        if replaced_spec:
+            print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
 
-    if not cfg.seq_info_file and cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
+    # Write seq-info-file
+    if not cfg.seq_info_file and cfg.write_seq_info_file: 
+        seqinfo.write(cfg.db_prefix+".seqinfo.txt")
 
     # check sequences compared to bins
     added_seqids, _, _ = check_updated_seqids(set(seqinfo.get_seqids()), set())
@@ -193,19 +189,8 @@ def update(cfg):
     # load bins
     bins = Bins(taxsbp_ret=gnn.bins)
 
-    seqinfo = SeqInfo()
-    if cfg.seq_info_file:
-        tx = time.time()
-        print_log("Parsing --seq-info-file", cfg.quiet)
-        seqinfo.parse_seq_info_file(cfg.seq_info_file, parse_specialization=True if cfg.specialization=="custom" else False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-    else:
-        tx = time.time()
-        print_log("Extracting sequence identifiers", cfg.quiet)
-        parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    # load seqinfo (file or seqids)
+    seqinfo = load_seqinfo(cfg, input_files)
 
     # check sequences compared to bins
     added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
@@ -229,16 +214,18 @@ def update(cfg):
         # Remove seqids already present in the current version (repeated entries)
         seqinfo.remove_seqids(kept_seqids)
 
-    # load seqinfo file with data (after removing ids)
+    # retrive sequence information (after removing invalid seqids)
     if not cfg.seq_info_file: 
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
 
     # Convert cols data types
-    replaced_spec = seqinfo.validate_specialization()
-    if replaced_spec:
-        print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
+    if cfg.specialization:
+        replaced_spec = seqinfo.validate_specialization()
+        if replaced_spec:
+            print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
 
-    if not cfg.seq_info_file and cfg.write_seq_info_file: seqinfo.write(cfg.output_db_prefix+".seqinfo.txt")
+    if not cfg.seq_info_file and cfg.write_seq_info_file: 
+        seqinfo.write(cfg.output_db_prefix+".seqinfo.txt")
 
     # save set of current binids
     previous_binids = set(bins.get_binids())
@@ -378,27 +365,29 @@ def parse_seqids(seqinfo, input_files, specialization, quiet, get_length: bool):
     parsed_size = seqinfo.size()
     seqinfo.drop_duplicates()
     if seqinfo.size() < parsed_size: 
-        print_log(" - " + str(parsed_size-seqinfo.size()) + " duplicated accessions were dropped", quiet)
+        print_log(" - " + str(parsed_size-seqinfo.size()) + " duplicated accessions were skipped", quiet)
 
     if get_length:
         # Drop rows with zero length
         parsed_size = seqinfo.size()
         seqinfo.drop_zeros(col='length')
         if seqinfo.size() < parsed_size: 
-            print_log(" - " + str(parsed_size-seqinfo.size()) + " entries without sequence length were dropped", quiet)
+            print_log(" - " + str(parsed_size-seqinfo.size()) + " entries without sequence length were skipped", quiet)
 
 
 def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, skip_len_taxid=False, get_assembly=False):
     seqid_file = tmp_output_folder + "seqids.txt"
     seqinfo.write_seqid_file(seqid_file)
+
+    # always return all entries in the same order (-k)
+    # report sequence accession if specialization not found (-r)
     run_get_seq_info_cmd = '{0} -k -r -i {1} {2} {3}'.format(
                                 path_exec_get_seq_info,
                                 seqid_file,
                                 "-a" if get_assembly else "",
                                 "-s" if skip_len_taxid else "")
     stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True, exit_on_error=False)
-    
-    # always return all entries in the same order (-k)
+
     # set "na" as NaN with na_values="na"
     if get_assembly:
         if skip_len_taxid:
@@ -412,8 +401,27 @@ def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, skip_len_ta
         # Return seqid, len and taxid - keep specialization in the seqinfo
         seqinfo.paste_cols(["seqid","length","taxid"], pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','length','taxid'], na_values="na", dtype={'taxid': 'str'}))
 
-    # drop failed entries for lenght or taxid, assembly is NaN if no specialization
+    # drop failed entries for lenght or taxid
+    parsed_size = seqinfo.size()
     seqinfo.dropna(subset=["length","taxid"])
+    if seqinfo.size() < parsed_size: 
+        print_log(" - " + str(parsed_size-seqinfo.size()) + " entries could not be retrieved from eutils and were skipped", quiet)
+
+def load_seqinfo(cfg, input_files):
+    seqinfo = SeqInfo()
+    if cfg.seq_info_file:
+        tx = time.time()
+        print_log("Parsing --seq-info-file", cfg.quiet)
+        seqinfo.parse_seq_info_file(cfg.seq_info_file, parse_specialization=True if cfg.specialization=="custom" else False)
+        print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    else:
+        tx = time.time()
+        print_log("Extracting sequence identifiers", cfg.quiet)
+        parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=False)
+        print_log(" - "  + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    return seqinfo
 
 def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
     # Max. # of sequences to use eutils as auto mode
