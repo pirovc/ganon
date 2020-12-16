@@ -240,7 +240,7 @@ class TestBuildOffline(unittest.TestCase):
 
     def test_duplicated_seqinfo(self):
         """
-        Test duplicated entries on the seqinfo file
+        ganon build with duplicated --seq-info-file entries
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_duplicated_seqinfo"
@@ -251,11 +251,10 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
-        # Sanity check passes because ganon build (using --seq-info-file)
-        # does not iterate through sequences, just works with metadata
-        # ganon-build will simply add the unique provided entries
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
+         # ganon should remove the duplicates and just have unique entries on bins
+        self.assertTrue(res["bins_pd"][["seqid","seqstart","seqend"]].equals(res["bins_pd"][["seqid","seqstart","seqend"]].drop_duplicates()), "Duplicated entries on bins")
 
     def test_missing_invalid_seqinfo(self):
         """

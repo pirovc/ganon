@@ -15,6 +15,8 @@ class TestUpdateOnline(unittest.TestCase):
                                       data_dir+"update/virus_NC_011646.1.fasta.gz", 
                                       data_dir+"update/virus_NC_032412.1.fasta.gz", 
                                       data_dir+"update/virus_NC_035470.1.fasta.gz"],
+                      "taxdump_file": [data_dir+"mini_nodes.dmp", 
+                                       data_dir+"mini_names.dmp"],
                       "db_prefix": data_dir+"bacteria_default",
                       "write_seq_info_file": True,
                       "quiet": True}
@@ -25,10 +27,11 @@ class TestUpdateOnline(unittest.TestCase):
 
     def test_default(self):
         """
-        With default parameters online
+        ganon update with default parameters (online: eutils, taxdump)
         """
         params = self.default_params.copy()
         params["output_db_prefix"] = self.results_dir + "test_default"
+        params["taxdump_file"] = []
         # Build config from params
         cfg = Config("update", **params)
         # Run
@@ -57,7 +60,7 @@ class TestUpdateOnline(unittest.TestCase):
 
     def test_specialization_assembly(self):
         """
-        Test rank as assembly online
+        ganon update --specialization assembly (online: eutils)
         """
         params = self.default_params.copy()
         params["db_prefix"] = data_dir+"bacteria_assembly"
@@ -73,6 +76,27 @@ class TestUpdateOnline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific test - count assemblies on tax (3 bac + 4 vir)
         self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
+
+    def test_specialization_assembly_on_custom(self):
+        """
+        ganon update --specialization assembly with previous generated index --specialization custom (online: eutils)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_custom"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_assembly_on_custom"
+        params["specialization"] = "assembly"
+        
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 3, "error updating assemblies")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 4, "error updating assemblies")
+
 
 if __name__ == '__main__':
     unittest.main()
