@@ -106,7 +106,6 @@ after_success:
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
       coverage run --append -m unittest discover -s tests/ganon/unit/ -v;
       coverage run --append -m unittest discover -s tests/ganon/integration/ -v;
-      coverage run --append -m unittest discover -s tests/ganon/integration_online/ -v;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
     fi
 

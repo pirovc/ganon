@@ -38,7 +38,7 @@ def build(cfg):
     # Retrieve sequence information
     if not cfg.seq_info_file:    
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
-        
+    
     # Check for valid specialization
     if cfg.specialization:
         replaced_spec = seqinfo.validate_specialization()
@@ -349,12 +349,12 @@ def parse_seqids(seqinfo, input_files, specialization, quiet, get_length: bool):
         if get_length:
             # cat | zcat | gawk -> compability with osx
             run_get = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr = run(run_get, print_stderr=False, shell=True)
+            stdout, stderr = run(run_get, shell=True)
             parsed_stdout = pd.read_csv(StringIO(stdout), sep="\t", header=None, names=['seqid', 'length'])
         else:
             # cat | zcat | gawk -> compability with osx
             run_get = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
-            stdout, stderr = run(run_get, print_stderr=False, shell=True)
+            stdout, stderr = run(run_get, shell=True)
             parsed_stdout = pd.read_csv(StringIO(stdout), header=None, names=['seqid'])
         if specialization=="file":
             parsed_stdout["specialization"] = os.path.basename(file)
@@ -362,20 +362,20 @@ def parse_seqids(seqinfo, input_files, specialization, quiet, get_length: bool):
             parsed_stdout["specialization"] = parsed_stdout["seqid"]
         seqinfo.append(parsed_stdout)
 
+    # Drop duplicated seqids
     parsed_size = seqinfo.size()
     seqinfo.drop_duplicates()
     if seqinfo.size() < parsed_size: 
         print_log(" - " + str(parsed_size-seqinfo.size()) + " duplicated accessions were skipped", quiet)
 
+    # Drop rows with zero length
     if get_length:
-        # Drop rows with zero length
         parsed_size = seqinfo.size()
         seqinfo.drop_zeros(col='length')
         if seqinfo.size() < parsed_size: 
             print_log(" - " + str(parsed_size-seqinfo.size()) + " entries without sequence length were skipped", quiet)
 
-
-def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, skip_len_taxid=False, get_assembly=False):
+def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, quiet, skip_len_taxid=False, get_assembly=False):
     seqid_file = tmp_output_folder + "seqids.txt"
     seqinfo.write_seqid_file(seqid_file)
 
@@ -386,7 +386,7 @@ def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, skip_len_ta
                                 seqid_file,
                                 "-a" if get_assembly else "",
                                 "-s" if skip_len_taxid else "")
-    stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True, exit_on_error=False)
+    stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not quiet else False, exit_on_error=False)
 
     # set "na" as NaN with na_values="na"
     if get_assembly:
@@ -443,7 +443,7 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
     if seq_info_mode[0]=="eutils":
         tx = time.time()
         print_log("Retrieving sequence information from NCBI E-utils", cfg.quiet)
-        parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], skip_len_taxid=False, get_assembly=True if cfg.specialization=="assembly" else False)
+        parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], cfg.quiet, skip_len_taxid=False, get_assembly=True if cfg.specialization=="assembly" else False)
         print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved", cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     else:
@@ -476,7 +476,7 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
         if cfg.specialization=="assembly":
             tx = time.time()
             print_log("Retrieving assembly information from NCBI E-utils", cfg.quiet)
-            parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], skip_len_taxid=True, get_assembly=True)
+            parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], cfg.quiet, skip_len_taxid=True, get_assembly=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
@@ -580,7 +580,7 @@ def estimate_bin_len_size(cfg, seqinfo, tax):
 
 def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, specialization, ncbi_nodes_file, ncbi_merged_file, verbose, bins: Bins=None):
     taxsbp_params={}
-
+    
     taxsbp_params["input_table"] = seqinfo.to_csv()
     if bins is not None:
         taxsbp_params["update_table"] = bins.to_csv()

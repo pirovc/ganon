@@ -11,6 +11,9 @@ class SeqInfo:
         return 'SeqInfo({})'.format(', '.join(args))
 
     def to_csv(self):
+        # convert length col to numeric int 
+        # this is not set before due to issues of merging dataframes with different datatypes
+        self.seqinfo['length'] = self.seqinfo['length'].astype(int)
         return self.seqinfo.to_csv(sep="\t", header=False, index=False)
 
     def size(self):
@@ -52,11 +55,8 @@ class SeqInfo:
 
     def drop_duplicates(self):
         self.seqinfo.drop_duplicates('seqid', keep="first", inplace=True)
-
+    
     def validate_specialization(self):
-        # convert length col to numeric int 
-        # this is not set before due to issues of merging dataframes with different datatypes
-        self.seqinfo['length'] = self.seqinfo['length'].astype(int)
         if 'specialization' in self.seqinfo.columns:
             # check for invalid specialization entries
             idx_null_spec = self.seqinfo.specialization.isnull()

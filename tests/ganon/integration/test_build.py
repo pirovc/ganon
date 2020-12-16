@@ -65,7 +65,7 @@ class TestBuildOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_rank_genus"
         params["rank"] = "leaves"
-
+        
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -98,9 +98,9 @@ class TestBuildOffline(unittest.TestCase):
         self.assertTrue(res["seq_info"]["specialization"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Missing assembly ids on .map")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["tax_pd"]["taxid"].drop_duplicates()).all(), "Missing assembly ids on .tax")
 
-    def test_specialization_file(self):
+    def test_specialization_custom(self):
         """
-        ganon build --specialization file (with --seq-info-file)
+        ganon build --specialization custom (with --seq-info-file)
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_specialization_custom"
@@ -118,7 +118,6 @@ class TestBuildOffline(unittest.TestCase):
         self.assertTrue(res["seq_info"]["specialization"].isin(res["bins_pd"]["specialization"]).all(), "Missing assembly ids on bins")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Missing assembly ids on .map")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["tax_pd"]["taxid"].drop_duplicates()).all(), "Missing assembly ids on .tax")
-
 
     def test_bin_length(self):
         """
@@ -201,12 +200,12 @@ class TestBuildOffline(unittest.TestCase):
         # Check max size of bins
         self.assertTrue(max(res["bins_pd"].groupby("binid").sum()["length"])<=params["bin_length"], "Bin length greater than max.")
 
-    def test_duplicated_entries(self):
+    def test_duplicated_input_files(self):
         """
-        Test duplicated entries
+        ganon build with duplicated input files. ganon-build will process all input files, but bins should be correct
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_duplicated_entries"
+        params["db_prefix"] = self.results_dir + "test_duplicated_input_files"
         params["input_files"] = params["input_files"] * 4
 
         # Build config from params
@@ -239,12 +238,12 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
-    def test_duplicated_entries_seqinfo(self):
+    def test_duplicated_seqinfo(self):
         """
         Test duplicated entries on the seqinfo file
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_duplicated_entries_seqinfo"
+        params["db_prefix"] = self.results_dir + "test_duplicated_seqinfo"
         params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_duplicated.txt"
 
         # Build config from params
@@ -256,6 +255,26 @@ class TestBuildOffline(unittest.TestCase):
         # does not iterate through sequences, just works with metadata
         # ganon-build will simply add the unique provided entries
         res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+
+    def test_missing_invalid_seqinfo(self):
+        """
+        ganon build --seq-info-file with missing and invalid information
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_missing_invalid_seqinfo"
+        params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_missing_invalid.txt"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+
+        res = build_sanity_check_and_parse(vars(cfg))
+        # General sanity check of results
+        # Sanity check passes because ganon build (using --seq-info-file)
+        # does not iterate through sequences, just works with metadata
+        # ganon-build will simply add the unique provided entries
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_input_directory(self):
