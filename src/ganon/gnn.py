@@ -10,6 +10,7 @@ class Gnn:
                 fragment_length: int = None,
                 overlap_length: int = None,
                 rank: str = None,
+                specialization: str = None,
                 bins: list = None,
                 file: str=None):
         if file:
@@ -19,6 +20,7 @@ class Gnn:
             self.hash_functions = hash_functions
             self.number_of_bins = number_of_bins
             self.rank = rank
+            self.specialization = specialization
             self.bin_length = bin_length
             self.fragment_length = fragment_length
             self.overlap_length = overlap_length
@@ -34,6 +36,7 @@ class Gnn:
         self.hash_functions = gnn['hash_functions']
         self.number_of_bins = gnn['number_of_bins']
         self.rank = gnn['rank']
+        self.specialization = gnn['specialization']
         self.bin_length = gnn['bin_length']
         self.fragment_length = gnn['fragment_length']
         self.overlap_length = gnn['overlap_length']
@@ -44,6 +47,7 @@ class Gnn:
         'hash_functions': self.hash_functions, 
         'number_of_bins': self.number_of_bins, 
         'rank': self.rank,
+        'specialization': self.specialization,
         'bin_length': self.bin_length,
         'fragment_length': self.fragment_length,
         'overlap_length': self.overlap_length,

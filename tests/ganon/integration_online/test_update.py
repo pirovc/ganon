@@ -75,7 +75,49 @@ class TestUpdateOnline(unittest.TestCase):
         res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific test - count assemblies on tax (3 bac + 4 vir)
-        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating with assemblies")
+
+    def test_specialization_file_on_custom(self):
+        """
+        ganon update --specialization file with previous generated index --specialization custom (online: eutils)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_custom"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_file_on_custom"
+        params["specialization"] = "file"
+        
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 3, "error updating")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="file"), 4, "error updating")
+
+    def test_specialization_sequence_on_custom(self):
+        """
+        ganon update --specialization sequence with previous generated index --specialization custom (online: eutils)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_custom"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_sequence_on_custom"
+        params["specialization"] = "sequence"
+        
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 3, "error updating")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="sequence"), 4, "error updating")
+
+
 
     def test_specialization_assembly_on_custom(self):
         """
@@ -94,8 +136,8 @@ class TestUpdateOnline(unittest.TestCase):
         res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific test - count assemblies on tax (3 bac + 4 vir)
-        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 3, "error updating assemblies")
-        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 4, "error updating assemblies")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 3, "error updating")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 4, "error updating")
 
 
 if __name__ == '__main__':

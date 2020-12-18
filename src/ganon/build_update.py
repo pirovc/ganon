@@ -117,6 +117,7 @@ def build(cfg):
             hash_functions=cfg.hash_functions, 
             number_of_bins=actual_number_of_bins, 
             rank=cfg.rank,
+            specialization=cfg.specialization,
             bin_length=bin_length,
             fragment_length=fragment_length,
             overlap_length=cfg.overlap_length,
@@ -185,6 +186,16 @@ def update(cfg):
 
     # Load .gnn file   
     gnn = Gnn(file=db_prefix["gnn"])
+
+    # Set specialization
+    if cfg.specialization and not gnn.specialization:
+        print_log("ERROR: not possible to update a database with --specialization if it was built without it")
+        return False
+    elif cfg.specialization and cfg.specialization!=gnn.specialization:
+        print_log("Using --specialization " + cfg.specialization)
+    else:
+        print_log("Using --specialization " + gnn.specialization)
+        cfg.specialization=gnn.specialization
 
     # load bins
     bins = Bins(taxsbp_ret=gnn.bins)
@@ -275,6 +286,8 @@ def update(cfg):
     print_log(" - " + cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"], cfg.quiet)
     gnn.bins = bins.get_list() # save updated bins
     gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
+    # set new specialization to gnn
+    gnn.specialization = cfg.specialization
     gnn.write(cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"])
 
     # Recreate .map file based on the new bins
