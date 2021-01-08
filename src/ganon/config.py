@@ -40,7 +40,7 @@ class Config:
         build_group_optional.add_argument('--input-extension',       type=str,            metavar='', default="",        help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")')
         build_group_optional.add_argument('--write-seq-info-file',   action='store_true',                                help='Write sequence information to DB_PREFIX.seqinfo.txt')
         build_group_optional.add_argument('--verbose',               action='store_true',                                help='Verbose output mode')
-        build_group_optional.add_argument('--quiet',                 action='store_true',                                help='Quiet output mode (only errors and warnings to the stderr)')
+        build_group_optional.add_argument('--quiet',                 action='store_true',                                help='Quiet output mode')
         build_group_optional.add_argument('--ganon-path',            type=str,            metavar='', default="",        help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-refs',                type=int,            metavar='',                    help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-batches',             type=int,            metavar='',                    help=argparse.SUPPRESS)
@@ -67,7 +67,7 @@ class Config:
         update_group_optional.add_argument('--update-complete',        action='store_true',                               help='Update adding and removing sequences. Input files should represent the complete updated set of references, not only new sequences.')
         update_group_optional.add_argument('--write-seq-info-file',    action='store_true',                               help='Write sequence information to DB_PREFIX.seqinfo.txt')
         update_group_optional.add_argument('--verbose',                action='store_true',                               help='Verbose output mode')
-        update_group_optional.add_argument('--quiet',                  action='store_true',                               help='Quiet output mode (only errors and warnings to the stderr)')
+        update_group_optional.add_argument('--quiet',                  action='store_true',                               help='Quiet output mode')
         update_group_optional.add_argument('--ganon-path',             type=str,            metavar='', default="",       help=argparse.SUPPRESS)
         update_group_optional.add_argument('--n-refs',                 type=int,            metavar='',                   help=argparse.SUPPRESS)
         update_group_optional.add_argument('--n-batches',              type=int,            metavar='',                   help=argparse.SUPPRESS)
@@ -97,7 +97,7 @@ class Config:
         classify_group_optional.add_argument('--output-unclassified',       action='store_true',               help='Output an additional file with unclassified read headers (.unc)')
         classify_group_optional.add_argument('--output-single',             action='store_true',               help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
         classify_group_optional.add_argument('--verbose',                   action='store_true',               help='Verbose output mode')
-        classify_group_optional.add_argument('--quiet',                     action='store_true',               help='Quiet output mode (only errors and warnings to the stderr)')
+        classify_group_optional.add_argument('--quiet',                     action='store_true',               help='Quiet output modef')
         classify_group_optional.add_argument('--ganon-path',                type=str, default="",  metavar='', help=argparse.SUPPRESS) 
         classify_group_optional.add_argument('--n-reads',                   type=int,              metavar='', help=argparse.SUPPRESS)
         classify_group_optional.add_argument('--n-batches',                 type=int,              metavar='', help=argparse.SUPPRESS)
@@ -125,7 +125,7 @@ class Config:
         report_group_optional.add_argument('--input-directory',      type=str,            metavar='', default="",      help='Directory containing input files')
         report_group_optional.add_argument('--input-extension',      type=str,            metavar='', default="",      help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")')
         report_group_optional.add_argument('--verbose',              action='store_true',             default=False,   help='Verbose output mode')
-        report_group_optional.add_argument('--quiet',                action='store_true',             default=False,   help='Quiet output mode (only errors and warnings to the stderr)')
+        report_group_optional.add_argument('--quiet',                action='store_true',             default=False,   help='Quiet output mode')
         ####################################################################################################
 
         table_parser = argparse.ArgumentParser(description='Table options', add_help=False)
@@ -152,7 +152,7 @@ class Config:
         table_group_optional.add_argument('--input-directory',                type=str,  metavar='',  default="",           help='Directory containing input files')
         table_group_optional.add_argument('--input-extension',                type=str,  metavar='',  default="",           help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".tre")')
         table_group_optional.add_argument('--verbose',                        action='store_true',    default=False,        help='Verbose output mode')
-        table_group_optional.add_argument('--quiet',                          action='store_true',    default=False,        help='Quiet output mode (only errors and warnings to the stderr)')
+        table_group_optional.add_argument('--quiet',                          action='store_true',    default=False,        help='Quiet output mode')
                  
         ####################################################################################################
 
