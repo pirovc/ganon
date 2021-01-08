@@ -67,8 +67,7 @@ class TestUpdateOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = data_dir+"bacteria_custom"
         params["output_db_prefix"] = self.results_dir + "test_specialization_custom"
-        params["specialization"] = "custom"
-
+        
         # Build config from params
         cfg = Config("update", **params)
         # Run
@@ -99,38 +98,20 @@ class TestUpdateOffline(unittest.TestCase):
         self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 4, "error updating assemblies")
         self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 3, "error updating assemblies")
  
-    # def test_default_on_specialization_custom(self):
-    #     """
-    #     ganon update without --specialization previous generated index with --specialization custom
-    #     """
-    #     params = self.default_params.copy()
-    #     params["db_prefix"] = data_dir+"bacteria_custom"
-    #     params["output_db_prefix"] = self.results_dir + "test_default_on_specialization_custom"
+    def test_specialization_on_default(self):
+        """
+        ganon update --specialization custom on previous generated index without specialiazazion
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_default"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_on_default"
+        params["specialization"] = "custom"
 
-    #     # Build config from params
-    #     cfg = Config("update", **params)
-    #     # Run
-    #     self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
-    #     # General sanity check of results
-    #     res = update_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Build config from params
+        cfg = Config("update", **params)
+        # Should not run
+        self.assertFalse(ganon.main(cfg=cfg), "ganon update exited with an error")
 
-    # def test_specialization_custom_on_default(self):
-    #     """
-    #     ganon update --specialization custom on previous generated index without specialiazazion
-    #     """
-    #     params = self.default_params.copy()
-    #     params["db_prefix"] = data_dir+"bacteria_default"
-    #     params["output_db_prefix"] = self.results_dir + "test_specialization_custom_on_default"
-    #     params["specialization"] = "custom"
-
-    #     # Build config from params
-    #     cfg = Config("update", **params)
-    #     # Run
-    #     self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
-    #     # General sanity check of results
-    #     res = update_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon update has inconsistent results")
 
     def test_repeated(self):
         """

@@ -13,7 +13,7 @@ def build(cfg):
     # validate input files
     input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     if len(input_files)==0:
-        print_log("ERROR: No valid input files found")
+        print_log("ERROR: No valid input files found", cfg.quiet)
         return False
 
     # Set db prefixes
@@ -69,7 +69,7 @@ def build(cfg):
         bin_length, approx_size, n_bins = estimate_bin_len_size(cfg, seqinfo, tax)
         if bin_length<=0: 
             bin_length=1000000
-            print_log("WARNING: could not estimate bin length, using default of " + str(bin_length) + "bp")
+            print_log("WARNING: could not estimate bin length, using default of " + str(bin_length) + "bp", cfg.quiet)
         else:
             print_log(" - bin length: " + str(bin_length) + "bp (approx: " + str(n_bins) + " bins / " + str("{0:.2f}".format(approx_size)) + "MB)", cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
@@ -174,7 +174,7 @@ def update(cfg):
     # validate input files
     input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     if len(input_files)==0:
-        print_log("ERROR: No valid input files found")
+        print_log("ERROR: No valid input files found", cfg.quiet)
         return False
 
     # Set db prefixes
@@ -187,15 +187,16 @@ def update(cfg):
     # Load .gnn file   
     gnn = Gnn(file=db_prefix["gnn"])
 
-    # Set specialization
-    if cfg.specialization and not gnn.specialization:
-        print_log("ERROR: not possible to update a database with --specialization if it was built without it")
-        return False
-    elif cfg.specialization and cfg.specialization!=gnn.specialization:
-        print_log("Using --specialization " + cfg.specialization)
+    # If specialization was set on database
+    if gnn.specialization:
+        # if not provided by user, use defition of database
+        if not cfg.specialization: cfg.specialization=gnn.specialization
+        print_log("Using --specialization " + cfg.specialization, cfg.quiet)
     else:
-        print_log("Using --specialization " + gnn.specialization)
-        cfg.specialization=gnn.specialization
+        if cfg.specialization: 
+            # If user defined specialization on update but database has none
+            print_log("ERROR: not possible to update a database with --specialization if it was built without it", cfg.quiet)
+            return False
 
     # load bins
     bins = Bins(taxsbp_ret=gnn.bins)

@@ -294,5 +294,21 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
+    def test_invalid_rank(self):
+        """
+        ganon build --rank xyz (invalid)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_invalid_rank"
+        params["rank"] = "xyz"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        
 if __name__ == '__main__':
     unittest.main()

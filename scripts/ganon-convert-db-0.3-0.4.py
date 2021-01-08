@@ -28,7 +28,7 @@ gnn = pickle.load(gzip.open(file_gnn_in, 'rb'))
 
 #Add specialization and version fields
 gnn["specialization"] = ""
-gnn["version"] = "0.4.0"
+gnn["version"] = "0.4"
 
 # New nomenclature 
 if gnn["rank"] == "taxid":
