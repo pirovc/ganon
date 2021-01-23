@@ -67,8 +67,8 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - sudo python3 -m pip install --upgrade pip
-  - sudo python3 -m pip install pandas>=0.22.0
+  #- sudo python3 -m pip install --upgrade pip
+  - sudo python3 -m pip install pandas>=0.24.1
   - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
