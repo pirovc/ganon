@@ -333,15 +333,23 @@ The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-
 
 The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`, `--kmer-size` and `--hash-functions`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--fixed-bloom-size` (ganon will tell you what's the resulting max. false positive).
 
-`--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default,  `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
+`--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default, `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
 
 Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size by definition. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
+
+#### --specialization
+
+With the `--specialization` parameter is possible to generate a ganon database in an extra specialized "rank" as target for classification after taxonomic leaves. With this option, classification can be performed at strain, assembly, file, sequence level or any other custom level. `--specialization sequence` will use each each sequence (starting with ">") in the provided input files as a unique target to build the database. `--specialization file` will use each file as a target, useful for building at assembly/strain level if all sequences of the same group are in one file. `--specialization assembly` will retrieve an assembly accession from NCBI eutils and use it as a target (this can take some time, since NCBI webservices are limited on the amount of request per second). `--specialization custom` will use the 4th column of the `--seq-info-file` as target, allowing customized specializations.
 
 ### ganon update
 
 #### --update-complete
 
 By default `ganon update` will only add sequences provided with `--input-files` to an previosly generated index. Using `--update-complete` it is possible to add and remove sequences from an index. When activating this option, ganon will consider that the files provided in `--input-files` are an actual representation of the index to build. It will automatically detect sequences that should be kept, inserted or removed given the input files and the information contained on the index to be updated.
+
+#### --specialization
+
+The same use of `--specialization` from `ganon build` (check above). `--specialization` can be changed in the update process (e.g. `--specialization assembly` was used to build and `--specialization file` is used to update). However, `--specialization` can only be used in `ganon update` if the database was built with it.
 
 ### ganon report
 

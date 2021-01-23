@@ -109,7 +109,7 @@ class TestBuildOnline(unittest.TestCase):
 
         merge_gz(params["input_files"], self.results_dir + "merged_input_files.fasta.gz")
         params["input_files"] = self.results_dir + "merged_input_files.fasta.gz"
-        params["db_prefix"] = self.results_dir + "test_specialization_file"
+        params["db_prefix"] = self.results_dir + "test_specialization_file_single"
         params["specialization"] = "file"
 
         # Build config from params

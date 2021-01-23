@@ -97,7 +97,7 @@ class Config:
         classify_group_optional.add_argument('--output-unclassified',       action='store_true',               help='Output an additional file with unclassified read headers (.unc)')
         classify_group_optional.add_argument('--output-single',             action='store_true',               help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
         classify_group_optional.add_argument('--verbose',                   action='store_true',               help='Verbose output mode')
-        classify_group_optional.add_argument('--quiet',                     action='store_true',               help='Quiet output modef')
+        classify_group_optional.add_argument('--quiet',                     action='store_true',               help='Quiet output mode')
         classify_group_optional.add_argument('--ganon-path',                type=str, default="",  metavar='', help=argparse.SUPPRESS) 
         classify_group_optional.add_argument('--n-reads',                   type=int,              metavar='', help=argparse.SUPPRESS)
         classify_group_optional.add_argument('--n-batches',                 type=int,              metavar='', help=argparse.SUPPRESS)
