@@ -1,5 +1,6 @@
 language: cpp
 dist: xenial
+python: "3.5"
 
 matrix:
   include:
@@ -68,7 +69,7 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - pip install --upgrade pip
-  - sudo python3 -m pip install pandas
+  - sudo python3 -m pip install "pandas>=0.22.0"
   - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
