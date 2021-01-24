@@ -67,9 +67,13 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - sudo python3 -m pip install --upgrade pip
-  - sudo python3 -m pip install pandas
-  - sudo python3 -m pip install binpacking==1.4.3
+  - pip --version
+  - sudo pip --version
+  - sudo -H python3 -m pip install --upgrade pip
+  - pip --version
+  - sudo pip --version
+  - sudo -H python3 -m pip install "pandas>=0.22.0"
+  - sudo -H python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
@@ -83,7 +87,7 @@ before_install:
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      sudo python3 -m pip install coverage;
+      sudo -H python3 -m pip install coverage;
     fi
 
 script:
