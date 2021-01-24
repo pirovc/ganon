@@ -83,7 +83,7 @@ before_install:
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m pip install coverage;
+      sudo python3 -m pip install coverage;
     fi
 
 script:
