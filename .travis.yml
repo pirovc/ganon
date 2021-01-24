@@ -76,12 +76,12 @@ before_install:
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - python setup.py --user install
+  - python setup.py install --user
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 1834242193dd0f27fa94864f44837d84f804b595 # dev v1.1.0
-  - python setup.py --user install
+  - python setup.py install --user 
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
@@ -98,9 +98,9 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/ -v
-  - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - python setup.py --user install
+  - python -m unittest discover -s tests/ganon/unit/ -v
+  - python -m unittest discover -s tests/ganon/integration/ -v
+  - python setup.py install --user 
   - ganon -h # ret 0
 
 after_success:
