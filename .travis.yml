@@ -67,25 +67,23 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - python --version
-  - pip --version
-  - pip install --upgrade pip
-  - pip install "pandas>=0.22.0"
-  - pip install binpacking==1.4.3
+  - python3 -m pip install --upgrade pip
+  - python3 -m pip install "pandas>=0.22.0"
+  - python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - python setup.py install --user --prefix=
+  - python3 setup.py install --user --prefix=
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 1834242193dd0f27fa94864f44837d84f804b595 # dev v1.1.0
-  - python setup.py install --user --prefix=
+  - python3 setup.py install --user --prefix=
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      pip install coverage;
+      python3 -m pip install coverage;
     fi
 
 script:
@@ -98,9 +96,9 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python -m unittest discover -s tests/ganon/unit/ -v
-  - python -m unittest discover -s tests/ganon/integration/ -v
-  - python setup.py install --user --prefix=
+  - python3 -m unittest discover -s tests/ganon/unit/ -v
+  - python3 -m unittest discover -s tests/ganon/integration/ -v
+  - python3 setup.py install --user --prefix=
   - ganon -h # ret 0
 
 after_success:
