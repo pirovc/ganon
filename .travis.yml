@@ -25,8 +25,9 @@ matrix:
 
     - name: "linux gcc-7"
       os: linux
+      python: 3.8
       addons:
-        apt: { packages: [g++-7, python3-pip, python3-setuptools],
+        apt: { packages: [g++-7],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
@@ -67,23 +68,23 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - pip3 install --upgrade pip
-  - pip3 install "pandas>=0.22.0"
-  - pip3 install binpacking==1.4.3
+  - python -m pip install --upgrade pip
+  - python -m pip install "pandas>=0.22.0"
+  - python -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - sudo python3 setup.py install
+  - python setup.py install
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 1834242193dd0f27fa94864f44837d84f804b595 # dev v1.1.0
-  - sudo python3 setup.py install
+  - python setup.py install
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      pip3 install coverage;
+      python -m pip install coverage;
     fi
 
 script:
@@ -96,9 +97,9 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/ -v
-  - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - python3 setup.py install
+  - python -m unittest discover -s tests/ganon/unit/ -v
+  - python -m unittest discover -s tests/ganon/integration/ -v
+  - python setup.py install
   - ganon -h # ret 0
 
 after_success:
