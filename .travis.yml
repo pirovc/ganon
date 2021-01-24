@@ -68,8 +68,8 @@ matrix:
 before_install:
   - eval "${MATRIX_EVAL}"
   - pip3 install --upgrade pip
-  - sudo python3 -m pip3 install "pandas>=0.22.0"
-  - sudo python3 -m pip3 install binpacking==1.4.3
+  - pip3 install "pandas>=0.22.0"
+  - pip3 install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
@@ -83,7 +83,7 @@ before_install:
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      sudo python3 -m pip3 install coverage;
+      pip3 install coverage;
     fi
 
 script:
@@ -98,7 +98,7 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - sudo python3 setup.py install
+  - python3 setup.py install
   - ganon -h # ret 0
 
 after_success:
