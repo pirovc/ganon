@@ -26,9 +26,9 @@ class TestBuildOffline(unittest.TestCase):
     def setUpClass(self):
         setup_dir(self.results_dir)
        
-    def test_default_offline(self):
+    def test_default(self):
         """
-        Test run with default parameters
+        ganon build with default parameters
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_default"
@@ -40,14 +40,51 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
-    def test_assembly(self):
+    def test_rank_genus(self):
         """
-        Test rank as assembly
+        ganon build --rank genus
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_assembly"
-        params["rank"] = "assembly"
+        params["db_prefix"] = self.results_dir + "test_rank_genus"
+        params["rank"] = "genus"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Check if did not report species from .tax
+        self.assertFalse((res["tax_pd"]["rank"]=="species").any(), "Species reported with rank genus")
+
+    def test_rank_leaves(self):
+        """
+        ganon build --rank leaves
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_rank_leaves"
+        params["rank"] = "leaves"
         
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        # Check if taxids provides are exactly the same used in .map
+        self.assertTrue(res["seq_info"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Did not use leaves on .map")
+
+
+    def test_specialization_custom(self):
+        """
+        ganon build --specialization custom (with --seq-info-file)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_specialization_custom"
+        params["specialization"] = "custom"
+                
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -60,6 +97,7 @@ class TestBuildOffline(unittest.TestCase):
         self.assertTrue(res["seq_info"]["specialization"].isin(res["bins_pd"]["specialization"]).all(), "Missing assembly ids on bins")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["map_pd"]["target"].drop_duplicates()).all(), "Missing assembly ids on .map")
         self.assertTrue(res["seq_info"]["specialization"].isin(res["tax_pd"]["taxid"].drop_duplicates()).all(), "Missing assembly ids on .tax")
+
 
     def test_bin_length(self):
         """
@@ -142,12 +180,12 @@ class TestBuildOffline(unittest.TestCase):
         # Check max size of bins
         self.assertTrue(max(res["bins_pd"].groupby("binid").sum()["length"])<=params["bin_length"], "Bin length greater than max.")
 
-    def test_duplicated_entries(self):
+    def test_duplicated_input_files(self):
         """
-        Test duplicated entries
+        ganon build with duplicated input files. ganon-build will process all input files, but bins should be correct
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_duplicated_entries"
+        params["db_prefix"] = self.results_dir + "test_duplicated_input_files"
         params["input_files"] = params["input_files"] * 4
 
         # Build config from params
@@ -180,12 +218,12 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
-    def test_duplicated_entries_seqinfo(self):
+    def test_duplicated_seqinfo(self):
         """
-        Test duplicated entries on the seqinfo file
+        ganon build with duplicated --seq-info-file entries
         """
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_duplicated_entries_seqinfo"
+        params["db_prefix"] = self.results_dir + "test_duplicated_seqinfo"
         params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_duplicated.txt"
 
         # Build config from params
@@ -193,15 +231,34 @@ class TestBuildOffline(unittest.TestCase):
         # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
         # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+         # ganon should remove the duplicates and just have unique entries on bins
+        self.assertTrue(res["bins_pd"][["seqid","seqstart","seqend"]].equals(res["bins_pd"][["seqid","seqstart","seqend"]].drop_duplicates()), "Duplicated entries on bins")
+
+    def test_missing_invalid_seqinfo(self):
+        """
+        ganon build --seq-info-file with missing and invalid information
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_missing_invalid_seqinfo"
+        params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_missing_invalid.txt"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+
+        res = build_sanity_check_and_parse(vars(cfg))
+        # General sanity check of results
         # Sanity check passes because ganon build (using --seq-info-file)
         # does not iterate through sequences, just works with metadata
         # ganon-build will simply add the unique provided entries
-        res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
     def test_input_directory(self):
         """
-        Test duplicated entries on the seqinfo file
+        Test input directory
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_directory"
@@ -217,5 +274,21 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
+    def test_invalid_rank(self):
+        """
+        ganon build --rank xyz (invalid)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_invalid_rank"
+        params["rank"] = "xyz"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        
 if __name__ == '__main__':
     unittest.main()

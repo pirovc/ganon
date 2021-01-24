@@ -144,6 +144,7 @@ class TestReportOffline(unittest.TestCase):
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
+        
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "no rank" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"]=="no rank").any(),"ganon report did not report the correct ranks")

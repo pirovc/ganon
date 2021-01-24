@@ -60,13 +60,32 @@ class TestUpdateOffline(unittest.TestCase):
         # Specific tes - should return Viruses and Bacteria matches on the updated index
         self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
 
-    def test_assembly(self):
+    def test_specialization_custom(self):
         """
-        Test rank as assembly
+        Test update with custom specialization
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_custom"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_custom"
+        
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific test - count assemblies on tax (3 bac + 4 vir)
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 7, "error updating assemblies")
+
+    def test_specialization_custom_on_assembly(self):
+        """
+        ganon update --specialization custom with previous generated index with --specialization assembly
         """
         params = self.default_params.copy()
         params["db_prefix"] = data_dir+"bacteria_assembly"
-        params["output_db_prefix"] = self.results_dir + "test_assembly"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_custom_on_custom"
+        params["specialization"] = "custom"
 
         # Build config from params
         cfg = Config("update", **params)
@@ -76,15 +95,31 @@ class TestUpdateOffline(unittest.TestCase):
         res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific test - count assemblies on tax (3 bac + 4 vir)
-        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 7, "error updating assemblies")
-
-    def test_duplicated(self):
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 4, "error updating assemblies")
+        self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 3, "error updating assemblies")
+ 
+    def test_specialization_on_default(self):
         """
-        Test duplicated entries on update
+        ganon update --specialization custom on previous generated index without specialiazazion
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir+"bacteria_default"
+        params["output_db_prefix"] = self.results_dir + "test_specialization_on_default"
+        params["specialization"] = "custom"
+
+        # Build config from params
+        cfg = Config("update", **params)
+        # Should not run
+        self.assertFalse(ganon.main(cfg=cfg), "ganon update exited with an error")
+
+
+    def test_repeated(self):
+        """
+        ganon update with some repeated sequences already in the index
         """
         params = self.default_params.copy()
 
-        params["output_db_prefix"] = self.results_dir + "test_duplicated"
+        params["output_db_prefix"] = self.results_dir + "test_repeated"
         params["input_files"].extend([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
                                       data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
                                       data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
@@ -105,14 +140,13 @@ class TestUpdateOffline(unittest.TestCase):
         new_targets = res["map_pd"][res["map_pd"]["binid"]>map_before.binid.max()]
         self.assertFalse(map_before["target"].isin(new_targets["target"]).any(), "duplicated entries on .map after update")
 
-
-    def test_duplicated_only(self):
+    def test_repeated_only(self):
         """
-        Test only duplicated entries on update
+        ganon update with only repeated sequences already in the index
         """
         params = self.default_params.copy()
 
-        params["output_db_prefix"] = self.results_dir + "test_duplicated_only"
+        params["output_db_prefix"] = self.results_dir + "test_repeated_only"
         params["input_files"] = [data_dir+"build/bacteria_NC_010333.1.fasta.gz",
                                       data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
                                       data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
@@ -122,6 +156,24 @@ class TestUpdateOffline(unittest.TestCase):
         cfg = Config("update", **params)
         # Should not run - nothing to update
         self.assertFalse(ganon.main(cfg=cfg), "ganon update exited with an error")
+
+    def test_duplicated_input_files(self):
+        """
+        ganon update with duplicated input files. ganon-build will process all input files, but bins should be correct
+        """
+        params = self.default_params.copy()
+        params["output_db_prefix"] = self.results_dir + "test_duplicated_input_files"
+        params["input_files"] = params["input_files"] * 4
+        
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Unique entries on bins (not duplicated)
+        self.assertTrue(res["bins_pd"][["seqid","seqstart","seqend"]].equals(res["bins_pd"][["seqid","seqstart","seqend"]].drop_duplicates()), "Duplicated entries of repeated sequences on bins")
 
     def test_add_existing_bins(self):
         """
@@ -408,5 +460,24 @@ class TestUpdateOffline(unittest.TestCase):
         # should not contain any bacteria
         self.assertFalse(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria"]).any(), "index was not properly updated, bacteria sequences remain")
       
+    def test_duplicated_seqinfo(self):
+        """
+        ganon update 
+        """
+        params = self.default_params.copy()
+        params["output_db_prefix"] = self.results_dir + "test_duplicated_seqinfo"
+        params["seq_info_file"] = data_dir+"update/virus_seqinfo_duplicated.txt"
+
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # ganon should remove the duplicates and just have unique entries on bins
+        self.assertTrue(res["bins_pd"][["seqid","seqstart","seqend"]].equals(res["bins_pd"][["seqid","seqstart","seqend"]].drop_duplicates()), "Duplicated entries on bins")
+
+
 if __name__ == '__main__':
     unittest.main()
