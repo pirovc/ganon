@@ -67,19 +67,19 @@ matrix:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - python3 -m pip install --upgrade pip
-  - python3 -m pip install "pandas>=0.22.0"
-  - python3 -m pip install binpacking==1.4.3
+  - sudo python3 -m pip install --upgrade pip
+  - sudo python3 -m pip install "pandas>=0.22.0"
+  - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - python3 setup.py install --user --prefix=
+  - sudo python3 setup.py install
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 1834242193dd0f27fa94864f44837d84f804b595 # dev v1.1.0
-  - python3 setup.py install --user --prefix=
+  - sudo python3 setup.py install
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
@@ -98,7 +98,7 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - python3 setup.py install --user --prefix=
+  - sudo python3 setup.py install
   - ganon -h # ret 0
 
 after_success:
