@@ -241,15 +241,10 @@ class Config:
                 print_log("--max-fp has to be bigger than 0")
                 return False
 
-            if self.specialization:
-                if self.specialization not in ["sequence","file","assembly","custom"]:
-                    print_log("Invalid value for --specialization")
-                    return False
+            if self.specialization: 
+                valid_spec = self.validate_specialization()
+                if not valid_spec: return False
                 
-                if self.specialization=="custom" and not self.seq_info_file:
-                    print_log("--seq-info-file should be provided to use --specialization custom")
-                    return False
-
             if not all([sim in seq_info_mode_options for sim in self.seq_info_mode]):
                 print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
                 return False
@@ -264,14 +259,9 @@ class Config:
             if not check_db(self.db_prefix):
                 return False
 
-            if self.specialization:
-                if self.specialization not in ["sequence","file","assembly","custom"]:
-                    print_log("Invalid value for --specialization")
-                    return False
-                
-                if self.specialization=="custom" and not self.seq_info_file:
-                    print_log("--seq-info-file should be provided to use --specialization custom")
-                    return False
+            if self.specialization: 
+                valid_spec = self.validate_specialization()
+                if not valid_spec: return False
 
             if not all([sim in seq_info_mode_options for sim in self.seq_info_mode]):
                 print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
@@ -342,6 +332,21 @@ class Config:
                 print_log("Invalid value for --min-occurence-percentage [0-1]")
                 return False
 
+        return True
+
+    def validate_specialization(self):
+        if self.specialization not in ["sequence","file","assembly","custom"]:
+            print_log("Invalid value for --specialization")
+            return False
+        
+        if self.specialization=="custom" and not self.seq_info_file:
+            print_log("--seq-info-file should be provided with --specialization custom")
+            return False
+
+        if self.specialization!="custom" and self.seq_info_file:
+            print_log("--specialization custom is required with --seq-info-file")
+            return False
+        
         return True
 
     def set_paths(self):

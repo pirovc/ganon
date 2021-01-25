@@ -199,7 +199,7 @@ def update(cfg):
             return False
 
     # load bins
-    bins = Bins(taxsbp_ret=gnn.bins)
+    bins = Bins(taxsbp_ret=gnn.bins, use_specialization=True if cfg.specialization else False)
 
     # load seqinfo (file or seqids)
     seqinfo = load_seqinfo(cfg, input_files)
@@ -426,7 +426,7 @@ def load_seqinfo(cfg, input_files):
     if cfg.seq_info_file:
         tx = time.time()
         print_log("Parsing --seq-info-file", cfg.quiet)
-        seqinfo.parse_seq_info_file(cfg.seq_info_file, parse_specialization=True if cfg.specialization=="custom" else False)
+        seqinfo.parse_seq_info_file(cfg.seq_info_file, use_specialization=True if cfg.specialization=="custom" else False)
         print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     else:
@@ -594,10 +594,10 @@ def estimate_bin_len_size(cfg, seqinfo, tax):
 
 def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, specialization, ncbi_nodes_file, ncbi_merged_file, verbose, bins: Bins=None):
     taxsbp_params={}
-    
-    taxsbp_params["input_table"] = seqinfo.to_csv()
+
+    taxsbp_params["input_table"] = seqinfo.seqinfo
     if bins is not None:
-        taxsbp_params["update_table"] = bins.to_csv()
+        taxsbp_params["update_table"] = bins.bins
 
     taxsbp_params["nodes_file"] = ncbi_nodes_file
     if ncbi_merged_file: 
@@ -614,7 +614,7 @@ def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, speci
     else: # either species,genus ... or "leaves"
         taxsbp_params["bin_exclusive"] =  rank
 
-    if verbose:
-        taxsbp_params["silent"] = False
+    #if verbose:
+    taxsbp_params["silent"] = False
 
-    return Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
+    return Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params), use_specialization=True if specialization else False)

@@ -78,7 +78,7 @@ before_install:
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
-  - git checkout 1834242193dd0f27fa94864f44837d84f804b595 # dev v1.1.0
+  - git checkout 817023ec47f0971538fefa5f9453c325b7143c99 # v1.1.0
   - sudo python3 setup.py install
   - taxsbp -h # ret 0
   - cd ..

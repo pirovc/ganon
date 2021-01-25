@@ -4,19 +4,20 @@ import pandas as pd
 class Bins:
     # bins columns pandas dataframe
     columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
-    bins = pd.DataFrame([], columns=columns)
 
-    def __init__(self, taxsbp_ret: list=[]):
-        if taxsbp_ret: 
-            self.parse_bins(taxsbp_ret)
+    def __init__(self, taxsbp_ret: list, use_specialization: bool=False):
+        if taxsbp_ret:
+            self.bins = pd.DataFrame(taxsbp_ret)
+            # Always returns 7 cols from taxsbp, remove empty col if specialization not set
+            if not use_specialization and self.bins.shape[1]==7: del self.bins[6]
+            self.bins.rename(columns={i:n for i,n in enumerate(self.columns)}, inplace=True)
+        else:
+            self.bins = pd.DataFrame(columns=self.columns)
 
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Bins({})'.format(', '.join(args))
     
-    def parse_bins(self, taxsbp_ret):
-        self.bins = pd.DataFrame(taxsbp_ret, columns=self.columns)
-
     def size(self):
         return self.bins.shape[0]
 

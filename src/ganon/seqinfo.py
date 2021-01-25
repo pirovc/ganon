@@ -10,12 +10,6 @@ class SeqInfo:
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'SeqInfo({})'.format(', '.join(args))
 
-    def to_csv(self):
-        # convert length col to numeric int 
-        # this is not set before due to issues of merging dataframes with different datatypes
-        self.seqinfo['length'] = self.seqinfo['length'].astype(int)
-        return self.seqinfo.to_csv(sep="\t", header=False, index=False)
-
     def size(self):
         return self.seqinfo.shape[0]
 
@@ -49,8 +43,8 @@ class SeqInfo:
     def join(self, df, field):
         self.seqinfo[field] = self.seqinfo.join(df.set_index('seqid'), on="seqid", how="left", rsuffix="_tojoin")[field+"_tojoin"]        
 
-    def parse_seq_info_file(self, seq_info_file, parse_specialization: bool=False):
-        self.seqinfo = pd.read_csv(seq_info_file, sep='\t', header=None, skiprows=0, index_col=False, names=self.seq_info_colums if parse_specialization else self.seq_info_colums[:-1])
+    def parse_seq_info_file(self, seq_info_file, use_specialization: bool=False):
+        self.seqinfo = pd.read_csv(seq_info_file, sep='\t', header=None, skiprows=0, index_col=False, names=self.seq_info_colums if use_specialization else self.seq_info_colums[:-1], dtype={'taxid': 'str'})
         self.drop_duplicates()
 
     def drop_duplicates(self):

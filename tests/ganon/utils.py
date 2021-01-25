@@ -83,7 +83,7 @@ def build_sanity_check_and_parse(params):
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
-    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins))
+    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins, use_specialization=True if res["gnn"].specialization else False))
 
     # Check number of bins
     if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
