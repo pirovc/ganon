@@ -218,13 +218,13 @@ class TestTableOffline(unittest.TestCase):
         # should have 1 col (top genus)
         self.assertEqual(res["out_pd"].shape[1], 1, "ganon table top sample filter failed")
 
-    def test_min_occurence(self):
+    def test_min_occurrence(self):
         """
-        Test ganon table with --min-occurence
+        Test ganon table with --min-occurrence
         """
         params = self.default_params.copy()
-        params["output_file"] = self.results_dir + "test_min_occurence.tsv"
-        params["min_occurence"] = 3
+        params["output_file"] = self.results_dir + "test_min_occurrence.tsv"
+        params["min_occurrence"] = 3
         params["rank"] = "phylum" # Fusobacteria is left out from report_reads3.tre
 
         # Build config from params
@@ -234,8 +234,8 @@ class TestTableOffline(unittest.TestCase):
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # should have no zero entries (3 samples/3 min occurence)
-        self.assertTrue((res["out_pd"].values>0).all(), "ganon table min occurence filter failed")
+        # should have no zero entries (3 samples/3 min occurrence)
+        self.assertTrue((res["out_pd"].values>0).all(), "ganon table min occurrence filter failed")
 
     def test_extra_cols(self):
         """
@@ -296,7 +296,7 @@ class TestTableOffline(unittest.TestCase):
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should have unclassified summing to 0 (not unclassified line reported)
-        self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min occurence filter failed")
+        self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min occurrence filter failed")
     
     def test_header(self):
         """

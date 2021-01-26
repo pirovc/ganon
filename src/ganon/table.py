@@ -32,12 +32,12 @@ def table(cfg):
         print_log(" - keeping " + str(top_all_total_taxa) + "/" + str(filtered_total_taxa) + " (--top-all "+ str(cfg.top_all)+")", cfg.quiet)
         filtered_total_taxa = top_all_total_taxa
 
-    if cfg.min_occurence or cfg.min_occurence_percentage:
-        if cfg.min_occurence_percentage:
-            cfg.min_occurence = int(len(reports)*cfg.min_occurence_percentage)
-        min_occurence_total_taxa = select_occurence(reports, cfg.min_occurence)
-        print_log(" - keeping " + str(min_occurence_total_taxa) + "/" + str(filtered_total_taxa) + " (--min-occurence "+ str(cfg.min_occurence)+")", cfg.quiet)
-        filtered_total_taxa = min_occurence_total_taxa
+    if cfg.min_occurrence or cfg.min_occurrence_percentage:
+        if cfg.min_occurrence_percentage:
+            cfg.min_occurrence = int(len(reports)*cfg.min_occurrence_percentage)
+        min_occurrence_total_taxa = select_occurrence(reports, cfg.min_occurrence)
+        print_log(" - keeping " + str(min_occurrence_total_taxa) + "/" + str(filtered_total_taxa) + " (--min-occurrence "+ str(cfg.min_occurrence)+")", cfg.quiet)
+        filtered_total_taxa = min_occurrence_total_taxa
 
     if not filtered_total_taxa: 
         print_log(" - No taxa left to report", cfg.quiet)
@@ -143,13 +143,13 @@ def select_top_all(reports, top_all):
             
     return len(total_taxa) 
 
-def select_occurence(reports, min_occurence):
+def select_occurrence(reports, min_occurrence):
     total_taxa = set()
     total_counts = get_total_counts(reports)
     min_occ_names = []
 
     for name,val in total_counts.items():
-        if val["occurence"]>=min_occurence:
+        if val["occurrence"]>=min_occurrence:
             min_occ_names.append(name)
 
     for file, rep in reports.items():
@@ -168,9 +168,9 @@ def get_total_counts(reports):
     total_counts = {}
     for d in reports.values():
         for name,count in d["taxa"].items():
-            if name not in total_counts: total_counts[name] = {"sum_percentage": 0, "occurence": 0}
+            if name not in total_counts: total_counts[name] = {"sum_percentage": 0, "occurrence": 0}
             total_counts[name]["sum_percentage"] += count/d["total"]
-            total_counts[name]["occurence"] += 1
+            total_counts[name]["occurrence"] += 1
     return total_counts
 
 def write_tsv(reports, cfg):

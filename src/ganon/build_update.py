@@ -43,7 +43,7 @@ def build(cfg):
     if cfg.specialization:
         replaced_spec = seqinfo.validate_specialization()
         if replaced_spec:
-            print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
+            print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
 
     # Write seq-info-file
     if not cfg.seq_info_file and cfg.write_seq_info_file: 
@@ -234,7 +234,7 @@ def update(cfg):
     if cfg.specialization:
         replaced_spec = seqinfo.validate_specialization()
         if replaced_spec:
-            print_log(" - "  + str(replaced_spec) + " invalid specialization entries (sequence accession used instead)", cfg.quiet)
+            print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
 
     if not cfg.seq_info_file and cfg.write_seq_info_file: 
         seqinfo.write(cfg.output_db_prefix+".seqinfo.txt")
