@@ -18,11 +18,11 @@ class Tax:
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Tax({})'.format(', '.join(args))
 
-    def add_nodes(self, new_nodes, label):
+    def add_nodes(self, new_nodes, rank):
         # add nodes from a pandas dataframe [group taxid]
         for node,parent in new_nodes.iterrows():
             if node not in self.nodes:
-                self.nodes[node] = (parent['taxid'],label,node) # repeat node on name
+                self.nodes[node] = (parent['taxid'],rank,node) # repeat node on name
 
     def merge(self, extra_tax): # duplicates solved by current tax
         for node in extra_tax.nodes:

@@ -2,6 +2,7 @@ import time, math
 import pandas as pd
 import numpy as np
 import taxsbp.taxsbp
+from io import StringIO
 from ganon.bins import Bins
 from ganon.gnn import Gnn
 from ganon.seqinfo import SeqInfo
@@ -12,7 +13,7 @@ def build(cfg):
     # validate input files
     input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     if len(input_files)==0:
-        print_log("ERROR: No valid input files found")
+        print_log("ERROR: No valid input files found", cfg.quiet)
         return False
 
     # Set db prefixes
@@ -22,29 +23,42 @@ def build(cfg):
     tmp_output_folder = cfg.db_prefix + "_tmp/"
     if not set_tmp_folder(tmp_output_folder): return False
 
-    # Set assembly mode
-    use_assembly=True if cfg.rank=="assembly" else False
-
     # Set up taxonomy
     ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
     
+    # Parse .tax    
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
     tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    # Load seqids and generate seqinfo
-    if cfg.seq_info_file:
-        seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
-    else:
-        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
-        load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
-        if cfg.write_seq_info_file: seqinfo.write(cfg.db_prefix+".seqinfo.txt")
+    # load seqinfo (file or seqids)
+    seqinfo = load_seqinfo(cfg, input_files)
+
+    # Retrieve sequence information
+    if not cfg.seq_info_file:    
+        retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
+    
+    # Check for valid specialization
+    if cfg.specialization:
+        replaced_spec = seqinfo.validate_specialization()
+        if replaced_spec:
+            print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
+
+    # Write seq-info-file
+    if not cfg.seq_info_file and cfg.write_seq_info_file: 
+        seqinfo.write(cfg.db_prefix+".seqinfo.txt")
+
     # check sequences compared to bins
     added_seqids, _, _ = check_updated_seqids(set(seqinfo.get_seqids()), set())
     # Ignore removed sequences if not doing complete update
     print_log("Build: adding " + str(len(added_seqids)) + " sequences", cfg.quiet)
     print_log("", cfg.quiet)
+
+    if not added_seqids:
+        print_log("No valid seq. info to build", cfg.quiet)
+        rm_tmp_folder(tmp_output_folder)
+        return False
 
     # Set bin length
     if cfg.bin_length: # user defined
@@ -52,10 +66,10 @@ def build(cfg):
     else:
         tx = time.time()
         print_log("Calculating best bin length", cfg.quiet)
-        bin_length, approx_size, n_bins = estimate_bin_len_size(cfg, seqinfo, tax, use_assembly)
+        bin_length, approx_size, n_bins = estimate_bin_len_size(cfg, seqinfo, tax)
         if bin_length<=0: 
             bin_length=1000000
-            print_log("WARNING: could not estimate bin length, using default of " + str(bin_length) + "bp")
+            print_log("WARNING: could not estimate bin length, using default of " + str(bin_length) + "bp", cfg.quiet)
         else:
             print_log(" - bin length: " + str(bin_length) + "bp (approx: " + str(n_bins) + " bins / " + str("{0:.2f}".format(approx_size)) + "MB)", cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
@@ -70,23 +84,7 @@ def build(cfg):
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
-    taxsbp_params={}
-    taxsbp_params["nodes_file"] = ncbi_nodes_file
-    taxsbp_params["bin_len"] = bin_length
-    if use_assembly:
-        taxsbp_params["bin_exclusive"] = "assembly"
-    elif cfg.rank=="taxid":
-        taxsbp_params["bin_exclusive"] = "leaves"
-    else:
-        taxsbp_params["bin_exclusive"] =  cfg.rank
-    if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
-    if fragment_length: 
-        taxsbp_params["fragment_len"] = fragment_length
-        taxsbp_params["overlap_len"] = cfg.overlap_length
-    if use_assembly: taxsbp_params["specialization"] = "assembly"
-    taxsbp_params["input_table"] = seqinfo.get_csv()
-    bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
-    del taxsbp_params
+    bins = run_taxsbp(seqinfo, bin_length, fragment_length, cfg.overlap_length, cfg.rank, cfg.specialization, ncbi_nodes_file, ncbi_merged_file, cfg.verbose)
     # bin statistics
     actual_number_of_bins = bins.get_number_of_bins()
     optimal_number_of_bins = optimal_bins(actual_number_of_bins)
@@ -100,20 +98,26 @@ def build(cfg):
     
     # Write .map file
     print_log(" - " + db_prefix["map"], cfg.quiet)
-    bins.write_map_file(db_prefix["map"], use_assembly)
+    bins.write_map_file(db_prefix["map"], use_specialization=True if cfg.specialization else False)
 
     # Write .tax file
     print_log(" - " + db_prefix["tax"], cfg.quiet)
-    tax.filter(bins.get_taxids()) # filter only used taxids
-    if use_assembly: tax.add_nodes(bins.get_specialization_taxid(), "assembly") # add assembly nodes
+    # filter only used taxids
+    tax.filter(bins.get_taxids()) 
+    # add specialization nodes
+    if cfg.specialization: tax.add_nodes(bins.get_specialization_taxid(), cfg.specialization) 
     tax.write(db_prefix["tax"])
 
+    if cfg.specialization and cfg.rank!="leaves":
+        print_log(" - --rank is set to leaves when using specialization values", cfg.quiet)
+        cfg.rank="leaves"
     # Write .gnn file
     print_log(" - " + db_prefix["gnn"], cfg.quiet)
     gnn = Gnn(kmer_size=cfg.kmer_size, 
             hash_functions=cfg.hash_functions, 
             number_of_bins=actual_number_of_bins, 
             rank=cfg.rank,
+            specialization=cfg.specialization,
             bin_length=bin_length,
             fragment_length=fragment_length,
             overlap_length=cfg.overlap_length,
@@ -136,6 +140,12 @@ def build(cfg):
     # Write aux. file for ganon
     acc_bin_file = tmp_output_folder + "acc_bin.txt"
     bins.write_acc_bin_file(acc_bin_file)
+
+    # Free memory for build
+    del seqinfo
+    del bins
+    del tax
+    del gnn
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
@@ -160,10 +170,11 @@ def build(cfg):
 
 def update(cfg):
     tx = time.time()
+
     # validate input files
     input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
     if len(input_files)==0:
-        print_log("ERROR: No valid input files found")
+        print_log("ERROR: No valid input files found", cfg.quiet)
         return False
 
     # Set db prefixes
@@ -175,17 +186,23 @@ def update(cfg):
 
     # Load .gnn file   
     gnn = Gnn(file=db_prefix["gnn"])
-    # Set assembly mode
-    use_assembly=True if gnn.rank=="assembly" else False
+
+    # If specialization was set on database
+    if gnn.specialization:
+        # if not provided by user, use defition of database
+        if not cfg.specialization: cfg.specialization=gnn.specialization
+        print_log("Using --specialization " + cfg.specialization, cfg.quiet)
+    else:
+        if cfg.specialization: 
+            # If user defined specialization on update but database has none
+            print_log("ERROR: not possible to update a database with --specialization if it was built without it", cfg.quiet)
+            return False
 
     # load bins
-    bins = Bins(taxsbp_ret=gnn.bins)
+    bins = Bins(taxsbp_ret=gnn.bins, use_specialization=True if cfg.specialization else False)
 
-    # Load seqids and generate seqinfo
-    if cfg.seq_info_file:
-        seqinfo = load_seqids(seq_info_file=cfg.seq_info_file, quiet=cfg.quiet)
-    else:
-        seqinfo = load_seqids(files=input_files, quiet=cfg.quiet) 
+    # load seqinfo (file or seqids)
+    seqinfo = load_seqinfo(cfg, input_files)
 
     # check sequences compared to bins
     added_seqids, removed_seqids, kept_seqids = check_updated_seqids(set(seqinfo.get_seqids()), set(bins.get_seqids()))
@@ -198,7 +215,8 @@ def update(cfg):
     print_log("", cfg.quiet)
 
     if not added_seqids and not removed_seqids:
-        print_log("ERROR: Nothing to update")
+        print_log("Nothing to update", cfg.quiet)
+        rm_tmp_folder(tmp_output_folder)
         return False
 
     if cfg.update_complete:           
@@ -208,11 +226,19 @@ def update(cfg):
         # Remove seqids already present in the current version (repeated entries)
         seqinfo.remove_seqids(kept_seqids)
 
-    # load seqinfo file with data (after removing ids)
+    # retrive sequence information (after removing invalid seqids)
     if not cfg.seq_info_file: 
-        load_seqinfo(tmp_output_folder, seqinfo, cfg.path_exec, cfg.seq_info_mode, use_assembly, cfg.quiet)
-        if cfg.write_seq_info_file: seqinfo.write(cfg.output_db_prefix+".seqinfo.txt" if cfg.output_db_prefix else cfg.db_prefix+".seqinfo.txt")
-    
+        retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
+
+    # Convert cols data types
+    if cfg.specialization:
+        replaced_spec = seqinfo.validate_specialization()
+        if replaced_spec:
+            print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
+
+    if not cfg.seq_info_file and cfg.write_seq_info_file: 
+        seqinfo.write(cfg.output_db_prefix+".seqinfo.txt")
+
     # save set of current binids
     previous_binids = set(bins.get_binids())
     # remove seqids from bins if performing update complete
@@ -226,23 +252,9 @@ def update(cfg):
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
-    taxsbp_params={}
-    taxsbp_params["update_table"] = bins.get_csv()
-    taxsbp_params["nodes_file"] = ncbi_nodes_file
-    taxsbp_params["bin_len"] = gnn.bin_length
-    if use_assembly:
-        taxsbp_params["bin_exclusive"] = "assembly"
-    elif gnn.rank=="taxid":
-        taxsbp_params["bin_exclusive"] = "leaves"
-    else:
-        taxsbp_params["bin_exclusive"] =  gnn.rank
-    if ncbi_merged_file: taxsbp_params["merged_file"] = ncbi_merged_file
-    if gnn.fragment_length: 
-        taxsbp_params["fragment_len"] = gnn.fragment_length
-        taxsbp_params["overlap_len"] = gnn.overlap_length
-    if use_assembly: taxsbp_params["specialization"] = "assembly"
-    taxsbp_params["input_table"] = seqinfo.get_csv()
-    updated_bins = Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params))
+    # Compability to nomenclature before 0.3.5
+    if gnn.rank=="taxid" or gnn.rank=="assembly": gnn.rank="leaves"  
+    updated_bins = run_taxsbp(seqinfo, gnn.bin_length, gnn.fragment_length, gnn.overlap_length, gnn.rank, cfg.specialization, ncbi_nodes_file, ncbi_merged_file, cfg.verbose, bins=bins)
     # bin statistics
     taxsbp_binids = set(updated_bins.get_binids())
     removed_binids = previous_binids.difference(kept_binids | taxsbp_binids)
@@ -257,8 +269,11 @@ def update(cfg):
     print_log(" - " + cfg.output_db_prefix + ".tax" if cfg.output_db_prefix else db_prefix["tax"], cfg.quiet)
     tax = Tax(ncbi_nodes=ncbi_nodes_file, ncbi_names=ncbi_names_file)
     # Update and write .tax file
-    tax.filter(updated_bins.get_taxids()) # filter only used taxids
-    if use_assembly: tax.add_nodes(updated_bins.get_specialization_taxid(), "assembly") # add assembly nodes
+    # filter only used taxids
+    tax.filter(updated_bins.get_taxids())
+    # add specialization nodes
+    if cfg.specialization: tax.add_nodes(updated_bins.get_specialization_taxid(), cfg.specialization) 
+    
     # Load old .tax file into new taxonomy
     tax.merge(Tax([db_prefix["tax"]]))
     # Write .tax file
@@ -272,11 +287,13 @@ def update(cfg):
     print_log(" - " + cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"], cfg.quiet)
     gnn.bins = bins.get_list() # save updated bins
     gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
+    # set new specialization to gnn
+    gnn.specialization = cfg.specialization
     gnn.write(cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"])
 
     # Recreate .map file based on the new bins
     print_log(" - " + cfg.output_db_prefix + ".map" if cfg.output_db_prefix else db_prefix["map"], cfg.quiet)
-    bins.write_map_file(cfg.output_db_prefix + ".map" if cfg.output_db_prefix else db_prefix["map"], use_assembly)
+    bins.write_map_file(cfg.output_db_prefix + ".map" if cfg.output_db_prefix else db_prefix["map"], use_specialization=True if cfg.specialization else False)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     tx = time.time()
@@ -300,6 +317,13 @@ def update(cfg):
     else:
         # Only new sequences (updated_bins) either on old or new binids
         updated_bins.write_acc_bin_file(acc_bin_file)
+
+    # Free memory for build
+    del seqinfo
+    del bins
+    del updated_bins
+    del tax
+    del gnn
 
     # Temporary output filter 
     tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
@@ -334,85 +358,140 @@ def check_updated_seqids(new_seqids, old_seqids):
 
     return added_seqids, removed_seqids, kept_seqids
 
+def parse_seqids(seqinfo, input_files, specialization, quiet, get_length: bool):
+    for file in input_files:
+        if get_length:
+            # cat | zcat | gawk -> compability with osx
+            run_get = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{if (seqlen){{print seqlen}}; printf substr($1,2)\"\\t\";seqlen=0;next;}} {{seqlen+=length($0)}}END{{print seqlen}}'".format(file, "| zcat" if file.endswith(".gz") else "")
+            stdout, stderr = run(run_get, shell=True)
+            parsed_stdout = pd.read_csv(StringIO(stdout), sep="\t", header=None, names=['seqid', 'length'])
+        else:
+            # cat | zcat | gawk -> compability with osx
+            run_get = "cat {0} {1} | gawk 'BEGIN{{FS=\" \"}} /^>/ {{print substr($1,2)}}'".format(file, "| zcat" if file.endswith(".gz") else "")
+            stdout, stderr = run(run_get, shell=True)
+            parsed_stdout = pd.read_csv(StringIO(stdout), header=None, names=['seqid'])
+        if specialization=="file":
+            parsed_stdout["specialization"] = os.path.basename(file)
+        elif specialization=="sequence":
+            parsed_stdout["specialization"] = parsed_stdout["seqid"]
+        seqinfo.append(parsed_stdout)
 
-def load_seqids(files: list=[], seq_info_file: str=None, quiet: bool=False):
-    tx = time.time()
-    print_log("Extracting sequence identifiers", quiet)
-    # Load or create seqinfo
-    if seq_info_file is not None: # file already provided 
-        seqinfo = SeqInfo(seq_info_file=seq_info_file)
-        print_log(" - "  + str(seqinfo.size()) + " entries in the --seq-info-file", quiet)
-    else: # retrieve info
-        # Count number of input sequences to define method or retrieve accessions for forced eutils
-        seqinfo = SeqInfo()
-        seqinfo.parse_seqid(files)
-        print_log(" - "  + str(seqinfo.size()) + " sequence headers successfully retrieved from the input files" , quiet)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+    # Drop duplicated seqids
+    parsed_size = seqinfo.size()
+    seqinfo.drop_duplicates()
+    if seqinfo.size() < parsed_size: 
+        print_log(" - " + str(parsed_size-seqinfo.size()) + " duplicated accessions were skipped", quiet)
+
+    # Drop rows with zero length
+    if get_length:
+        parsed_size = seqinfo.size()
+        seqinfo.drop_zeros(col='length')
+        if seqinfo.size() < parsed_size: 
+            print_log(" - " + str(parsed_size-seqinfo.size()) + " entries without sequence length were skipped", quiet)
+
+def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, quiet, skip_len_taxid=False, get_assembly=False):
+    seqid_file = tmp_output_folder + "seqids.txt"
+    seqinfo.write_seqid_file(seqid_file)
+
+    # always return all entries in the same order (-k)
+    # report sequence accession if specialization not found (-r)
+    run_get_seq_info_cmd = '{0} -k -r -i {1} {2} {3}'.format(
+                                path_exec_get_seq_info,
+                                seqid_file,
+                                "-a" if get_assembly else "",
+                                "-s" if skip_len_taxid else "")
+    stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not quiet else False, exit_on_error=False)
+
+    # set "na" as NaN with na_values="na"
+    if get_assembly:
+        if skip_len_taxid:
+            # Return only assembly
+            seqinfo.paste_cols("specialization", pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','assembly'], na_values="na")['assembly'])
+        else:
+            # Return full seqinfo
+            seqinfo.clear()
+            seqinfo.append(pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','length','taxid','specialization'], na_values="na", dtype={'taxid': 'str'}))
+    else:
+        # Return seqid, len and taxid - keep specialization in the seqinfo
+        seqinfo.paste_cols(["seqid","length","taxid"], pd.read_csv(StringIO(stdout), sep='\t', header=None, skiprows=0, names=['seqid','length','taxid'], na_values="na", dtype={'taxid': 'str'}))
+
+    # drop failed entries for lenght or taxid
+    parsed_size = seqinfo.size()
+    seqinfo.dropna(subset=["length","taxid"])
+    if seqinfo.size() < parsed_size: 
+        print_log(" - " + str(parsed_size-seqinfo.size()) + " entries could not be retrieved from eutils and were skipped", quiet)
+
+def load_seqinfo(cfg, input_files):
+    seqinfo = SeqInfo()
+    if cfg.seq_info_file:
+        tx = time.time()
+        print_log("Parsing --seq-info-file", cfg.quiet)
+        seqinfo.parse_seq_info_file(cfg.seq_info_file, use_specialization=True if cfg.specialization=="custom" else False)
+        print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    else:
+        tx = time.time()
+        print_log("Extracting sequence identifiers", cfg.quiet)
+        parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=False)
+        print_log(" - "  + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     return seqinfo
 
-def load_seqinfo(tmp_output_folder, seqinfo, path_exec, seq_info_mode, use_assembly, quiet):
-    
+def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
     # Max. # of sequences to use eutils as auto mode
     max_seqs_eutils = 50000
-    # default accession2taxid files
-    default_acc2txid = ["nucl_gb", "nucl_wgs"]
     # initialize total count
     seqid_total_count = seqinfo.size()
 
     # Define method to use
-    if seq_info_mode[0]=="auto" and seqid_total_count>max_seqs_eutils: 
-        seq_info_mode = default_acc2txid
-    else:
+    if "auto" in cfg.seq_info_mode:
+        if seqid_total_count>max_seqs_eutils: 
+            seq_info_mode = ["nucl_gb", "nucl_wgs"]
+        else:
+            seq_info_mode = ["eutils"]
+    elif "eutils" in cfg.seq_info_mode:
         seq_info_mode = ["eutils"]
+    else:
+        seq_info_mode = cfg.seq_info_mode
 
     if seq_info_mode[0]=="eutils":
         tx = time.time()
-        print_log("Retrieving sequence information from NCBI E-utils", quiet)
-        seqid_file = tmp_output_folder + "seqids.txt"
-        seqinfo.write_seqid_file(seqid_file)
-        seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_seq_info'], skip_len_taxid=False, get_assembly=True if use_assembly else False)
-        print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved", quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+        print_log("Retrieving sequence information from NCBI E-utils", cfg.quiet)
+        parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], cfg.quiet, skip_len_taxid=False, get_assembly=True if cfg.specialization=="assembly" else False)
+        print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved", cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     else:
-        # acc2taxid - offline mode
-        acc2txid_options = ["nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
-
-        # Retrieve seq. lengths
+        # Retrieve seq. ids and lengths
         tx = time.time()
-        print_log("Extracting sequence lengths", quiet)
-        seqinfo.parse_seqid_length(input_files)
-        print_log(" - " + str(seqinfo.size()) + " sequences successfully retrieved", quiet)
+        print_log("Extracting sequence lengths", cfg.quiet)
+        seqinfo.clear() # Clear seqinfo (get seqids again with length)
+        parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=True)
+        print_log(" - " + str(seqinfo.size()) + " sequences lenghts successfully retrieved", cfg.quiet)
         # Check if retrieved lengths are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
-            print_log(" - could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences", quiet)
+            print_log(" - could not retrieve lenght for " + str(seqid_total_count - seqinfo.size()) + " sequences", cfg.quiet)
             seqid_total_count = seqinfo.size()
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-        tx = time.time()
-        print_log("Extracting taxonomic information from accession2taxid files", quiet)
         dowloaded_acc2txid_files = []
         for acc2txid in seq_info_mode:
-            if acc2txid not in acc2txid_options:
-                print_log("WARNING: " + acc2txid +  " is not a valid option")
-            else:
-                dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder, quiet))
-            
-        count_acc2txid = seqinfo.parse_acc2txid(dowloaded_acc2txid_files)
+            dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder, cfg.quiet))
+        
+        print_log("Parsing accession2taxid files", cfg.quiet)     
+        count_acc2txid = parse_acc2txid(seqinfo, dowloaded_acc2txid_files)
         for acc2txid_file, cnt in count_acc2txid.items():
-            print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file", quiet)
+            print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file", cfg.quiet)
         # Check if retrieved taxids are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
-            print_log(" - could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions", quiet)
+            print_log(" - could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions", cfg.quiet)
             seqid_total_count = seqinfo.size()
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-        if use_assembly:
+        if cfg.specialization=="assembly":
             tx = time.time()
-            print_log("Retrieving assembly information from NCBI E-utils", quiet)
-            seqid_file = tmp_output_folder + "seqids.txt"
-            seqinfo.write_seqid_file(seqid_file)
-            seqinfo.parse_ncbi_eutils(seqid_file, path_exec['get_seq_info'], skip_len_taxid=True, get_assembly=True)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+            print_log("Retrieving assembly information from NCBI E-utils", cfg.quiet)
+            parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], cfg.quiet, skip_len_taxid=True, get_assembly=True)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     tx = time.time()
@@ -423,6 +502,24 @@ def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     stdout, stderr = run(run_wget_acc2txid_file_cmd, print_stderr=True)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return acc2txid_file
+
+def parse_acc2txid(seqinfo, acc2txid_files):
+    count_acc2txid = {}
+    unique_seqids = set(seqinfo.get_seqids())
+    for acc2txid in acc2txid_files:
+        tmp_seqid_taxids = pd.read_csv(acc2txid, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['seqid','taxid'], converters={'seqid':lambda x: x if x in unique_seqids else ""}, dtype={'taxid': 'str'})
+        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['seqid']!=""] #keep only seqids used
+        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['taxid']!="0"] # filter out taxid==0
+        # save count to return
+        count_acc2txid[acc2txid] = tmp_seqid_taxids.shape[0]    
+        # merge taxid retrieved based on seqid
+        seqinfo.join(tmp_seqid_taxids, "taxid")
+        del tmp_seqid_taxids
+        #if already found all seqids no need to parse all files till the end)
+        if sum(count_acc2txid.values()) == len(unique_seqids): 
+            break 
+
+    return count_acc2txid
 
 def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
     return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*optimal_bins(n_bins))/8388608
@@ -436,15 +533,15 @@ def optimal_bins(n):
     #return optimal number of bins for the IBF (multiples of 64)
     return (math.floor(n/64)+1)*64 
 
-def estimate_bin_len_size(cfg, seqinfo, tax, use_assembly):
+def estimate_bin_len_size(cfg, seqinfo, tax):
     # Simulate bins that will be created by taxsbp with many bin lenghts
     # Select the best trade-off on size and n. of bins
 
     # Generate dict with groups:total_length
     groups_len = {}
-    if use_assembly:
-        groups_len = seqinfo.seqinfo.groupby('assembly').sum().to_dict()['length']
-    elif cfg.rank=="taxid":
+    if cfg.specialization:
+        groups_len = seqinfo.seqinfo.groupby('specialization').sum().to_dict()['length']
+    elif cfg.rank=="leaves":
         groups_len = seqinfo.seqinfo.groupby('taxid').sum().to_dict()['length']
     else:
         groups_len = pd.concat([seqinfo.seqinfo['taxid'].apply(lambda x: tax.get_rank(x, cfg.rank)), seqinfo.seqinfo['length']], axis=1).groupby('taxid').sum().to_dict()['length']
@@ -494,3 +591,30 @@ def estimate_bin_len_size(cfg, seqinfo, tax, use_assembly):
         return int(bin_lens[idx_min]), filter_sizes[idx_min], n_bins[idx_min]    
     else:
         return 0,0,0
+
+def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, specialization, ncbi_nodes_file, ncbi_merged_file, verbose, bins: Bins=None):
+    taxsbp_params={}
+
+    taxsbp_params["input_table"] = seqinfo.seqinfo
+    if bins is not None:
+        taxsbp_params["update_table"] = bins.bins
+
+    taxsbp_params["nodes_file"] = ncbi_nodes_file
+    if ncbi_merged_file: 
+        taxsbp_params["merged_file"] = ncbi_merged_file
+    
+    taxsbp_params["bin_len"] = bin_length
+    if fragment_length: 
+        taxsbp_params["fragment_len"] = fragment_length
+        taxsbp_params["overlap_len"] = overlap_length
+
+    if specialization:
+        taxsbp_params["specialization"] = specialization
+        taxsbp_params["bin_exclusive"] = specialization
+    else: # either species,genus ... or "leaves"
+        taxsbp_params["bin_exclusive"] =  rank
+
+    #if verbose:
+    taxsbp_params["silent"] = False
+
+    return Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params), use_specialization=True if specialization else False)

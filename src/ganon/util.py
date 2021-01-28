@@ -12,7 +12,8 @@ def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=Tr
                                     stderr=subprocess.PIPE)   
         stdout, stderr = process.communicate() # wait for the process to terminate
         errcode = process.returncode
-        if errcode!=0: raise Exception()
+        if exit_on_error and errcode!=0: 
+            raise Exception()
         if print_stderr and stderr: print_log(stderr)
  
     #except OSError as e: # The most common exception raised is OSError. This occurs, for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
@@ -25,7 +26,7 @@ def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=Tr
         if stdout: print_log(stdout)
         print_log("Error: ")
         if stderr: print_log(stderr)
-        if exit_on_error: sys.exit(errcode)
+        sys.exit(errcode)
 
     return stdout, stderr
 
@@ -80,7 +81,7 @@ def validate_input_files(input_files, input_directory, input_extension, quiet):
     input_files_from_directory = []
     if input_directory and input_extension:
         if not os.path.isdir(input_directory):
-            print_log(input_directory + " is not a valid directory", cfg.quiet)
+            print_log(input_directory + " is not a valid directory", quiet)
         else:
             for file in os.listdir(input_directory):
                 if file.endswith(input_extension):

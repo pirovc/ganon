@@ -16,7 +16,7 @@ conda install -c bioconda -c conda-forge ganon
 
 * There are possible performance benefits compiling ganon from source rather than using the conda version. To do so, please follow the instructions: [Install without conda](#install-without-conda)
 
-* ganon runs on macOS but it is not available on conda due to compiler limitations. To install ganon os osx please follow the instructions: [Install without conda](#install-without-conda)
+* ganon runs on macOS but it is not available on conda due to compiler limitations [Install without conda](#install-without-conda)
 
 ## Running ganon with sample data
 
@@ -168,7 +168,7 @@ Every run on `ganon build` or `ganon update` will generate the following databas
  - {prefix}**.gnn**: gzipped pickled file (python) with information about clustering and parameters used
 
 Obs:
--  Database files from version `0.1.X`, `0.2.X` and `0.3.X` are **NOT** compatible. If you want to convert a database to a newer version, please use the script `ganon-convert-db-0.1-0.2.py` or `ganon-convert-db-0.2-0.3.py`
+-  Database files between different minor versions (e.g. 0.3.X and 0.4.X) are **NOT** compatible. If you want to convert a database built with an older version, please use the converters on the `scripts/` folder (e.g. `scripts/ganon-convert-db-0.3-0.4.py`)
 
 ### classify
 
@@ -182,7 +182,7 @@ Obs:
  - {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. By default, this is a read-based report where each read classified is counted once. It is possible to generate this for all read matches (`ganon report --report-type matches`). In this case, single and shared matches are reported to their target. Each line in this report is a taxonomic entry, with the following fields: 
 
 	1) taxonomic rank *(e.g. phylum, species, ...)*
-	2) target *(e.g. taxid/assemblyid)*
+	2) target *(e.g. taxid/specialization)*
 	3) target lineage *(e.g 1|2|1224|...)*
 	4) target name *(e.g. Paenibacillus polymyxa)*
 	5) \# unique assignments *(number of reads that matched exclusively to this target)*
@@ -192,7 +192,7 @@ Obs:
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
-- The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is suceffully applied and/or hiearchical selection is selected (keep/skip/split).
+- The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
 - When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
 
@@ -308,13 +308,13 @@ ganon accepts single-end or paired-end reads. In paired-end mode, reads are alwa
 
 Both parameters are used to define the similarity threshold between reads and references. `--max-error` will calculate the minimum amount of k-mers matches based on the q-gram lemma. `--min-kmers` will directly tell how many k-mers (in %) are necessary to consider a match. Note that the strata filter will always select reads with the best error range first (no error, 1 error, 2 errors, ...) and those parameters are controlling the lower bound of the threshold.
 
-`--max-error` is recomended when working with precise classification. For example, most of your reads are represented in the index. `--max-error 0` means that all k-mers of a read should match a reference to be classified (very strict). Values used here are usually low (1, 3, 5), but not necessarily. Note that if you have reads of different lenghts you may want to use `--min-kmers` (with high values, e.g. 0.75) to apply roughly the same criteria for your data.
+`--max-error` is recommended when working with precise classification. For example, most of your reads are represented in the index. `--max-error 0` means that all k-mers of a read should match a reference to be classified (very strict). Values used here are usually low (1, 3, 5), but not necessarily. Note that if you have reads of different lengths you may want to use `--min-kmers` (with high values, e.g. 0.75) to apply roughly the same criteria for your data.
 
-`--min-kmers` is recommended in more exploratory cases where exact matches are not possible. For example, analysing a sample with very few known species. `--min-kmers 0`  means that any read with one or more k-mers will be considered. This does not mean that any read will be classified, but that the threshold is very low for reads with few matches. Using low `--min-kmers` will mostly introduce false positives with a chance of increasing your sensitivity. Values here are usually low (0.25, 0.1, 0.05).
+`--min-kmers` is recommended in more exploratory cases where exact matches are not possible. For example, analyzing a sample with very few known species. `--min-kmers 0`  means that any read with one or more k-mers will be considered. This does not mean that any read will be classified, but that the threshold is very low for reads with few matches. Using low `--min-kmers` will mostly introduce false positives with a chance of increasing your sensitivity. Values here are usually low (0.25, 0.1, 0.05).
 
 #### --max-error-unique
 
-Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the classified read has less than `--max-error-unique`, the match is not excluded but assigned to its parent node. This is useful in a scenario when a read is poorly matched against a specific target (species, assembly) due to lack of representativity (just one references for a species, for example). Usually set to lower values (0, 1, 2).
+Exclusive error rate to define the similarity threshold of reads with unique matches. This is applied after filtering and only if a read is exclusively assigned to one target. If the classified read has less than `--max-error-unique`, the match is not excluded but assigned to its parent node. This is useful in a scenario when a read is poorly matched against a specific target due to lack of representativity (just one references for a species, for example). Usually set to lower values (0, 1, 2).
 
 #### --strata-filter
 
@@ -322,26 +322,34 @@ The strata filter is active by default. For every read, the best match - meaning
 
 #### --offset
 
-`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that higher offset values will affect the sensitivity and precision of your classsification, specially when using 
+`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that higher offset values will affect the sensitivity and precision of your classification, specially when using 
 `--min-kmers 0`.
 
 ### ganon build 
 
 #### --max-bloom-size and --bin-length 
 
-The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it (ps: there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.).
+The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it. However, there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.
 
 The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`, `--kmer-size` and `--hash-functions`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--fixed-bloom-size` (ganon will tell you what's the resulting max. false positive).
 
-`--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default,  `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
+`--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default, `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
 
 Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size by definition. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
+
+#### --specialization
+
+With the `--specialization` parameter is possible use an extra specialized "rank" as target for classification after taxonomic leaves. With this option, classification can be performed at strain, assembly, file, sequence level or any other custom level. `--specialization sequence` will use each each sequence (starting with ">") in the provided input files as a unique target to build the database. `--specialization file` will use each file as a target, useful for building at assembly/strain level if all sequences of the same group are in one file. `--specialization assembly` will retrieve assembly accessions from NCBI eutils and use them as target (this can take some time, since NCBI web services are limited on the amount of request per second). `--specialization custom` will use the 4th column of the `--seq-info-file` as target, allowing customized specializations.
 
 ### ganon update
 
 #### --update-complete
 
-By default `ganon update` will only add sequences provided with `--input-files` to an previosly generated index. Using `--update-complete` it is possible to add and remove sequences from an index. When activating this option, ganon will consider that the files provided in `--input-files` are an actual representation of the index to build. It will automatically detect sequences that should be kept, inserted or removed given the input files and the information contained on the index to be updated.
+By default `ganon update` will only add sequences provided with `--input-files` to an previously generated index. Using `--update-complete` it is possible to add and remove sequences from an index. When activating this option, ganon will consider that the files provided in `--input-files` are an actual representation of the index to build. It will automatically detect sequences that should be kept, inserted or removed given the input files and the information contained on the index to be updated.
+
+#### --specialization
+
+The same use of `--specialization` from `ganon build` (check above). `--specialization` can be changed in the update process (e.g. `--specialization assembly` was used to build and `--specialization file` is used to update). However, `--specialization` can only be used in `ganon update` if the database was built with it.
 
 ### ganon report
 
@@ -351,7 +359,7 @@ By default, `ganon classify` and  `ganon report` generate a read-based report (`
 
 #### --split-hierarchy, --keep-hierarchy or --skip-hierarchy
 
-When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separetly using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
+When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separately using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
 
 ## Install without conda
 
@@ -367,7 +375,7 @@ System packages:
 ### run dependencies
 
 System packages:
-- python >=3.4
+- python >=3.5
 - pandas >=0.22.0
 - gawk
 - grep
@@ -383,6 +391,7 @@ System packages:
 ```shh
 git clone https://github.com/pirovc/pylca.git
 cd pylca
+git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
 python3 setup.py install
 ```
 
@@ -394,6 +403,7 @@ binpacking -h
 ```shh
 git clone https://github.com/pirovc/taxsbp.git
 cd taxsbp
+git checkout 35ffb1e1a92f6199d757dfdd2f1971db29dd4070 # v1.1.1
 python3 setup.py install
 taxsbp -h
 ```
@@ -472,14 +482,21 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 <details>
   <summary>ganon build</summary>
 
-	usage: ganon build [-h] -d DB_PREFIX [-i [INPUT_FILES [INPUT_FILES ...]]] [-r] [-k] [-n] [-f] [-m] [-l] [-t]
-	                   [--fixed-bloom-size] [--fragment-length] [--overlap-length] [--seq-info-mode [[...]]]
-	                   [--seq-info-file] [--taxdump-file [[...]]] [--input-directory] [--input-extension]
-	                   [--write-seq-info-file] [--verbose] [--quiet]
+	usage: ganon build [-h] -d DB_PREFIX [-i [INPUT_FILES ...]] [-r] [-s] [-k] [-n] [-f] [-m] [-l] [-t] [--fixed-bloom-size]
+	                   [--fragment-length] [--overlap-length] [--seq-info-mode [...]] [--seq-info-file]
+	                   [--taxdump-file [...]] [--input-directory] [--input-extension] [--write-seq-info-file] [--verbose]
+	                   [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -r , --rank           Target taxonomic rank for classification [assembly,taxid,species,genus,...]. Default: species
+	  -r , --rank           Rank specific target for classification [species,genus,...]. use "leaves" to use the leaf
+	                        taxonomic node assigned to each sequence as targets. If specified rank is not found in the
+	                        lineage, use the leaf taxonomic node as target. Default: species
+	  -s , --specialization 
+	                        Add extra specialized "rank" as target for classification after taxonomic leaves. When selected
+	                        --rank is set to leaves. Options: [sequence,file,assembly,custom]. "sequence" will use sequence
+	                        accession as target. "file" uses the filename as target. "assembly" will use assembly info from
+	                        NCBI as target. "custom" uses the 4th column of the file provided in --seq-info-file as target.
 	  -k , --kmer-size      The k-mer size for the interleaved bloom filter. Default: 19
 	  -n , --hash-functions 
 	                        The number of hash functions for the interleaved bloom filter. Default: 3
@@ -488,37 +505,35 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	                        Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-
 	                        size, --hash-functions and --max-fp [Mutually exclusive --fixed-bloom-size]
 	  -l , --bin-length     Maximum length (in bp) for each bin. Default: auto
-	  -t , --threads        Number of subprocesses/threads to use. Default: 2
+	  -t , --threads        Number of sub-processes/threads to use. Default: 2
 	  --fixed-bloom-size    Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-
 	                        size]
 	  --fragment-length     Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-
 	                        length
 	  --overlap-length      Fragment overlap length (in bp). Should be bigger than the read length used for classification.
 	                        Default: 300
-	  --seq-info-mode [ [ ...]]
-	                        Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic
-	                        and seq. length information. If a small number of sequences is provided (<50000) or when --rank
-	                        assembly, ganon will automatically obtain data with NCBI E-utils websevices (eutils). Offline
-	                        mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order
-	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot],
-	                        eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
-	                        exclusive --seq-info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly
-	                        id]) [Mutually exclusive --seq-info]
-	  --taxdump-file [ [ ...]]
+	  --seq-info-mode [ ...]
+	                        Automatic mode to retrieve tax. info and seq. length. [auto,eutils] or one or more
+	                        accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs
+	                        dead_prot]. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs.
+	                        Alternatively a file can be directly provided (see --seq-info-file). Default: auto
+	  --seq-info-file       Tab-separated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab>
+	                        specialization]) [Mutually exclusive --seq-info-mode]
+	  --taxdump-file [ ...]
 	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
 	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g.
+	                        ".fna.gz")
 	  --write-seq-info-file
 	                        Write sequence information to DB_PREFIX.seqinfo.txt
 	  --verbose             Verbose output mode
-	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+	  --quiet               Quiet output mode
 
 	required arguments:
 	  -d DB_PREFIX, --db-prefix DB_PREFIX
 	                        Database output prefix (.ibf, .map, .tax, .gnn will be created)
-	  -i [INPUT_FILES [INPUT_FILES ...]], --input-files [INPUT_FILES [INPUT_FILES ...]]
+	  -i [INPUT_FILES ...], --input-files [INPUT_FILES ...]
 	                        Input reference sequence fasta files [.gz]
 
 </details>
@@ -526,41 +541,44 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 <details>
   <summary>ganon update</summary>
 
-	usage: ganon update [-h] -d DB_PREFIX [-i [INPUT_FILES [INPUT_FILES ...]]] [-o] [-t] [--seq-info-mode [[...]]]
-	                    [--seq-info-file] [--taxdump-file [[...]]] [--input-directory] [--input-extension]
-	                    [--update-complete] [--write-seq-info-file] [--verbose] [--quiet]
+	usage: ganon update [-h] -d DB_PREFIX [-i [INPUT_FILES ...]] [-o] [-t] [-s] [--seq-info-mode [...]] [--seq-info-file]
+	                    [--taxdump-file [...]] [--input-directory] [--input-extension] [--update-complete]
+	                    [--write-seq-info-file] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -o , --output-db-prefix 
 	                        Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix
-	  -t , --threads        Number of subprocesses/threads to use. Default: 2
-	  --seq-info-mode [ [ ...]]
-	                        Mode to obtain sequence information. For each sequence entry provided, ganon requires taxonomic
-	                        and seq. length information. If a small number of sequences is provided (<50000) or when --rank
-	                        assembly, ganon will automatically obtained data with NCBI E-utils websevices (eutils). Offline
-	                        mode will download batch files from NCBI Taxonomy and look for taxonomic ids in the order
-	                        provided. Options: [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot],
-	                        eutils (force webservices) or auto (uses eutils or [nucl_gb nucl_wgs]). Default: auto [Mutually
-	                        exclusive --seq-info-file]
-	  --seq-info-file       Pre-generated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly
+	  -t , --threads        Number of sub-processes/threads to use. Default: 2
+	  -s , --specialization 
+	                        Change specialization mode. Can only be used if database was built with some specialization.
+	                        Options: [sequence,file,assembly,custom]. "sequence" will use sequence accession as target.
+	                        "file" uses the filename as target. "assembly" will use assembly info from NCBI as target.
+	                        "custom" uses the 4th column of the file provided in --seq-info-file as target.
+	  --seq-info-mode [ ...]
+	                        Automatic mode to retrieve tax. info and seq. length. [auto,eutils] or one or more
+	                        accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs
+	                        dead_prot]. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs.
+	                        Alternatively a file can be directly provided (see --seq-info-file). Default: auto
+	  --seq-info-file       Tab-separated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly
 	                        id]) [Mutually exclusive --seq-info]
-	  --taxdump-file [ [ ...]]
+	  --taxdump-file [ ...]
 	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
 	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
 	  --input-directory     Directory containing input files
-	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".fna.gz")
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g.
+	                        ".fna.gz")
 	  --update-complete     Update adding and removing sequences. Input files should represent the complete updated set of
 	                        references, not only new sequences.
 	  --write-seq-info-file
 	                        Write sequence information to DB_PREFIX.seqinfo.txt
 	  --verbose             Verbose output mode
-	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+	  --quiet               Quiet output mode
 
 	required arguments:
 	  -d DB_PREFIX, --db-prefix DB_PREFIX
 	                        Database input prefix (.ibf, .map, .tax, .gnn)
-	  -i [INPUT_FILES [INPUT_FILES ...]], --input-files [INPUT_FILES [INPUT_FILES ...]]
+	  -i [INPUT_FILES ...], --input-files [INPUT_FILES ...]
 	                        Input reference sequence fasta files [.gz] to be included to the database. Complete set of
 	                        updated sequences should be provided when using --update-complete
 
@@ -569,52 +587,51 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 <details>
   <summary>ganon classify</summary>
 
-	usage: ganon classify [-h] -d [DB_PREFIX [DB_PREFIX ...]] [-s [reads.fq[.gz] [reads.fq[.gz] ...]]] [-p [reads.1.fq[.gz]
-	                      reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]] [-o] [-c [[...]]] [-k [[...]]] [-e [[...]]]
-	                      [-u [[...]]] [-l [[...]]] [-f] [-t] [-r [[...]]] [--output-all] [--output-unclassified]
-	                      [--output-single] [--verbose] [--quiet]
+	usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]] [-o]
+	                      [-c [...]] [-k [...]] [-e [...]] [-u [...]] [-l [...]] [-f] [-t] [-r [...]] [--output-all]
+	                      [--output-unclassified] [--output-single] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
 	  -o , --output-prefix 
 	                        Output prefix for .lca and .rep. Empty to output to STDOUT (only .lca will be printed)
-	  -c [ [ ...]], --hierarchy-labels [ [ ...]]
-	                        Hierarchy definition, one for each database input. Can also be a string, but input will be sorted
-	                        to define order (e.g. 1 1 2 3). Default: 1
-	  -k [ [ ...]], --min-kmers [ [ ...]]
+	  -c [ ...], --hierarchy-labels [ ...]
+	                        Hierarchy definition, one for each database input. Can also be a string, but input will be
+	                        sorted to define order (e.g. 1 1 2 3). Default: 1
+	  -k [ ...], --min-kmers [ ...]
 	                        Min. percentage of k-mers matching to consider a read assigned. Single value or one per database
 	                        (e.g. 0.5 0.7 1 0.25). Default: 0.25 [Mutually exclusive --max-error]
-	  -e [ [ ...]], --max-error [ [ ...]]
+	  -e [ ...], --max-error [ ...]
 	                        Max. number of errors allowed. Single value or one per database (e.g. 3 3 4 0) [Mutually
 	                        exclusive --min-kmers]
-	  -u [ [ ...]], --max-error-unique [ [ ...]]
+	  -u [ ...], --max-error-unique [ ...]
 	                        Max. number of errors allowed for unique assignments after filtering. Matches below this error
 	                        rate will not be discarded, but assigned to a parent taxonomic level. Single value or one per
 	                        hierarchy (e.g. 0 1 2). -1 to disable. Default: -1
-	  -l [ [ ...]], --strata-filter [ [ ...]]
-	                        Additional errors allowed (relative to the best match) to filter and select matches. Single value
-	                        or one per hierarchy (e.g. 0 1 2). -1 to disable filtering. Default: 0
+	  -l [ ...], --strata-filter [ ...]
+	                        Additional errors allowed (relative to the best match) to filter and select matches. Single
+	                        value or one per hierarchy (e.g. 0 1 2). -1 to disable filtering. Default: 0
 	  -f , --offset         Number of k-mers to skip during classification. Can speed up analysis but may reduce recall.
 	                        (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2
-	  -t , --threads        Number of subprocesses/threads to use. Default: 3
-	  -r [ [ ...]], --ranks [ [ ...]]
+	  -t , --threads        Number of sub-processes/threads to use. Default: 3
+	  -r [ ...], --ranks [ ...]
 	                        Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks:
-	                        superkingdom phylum class order family genus species assembly. This file can be re-generated with
-	                        the ganon report command.
+	                        superkingdom phylum class order family genus species assembly. This file can be re-generated
+	                        with the ganon report command.
 	  --output-all          Output an additional file with all matches (.all). File can be very large.
 	  --output-unclassified
 	                        Output an additional file with unclassified read headers (.unc)
 	  --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
 	                        hierarchy
 	  --verbose             Verbose output mode
-	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+	  --quiet               Quiet output mode
 
 	required arguments:
-	  -d [DB_PREFIX [DB_PREFIX ...]], --db-prefix [DB_PREFIX [DB_PREFIX ...]]
+	  -d [DB_PREFIX ...], --db-prefix [DB_PREFIX ...]
 	                        Database input prefix[es]
-	  -s [reads.fq[.gz] [reads.fq[.gz] ...]], --single-reads [reads.fq[.gz] [reads.fq[.gz] ...]]
+	  -s [reads.fq[.gz] ...], --single-reads [reads.fq[.gz] ...]
 	                        Multi-fastq[.gz] file[s] to classify
-	  -p [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
+	  -p [reads.1.fq[.gz] reads.2.fq[.gz] ...], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] ...]
 	                        Multi-fastq[.gz] pairs of file[s] to classify
 
 </details>
@@ -622,55 +639,62 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 <details>
   <summary>ganon report</summary>
 
-	usage: ganon report [-h] [--min-count] [--min-percentage] [--names [[...]]] [--names-with [[...]]] [--taxids [[...]]] -i
-	                    [REP_FILES [REP_FILES ...]] -o OUTPUT_PREFIX [-d [[...]]] [-e] [-r [[...]]] [-s] [-k [[...]]] [-f]
-	                    [--taxdump-file [[...]]] [--verbose] [--quiet]
+	usage: ganon report [-h] [--min-count] [--min-percentage] [--names [...]] [--names-with [...]] [--taxids [...]]
+	                    [-i [REP_FILES ...]] -o OUTPUT_PREFIX [-d [...]] [-f] [-e] [-r [...]] [-s] [-y] [-p [...]]
+	                    [-k [...]] [--taxdump-file [...]] [--input-directory] [--input-extension] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
-	  -d [ [ ...]], --db-prefix [ [ ...]]
-	                        Database prefix[es] used for classification (in any order). If not provided, new taxonomy will be
-	                        downloaded
+	  -d [ ...], --db-prefix [ ...]
+	                        Database prefix[es] used for classification (in any order). Only ".tax" file is required. If not
+	                        provided, new taxonomy will be downloaded
+	  -f , --output-format 
+	                        Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better
+	                        visualization. Default: tsv
 	  -e , --report-type    Type of report to generate [reads, matches]. Default: reads
-	  -r [ [ ...]], --ranks [ [ ...]]
-	                        Fixer and ordered ranks for the report ["", "all", custom list] "all" for all possible ranks.
-	                        empty for default ranks (superkingdom phylum class order family genus species assembly). Default:
-	                        ""
+	  -r [ ...], --ranks [ ...]
+	                        Ranks to report ["", "all", custom list] "all" for all possible ranks. empty for default ranks
+	                        (superkingdom phylum class order family genus species assembly). Default: ""
 	  -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
 	                        (with --ranks all)
-	  -k [ [ ...]], --skip-hierarchy [ [ ...]]
+	  -y, --split-hierarchy
+	                        Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the
+	                        output files will be named as "{output_prefix}.{hierarchy}.tre"
+	  -p [ ...], --skip-hierarchy [ ...]
 	                        One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)
-	  -f , --output-format 
-	                        Output format [text, tsv, csv]. Default: text
-	  --taxdump-file [ [ ...]]
+	  -k [ ...], --keep-hierarchy [ ...]
+	                        One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)
+	  --taxdump-file [ ...]
 	                        Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp])
 	                        file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")
 	  --verbose             Verbose output mode
-	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+	  --quiet               Quiet output mode
 
 	filter arguments:
-	  --min-count           Mininum number of counts to keep the taxa
-	  --min-percentage      Mininum percentage of counts to keep the taxa [0-1]
-	  --names [ [ ...]]     Show only entries matching exact names of the provided list
-	  --names-with [ [ ...]]
-	                        Show entries containing full or partial names of the provided list
-	  --taxids [ [ ...]]    One or more taxids to report (including children taxa)
+	  --min-count           Minimum number of counts to keep the taxa
+	  --min-percentage      Minimum percentage of counts to keep the taxa [0-1]
+	  --names [ ...]        Show only entries matching exact names of the provided list
+	  --names-with [ ...]   Show entries containing full or partial names of the provided list
+	  --taxids [ ...]       One or more taxids to report (including children taxa)
 
 	required arguments:
-	  -i [REP_FILES [REP_FILES ...]], --rep-files [REP_FILES [REP_FILES ...]]
+	  -i [REP_FILES ...], --rep-files [REP_FILES ...]
 	                        One or more *.rep files from ganon classify
 	  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-	                        Output prefix for report (output_prefix.tre). In case of multiple files output is in the format
-	                        "output_prefix + filename + .tre"
+	                        Output prefix for report file "{output_prefix}.tre". In case of multiple files, the base input
+	                        filename will be appended at the end of the output file "{output_prefix + FILENAME}.tre"
 
 </details>
 
 <details>
   <summary>ganon table</summary>
 
-	usage: ganon table [-h] [--min-count] [--min-percentage] [--names [[...]]] [--names-with [[...]]] [--taxids [[...]]] -i
-	                   [TRE_FILES [TRE_FILES ...]] -o OUTPUT_FILE [-l] [-f] [-t] [-a] [-r] [-m] [-p] [--add-unclassified]
-	                   [--add-unclassified-rank] [--add-filtered] [--skip-zeros] [--verbose] [--quiet]
+	usage: ganon table [-h] [--min-count] [--min-percentage] [--names [...]] [--names-with [...]] [--taxids [...]]
+	                   [-i [TRE_FILES ...]] -o OUTPUT_FILE [-l] [-f] [-t] [-a] [-r] [-m] [-p] [--header]
+	                   [--add-unclassified] [--add-unclassified-rank] [--add-filtered] [--skip-zeros] [--input-directory]
+	                   [--input-extension] [--verbose] [--quiet]
 
 	optional arguments:
 	  -h, --help            show this help message and exit
@@ -681,29 +705,31 @@ export LD_LIBRARY_PATH=/home/user/miniconda3/envs/gcc7/lib/
 	  -t , --top-sample     Top hits of each sample individually
 	  -a , --top-all        Top hits of all samples (ranked by percentage)
 	  -r , --rank           Rank to report. Default: species
-	  -m , --min-occurence 
-	                        Number of occurences of a taxa among reports to be kept
-	  -p , --min-occurence-percentage 
-	                        Percentage of occurences of a taxa among reports to be kept [0-1]
+	  -m , --min-occurrence 
+	                        # occurrence of a taxa among reports to be kept [1-*]
+	  -p , --min-occurrence-percentage 
+	                        % occurrence of a taxa among reports to be kept [0-1]
+	  --header              Header information [name, taxid, lineage]. Default: name
 	  --add-unclassified    Add column with unclassified count/percentage
 	  --add-unclassified-rank
 	                        Add column with unclassified count/percentage at the chosen rank but classified at a less
 	                        specific rank
 	  --add-filtered        Add column with filtered count/percentage
 	  --skip-zeros          Do not print lines with only zero count/percentage
+	  --input-directory     Directory containing input files
+	  --input-extension     Extension of files to use with --input-directory (provide it without * expansion, e.g. ".tre")
 	  --verbose             Verbose output mode
-	  --quiet               Quiet output mode (only errors and warnings to the stderr)
+	  --quiet               Quiet output mode
 
 	filter arguments:
-	  --min-count           Mininum number of counts to keep the taxa
-	  --min-percentage      Mininum percentage of counts to keep the taxa [0-1]
-	  --names [ [ ...]]     Show only entries matching exact names of the provided list
-	  --names-with [ [ ...]]
-	                        Show entries containing full or partial names of the provided list
-	  --taxids [ [ ...]]    One or more taxids to report (including children taxa)
+	  --min-count           Minimum number of counts to keep the taxa
+	  --min-percentage      Minimum percentage of counts to keep the taxa [0-1]
+	  --names [ ...]        Show only entries matching exact names of the provided list
+	  --names-with [ ...]   Show entries containing full or partial names of the provided list
+	  --taxids [ ...]       One or more taxids to report (including children taxa)
 
 	required arguments:
-	  -i [TRE_FILES [TRE_FILES ...]], --tre-files [TRE_FILES [TRE_FILES ...]]
+	  -i [TRE_FILES ...], --tre-files [TRE_FILES ...]
 	                        Report files (.tre) from ganon classify/report to make the table
 	  -o OUTPUT_FILE, --output-file OUTPUT_FILE
 	                        Output filename for the table

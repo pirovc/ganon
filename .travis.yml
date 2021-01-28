@@ -1,29 +1,8 @@
 language: cpp
-dist: xenial
+dist: focal
 
 matrix:
   include:
-    ## osx xcode10 image: issues replacing grep on PATH, online tests do not pass
-    - name: "osx gcc-7 (xcode10/macOS 10.13)"
-      os: osx
-      osx_image: xcode10
-      addons:
-        homebrew: { packages: [gcc@7, coreutils, gawk, grep],
-                    update: true }
-      env:
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
-    
-    - name: "osx gcc-8 (xcode10/macOS 10.13)"
-      os: osx
-      osx_image: xcode10
-      addons:
-        homebrew: { packages: [gcc@8, coreutils, gawk, grep],
-                    update: true }
-      env: 
-        - PATH="/usr/local/opt/coreutils/libexec/gnubin:/usr/local/opt/grep/libexec/:$PATH" 
-        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
-
     - name: "osx AppleClang 10 (xcode10.2/macOS 10.14)"
       os: osx
       osx_image: xcode10.2
@@ -47,49 +26,49 @@ matrix:
     - name: "linux gcc-7"
       os: linux
       addons:
-        apt: { packages: [g++-7, python3-pip, python3-setuptools],
+        apt: { packages: [g++-7],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "linux gcc-7 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-7, lcov, python3-pip, python3-setuptools],
+        apt: { packages: [g++-7, lcov],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
 
     - name: "linux gcc-8"
       os: linux
       addons:
-        apt: { packages: [g++-8, python3-pip, python3-setuptools],
+        apt: { packages: [g++-8],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-9"
       os: linux
       addons:
-        apt: { packages: [g++-9, python3-pip, python3-setuptools],
+        apt: { packages: [g++-9],
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
     - name: "linux clang-7"
       os: linux
       addons:
-        apt: { packages: [clang-7, g++-7, python3-pip, python3-setuptools],
+        apt: { packages: [clang-7, g++-7],
                sources:  [llvm-toolchain-xenial-7, ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=clang-7 && CXX=clang++-7 && BUILD_TYPE=Release"
 
     - name: "linux clang-8"
       os: linux
       addons:
-        apt: { packages: [clang-8, g++-8, python3-pip, python3-setuptools],
+        apt: { packages: [clang-8, g++-8],
                sources:  [llvm-toolchain-xenial-8, ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=clang-8 && CXX=clang++-8 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
   - sudo python3 -m pip install --upgrade pip
-  - sudo python3 -m pip install pandas>=0.22.0
+  - sudo python3 -m pip install "pandas>=0.22.0"
   - sudo python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
@@ -99,7 +78,7 @@ before_install:
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
-  - git checkout 6edcc3048ae801d531ec5f7983844f99bfdda7ae #v1.0.0
+  - git checkout 35ffb1e1a92f6199d757dfdd2f1971db29dd4070 # v1.1.1
   - sudo python3 setup.py install
   - taxsbp -h # ret 0
   - cd ..
@@ -119,9 +98,6 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  #- if [ "$BUILD_TYPE" == "Coverage" ]; then 
-  #    travis_wait 30 python3 -m unittest discover -s tests/ganon/integration_online/ -v;
-  #  fi
   - sudo python3 setup.py install
   - ganon -h # ret 0
 

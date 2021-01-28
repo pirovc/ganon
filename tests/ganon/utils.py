@@ -19,7 +19,13 @@ def check_files(prefix, extensions):
             print("File (" + f +") is empty")
             return False
     return True
-    
+
+def merge_gz(files, output_file):
+    with open(output_file, 'wb') as outf:
+        for file in files:
+            with open(file, 'rb') as inf:
+                shutil.copyfileobj(inf, outf)
+                
 def parse_bins(bins):
     #columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
     #types={'seqid': 'str', 'seqstart': 'uint64', 'seqend': 'uint64', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64', 'specialization': 'str'}
@@ -77,7 +83,7 @@ def build_sanity_check_and_parse(params):
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
-    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins))
+    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins, use_specialization=True if res["gnn"].specialization else False))
 
     # Check number of bins
     if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
@@ -154,8 +160,8 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
             print("Inconsistent percentage (>100%)")
             return None
 
-        # check if sum of percentage for each rank is equal or lower than 100 (floor for rounding errors)
-        if(res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
+        # check if sum of percentage for each rank (excluding "no rank") is equal or lower than 100 (floor for rounding errors)
+        if(res["tre_pd"][res["tre_pd"]["rank"]!="no rank"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
             print("Inconsistent percentage by rank (>100%)")
             return None
 
