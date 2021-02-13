@@ -11,3 +11,6 @@
 [submodule "libs/Catch2"]
 	path = libs/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "libs/seqan3"]
+	path = libs/seqan3
+	url = https://github.com/seqan/seqan3.git

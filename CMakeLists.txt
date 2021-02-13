@@ -125,6 +125,18 @@ target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
 add_compile_options( ${SEQAN_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
 
+# 5. SeqAn3:
+
+set( SEQAN3_INCLUDE_PATH libs/seqan3/include )
+find_package (SeqAn3 3.0.3 REQUIRED HINTS libs/seqan3/build_system)
+
+add_library( seqan3 INTERFACE )
+target_include_directories( seqan3 SYSTEM INTERFACE ${SEQAN3_INCLUDE_DIRS} )
+target_link_libraries( seqan3 INTERFACE ${SEQAN3_LIBRARIES} )
+
+add_compile_options( ${SEQAN3_DEFINITIONS} )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN3_CXX_FLAGS}" )
+
 # 6. Catch2:
 
 add_library( Catch2 INTERFACE )
@@ -144,6 +156,12 @@ if( VERBOSE_CONFIG )
     message( STATUS "  SEQAN_CXX_FLAGS     : ${SEQAN_CXX_FLAGS}" )
     message( STATUS "  SEQAN_INCLUDE_DIRS  : ${SEQAN_INCLUDE_DIRS}" )
     message( STATUS "  SEQAN_LIBRARIES     : ${SEQAN_LIBRARIES}" )
+    message( STATUS "SeqAn3 symbols")
+    message( STATUS "  SEQAN3_VERSION   : ${SEQAN3_VERSION}" )
+    message( STATUS "  SEQAN3_DEFINITIONS   : ${SEQAN3_DEFINITIONS}" )
+    message( STATUS "  SEQAN3_CXX_FLAGS     : ${SEQAN3_CXX_FLAGS}" )
+    message( STATUS "  SEQAN3_INCLUDE_DIRS  : ${SEQAN3_INCLUDE_DIRS}" )
+    message( STATUS "  SEQAN3_LIBRARIES     : ${SEQAN3_LIBRARIES}" )
     message( STATUS "Misc symbols")
     message( STATUS "  Build type          : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS     : ${CMAKE_CXX_FLAGS}" )
