@@ -5,6 +5,15 @@
 
 #include <seqan/binning_directory.h>
 
+#include <seqan3/core/debug_stream.hpp>
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+#include <seqan3/range/views/kmer_hash.hpp>
+
+#include <cereal/archives/binary.hpp> // includes the cereal::BinaryOutputArchive
+
+
 #include <cinttypes>
 #include <fstream>
 #include <future>
@@ -17,16 +26,19 @@
 #include <tuple>
 #include <vector>
 
+
+
 namespace GanonBuild
 {
 
 namespace detail
 {
 
+
 struct Seqs
 {
     std::string       seqid;
-    seqan::Dna5String seq;
+    std::vector<seqan3::dna5>      seq;
 };
 
 struct Stats
@@ -60,9 +72,7 @@ struct FragmentBin
 
 typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
 
-typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
-                                 seqan::BDConfig< seqan::Dna5, seqan::Normal, seqan::Uncompressed > >
-    Tfilter;
+typedef seqan3::interleaved_bloom_filter<> Tfilter;
 
 void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::set< uint64_t >& bin_ids )
 {
@@ -82,60 +92,55 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
     }
 }
 
+void store_filter(Tfilter const & filter, std::string const & output_filter_file)
+{
+    std::ofstream os(output_filter_file, std::ios::binary); // Where output should be stored.
+    cereal::BinaryOutputArchive archive(os); // Create an output archive from the output stream.
+    archive(filter); // Store data.
+}
 
-Tfilter load_filter( GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
+
+void load_filter( Tfilter& filter, GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
 {
 
-    Tfilter filter;
+    // load filter
+    std::ifstream is(config.update_filter_file, std::ios::binary); // Where input can be found.
+    cereal::BinaryInputArchive archive(is);                  // Create an input archive from the input stream.
+    archive(filter);                                           // Load data.
 
-    // load from disk in case of update
-    if ( !config.update_filter_file.empty() )
+    stats.totalBinsFile = filter.bin_count();
+
+    // last element (set is ordered) plus one
+
+    uint32_t number_new_bins = *bin_ids.rbegin() + 1;
+    if ( number_new_bins > stats.totalBinsFile )
     {
-        // load filter
-        seqan::retrieve( filter, seqan::toCString( config.update_filter_file ) );
-        // totalBinsFile account for all bins, even empty
-        stats.totalBinsFile = seqan::getNumberOfBins( filter );
-        config.kmer_size    = seqan::getKmerSize( filter );
-        // config.hash_functions = seqan::get...( filter ); // not avail.
-        // config.filter_size_bits = seqan::get...( filter ); // not avail.
+        // just resize if number of bins is bigger than amount on IBF
+        // when updating an IBF with empty bins or removing the last bins, this will not be true
+        filter.increase_bin_number_to(seqan3::bin_count{number_new_bins});
+        stats.newBins = number_new_bins - stats.totalBinsFile;
+    } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
 
-        // last element (set is ordered) plus one
-
-        uint32_t number_new_bins = *bin_ids.rbegin() + 1;
-        if ( number_new_bins > stats.totalBinsFile )
+    // Reset bins if complete set of sequences is provided (re-create updated bins)
+    if ( config.update_complete )
+    {
+        std::vector< uint32_t > updated_bins;
+        // For all binids in the file provided, only clean bins for the old bins
+        // new bins are already cleared
+        for ( auto const& binid : bin_ids )
         {
-            // just resize if number of bins is bigger than amount on IBF
-            // when updating an IBF with empty bins or removing the last bins, this will not be true
-            filter.resizeBins( number_new_bins );
-            stats.newBins = number_new_bins - stats.totalBinsFile;
-        } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
-
-        // Reset bins if complete set of sequences is provided (re-create updated bins)
-        if ( config.update_complete )
-        {
-            std::vector< uint32_t > updated_bins;
-            // For all binids in the file provided, only clean bins for the old bins
-            // new bins are already cleared
-            for ( auto const& binid : bin_ids )
+            if ( binid >= stats.totalBinsFile - 1 )
             {
-                if ( binid >= stats.totalBinsFile - 1 )
-                {
-                    break;
-                }
-                updated_bins.emplace_back( binid );
-                // std::cerr << "Cleared: " << binid << std::endl;
+                break;
             }
-            seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
+            updated_bins.emplace_back( binid );
+            std::cerr << "Cleared: " << binid << std::endl;
         }
-    }
-    else
-    {
-        filter = Tfilter( stats.totalBinsBinId, config.hash_functions, config.kmer_size, config.filter_size_bits );
-        stats.totalBinsFile = seqan::getNumberOfBins( filter );
+
+        std::cerr << "TODO CLEAR BINS" << std::endl;
+        //seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
     }
 
-
-    return filter;
 }
 
 void print_time( const GanonBuild::Config& config,
@@ -228,45 +233,34 @@ bool run( Config config )
     std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &queue_refs, &mtx, &stats] {
         for ( auto const& reference_file : config.reference_files )
         {
-            seqan::SeqFileIn seqFileIn;
-            if ( !seqan::open( seqFileIn, seqan::toCString( reference_file ) ) )
+            // Open file (type define by extension)
+            seqan3::sequence_file_input fin{reference_file};
+
+            seqan3::debug_stream << "file: " << reference_file   << '\n';
+
+            // read in chuncks of config.n_refs
+            for (auto && records : fin | ranges::views::chunk(config.n_refs))
             {
-                std::cerr << "ERROR: Unable to open the file: " << reference_file << std::endl;
-                continue;
-            }
-            while ( !seqan::atEnd( seqFileIn ) )
-            {
-
-                seqan::StringSet< seqan::CharString > ids;
-                seqan::StringSet< seqan::CharString > seqs;
-
-                try
+                for (auto & [seq, id, qual] : records)
                 {
-                    seqan::readRecords( ids, seqs, seqFileIn, config.n_refs );
-                }
-                catch ( seqan::Exception const& e )
-                {
-                    std::scoped_lock lock( mtx );
-                    std::cerr << "ERROR: Problems parsing the file: " << reference_file << "[" << e.what() << "]"
-                              << std::endl;
-                }
+                    seqan3::debug_stream << "ID: " << id   << '\n';
 
-                for ( uint64_t i = 0; i < seqan::length( ids ); ++i )
-                {
                     stats.totalSeqsFile += 1;
-                    if ( seqan::length( seqs[i] ) < config.kmer_size )
+                    if ( seq.size() < config.kmer_size )
                     {
                         if ( config.verbose )
                         {
                             std::scoped_lock lock( mtx );
                             std::cerr << "WARNING: sequence smaller than k-mer size"
-                                      << " [" << ids[i] << "]" << std::endl;
+                                      << " [" << id << "]" << std::endl;
                         }
                         stats.invalidSeqs += 1;
                         continue;
                     }
-                    std::string cid   = seqan::toCString( ids[i] );
-                    std::string seqid = cid.substr( 0, cid.find( ' ' ) );
+
+                    // Header id goes up-to first empty space .size()
+                    std::string seqid = id.substr( 0, id.find( ' ' ) );
+                    
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         if ( config.verbose )
@@ -278,18 +272,28 @@ bool run( Config config )
                         stats.invalidSeqs += 1;
                         continue;
                     }
-                    stats.sumSeqLen += seqan::length( seqs[i] );
-                    queue_refs.push( detail::Seqs{ seqid, seqs[i] } );
+                    stats.sumSeqLen += seq.size();
+                    queue_refs.push( detail::Seqs{ std::move(seqid), std::move(seq) } );
                 }
-            }
-            seqan::close( seqFileIn );
+            }  
         }
         queue_refs.notify_push_over();
     } ) );
 
     // load new or given filter
     timeLoadFilter.start();
-    detail::Tfilter filter = load_filter( config, bin_ids, stats );
+    detail::Tfilter filter;
+    if ( !config.update_filter_file.empty() )
+    {
+        load_filter( filter, config, bin_ids, stats );
+    }else{
+        // New filter
+        filter = detail::Tfilter{seqan3::bin_count{stats.totalBinsBinId},
+                    seqan3::bin_size{config.filter_size_bits},
+                    seqan3::hash_function_count{config.hash_functions}};
+    }
+    stats.totalBinsFile = filter.bin_count();
+
     timeLoadFilter.stop();
 
     // Start execution threads to add kmers
@@ -306,12 +310,15 @@ bool run( Config config )
                     for ( uint64_t i = 0; i < seq_bin.at( val.seqid ).size(); i++ )
                     {
                         auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
-                        // For infixes, we have to provide both the including start and the excluding end position.
-                        // fragstart -1 to fix offset
-                        // fragend -1+1 to fix offset and not exclude last position
-                        seqan::Infix< seqan::Dna5String >::Type fragment = infix( val.seq, fragstart - 1, fragend );
-                        seqan::insertKmer( filter, fragment, binid );
+                        // Fragment sequence and generate hashes for k-mers
+                        auto hashes = val.seq | 
+                            seqan3::views::slice(fragstart - 1, fragend) | 
+                            seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{config.kmer_size}});
+                        for (auto const& hash : hashes){
+                            filter.emplace(hash, seqan3::bin_index{binid});
+                        }
                     }
+
                 }
                 else
                 {
@@ -334,7 +341,7 @@ bool run( Config config )
 
     // Store filter
     timeSaveFilter.start();
-    seqan::store( filter, seqan::toCString( config.output_filter_file ) );
+    detail::store_filter(filter, config.output_filter_file);
     timeSaveFilter.stop();
     //////////////////////////////
 
