@@ -68,7 +68,8 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
     -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic
     -Wno-conversion -Wno-sign-conversion -Wnull-dereference -Wdouble-promotion
-    -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros )
+    -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros -Wno-shadow 
+    -Wno-old-style-cast )
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
     add_compile_options( -Wmisleading-indentation -Wduplicated-cond
