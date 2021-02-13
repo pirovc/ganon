@@ -34,6 +34,7 @@ function( link_to_ganon_dependencies target )
         cxxopts
         utils
         defaults )
+    target_link_libraries ( ${target} PUBLIC seqan3::seqan3 )
 endfunction()
 
 # -----------------------------------------------------------------------------
