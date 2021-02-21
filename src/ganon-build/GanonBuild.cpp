@@ -5,8 +5,9 @@
 
 #include <seqan/binning_directory.h>
 
+#include <sdsl/bit_vectors.hpp>
+
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
