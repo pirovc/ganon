@@ -4,7 +4,17 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
-#include <seqan/binning_directory.h>
+#include <sdsl/bit_vectors.hpp>
+//#include <type_traits>
+
+#include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+#include <seqan3/range/views/kmer_hash.hpp>
+#include <seqan3/range/views/complement.hpp>           // include all of SeqAn's views
+
+#include <cereal/archives/binary.hpp> // includes the cereal::BinaryOutputArchive
+
 
 #include <atomic>
 #include <cinttypes>
@@ -25,20 +35,7 @@ namespace GanonClassify
 namespace detail
 {
 
-// Filter is created with seqan::Offset<1>
-// when using seqan::count it acts like seqan::Normal if offset=1
-#ifdef GANON_OFFSET
-typedef seqan::Offset< 1 > THashCount;
-#else
-typedef seqan::Normal THashCount;
-#endif
-
-typedef seqan::BinningDirectory< seqan::InterleavedBloomFilter,
-                                 seqan::BDConfig< seqan::Dna5, THashCount, seqan::Uncompressed > >
-    TIbf;
-
-typedef seqan::ModifiedString< seqan::ModifiedString< seqan::Dna5String, seqan::ModComplementDna >, seqan::ModReverse >
-    TSeqRevComp;
+typedef seqan3::interleaved_bloom_filter<> TIbf;
 
 typedef std::unordered_map< std::string, uint16_t > TMatches;
 
@@ -74,7 +71,7 @@ struct ReadBatches
         paired = _paired;
     }
 
-    ReadBatches( bool _paired, seqan::StringSet< seqan::CharString > _ids, seqan::StringSet< seqan::Dna5String > _seqs )
+    ReadBatches( bool _paired, std::vector<std::string> _ids, std::vector<std::vector<seqan3::dna5>> _seqs )
     {
         paired = _paired;
         ids    = _ids;
@@ -82,9 +79,9 @@ struct ReadBatches
     }
 
     ReadBatches( bool                                  _paired,
-                 seqan::StringSet< seqan::CharString > _ids,
-                 seqan::StringSet< seqan::Dna5String > _seqs,
-                 seqan::StringSet< seqan::Dna5String > _seqs2 )
+                 std::vector<std::string> _ids,
+                 std::vector<std::vector<seqan3::dna5>> _seqs,
+                 std::vector<std::vector<seqan3::dna5>> _seqs2 )
     {
         paired = _paired;
         ids    = _ids;
@@ -93,9 +90,9 @@ struct ReadBatches
     }
 
     bool                                  paired = false;
-    seqan::StringSet< seqan::CharString > ids;
-    seqan::StringSet< seqan::Dna5String > seqs;
-    seqan::StringSet< seqan::Dna5String > seqs2;
+    std::vector<std::string> ids;
+    std::vector<std::vector<seqan3::dna5>> seqs;
+    std::vector<std::vector<seqan3::dna5>> seqs2;
 };
 
 struct ReadMatch
@@ -110,12 +107,12 @@ struct ReadOut
     {
     }
 
-    ReadOut( seqan::CharString _readID )
+    ReadOut( std::string _readID )
     {
         readID = _readID;
     }
 
-    seqan::CharString        readID;
+    std::string              readID;
     std::vector< ReadMatch > matches;
 };
 
@@ -249,26 +246,36 @@ void select_matches( TMatches&                matches,
     }
 }
 
-uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, seqan::Dna5String& read_seq )
+uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, std::vector<seqan3::dna5>& read_seq )
 {
+
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
+
+    // TODO (was set in filter)
+    uint16_t kmer_size = 19;
+    uint16_t offset = 1;
+    // TODO global
+    auto hash_adaptor = seqan3::views::kmer_hash(seqan3::ungapped{kmer_size});
+    
+
     for ( Filter& filter : filters )
     {
-        // IBF count
-        std::vector< uint16_t > selectedBins    = seqan::count( filter.ibf, read_seq );
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.ibf, TSeqRevComp( read_seq ) );
+        // Todo (one per thread)
+        auto agent = filter.ibf.counting_agent<uint16_t>();
 
+        seqan3::counting_vector<uint16_t> selectedBins = agent.bulk_count(read_seq | hash_adaptor); 
+        seqan3::counting_vector<uint16_t> selectedBinsRev = agent.bulk_count(read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor); 
+        
         uint16_t threshold = ( filter.filter_config.min_kmers > -1 )
-                                 ? get_threshold_kmers( seqan::length( read_seq ),
-                                                        filter.ibf.kmerSize,
+                                 ? get_threshold_kmers( read_seq.size(),
+                                                        kmer_size,
                                                         filter.filter_config.min_kmers,
-                                                        filter.ibf.offset )
-                                 : get_threshold_errors( seqan::length( read_seq ),
-                                                         filter.ibf.kmerSize,
+                                                        offset )
+                                 : get_threshold_errors( read_seq.size() ,
+                                                         kmer_size,
                                                          filter.filter_config.max_error,
-                                                         filter.ibf.offset );
-
+                                                         offset );
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
     }
@@ -277,28 +284,40 @@ uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, seqan:
 
 uint16_t find_matches_paired( TMatches&              matches,
                               std::vector< Filter >& filters,
-                              seqan::Dna5String&     read_seq,
-                              seqan::Dna5String&     read_seq2,
+                              std::vector<seqan3::dna5>&     read_seq,
+                              std::vector<seqan3::dna5>&     read_seq2,
                               uint16_t               effective_read_len )
 {
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
+
+    // TODO (was set in filter)
+    uint16_t kmer_size = 19;
+    uint16_t offset = 1;
+    // TODO global
+    auto hash_adaptor = seqan3::views::kmer_hash(seqan3::ungapped{kmer_size});
+
     for ( Filter& filter : filters )
     {
+        
+        // Todo (one per thread)
+        auto agent = filter.ibf.counting_agent<uint16_t>();
+
         // IBF count
         // FR
-        std::vector< uint16_t > selectedBins = seqan::count( filter.ibf, read_seq );
-        filter.ibf.count< THashCount >( selectedBins, TSeqRevComp( read_seq2 ) );
+        seqan3::counting_vector<uint16_t> selectedBins = agent.bulk_count(read_seq | hash_adaptor); 
+        selectedBins+= agent.bulk_count(read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor); 
+
         // RF
-        std::vector< uint16_t > selectedBinsRev = seqan::count( filter.ibf, TSeqRevComp( read_seq ) );
-        filter.ibf.count< THashCount >( selectedBinsRev, read_seq2 );
+        seqan3::counting_vector<uint16_t> selectedBinsRev = agent.bulk_count(read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor); 
+        selectedBinsRev+= agent.bulk_count(read_seq2 | hash_adaptor); 
 
         uint16_t threshold =
             ( filter.filter_config.min_kmers > -1 )
                 ? get_threshold_kmers(
-                      effective_read_len, filter.ibf.kmerSize, filter.filter_config.min_kmers, filter.ibf.offset )
+                      effective_read_len, kmer_size, filter.filter_config.min_kmers, offset )
                 : get_threshold_errors(
-                      effective_read_len, filter.ibf.kmerSize, filter.filter_config.max_error, filter.ibf.offset );
+                      effective_read_len, kmer_size, filter.filter_config.max_error, offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
@@ -369,7 +388,8 @@ void classify( std::vector< Filter >&    filters,
 {
 
     // k-mer sizes should be the same among filters
-    uint16_t kmer_size = filters[0].ibf.kmerSize;
+    // TODO
+    uint16_t kmer_size = 19;
 
     while ( true )
     {
@@ -377,16 +397,16 @@ void classify( std::vector< Filter >&    filters,
         ReadBatches rb = pointer_current->pop();
 
         // If batch is empty exit thread
-        if ( !seqan::length( rb.ids ) )
+        if ( rb.ids.empty() )
             break;
 
         // store unclassified reads for next iteration
         ReadBatches left_over_reads{ rb.paired };
 
-        for ( uint32_t readID = 0; readID < seqan::length( rb.ids ); ++readID )
+        for ( uint32_t readID = 0; readID < rb.ids.size(); ++readID )
         {
             // receives len of first read
-            uint16_t effective_read_len = seqan::length( rb.seqs[readID] );
+            uint16_t effective_read_len = rb.seqs[readID].size();
 
             // count lens just once
             if ( hierarchy_first )
@@ -401,7 +421,7 @@ void classify( std::vector< Filter >&    filters,
             {
                 if ( rb.paired ) // paired-end mode
                 {
-                    uint16_t read2_len = seqan::length( rb.seqs2[readID] );
+                    uint16_t read2_len = rb.seqs2[readID].size();
                     if ( read2_len >= kmer_size )
                     {
                         // add to effective length the pair for error calculation
@@ -471,10 +491,11 @@ void classify( std::vector< Filter >&    filters,
             // not classified
             if ( !hierarchy_last ) // if there is more levels, store read
             {
-                seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
-                seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
-                if ( rb.paired )
-                    seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
+                //TODO
+                //seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
+                //seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
+                //if ( rb.paired )
+                    //seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
             }
             else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                    // unclassified printing queue
@@ -484,7 +505,7 @@ void classify( std::vector< Filter >&    filters,
         }
 
         // if there are more levels to classify and something was left, keep reads in memory
-        if ( !hierarchy_last && seqan::length( left_over_reads.ids ) > 0 )
+        if ( !hierarchy_last && left_over_reads.ids.size() > 0 )
             pointer_helper->push( left_over_reads );
     }
 }
@@ -533,13 +554,19 @@ bool load_filters( std::vector< Filter >& filters,
         TIbf filter;
         TMap map;
         TTax tax;
-
+        
         // ibf file
-        seqan::retrieve( filter, seqan::toCString( filter_config.ibf_file ) );
-        // set offset to user-defined value (1==no offset)
-        filter.offset = config.offset;
+        std::ifstream is(filter_config.ibf_file, std::ios::binary);
+        cereal::BinaryInputArchive archive(is);
+        archive(filter);
 
-        if ( first_kmer_size == 0 )
+        // set offset to user-defined value (1==no offset)
+        //TODO
+        //filter.offset = config.offset;
+
+        //TODO
+        first_kmer_size = 19;
+/*        if ( first_kmer_size == 0 )
         {
             first_kmer_size = seqan::getKmerSize( filter );
         }
@@ -549,14 +576,15 @@ bool load_filters( std::vector< Filter >& filters,
                 << "ERROR: filters on the same hierarchy should have same k-mer size configuration. Ignoring filter: "
                 << filter_config.ibf_file << std::endl;
             continue;
-        }
+        }*/
 
         if ( config.offset > first_kmer_size )
         {
             std::cerr << "WARNING: offset cannot be bigger than k-mer size. Setting offset to " << first_kmer_size
                       << std::endl;
             config.offset = first_kmer_size;
-            filter.offset = first_kmer_size;
+            //TODO
+            //filter.offset = first_kmer_size;
         }
 
         std::string   line;
@@ -580,7 +608,7 @@ bool load_filters( std::vector< Filter >& filters,
 
         // Check consistency of map file and ibf file
         // map.size can be smaller than bins set on IBF if sequences were removed
-        if ( map.size() > filter.noOfBins )
+        if ( map.size() > filter.bin_count() )
         {
             std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
             return false;
@@ -650,7 +678,7 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << "%)" << std::endl;
 }
 
-uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
+/*uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
                              uint32_t                          pos_start,
                              uint32_t                          n_reads,
                              SafeQueue< detail::ReadBatches >& queue1 )
@@ -695,14 +723,57 @@ uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
     }
 
     return total_reads;
-}
+}*/
 
 void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config const& config )
 {
     for ( auto const& reads_file : config.single_reads )
     {
-        seqan::SeqFileIn seqFileIn;
-        if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
+        seqan3::sequence_file_input fin1{reads_file};
+        for (auto && rec : fin1 | ranges::views::chunk(config.n_reads)){
+            std::vector<std::string> ids;
+            std::vector<std::vector<seqan3::dna5>> seqs;                
+            for (auto & [seq, id, qual] : rec){
+                ids.push_back(std::move(id));
+                seqs.push_back(std::move(seq));
+            }
+            stats.totalReads += ids.size();
+            queue1.push( detail::ReadBatches{ false, ids, seqs } );
+        }
+            
+    }
+    if ( config.paired_reads.size() > 0 ){
+        for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
+        {
+            
+            seqan3::sequence_file_input fin1{config.paired_reads[pair_cnt]};
+            seqan3::sequence_file_input fin2{config.paired_reads[pair_cnt+1]};
+            for (auto && rec : fin1 | ranges::views::chunk(config.n_reads)){
+                
+                //TODO take==chunk?
+                auto && rec2 = fin2 | std::views::take(config.n_reads); 
+
+                std::vector<std::string> ids;
+                std::vector<std::vector<seqan3::dna5>> seqs;     
+                std::vector<std::vector<seqan3::dna5>> seqs2;            
+                for (auto & [seq, id, qual] : rec){
+                    ids.push_back(std::move(id));
+                    seqs.push_back(std::move(seq));
+                }
+                for (auto & [seq, id, qual] : rec2){
+                    seqs2.push_back(std::move(seq));
+                }
+                seqan3::debug_stream << seqs2 << "\n";
+                stats.totalReads += ids.size();
+                queue1.push( detail::ReadBatches{ true, ids, seqs, seqs2 } );
+            }
+
+        }
+
+    }
+
+
+/*        if ( !seqan::open( seqFileIn, seqan::toCString( reads_file ) ) )
         {
             std::cerr << "ERROR: Unable to open the file: " << reads_file << std::endl;
             continue;
@@ -730,8 +801,9 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
         }
         seqan::close( seqFileIn );
     }
+    */
     // paired-reads
-    if ( config.paired_reads.size() > 0 )
+/*    if ( config.paired_reads.size() > 0 )
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
@@ -775,7 +847,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             seqan::close( seqFileIn1 );
             seqan::close( seqFileIn2 );
         }
-    }
+    }*/
     queue1.notify_push_over();
 }
 
