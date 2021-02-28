@@ -5,7 +5,6 @@
 #include <utils/StopClock.hpp>
 
 #include <sdsl/bit_vectors.hpp>
-//#include <type_traits>
 
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
@@ -491,11 +490,16 @@ void classify( std::vector< Filter >&    filters,
             // not classified
             if ( !hierarchy_last ) // if there is more levels, store read
             {
-                //TODO
                 //seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
                 //seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
-                //if ( rb.paired )
+                // MOVE?
+                left_over_reads.ids.push_back( rb.ids[readID] );
+                left_over_reads.seqs.push_back( rb.seqs[readID] );
+
+                if ( rb.paired ){
                     //seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
+                    left_over_reads.seqs2.push_back( rb.seqs2[readID] );
+                }
             }
             else if ( config.output_unclassified ) // no more levels and no classification, add to
                                                    // unclassified printing queue
@@ -763,7 +767,6 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
                 for (auto & [seq, id, qual] : rec2){
                     seqs2.push_back(std::move(seq));
                 }
-                seqan3::debug_stream << seqs2 << "\n";
                 stats.totalReads += ids.size();
                 queue1.push( detail::ReadBatches{ true, ids, seqs, seqs2 } );
             }

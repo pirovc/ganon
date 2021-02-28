@@ -149,7 +149,8 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    "--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if cfg.max_fp else "--filter-size " + str(cfg.fixed_bloom_size),
+                                    #"--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if cfg.max_fp else "--filter-size " + str(cfg.fixed_bloom_size),
+                                    "--filter-size-bits " + str(bin_size_bits) if cfg.max_fp else "--filter-size " + str(cfg.fixed_bloom_size/optimal_number_of_bins),
                                     "--kmer-size " + str(cfg.kmer_size),
                                     "--hash-functions " + str(cfg.hash_functions),
                                     "--threads " + str(cfg.threads),
