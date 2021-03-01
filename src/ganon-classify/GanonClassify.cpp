@@ -257,7 +257,6 @@ uint16_t find_matches( TMatches& matches, std::vector< Filter >& filters, std::v
     // TODO global
     auto hash_adaptor = seqan3::views::kmer_hash(seqan3::ungapped{kmer_size});
     
-
     for ( Filter& filter : filters )
     {
         // Todo (one per thread)
