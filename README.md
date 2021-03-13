@@ -322,7 +322,7 @@ The strata filter is active by default. For every read, the best match - meaning
 
 #### --offset
 
-`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. For `--offset 1` there are possible performance improvements by disabling this function in compilation time with `-DGANON_OFFSET=OFF` (default is `ON`). Note that higher offset values will affect the sensitivity and precision of your classification, specially when using 
+`--offset` can be used to speed-up analysis by skipping k-mers. `--offset 1` will check every k-mer of the sequences to be classified. `--offset n` will only evaluate every nth k-mer of the input sequences. Note that higher offset values will affect the sensitivity and precision of your classification, specially when using 
 `--min-kmers 0`.
 
 ### ganon build 
@@ -419,14 +419,13 @@ cd ganon
 python3 setup.py install --record files.txt #optional
 mkdir build_cpp
 cd build_cpp
-cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DGANON_OFFSET=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
+cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
 make
 sudo make install #optional
 ```
 
 - to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `
 
-- in the cmake command, set `-DGANON_OFFSET=ON` to be able to use the offset functionality
 
 - use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 

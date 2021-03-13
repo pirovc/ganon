@@ -171,7 +171,6 @@ SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[gano
     }
 }
 
-#ifdef GANON_OFFSET
 SCENARIO( "Classify with offset", "[ganon-classify]" )
 {
     auto cfg          = config_classify::defaultConfig();
@@ -192,7 +191,6 @@ SCENARIO( "Classify with offset", "[ganon-classify]" )
                                            config_classify::results_path + cfg.output_prefix + "." + ext ) );
     }
 }
-#endif
 
 SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
 {
@@ -277,7 +275,6 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     }
 }
 
-#ifdef GANON_OFFSET
 SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
 {
     auto cfg             = config_classify::defaultConfig();
@@ -350,7 +347,6 @@ SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
     }
 }
-#endif
 
 SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
 {
@@ -700,7 +696,8 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     cfg_build.update_filter_file = "filters/bacteria.ibf";
     cfg_build.seqid_bin_file     = "filters/bacteria_upd_virus_acc_bin.txt";
     cfg_build.output_filter_file = "bacteria_virus.ibf";
-    cfg_build.filter_size_bits   = 8388608;
+    //cfg_build.filter_size_bits   = 8388608;
+    cfg_build.bin_size_bits   = 65534;
     cfg_build.reference_files    = { "sequences/virus_NC_003676.1.fasta.gz",
                                   "sequences/virus_NC_011646.1.fasta.gz",
                                   "sequences/virus_NC_032412.1.fasta.gz",

@@ -149,8 +149,7 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    #"--filter-size-bits " + str(bin_size_bits*optimal_number_of_bins) if cfg.max_fp else "--filter-size " + str(cfg.fixed_bloom_size),
-                                    "--filter-size-bits " + str(bin_size_bits) if cfg.max_fp else "--filter-size " + str(cfg.fixed_bloom_size/optimal_number_of_bins),
+                                    "--bin-size-bits " + str(bin_size_bits) if cfg.max_fp else "--filter-size-mb " + str(cfg.fixed_bloom_size),
                                     "--kmer-size " + str(cfg.kmer_size),
                                     "--hash-functions " + str(cfg.hash_functions),
                                     "--threads " + str(cfg.threads),
@@ -319,6 +318,9 @@ def update(cfg):
         # Only new sequences (updated_bins) either on old or new binids
         updated_bins.write_acc_bin_file(acc_bin_file)
 
+    # Update with same values used for build
+    kmer_size = gnn.kmer_size
+    hash_functions = gnn.hash_functions
     # Free memory for build
     del seqinfo
     del bins
@@ -330,6 +332,8 @@ def update(cfg):
     tmp_db_prefix_ibf = tmp_output_folder + "ganon.ibf"
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--update-filter-file " + db_prefix["ibf"],
+                                    "--kmer-size " + str(kmer_size),
+                                    "--hash-functions " + str(hash_functions),
                                     "--seqid-bin-file " + acc_bin_file,
                                     "--output-filter-file " + tmp_db_prefix_ibf,
                                     "--threads " + str(cfg.threads),                                

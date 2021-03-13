@@ -22,12 +22,13 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
+        ( "b,kmer-size", "k size to query - should be the same used to create filter.  build filter. One per hiearchy label", cxxopts::value< std::vector< uint8_t > >() )
         ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. One per filter. Default: 0.25", cxxopts::value< std::vector< float > >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]. One per filter.", cxxopts::value< std::vector< int16_t > >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
         ( "l,strata-filter", "Additional errors allowed (relative to the best match) to filter and select matches. -1 for no filtering. One per hiearchy label. Default: 0", cxxopts::value< std::vector< int16_t > >() )
         
-        ( "f,offset", "Offset for skipping k-mers while counting. Function must be enabled on compilation time with -DGANON_OFFSET=ON. Default: 1 = no offset", cxxopts::value< uint16_t >() )
+        ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint8_t >() )
         
         ( "o,output-prefix", "Output prefix for output files (prefix.lca, prefix.rep, prefix.all, prefix.unc). If multi-level hiearchy is provded, files are generated accordingly (prefix.hiearchy.lca, ...). Omit for output to STDOUT (only .lca will be printed)", cxxopts::value< std::string >() )
         ( "a,output-all", "Output file with all matches (prefix.all) [it can be very big]", cxxopts::value< bool >() )
@@ -78,6 +79,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "hierarchy-labels" ) )
         config.hierarchy_labels = args["hierarchy-labels"].as< std::vector< std::string > >();
 
+    if ( args.count( "kmer-size" ) )
+        config.kmer_size = args["kmer-size"].as< std::vector< uint8_t > >();
     if ( args.count( "min-kmers" ) )
         config.min_kmers = args["min-kmers"].as< std::vector< float > >();
     if ( args.count( "max-error" ) )
@@ -87,13 +90,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "strata-filter" ) )
         config.strata_filter = args["strata-filter"].as< std::vector< int16_t > >();
     if ( args.count( "offset" ) )
-    {
-#ifdef GANON_OFFSET
-        config.offset = args["offset"].as< uint16_t >();
-#else
-        config.offset = 1;
-#endif
-    }
+        config.offset = args["offset"].as< uint8_t >();
 
     if ( args.count( "output-prefix" ) )
         config.output_prefix = args["output-prefix"].as< std::string >();

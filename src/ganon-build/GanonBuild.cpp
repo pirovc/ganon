@@ -3,13 +3,12 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
-
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
+#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 
-#include <cereal/archives/binary.hpp> // includes the cereal::BinaryOutputArchive
+#include <cereal/archives/binary.hpp>
 
 
 #include <cinttypes>
@@ -25,7 +24,6 @@
 #include <vector>
 
 
-
 namespace GanonBuild
 {
 
@@ -35,8 +33,8 @@ namespace detail
 
 struct Seqs
 {
-    std::string       seqid;
-    std::vector<seqan3::dna5>      seq;
+    std::string                 seqid;
+    std::vector< seqan3::dna5 > seq;
 };
 
 struct Stats
@@ -90,11 +88,11 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
     }
 }
 
-void store_filter(Tfilter const & filter, std::string const & output_filter_file)
+void store_filter( Tfilter const& filter, std::string const& output_filter_file )
 {
-    std::ofstream os(output_filter_file, std::ios::binary); // Where output should be stored.
-    cereal::BinaryOutputArchive archive(os); // Create an output archive from the output stream.
-    archive(filter); // Store data.
+    std::ofstream               os( output_filter_file, std::ios::binary ); // Where output should be stored.
+    cereal::BinaryOutputArchive archive( os ); // Create an output archive from the output stream.
+    archive( filter );                         // Store data.
 }
 
 
@@ -102,27 +100,26 @@ void load_filter( Tfilter& filter, GanonBuild::Config& config, const std::set< u
 {
 
     // load filter
-    std::ifstream is(config.update_filter_file, std::ios::binary); // Where input can be found.
-    cereal::BinaryInputArchive archive(is);                  // Create an input archive from the input stream.
-    archive(filter);                                           // Load data.
+    std::ifstream              is( config.update_filter_file, std::ios::binary ); // Where input can be found.
+    cereal::BinaryInputArchive archive( is ); // Create an input archive from the input stream.
+    archive( filter );                        // Load data.
 
     stats.totalBinsFile = filter.bin_count();
 
     // last element (set is ordered) plus one
-
     uint32_t number_new_bins = *bin_ids.rbegin() + 1;
     if ( number_new_bins > stats.totalBinsFile )
     {
         // just resize if number of bins is bigger than amount on IBF
         // when updating an IBF with empty bins or removing the last bins, this will not be true
-        filter.increase_bin_number_to(seqan3::bin_count{number_new_bins});
+        filter.increase_bin_number_to( seqan3::bin_count{ number_new_bins } );
         stats.newBins = number_new_bins - stats.totalBinsFile;
     } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
 
     // Reset bins if complete set of sequences is provided (re-create updated bins)
     if ( config.update_complete )
     {
-        std::vector< uint32_t > updated_bins;
+        std::vector< seqan3::bin_index > updated_bins;
         // For all binids in the file provided, only clean bins for the old bins
         // new bins are already cleared
         for ( auto const& binid : bin_ids )
@@ -131,14 +128,10 @@ void load_filter( Tfilter& filter, GanonBuild::Config& config, const std::set< u
             {
                 break;
             }
-            updated_bins.emplace_back( binid );
-            std::cerr << "Cleared: " << binid << std::endl;
+            updated_bins.emplace_back( seqan3::bin_index{ binid } );
         }
-
-        std::cerr << "TODO CLEAR BINS" << std::endl;
-        //seqan::clear( filter, updated_bins, config.threads ); // clear modified bins
+        filter.clear( updated_bins );
     }
-
 }
 
 void print_time( const GanonBuild::Config& config,
@@ -232,17 +225,14 @@ bool run( Config config )
         for ( auto const& reference_file : config.reference_files )
         {
             // Open file (type define by extension)
-            seqan3::sequence_file_input fin{reference_file};
+            seqan3::sequence_file_input fin{ reference_file };
 
-            seqan3::debug_stream << "file: " << reference_file   << '\n';
 
             // read in chuncks of config.n_refs
-            for (auto && records : fin | ranges::views::chunk(config.n_refs))
+            for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
             {
-                for (auto & [seq, id, qual] : records)
+                for ( auto& [seq, id, qual] : records )
                 {
-                    seqan3::debug_stream << "ID: " << id   << '\n';
-
                     stats.totalSeqsFile += 1;
                     if ( seq.size() < config.kmer_size )
                     {
@@ -258,7 +248,7 @@ bool run( Config config )
 
                     // Header id goes up-to first empty space .size()
                     std::string seqid = id.substr( 0, id.find( ' ' ) );
-                    
+
                     if ( seq_bin.count( seqid ) == 0 )
                     {
                         if ( config.verbose )
@@ -271,9 +261,9 @@ bool run( Config config )
                         continue;
                     }
                     stats.sumSeqLen += seq.size();
-                    queue_refs.push( detail::Seqs{ std::move(seqid), std::move(seq) } );
+                    queue_refs.push( detail::Seqs{ std::move( seqid ), std::move( seq ) } );
                 }
-            }  
+            }
         }
         queue_refs.notify_push_over();
     } ) );
@@ -284,11 +274,26 @@ bool run( Config config )
     if ( !config.update_filter_file.empty() )
     {
         load_filter( filter, config, bin_ids, stats );
-    }else{
+    }
+    else
+    {
+        uint64_t bsize;
+        // Calculate bin size based on filter size (1MB = 8388608bits)
+        if ( config.bin_size_bits == 0 && config.filter_size_mb > 0 )
+        {
+            uint64_t optimal_bins = ( std::floor( stats.totalBinsBinId / 64 ) + 1 ) * 64;
+            bsize                 = ( config.filter_size_mb / static_cast< float >( optimal_bins ) ) * 8388608u;
+            std::cerr << "optimal_bins:" << optimal_bins << std::endl;
+        }
+        else
+        {
+            bsize = config.bin_size_bits;
+        }
+
         // New filter
-        filter = detail::Tfilter{seqan3::bin_count{stats.totalBinsBinId},
-                    seqan3::bin_size{config.filter_size_bits},
-                    seqan3::hash_function_count{config.hash_functions}};
+        filter = detail::Tfilter{ seqan3::bin_count{ stats.totalBinsBinId },
+                                  seqan3::bin_size{ bsize },
+                                  seqan3::hash_function_count{ config.hash_functions } };
     }
     stats.totalBinsFile = filter.bin_count();
 
@@ -309,14 +314,14 @@ bool run( Config config )
                     {
                         auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
                         // Fragment sequence and generate hashes for k-mers
-                        auto hashes = val.seq | 
-                            seqan3::views::slice(fragstart - 1, fragend) | 
-                            seqan3::views::kmer_hash(seqan3::shape{seqan3::ungapped{config.kmer_size}});
-                        for (auto const& hash : hashes){
-                            filter.emplace(hash, seqan3::bin_index{binid});
+                        auto hashes =
+                            val.seq | seqan3::views::slice( fragstart - 1, fragend )
+                            | seqan3::views::kmer_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } } );
+                        for ( auto const& hash : hashes )
+                        {
+                            filter.emplace( hash, seqan3::bin_index{ binid } );
                         }
                     }
-
                 }
                 else
                 {
@@ -339,7 +344,7 @@ bool run( Config config )
 
     // Store filter
     timeSaveFilter.start();
-    detail::store_filter(filter, config.output_filter_file);
+    detail::store_filter( filter, config.output_filter_file );
     timeSaveFilter.stop();
     //////////////////////////////
 

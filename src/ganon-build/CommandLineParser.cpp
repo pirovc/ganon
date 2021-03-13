@@ -22,10 +22,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
         ( "c,update-complete", "When using --update-filter-file and all sequences are provided to update index, set this option to not only add sequences to the filter but also remove", cxxopts::value< bool >() )
         
-        ( "s,filter-size", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint32_t >() )
-        ( "b,filter-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >() )
+        ( "s,filter-size-mb", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint32_t >() )
+        ( "b,bin-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >() )
         
-        ( "k,kmer-size", "k size to build filter", cxxopts::value< uint16_t >() )
+        ( "k,kmer-size", "k size to build filter", cxxopts::value< uint8_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter", cxxopts::value< uint16_t >() )
 
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
@@ -75,13 +75,13 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "update-complete" ) )
         config.update_complete = args["update-complete"].as< bool >();
 
-    if ( args.count( "filter-size" ) )
-        config.filter_size = args["filter-size"].as< uint32_t >();
-    if ( args.count( "filter-size-bits" ) )
-        config.filter_size_bits = args["filter-size-bits"].as< uint64_t >();
+    if ( args.count( "filter-size-mb" ) )
+        config.filter_size_mb = args["filter-size-mb"].as< uint32_t >();
+    if ( args.count( "bin-size-bits" ) )
+        config.bin_size_bits = args["bin-size-bits"].as< uint64_t >();
 
     if ( args.count( "kmer-size" ) )
-        config.kmer_size = args["kmer-size"].as< uint16_t >();
+        config.kmer_size = args["kmer-size"].as< uint8_t >();
     if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
 
