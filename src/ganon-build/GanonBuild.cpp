@@ -3,9 +3,6 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
-#include <seqan/binning_directory.h>
-
-#include <sdsl/bit_vectors.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
