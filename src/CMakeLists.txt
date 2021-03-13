@@ -29,7 +29,6 @@ function( link_to_ganon_dependencies target )
     target_link_libraries( ${target}
         PRIVATE
         sdsl-lite
-        seqan
         Threads::Threads
         cxxopts
         utils
