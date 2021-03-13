@@ -229,6 +229,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params_build["db_prefix"],
                             "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
                             "max_error": 0,
+                            "offset": 1,
                             "output_all": True,
                             "quiet": True,
                             "output_prefix": self.results_dir + "test_add_existing_bins_classify_part1"}
@@ -253,6 +254,7 @@ class TestUpdateOffline(unittest.TestCase):
         self.assertTrue(ganon.main(cfg=cfg_classify), "ganon classify exited with an error")
         # General sanity check of results
         res_classify2 = classify_sanity_check_and_parse(vars(cfg_classify))
+
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
         # Specific
         # Classification to the second updated index has to have more matches than the first

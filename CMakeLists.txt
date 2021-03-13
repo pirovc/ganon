@@ -22,7 +22,6 @@ if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
 endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
-option( GANON_OFFSET "Enable offset for ganon-classify" ON )
 option( CONDA "Flag for compilation in conda env." OFF )
 option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
@@ -146,7 +145,6 @@ if( VERBOSE_CONFIG )
     message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
     message( STATUS "  CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}" )
     message( STATUS "  CONDA               : ${CONDA}" )
-    message( STATUS "  GANON_OFFSET        : ${GANON_OFFSET}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 

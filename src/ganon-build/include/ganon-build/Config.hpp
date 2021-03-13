@@ -17,8 +17,6 @@ struct Config
 {
 
 public:
-    static constexpr uint32_t MBinBits = 8388608;
-
     std::vector< std::string > reference_files;
     std::string                directory_reference_files = "";
     std::string                extension                 = "";
@@ -28,10 +26,10 @@ public:
     std::string update_filter_file = "";
     bool        update_complete    = false;
 
-    uint32_t filter_size      = 0;
-    uint64_t filter_size_bits = 0;
+    uint32_t filter_size_mb = 0;
+    uint64_t bin_size_bits  = 0;
 
-    uint16_t kmer_size      = 19;
+    uint8_t  kmer_size      = 19;
     uint16_t hash_functions = 3;
 
     uint16_t threads   = 2;
@@ -106,35 +104,19 @@ public:
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
-            if ( verbose )
+            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 ) )
             {
-                std::cerr << "WARNING: --filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
-                             "--update-filter-file"
-                          << std::endl;
+                std::cerr << "WARNING: --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
             }
-
-            kmer_size        = 0;
-            hash_functions   = 0;
-            filter_size      = 0;
-            filter_size_bits = 0;
+            filter_size_mb = 0;
+            bin_size_bits  = 0;
         }
         else
         {
-            if ( filter_size_bits == 0 )
+            if ( bin_size_bits == 0 && filter_size_mb == 0 )
             {
-                if ( filter_size == 0 )
-                {
-                    std::cerr << "--filter-size or --filter-size-bits are required" << std::endl;
-                    return false;
-                }
-                else
-                {
-                    filter_size_bits = filter_size * MBinBits;
-                }
-            }
-            else
-            {
-                filter_size = filter_size_bits / MBinBits;
+                std::cerr << "--filter-size-mb or --bin-size-bits are required" << std::endl;
+                return false;
             }
         }
 
@@ -157,8 +139,10 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-filter-file  " << config.output_filter_file << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;
-    stream << "--filter-size         " << config.filter_size << newl;
-    stream << "--filter-size-bits    " << config.filter_size_bits << newl;
+    if ( config.bin_size_bits > 0 )
+        stream << "--bin-size-bits       " << config.bin_size_bits << newl;
+    if ( config.filter_size_mb > 0 )
+        stream << "--filter-size-mb      " << config.filter_size_mb << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
     stream << "--kmer-size           " << config.kmer_size << newl;
     stream << "--threads             " << config.threads << newl;

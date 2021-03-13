@@ -19,6 +19,7 @@ struct FilterConfig
     std::string tax_file;
     int16_t     max_error;
     float       min_kmers;
+    uint8_t     kmer_size;
 };
 
 struct HierarchyConfig
@@ -44,11 +45,12 @@ public:
 
     std::vector< std::string > hierarchy_labels{ "1_default" };
 
+    std::vector< uint8_t > kmer_size{ 19 };
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
     std::vector< int16_t > strata_filter{ 0 };
-    uint16_t               offset = 2;
+    uint8_t                offset = 1;
 
     std::string output_prefix       = "";
     bool        output_all          = false;
@@ -138,9 +140,6 @@ public:
         if ( offset < 1 )
             offset = 1;
 
-#ifndef GANON_OFFSET
-        offset = 1;
-#endif
         return parse_hierarchy();
     }
 
@@ -195,11 +194,27 @@ public:
             return false;
         }
 
+
+        if ( kmer_size.size() == 1 && ibf.size() > 1 )
+        {
+            for ( uint16_t b = 1; b < ibf.size(); ++b )
+            {
+                kmer_size.push_back( kmer_size[0] );
+            }
+        }
+        else if ( kmer_size.size() != ibf.size() )
+        {
+            std::cerr << "Please provide a single or one-per-filter --kmer-size value[s]" << std::endl;
+            return false;
+        }
+
+
         std::vector< std::string > sorted_hierarchy = hierarchy_labels;
         std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
         // get unique hierarcy labels
         uint16_t unique_hierarchy =
             std::unique( sorted_hierarchy.begin(), sorted_hierarchy.end() ) - sorted_hierarchy.begin();
+
 
         if ( max_error_unique.size() == 1 && unique_hierarchy > 1 )
         {
@@ -230,7 +245,7 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
-            auto filter_cfg = FilterConfig{ ibf[h], map[h], tax[h], max_error[h], min_kmers[h] };
+            auto filter_cfg = FilterConfig{ ibf[h], map[h], tax[h], max_error[h], min_kmers[h], kmer_size[h] };
 
             if ( parsed_hierarchy.find( hierarchy_labels[h] ) == parsed_hierarchy.end() )
             { // not found
@@ -282,6 +297,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         if ( !hierarchy_config.first.empty() )
         {
             stream << hierarchy_config.first << ")" << newl;
+
             stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
             stream << " --strata-filter: " << hierarchy_config.second.strata_filter << newl;
         }
@@ -291,6 +307,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
                 stream << "  --min-kmers: " << filter_config.min_kmers << newl;
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
+            stream << "  --kmer-size: " << filter_config.kmer_size << newl;
             stream << "  --ibf: " << filter_config.ibf_file << newl;
             stream << "  --map: " << filter_config.map_file << newl;
             stream << "  --tax: " << filter_config.tax_file << newl;
