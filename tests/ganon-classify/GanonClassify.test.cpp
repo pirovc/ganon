@@ -17,6 +17,7 @@ GanonClassify::Config defaultConfig()
     cfg.output_single       = true;
     cfg.output_all          = true;
     cfg.output_unclassified = false;
+    cfg.kmer_size           = { 19 };
     cfg.threads             = 4;
     cfg.verbose             = false;
     cfg.quiet               = true;
@@ -523,7 +524,7 @@ SCENARIO( "Classify multi-hierarchy with multiple errors and multiple unique err
 
 // Functionality
 
-SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
+/*SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
 {
     auto cfg          = config_classify::defaultConfig();
     cfg.ibf           = { "filters/bacteria.ibf" };
@@ -543,7 +544,7 @@ SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
                                            config_classify::results_path + cfg.output_prefix + "." + ext ) );
     }
-}
+}*/
 
 SCENARIO( "Classify without matches", "[ganon-classify]" )
 {
@@ -696,14 +697,14 @@ SCENARIO( "Classify after update", "[ganon-classify]" )
     cfg_build.update_filter_file = "filters/bacteria.ibf";
     cfg_build.seqid_bin_file     = "filters/bacteria_upd_virus_acc_bin.txt";
     cfg_build.output_filter_file = "bacteria_virus.ibf";
-    //cfg_build.filter_size_bits   = 8388608;
+    // cfg_build.filter_size_bits   = 8388608;
     cfg_build.bin_size_bits   = 65534;
-    cfg_build.reference_files    = { "sequences/virus_NC_003676.1.fasta.gz",
+    cfg_build.reference_files = { "sequences/virus_NC_003676.1.fasta.gz",
                                   "sequences/virus_NC_011646.1.fasta.gz",
                                   "sequences/virus_NC_032412.1.fasta.gz",
                                   "sequences/virus_NC_035470.1.fasta.gz" };
-    cfg_build.verbose            = cfg.verbose;
-    cfg_build.quiet              = cfg.quiet;
+    cfg_build.verbose         = cfg.verbose;
+    cfg_build.quiet           = cfg.quiet;
 
     REQUIRE( GanonBuild::run( cfg_build ) );
 
