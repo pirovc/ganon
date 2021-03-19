@@ -28,7 +28,6 @@ target_include_directories( defaults
 function( link_to_ganon_dependencies target )
     target_link_libraries( ${target}
         PRIVATE
-        sdsl-lite
         Threads::Threads
         cxxopts
         utils
