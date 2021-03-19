@@ -98,16 +98,11 @@ else()
     target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
 endif()
 
-# 3. sdsl-lite:
-
-add_library( sdsl-lite INTERFACE )
-target_include_directories( sdsl-lite SYSTEM INTERFACE libs/sdsl-lite/include )
-
-# 4. Zlib (optional for SeqAn):
+# 3. Zlib (optional for SeqAn):
 
 find_package( ZLIB )
 
-# 5. SeqAn3:
+# 4. SeqAn3:
 
 set( SEQAN3_INCLUDE_PATH libs/seqan3/include )
 find_package (SeqAn3 3.0.3 REQUIRED HINTS libs/seqan3/build_system)
@@ -119,7 +114,7 @@ target_link_libraries( seqan3 INTERFACE ${SEQAN3_LIBRARIES} )
 add_compile_options( ${SEQAN3_DEFINITIONS} )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN3_CXX_FLAGS}" )
 
-# 6. Catch2:
+# 5. Catch2:
 
 add_library( Catch2 INTERFACE )
 if( INCLUDE_DIRS )
