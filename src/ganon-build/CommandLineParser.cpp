@@ -27,7 +27,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "k,kmer-size", "k size to build filter", cxxopts::value< uint8_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter", cxxopts::value< uint16_t >() )
-
+        ( "w,window-size", "window size to compute minimizers", cxxopts::value< uint8_t >() )
+        
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "n-refs", "Number of sequences for each batch", cxxopts::value< uint32_t >() )        
         ( "n-batches", "Number of batches of n-refs to hold in memory", cxxopts::value< uint32_t >() )
@@ -84,6 +85,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.kmer_size = args["kmer-size"].as< uint8_t >();
     if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
+    if ( args.count( "window-size" ) )
+        config.window_size = args["window-size"].as< uint8_t >();
 
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();

@@ -20,6 +20,7 @@ struct FilterConfig
     int16_t     max_error;
     float       min_kmers;
     uint8_t     kmer_size;
+    uint8_t     window_size;
 };
 
 struct HierarchyConfig
@@ -46,6 +47,7 @@ public:
     std::vector< std::string > hierarchy_labels{ "1_default" };
 
     std::vector< uint8_t > kmer_size{ 19 };
+    std::vector< uint8_t > window_size{ 0 };
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
@@ -208,6 +210,18 @@ public:
             return false;
         }
 
+        if ( window_size.size() == 1 && ibf.size() > 1 )
+        {
+            for ( uint16_t b = 1; b < ibf.size(); ++b )
+            {
+                window_size.push_back( window_size[0] );
+            }
+        }
+        else if ( window_size.size() != ibf.size() )
+        {
+            std::cerr << "Please provide a single or one-per-filter --window-size value[s]" << std::endl;
+            return false;
+        }
 
         std::vector< std::string > sorted_hierarchy = hierarchy_labels;
         std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
@@ -245,7 +259,7 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
-            auto filter_cfg = FilterConfig{ ibf[h], map[h], tax[h], max_error[h], min_kmers[h], kmer_size[h] };
+            auto filter_cfg = FilterConfig{ ibf[h], map[h], tax[h], max_error[h], min_kmers[h], kmer_size[h], window_size[h]};
 
             if ( parsed_hierarchy.find( hierarchy_labels[h] ) == parsed_hierarchy.end() )
             { // not found
@@ -307,7 +321,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
                 stream << "  --min-kmers: " << filter_config.min_kmers << newl;
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
-            stream << "  --kmer-size: " << filter_config.kmer_size << newl;
+            stream << "  --window-size: " << unsigned(filter_config.window_size) << newl;
+            stream << "  --kmer-size: " << unsigned(filter_config.kmer_size) << newl;
             stream << "  --ibf: " << filter_config.ibf_file << newl;
             stream << "  --map: " << filter_config.map_file << newl;
             stream << "  --tax: " << filter_config.tax_file << newl;
@@ -328,7 +343,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         stream << "                            " << s << newl;
     stream << newl;
     stream << "Parameters:" << newl;
-    stream << "--offset                    " << config.offset << newl;
+    stream << "--offset                    " << unsigned(config.offset) << newl;
     stream << "--output-prefix             " << config.output_prefix << newl;
     stream << "--output-all                " << config.output_all << newl;
     stream << "--output-unclassified       " << config.output_unclassified << newl;

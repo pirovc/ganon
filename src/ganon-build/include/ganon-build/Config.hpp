@@ -31,6 +31,7 @@ public:
 
     uint8_t  kmer_size      = 19;
     uint16_t hash_functions = 3;
+    uint8_t  window_size    = 0;
 
     uint16_t threads   = 2;
     uint32_t n_refs    = 400;
@@ -144,7 +145,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     if ( config.filter_size_mb > 0 )
         stream << "--filter-size-mb      " << config.filter_size_mb << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
-    stream << "--kmer-size           " << config.kmer_size << newl;
+    stream << "--kmer-size           " << unsigned(config.kmer_size) << newl;
+    stream << "--window-size         " << unsigned(config.window_size) << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;
     stream << "--n-batches           " << config.n_batches << newl;

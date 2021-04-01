@@ -22,7 +22,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
-        ( "b,kmer-size", "k size to query - should be the same used to create filter.  build filter. One per hiearchy label", cxxopts::value< std::vector< uint8_t > >() )
+        ( "w,window-size", "window size to use minimizers .  build filter. One per filter.", cxxopts::value< std::vector< uint8_t > >() )
+        ( "b,kmer-size", "k size to query - should be the same used to build the filter. One per filter.", cxxopts::value< std::vector< uint8_t > >() )
         ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. One per filter. Default: 0.25", cxxopts::value< std::vector< float > >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]. One per filter.", cxxopts::value< std::vector< int16_t > >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
@@ -79,6 +80,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "hierarchy-labels" ) )
         config.hierarchy_labels = args["hierarchy-labels"].as< std::vector< std::string > >();
 
+    if ( args.count( "window-size" ) )
+        config.window_size = args["window-size"].as< std::vector< uint8_t > >();
     if ( args.count( "kmer-size" ) )
         config.kmer_size = args["kmer-size"].as< std::vector< uint8_t > >();
     if ( args.count( "min-kmers" ) )

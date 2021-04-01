@@ -6,6 +6,7 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/range/views/kmer_hash.hpp>
+#include <seqan3/range/views/minimiser_hash.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 
 #include <cereal/archives/binary.hpp>
@@ -234,6 +235,21 @@ bool run( Config config )
                 for ( auto& [seq, id, qual] : records )
                 {
                     stats.totalSeqsFile += 1;
+                    
+                    if( config.window_size ){
+                        if ( seq.size() < config.window_size )
+                        {
+                            if ( config.verbose )
+                            {
+                                std::scoped_lock lock( mtx );
+                                std::cerr << "WARNING: sequence smaller than window size"
+                                          << " [" << id << "]" << std::endl;
+                            }
+                            stats.invalidSeqs += 1;
+                            continue;
+                        }
+                    }
+
                     if ( seq.size() < config.kmer_size )
                     {
                         if ( config.verbose )
@@ -299,6 +315,10 @@ bool run( Config config )
 
     timeLoadFilter.stop();
 
+
+    auto minimiser_hash = seqan3::views::minimiser_hash(seqan3::shape{seqan3::ungapped{config.kmer_size}}, seqan3::window_size{config.window_size}, seqan3::seed{0});
+    auto kmer_hash = seqan3::views::kmer_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } } );
+    
     // Start execution threads to add kmers
     timeBuild.start();
     std::vector< std::future< void > > tasks;
@@ -313,14 +333,31 @@ bool run( Config config )
                     for ( uint64_t i = 0; i < seq_bin.at( val.seqid ).size(); i++ )
                     {
                         auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
-                        // Fragment sequence and generate hashes for k-mers
-                        auto hashes =
-                            val.seq | seqan3::views::slice( fragstart - 1, fragend )
-                            | seqan3::views::kmer_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } } );
-                        for ( auto const& hash : hashes )
-                        {
-                            filter.emplace( hash, seqan3::bin_index{ binid } );
+
+                        // TODO define hash outside loop
+                        if (config.window_size > 0){
+                            auto hashes =
+                                val.seq | seqan3::views::slice( fragstart - 1, fragend )
+                                | minimiser_hash;
+                        
+                            for ( auto const& hash : hashes )
+                            {
+                                filter.emplace( hash, seqan3::bin_index{ binid } );
+                            }
+
+                        }else{
+                            // Fragment sequence and generate hashes for k-mers
+                            auto hashes =
+                                val.seq | seqan3::views::slice( fragstart - 1, fragend )
+                                | kmer_hash;
+
+                            for ( auto const& hash : hashes )
+                            {
+                                filter.emplace( hash, seqan3::bin_index{ binid } );
+                            }
                         }
+
+                        
                     }
                 }
                 else
