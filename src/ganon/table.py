@@ -5,22 +5,19 @@ from ganon.util import *
 def table(cfg):
     #validate input input files
     tre_files = validate_input_files(cfg.tre_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
-    
+
     print_log("Generating table", cfg.quiet)
-    # reports[file] = {"taxa": {name: count,...}, 
-    #                  "lineage": {name: ["1",...],...}, 
-    #                  "label": filename, 
-    #                  "total": INT, 
-    #                  "unclassified_root": INT, 
-    #                  "unclassified_rank": INT, 
-    #                  "filtered_rank": INT}
+
     reports, total_taxa = parse_reports(tre_files, cfg.rank)
-    print_log(" - " + str(len(reports)) + " files parsed" , cfg.quiet)
-    print_log(" - " + str(total_taxa) + " total taxa selected at " + cfg.rank + " level", cfg.quiet)
+    print_log(" - " + str(len(reports)) + " files parsed", cfg.quiet)
+    print_log(" - " + str(total_taxa) + " total taxa selected", cfg.quiet)
+
+    print(reports)
 
     # filter reports
     filtered_total_taxa = filter_reports(reports, cfg)
-    if total_taxa-filtered_total_taxa: print_log(" - " + str(total_taxa-filtered_total_taxa) + " taxa filtered out", cfg.quiet)
+    if total_taxa - filtered_total_taxa:
+        print_log(" - " + str(total_taxa - filtered_total_taxa) + " taxa filtered out", cfg.quiet)
 
     # top_sample and top_all are mutually exclusive
     if cfg.top_sample:
@@ -44,7 +41,7 @@ def table(cfg):
     else:
         lines, cols = write_tsv(reports, cfg)
         print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
-    
+
     return True
 
 def parse_reports(tre_files, rank):
@@ -52,180 +49,215 @@ def parse_reports(tre_files, rank):
     total_taxa = set()
     for tre_file in tre_files:
         reports[tre_file] = {}
-        taxa, lineage, total, unclassified_root, unclassified_rank = parse_tre_rank(tre_file, rank)
-        total_taxa.update(taxa.keys())
+        count, lineage, name, total, unclassified = parse_tre_rank(tre_file, rank)
+        total_taxa.update(count.keys())
         reports[tre_file]["label"] = tre_file
-        reports[tre_file]["taxa"] = taxa
+        reports[tre_file]["count"] = count
         reports[tre_file]["lineage"] = lineage
+        reports[tre_file]["name"] = name
         reports[tre_file]["total"] = total
-        reports[tre_file]["unclassified_root"] = unclassified_root
-        reports[tre_file]["unclassified_rank"] = unclassified_rank
-        reports[tre_file]["filtered_rank"] = 0
+        reports[tre_file]["unclassified"] = unclassified
+        reports[tre_file]["filtered"] = 0
     return reports, len(total_taxa)
 
-def parse_tre_rank(tre_file, rank):
-    taxa = {}
+
+def parse_tre_rank(tre_file, selected_rank):
+    count = {}
     lineage = {}
-    unclassified_root = 0
-    classified_root = 0
-    classified_rank = 0
+    name = {}
+    unclassified = 0
+    classified = 0
+    total = 0
+
     with open(tre_file, "r") as file:
         for line in file:
-            r, taxid, l, name, _, _, cum_count, _ = line.rstrip().split("\t")
-            cum_count = int(cum_count)
-            if r == "unclassified":
-                unclassified_root=cum_count
-            elif r == "root":
-                classified_root=cum_count
-            elif r==rank:
-                classified_rank += cum_count
-                taxa[name] = cum_count
-                lineage[name] = l.split("|")
+            rank, taxid, lin, taxa_name, _, all_assign, cum_assign, _ = line.rstrip().split("\t")
+            if rank == "unclassified":
+                unclassified = int(cum_assign)
+                continue
+            elif selected_rank and rank != selected_rank:
+                continue
+            elif rank == "root":
+                classified = int(cum_assign)
 
-    unclassified_rank = classified_root-classified_rank
-    total = unclassified_root + classified_root
-    return taxa, lineage, total, unclassified_root, unclassified_rank
+            # Reporting single rank selected by user
+            if selected_rank:
+                # Use cumulative counts to the taxa up-to this rank
+                count[taxid] = int(cum_assign)
+            else:
+                # Use all direct assignements to the taxa
+                count[taxid] = int(all_assign)
+
+            lineage[taxid] = lin.split("|")
+            name[taxid] = taxa_name
+
+    total = unclassified + classified
+    return count, lineage, name, total, unclassified
 
 
 def filter_reports(reports, cfg):
-    total_taxa = set()
+    filtered_total_taxa = set()
     for file, rep in reports.items():
-        for name in list(rep["taxa"].keys()):
-            count = rep["taxa"][name]
+        for taxid in rep["count"].keys():
+            count = rep["count"][taxid]
             filtered = False
             if count < cfg.min_count or count/rep["total"] < cfg.min_percentage:
                 filtered = True
-            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][name]): 
+            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]): 
                 filtered = True
-            elif cfg.names and not name in cfg.names:
+            elif cfg.names and not rep["name"][taxid] in cfg.names:
                 filtered = True
-            elif cfg.names_with and not any(n in name for n in cfg.names_with):
+            elif cfg.names_with and not any(n in rep["name"][taxid] for n in cfg.names_with):
                 filtered = True
 
             if filtered: 
-                rep["filtered_rank"]+=count
-                del rep["taxa"][name]
-                del rep["lineage"][name]
+                rep["filtered"]+=count
+                del rep["count"][taxid]
+                del rep["lineage"][taxid]
+                del rep["name"][taxid]
             else:
-                total_taxa.add(name)
+                filtered_total_taxa.add(taxid)
 
-    return len(total_taxa)
+    return len(filtered_total_taxa)
 
 def select_top_sample(reports, top_sample):
-    total_taxa = set()
+    top_sample_total_taxa = set()
     for file, rep in reports.items():
-        for i, (name, count) in enumerate(sorted(rep["taxa"].items(), key=lambda x: x[1], reverse=True)): # sorted by count
-            if i<top_sample: 
-                total_taxa.add(name)
+        for i, (taxid, count) in enumerate(sorted(rep["count"].items(), key=lambda x: x[1], reverse=True)): # sorted by count
+            if i < top_sample:
+                top_sample_total_taxa.add(name)
                 continue
-            rep["filtered_rank"]+=count
-            del rep["taxa"][name]
-            del rep["lineage"][name]
-            
-    return len(total_taxa)
+            rep["filtered"] += count
+            del rep["count"][taxid]
+            del rep["lineage"][taxid]
+            del rep["name"][taxid]
+
+    return len(top_sample_total_taxa)
 
 def select_top_all(reports, top_all):
     total_taxa = set()
     total_counts = get_total_counts(reports)
-    top_names = []
-    for i,name in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
-        if i<top_all:
-            top_names.append(name)
+    top_taxids = []
+    for i, taxid in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
+        if i < top_all:
+            top_taxids.append(taxid)
 
     for file, rep in reports.items():
-        for name in list(rep["taxa"]):
-            if name in top_names:
-                total_taxa.add(name)
+        for taxid, count in rep["count"].items():
+            if taxid in top_taxids:
+                total_taxa.add(taxid)
                 continue
-            rep["filtered_rank"]+=rep["taxa"][name]
-            del rep["taxa"][name]
-            del rep["lineage"][name]
-            
+            rep["filtered_rank"] += count
+            del rep["count"][taxid]
+            del rep["lineage"][taxid]
+            del rep["name"][taxid]
+
     return len(total_taxa) 
 
 def select_occurrence(reports, min_occurrence):
-    total_taxa = set()
-    total_counts = get_total_counts(reports)
-    min_occ_names = []
 
-    for name,val in total_counts.items():
-        if val["occurrence"]>=min_occurrence:
-            min_occ_names.append(name)
+    min_occ_taxids = []
+    for taxid, val in get_total_counts(reports).items():
+        if val["occurrence"] >= min_occurrence:
+            min_occ_taxids.append(taxid)
 
+    min_occurrence_total_taxa = set()
     for file, rep in reports.items():
-        for name in list(rep["taxa"]):
-            if name in min_occ_names:
-                total_taxa.add(name)
+        for taxid, count in rep["count"].items():
+            if taxid in min_occ_taxids:
+                min_occurrence_total_taxa.add(taxid)
                 continue
-            rep["filtered_rank"]+=rep["taxa"][name]
-            del rep["taxa"][name]
-            del rep["lineage"][name]
-                
-    return len(total_taxa) 
+            rep["filtered_rank"] += count
+            del rep["count"][taxid]
+            del rep["lineage"][taxid]
+            del rep["name"][taxid]
+
+    return len(min_occurrence_total_taxa)
+
 
 def get_total_counts(reports):
     # return sum of % of all samples
     total_counts = {}
     for d in reports.values():
-        for name,count in d["taxa"].items():
-            if name not in total_counts: total_counts[name] = {"sum_percentage": 0, "occurrence": 0}
-            total_counts[name]["sum_percentage"] += count/d["total"]
-            total_counts[name]["occurrence"] += 1
+        for taxid, count in d["count"].items():
+            if taxid not in total_counts:
+                total_counts[taxid] = {"sum_percentage": 0, "occurrence": 0}
+            total_counts[taxid]["sum_percentage"] += count/d["total"]
+            total_counts[taxid]["occurrence"] += 1
     return total_counts
+
 
 def write_tsv(reports, cfg):
     total_counts = get_total_counts(reports)
     out_file = open(cfg.output_file, "w")
 
-    # order by name
-    sorted_names = sorted(total_counts.keys())
+    # Sort by taxid
+    sorted_taxids = sorted(total_counts.keys())
 
-    if cfg.header=="taxid" or cfg.header=="lineage":
-        header = [""] + [name for name in sorted_names]
-        lineage = {}
+    # generate output as a list of lists with each file in one line
+    out_table = []
+
+    if cfg.header == "taxid":
+        header = [""] + list(sorted_taxids)
+    elif cfg.header == "name":
+        # Merge all possible names
+        names = {}
         for file in reports:
-            lineage.update(reports[file]["lineage"])
-        if cfg.header=="taxid":
-            header = [""] + [lineage[name][-1] for name in sorted_names]
-        elif cfg.header=="lineage":
-            header = [""] + ["|".join(lineage[name]) for name in sorted_names]
-    else:
-        header = [""] + [name for name in sorted_names]
-    
-    if cfg.add_unclassified_rank: 
-        header.append("unclassified_" + cfg.rank)
-    if cfg.add_unclassified: 
-        header.append("unclassified")
-    if cfg.add_filtered: 
-        header.append("filtered")
-    print(*header, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
-    cols=len(header)-1
+            names.update(reports[file]["name"])
+        header = [""] + [names[taxid] for taxid in sorted_taxids]
+    elif cfg.header == "taxid_lineage":
+        # Merge all possible lineages
+        lineages = {}
+        for file in reports:
+            lineages.update(reports[file]["lineage"])
+        header = [""] + ["|".join(lineages[taxid]) for taxid in sorted_taxids]
+    elif cfg.header == "name_lineage":
+        # Merge all possible lineages
+        lineages = {}
+        for file in reports:
+            lineages.update(reports[file]["lineage"])
+        names = {}
+        for file in reports:
+            names.update(reports[file]["name"])
+        header = [""] + ["|".join(names[lin_taxid] for lin_taxid in lineages[taxid]) for taxid in sorted_taxids]
 
-    lines=0
+    if cfg.add_unclassified:
+        header.append("unclassified")
+    if cfg.add_filtered:
+        header.append("filtered")
+
+    cols = len(header)-1
+
+    lines = 0
+    out_table.append(header)
     for file in sorted(reports):
         res = reports[file]
-        tsv_data = [res["label"]]
-        for name in sorted_names:
-            if name in res["taxa"]:
-                v = res["taxa"][name]
-                if cfg.output_value=="percentage":
+        out_line = [res["label"]]
+        for taxid in sorted_taxids:
+            if taxid in res["count"]:
+                v = res["count"][taxid]
+                if cfg.output_value == "percentage":
                     v = v/res["total"]
             else:
                 v = 0
-            tsv_data.append(v)
+            out_line.append(v)
 
-        if cfg.skip_zeros and (len(tsv_data) > 1 and max(tsv_data[1:]) == 0):
+        if cfg.skip_zeros and (len(out_line) > 1 and max(out_line[1:]) == 0):
             print_log(" - Skipping line (" + res["label"] + ") with only zeros", cfg.quiet)
         else:
-            if cfg.add_unclassified_rank:
-                tsv_data.append(res["unclassified_rank"]/res["total"] if cfg.output_value=="percentage" else res["unclassified_rank"])
             if cfg.add_unclassified:
-                tsv_data.append(res["unclassified_root"]/res["total"] if cfg.output_value=="percentage" else res["unclassified_root"])
+                out_line.append(res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"])
             if cfg.add_filtered:
-                tsv_data.append(res["filtered_rank"]/res["total"] if cfg.output_value=="percentage" else res["filtered_rank"])
-
-            print(*tsv_data, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+                out_line.append(res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"])
+            out_table.append(out_line)
             lines+=1
-            
+
+    # "--transpose" is actually the order the lists were built the lists
+    if not cfg.transpose:
+        out_table = map(list, zip(*out_table))
+
+    for line in out_table:
+        print(*line, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+
     out_file.close()
     return lines, cols
