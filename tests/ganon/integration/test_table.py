@@ -14,19 +14,21 @@ class TestTableOffline(unittest.TestCase):
     default_params = {"tre_files": [data_dir+"table/report_reads1.tre", 
                                     data_dir+"table/report_reads2.tre",
                                     data_dir+"table/report_reads3.tre"],
+                      "rank": "species",
+                      "transpose": True,
                       "quiet": True}
-    
+
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
-       
+
     def test_default(self):
         """
         Test ganon table with default parameters
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_default.tsv"
-        
+
         # Build config from params
         cfg = Config("table", **params)
         # Run
@@ -44,7 +46,7 @@ class TestTableOffline(unittest.TestCase):
         del params["tre_files"]
         params["input_directory"] = data_dir+"table/"
         params["input_extension"] = ".tre"
-       
+
         # Build config from params
         cfg = Config("table", **params)
         # Run
@@ -55,7 +57,7 @@ class TestTableOffline(unittest.TestCase):
 
     def test_rank(self):
         """
-        Test ganon table with --ranks
+        Test ganon table with --rank
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_rank.tsv"
@@ -70,7 +72,29 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should output just bacteria
         self.assertEqual(res["out_pd"].columns.values.size, 1, "ganon table rank selection failed")
-        
+
+    def test_no_rank(self):
+        """
+        Test ganon table without specific --rank
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_no_rank.tsv"
+        params["rank"] = ""
+        params["header"] = "lineage"
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should output just bacteria
+        self.assertEqual(res["out_pd"].columns.values.size, 49, "ganon table without rank failed")
+        # Test some outcomes
+        self.assertTrue("1|2" in res["out_pd"].columns.values, "ganon table without rank failed")
+        self.assertTrue("1|2|1239|909932|1843489|31977" in res["out_pd"].columns.values, "ganon table without rank failed")
+
     def test_min_count(self):
         """
         Test ganon table with --min-count
@@ -89,7 +113,7 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should output just counts higher than min_count (or zeros)
         self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]>=params["min_count"])).all(axis=None) , "ganon table min count filter failed")
-    
+
     def test_min_percentage(self):
         """
         Test ganon table with --min-percentage
@@ -239,12 +263,11 @@ class TestTableOffline(unittest.TestCase):
 
     def test_extra_cols(self):
         """
-        Test ganon table with --add-unclassified --add-unclassified-rank --add-filtered
+        Test ganon table with --add-unclassified --add-filtered
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_extra_cols.tsv"
         params["add_unclassified"] = True
-        params["add_unclassified_rank"] = True
         params["add_filtered"] = True
         params["rank"] = "genus"
 
@@ -256,7 +279,7 @@ class TestTableOffline(unittest.TestCase):
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # last 3 cols should be the fixed ones
-        self.assertTrue(all(c in ["unclassified", "unclassified_"+params["rank"], "filtered"] for c in  res["out_pd"].columns.values[-3:]), "ganon table extra cols failed")
+        self.assertTrue(all(c in ["unclassified", "filtered"] for c in res["out_pd"].columns.values[-2:]), "ganon table extra cols failed")
 
     def test_skip_zeros(self):
         """
@@ -297,7 +320,7 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should have unclassified summing to 0 (not unclassified line reported)
         self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min occurrence filter failed")
-    
+
     def test_header(self):
         """
         Test ganon table with different headers
@@ -305,7 +328,7 @@ class TestTableOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_header.tsv"
         params["header"] = "lineage"
-        
+
         # Build config from params
         cfg = Config("table", **params)
         # Run
@@ -315,7 +338,7 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # check if printed lineage
         self.assertTrue(all(["|" in c for c in res["out_pd"].columns.values]), "ganon table headers are wrong (lineage)")
-    
+
         params["header"] = "taxid"
         # Build config from params
         cfg = Config("table", **params)
@@ -326,6 +349,6 @@ class TestTableOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # check if printed taxid (just numeric for this specific test)
         self.assertTrue(all([c.isdigit() for c in res["out_pd"].columns.values]), "ganon table headers are wrong (taxid)")
-    
+
 if __name__ == '__main__':
     unittest.main()
