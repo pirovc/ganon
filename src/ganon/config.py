@@ -126,6 +126,7 @@ class Config:
         report_group_optional.add_argument('--input-extension',      type=str,            metavar='', default="",      help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".rep")')
         report_group_optional.add_argument('--verbose',              action='store_true',             default=False,   help='Verbose output mode')
         report_group_optional.add_argument('--quiet',                action='store_true',             default=False,   help='Quiet output mode')
+
         ####################################################################################################
 
         table_parser = argparse.ArgumentParser(description='Table options', add_help=False)
@@ -134,26 +135,26 @@ class Config:
         table_group_required = table_parser.add_argument_group('required arguments')
         table_group_required.add_argument('-i', '--tre-files',   type=str, nargs="*", required=False, help='Report files (.tre) from ganon classify/report to make the table')
         table_group_required.add_argument('-o', '--output-file', type=str,            required=True,  help='Output filename for the table')
-    
+
         # Defaults
         table_group_optional = table_parser.add_argument_group('optional arguments')
-        table_group_optional.add_argument('-l', '--output-value',             type=str,   metavar='', default="percentage", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: percentage")
+        table_group_optional.add_argument('-l', '--output-value',             type=str,   metavar='', default="counts",     help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
         table_group_optional.add_argument('-f', '--output-format',            type=str,   metavar='', default="tsv",        help='Output format [tsv, csv]. Default: tsv')
         table_group_optional.add_argument('-t', '--top-sample',               type=int,   metavar='', default=0,            help="Top hits of each sample individually")
-        table_group_optional.add_argument('-a', '--top-all',                  type=int,   metavar='', default=0,            help="Top hits of all samples (ranked by percentage)") 
-        table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default="species",    help="Rank to report. Default: species")
-        table_group_optional.add_argument('-m', '--min-occurrence',            type=int,   metavar='', default=0,            help="# occurrence of a taxa among reports to be kept [1-*]")
-        table_group_optional.add_argument('-p', '--min-occurrence-percentage', type=float, metavar='', default=0,            help="% occurrence of a taxa among reports to be kept [0-1]")
+        table_group_optional.add_argument('-a', '--top-all',                  type=int,   metavar='', default=0,            help="Top hits of all samples (ranked by percentage)")
+        table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default=None,         help="Define specific rank to report. Empty will report all ranks (only direct read assignments - col. 6 from the report files)")
+        table_group_optional.add_argument('-m', '--min-occurrence',           type=int,   metavar='', default=0,            help="# occurrence of a taxa among reports to be kept [1-*]")
+        table_group_optional.add_argument('-p', '--min-occurrence-percentage',type=float, metavar='', default=0,            help="%% occurrence of a taxa among reports to be kept [0-1]")
         table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')
         table_group_optional.add_argument('--add-unclassified',               action='store_true',    default=False,        help="Add column with unclassified count/percentage")
-        table_group_optional.add_argument('--add-unclassified-rank',          action='store_true',    default=False,        help="Add column with unclassified count/percentage at the chosen rank but classified at a less specific rank")
         table_group_optional.add_argument('--add-filtered',                   action='store_true',    default=False,        help="Add column with filtered count/percentage")
         table_group_optional.add_argument('--skip-zeros',                     action='store_true',    default=False,        help="Do not print lines with only zero count/percentage")
+        table_group_optional.add_argument('--transpose',                      action='store_true',    default=False,        help="Transpose output table (taxa as cols and files as rows)")
         table_group_optional.add_argument('--input-directory',                type=str,  metavar='',  default="",           help='Directory containing input files')
         table_group_optional.add_argument('--input-extension',                type=str,  metavar='',  default="",           help='Extension of files to use with --input-directory (provide it without * expansion, e.g. ".tre")')
         table_group_optional.add_argument('--verbose',                        action='store_true',    default=False,        help='Verbose output mode')
         table_group_optional.add_argument('--quiet',                          action='store_true',    default=False,        help='Quiet output mode')
-                 
+
         ####################################################################################################
 
         filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
@@ -212,24 +213,24 @@ class Config:
     def validate(self):
 
         seq_info_mode_options = ["auto","eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
-        
+
         if self.empty is True:
             print_log("Please provide one or more arguments")
             return False
 
-        if self.verbose is True: 
-            self.quiet=False
+        if self.verbose is True:
+            self.quiet = False
         elif self.quiet is True:
-            self.verbose=False
-            
-        if self.which=='build':
+            self.verbose = False
+
+        if self.which == 'build':
             if not check_taxdump(self.taxdump_file):
                 return False
 
             if not check_input_directory(self.input_files, self.input_directory, self.input_extension):
                 return False
-            
-            if self.fragment_length>0 and self.overlap_length > self.fragment_length:
+
+            if self.fragment_length > 0 and self.overlap_length > self.fragment_length:
                 print_log("--overlap-length cannot be bigger than --fragment-length")
                 return False
 
@@ -237,14 +238,15 @@ class Config:
                 print_log("please set the --bin-length to use --fixed-bloom-size")
                 return False
 
-            if self.max_fp<=0:
+            if self.max_fp <= 0:
                 print_log("--max-fp has to be bigger than 0")
                 return False
 
-            if self.specialization: 
+            if self.specialization:
                 valid_spec = self.validate_specialization()
-                if not valid_spec: return False
-                
+                if not valid_spec:
+                    return False
+
             if not all([sim in seq_info_mode_options for sim in self.seq_info_mode]):
                 print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
                 return False
