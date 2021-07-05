@@ -256,6 +256,26 @@ class TestBuildOffline(unittest.TestCase):
         # ganon-build will simply add the unique provided entries
         self.assertIsNotNone(res, "ganon build has inconsistent results")
 
+    def test_na_seqinfo(self):
+        """
+        ganon build --seq-info-file with "na" values
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_na_seqinfo"
+        params["seq_info_file"] = data_dir+"build/bacteria_seqinfo_with_na.txt"
+
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+
+        res = build_sanity_check_and_parse(vars(cfg))
+        # General sanity check of results
+        # Sanity check passes because ganon build (using --seq-info-file)
+        # does not iterate through sequences, just works with metadata
+        # ganon-build will simply add the unique provided entries
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+
     def test_input_directory(self):
         """
         Test input directory

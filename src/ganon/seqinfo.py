@@ -44,12 +44,19 @@ class SeqInfo:
         self.seqinfo[field] = self.seqinfo.join(df.set_index('seqid'), on="seqid", how="left", rsuffix="_tojoin")[field+"_tojoin"]        
 
     def parse_seq_info_file(self, seq_info_file, use_specialization: bool=False):
-        self.seqinfo = pd.read_csv(seq_info_file, sep='\t', header=None, skiprows=0, index_col=False, names=self.seq_info_colums if use_specialization else self.seq_info_colums[:-1], dtype={'taxid': 'str'})
+        self.seqinfo = pd.read_csv(seq_info_file, 
+                                   sep='\t',
+                                   header=None,
+                                   skiprows=0,
+                                   index_col=False,
+                                   names=self.seq_info_colums if use_specialization else self.seq_info_colums[:-1],
+                                   dtype={'taxid': 'str'},
+                                   na_values={'length': 'na'}).dropna()
         self.drop_duplicates()
 
     def drop_duplicates(self):
         self.seqinfo.drop_duplicates('seqid', keep="first", inplace=True)
-    
+
     def validate_specialization(self):
         if 'specialization' in self.seqinfo.columns:
             # check for invalid specialization entries
