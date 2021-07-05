@@ -158,7 +158,7 @@ def build(cfg):
                                     "--quiet" if cfg.quiet else "",
                                     "--n-refs " + str(cfg.n_refs) if cfg.n_refs is not None else "",
                                     "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
-                                    "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                    "--reference-files " + ",".join([file for file in input_files]) if input_files and not cfg.input_directory else "",
                                     "--directory-reference-files " + cfg.input_directory if cfg.input_directory else "",
                                     "--extension " + cfg.input_extension if cfg.input_extension else ""])
     stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
@@ -336,20 +336,20 @@ def update(cfg):
                                     "--quiet" if cfg.quiet else "",
                                     "--n-refs " + str(cfg.n_refs) if cfg.n_refs is not None else "",
                                     "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
-                                    "--reference-files " + ",".join([file for file in input_files]) if input_files else "",
+                                    "--reference-files " + ",".join([file for file in input_files]) if input_files and not cfg.input_directory else "",
                                     "--directory-reference-files " + cfg.input_directory if cfg.input_directory else "",
                                     "--extension " + cfg.input_extension if cfg.input_extension else "",
                                     "--update-complete" if cfg.update_complete else ""])
     stdout, stderr = run(run_ganon_build_cmd, print_stderr=True)
-    
+
     # move IBF to final location
     shutil.move(tmp_db_prefix_ibf, cfg.output_db_prefix + ".ibf" if cfg.output_db_prefix else db_prefix["ibf"])
 
     # Delete temp files
     rm_tmp_folder(tmp_output_folder)
-    
+
     return True
-    
+
 def check_updated_seqids(new_seqids, old_seqids):
     # remove repeated from old bins
     added_seqids = new_seqids.difference(old_seqids)
