@@ -77,25 +77,22 @@ def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
 def validate_input_files(input_files, input_directory, input_extension, quiet):
-    # get files from directory
-    input_files_from_directory = []
-    if input_directory and input_extension:
+
+    valid_input_files = []
+    if input_files:
+        valid_input_files.extend(check_files(input_files))
+    elif input_directory and input_extension:
         if not os.path.isdir(input_directory):
             print_log(input_directory + " is not a valid directory", quiet)
         else:
+            input_files_from_directory = []
             for file in os.listdir(input_directory):
                 if file.endswith(input_extension):
                     input_files_from_directory.append(os.path.join(input_directory, file))
             print_log(str(len(input_files_from_directory)) + " file(s) [" + input_extension + "] found in " + input_directory, quiet)
             print_log("")
-            
-    valid_input_files = []
-    # check if file exists and it's not empty
-    if input_files_from_directory:
-        valid_input_files.extend(check_files(input_files_from_directory))
-
-    if input_files: 
-        valid_input_files.extend(check_files(input_files))
+            if input_files_from_directory:
+                valid_input_files.extend(check_files(input_files_from_directory))
 
     return valid_input_files
 

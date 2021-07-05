@@ -25,7 +25,7 @@ def merge_gz(files, output_file):
         for file in files:
             with open(file, 'rb') as inf:
                 shutil.copyfileobj(inf, outf)
-                
+
 def parse_bins(bins):
     #columns=['seqid', 'seqstart', 'seqend', 'length', 'taxid', 'binid', 'specialization']
     #types={'seqid': 'str', 'seqstart': 'uint64', 'seqend': 'uint64', 'length': 'uint64', 'taxid': 'str', 'binid': 'uint64', 'specialization': 'str'}
@@ -35,8 +35,14 @@ def parse_bins(bins):
 
 def parse_seq_info(seq_info_file):
     colums=['seqid', 'length', 'taxid', 'specialization']
-    types={'seqid': 'str', 'length': 'uint64', 'taxid': 'str', 'specialization': 'str'}
-    return pd.read_table(seq_info_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
+    types={'seqid': 'str', 'taxid': 'str', 'specialization': 'str'}
+    return pd.read_table(seq_info_file,
+                         sep='\t',
+                         header=None,
+                         skiprows=0,
+                         names=colums,
+                         dtype=types,
+                         na_values={'length': 'na'}).dropna()
 
 def parse_map(map_file):
     colums=['target', 'binid']
@@ -79,7 +85,7 @@ def build_sanity_check_and_parse(params):
         res["seq_info"] = parse_seq_info(params["seq_info_file"])
     else:
         res["seq_info"] = parse_seq_info(params["db_prefix"]+".seqinfo.txt")
-         
+
     res["gnn"] = Gnn(file=params["db_prefix"]+".gnn")
     res["tax_pd"] = parse_tax(params["db_prefix"]+".tax")
     res["map_pd"] = parse_map(params["db_prefix"]+".map")
