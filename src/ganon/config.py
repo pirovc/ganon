@@ -386,16 +386,18 @@ class Config:
 
         return True if not missing_path else False
 
-def check_input_directory(input_files, input_directory, input_extension):         
+
+def check_input_directory(input_files, input_directory, input_extension):
     if not input_files and not input_directory:
-        print_log("Please provide files with --input-files and/or --input-directory with --input-extension")
+        print_log("Please provide files with --input-files or --input-directory/--input-extension")
         return False
     elif input_directory and not input_extension:
         print_log("Please provide the --input-extension when using --input-directory")
         return False
     elif input_directory and "*" in input_extension:
-        print_log("Please do not use wildcards (*) in the --input-extension")
+        print_log("Do not use wildcards (*) in the --input-extension")
         return False
+
     return True
 
 def check_taxdump(taxdump_file):
