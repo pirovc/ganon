@@ -15,18 +15,18 @@ class TestClassifyOffline(unittest.TestCase):
                       "single_reads": data_dir+"bac.sim.1.fq",
                       "output_all": True,
                       "quiet": True}
-    
+
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
-       
+
     def test_default(self):
         """
         Test run with default parameters
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_default"
-        
+
         # Build config from params
         cfg = Config("classify", **params)
         # Run
@@ -45,7 +45,7 @@ class TestClassifyOffline(unittest.TestCase):
         params["min_kmers"] = ["0.25", "0.1"]
         params["hierarchy_labels"] = ["1_assembly", "2_default"]
         params["output_single"] = True
-        
+
         # Build config from params
         cfg = Config("classify", **params)
         # Run
@@ -63,7 +63,7 @@ def classify_classify_sanity_check_and_parse(params):
 
     res = {}
     # Sequence information from database to be updated
-    res["tre_pd"] =  parse_tre(params["output_prefix"]+".tre")
+    res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
     return res
 
 if __name__ == '__main__':

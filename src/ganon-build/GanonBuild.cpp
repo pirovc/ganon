@@ -227,7 +227,6 @@ bool run( Config config )
             // Open file (type define by extension)
             seqan3::sequence_file_input fin{ reference_file };
 
-
             // read in chuncks of config.n_refs
             for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
             {
@@ -246,7 +245,7 @@ bool run( Config config )
                         continue;
                     }
 
-                    // Header id goes up-to first empty space .size()
+                    // Header id goes up-to first empty space
                     std::string seqid = id.substr( 0, id.find( ' ' ) );
 
                     if ( seq_bin.count( seqid ) == 0 )
