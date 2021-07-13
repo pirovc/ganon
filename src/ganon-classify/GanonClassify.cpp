@@ -34,6 +34,8 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter<> TIbf;
 
+typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > Tagent;
+
 typedef std::unordered_map< std::string, uint16_t > TMatches;
 
 struct Node
@@ -246,75 +248,67 @@ void select_matches( TMatches&                matches,
 
 uint16_t find_matches( TMatches&                    matches,
                        std::vector< Filter >&       filters,
+                       std::vector< Tagent >&       agents,
                        std::vector< seqan3::dna5 >& read_seq,
-                       uint8_t                      offset )
+                       uint8_t                      offset,
+                       auto&                        hash_adaptor)
 {
 
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
 
-    // TODO one per hiearchy (same k-mer size)
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ filters[0].filter_config.kmer_size } );
-
-    for ( Filter& filter : filters )
+    for(uint8_t i = 0; i < filters.size(); ++i)
     {
-        // TODO one per thread / per filter
-        auto agent = filter.ibf.counting_agent< uint16_t >();
-
-        seqan3::counting_vector< uint16_t > selectedBins = agent.bulk_count( read_seq | hash_adaptor );
+        seqan3::counting_vector< uint16_t > selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
         seqan3::counting_vector< uint16_t > selectedBinsRev =
-            agent.bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+            agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
 
         uint16_t threshold =
-            ( filter.filter_config.min_kmers > -1 )
+            ( filters[i].filter_config.min_kmers > -1 )
                 ? get_threshold_kmers(
-                      read_seq.size(), filter.filter_config.kmer_size, filter.filter_config.min_kmers, offset )
+                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
                 : get_threshold_errors(
-                      read_seq.size(), filter.filter_config.kmer_size, filter.filter_config.max_error, offset );
+                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
         // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
+        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
     return max_kmer_count_read;
 }
 
 uint16_t find_matches_paired( TMatches&                    matches,
                               std::vector< Filter >&       filters,
+                              std::vector< Tagent >&       agents,
                               std::vector< seqan3::dna5 >& read_seq,
                               std::vector< seqan3::dna5 >& read_seq2,
                               uint16_t                     effective_read_len,
-                              uint8_t                      offset )
+                              uint8_t                      offset,
+                              auto&                        hash_adaptor )
 {
     // send it as a reference to be valid for every filter
     uint16_t max_kmer_count_read = 0;
 
-    // TODO one per hiearchy (same k-mer size)
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ filters[0].filter_config.kmer_size } );
-
-    for ( Filter& filter : filters )
+    for(uint8_t i = 0; i < filters.size(); ++i)
     {
-
-        // TODO one per thread / per filter
-        auto agent = filter.ibf.counting_agent< uint16_t >();
 
         // IBF count
         // FR
-        seqan3::counting_vector< uint16_t > selectedBins = agent.bulk_count( read_seq | hash_adaptor );
-        selectedBins += agent.bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor );
+        seqan3::counting_vector< uint16_t > selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
+        selectedBins += agents[i].bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor );
 
         // RF
         seqan3::counting_vector< uint16_t > selectedBinsRev =
-            agent.bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
-        selectedBinsRev += agent.bulk_count( read_seq2 | hash_adaptor );
+            agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+        selectedBinsRev += agents[i].bulk_count( read_seq2 | hash_adaptor );
 
         uint16_t threshold =
-            ( filter.filter_config.min_kmers > -1 )
+            ( filters[i].filter_config.min_kmers > -1 )
                 ? get_threshold_kmers(
-                      effective_read_len, filter.filter_config.kmer_size, filter.filter_config.min_kmers, offset )
+                      effective_read_len, filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
                 : get_threshold_errors(
-                      effective_read_len, filter.filter_config.kmer_size, filter.filter_config.max_error, offset );
+                      effective_read_len, filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
 
         // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filter, threshold, max_kmer_count_read );
+        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
     return max_kmer_count_read;
 }
@@ -385,6 +379,16 @@ void classify( std::vector< Filter >&    filters,
     // k-mer sizes should be the same among filters
     uint8_t kmer_size = filters[0].filter_config.kmer_size;
 
+    // oner hash adaptor per thread
+    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ filters[0].filter_config.kmer_size } );
+
+    // one agent per thread per filter
+    std::vector< Tagent > agents;
+    for ( Filter& filter : filters )
+    {
+        agents.push_back( filter.ibf.counting_agent< uint16_t >() );
+    }
+
     while ( true )
     {
         // Wait here until reads are available or push is over and queue is empty
@@ -425,12 +429,12 @@ void classify( std::vector< Filter >&    filters,
                             stats.sumread_len += read2_len;
 
                         max_kmer_count_read = find_matches_paired(
-                            matches, filters, rb.seqs[readID], rb.seqs2[readID], effective_read_len, offset );
+                            matches, filters, agents, rb.seqs[readID], rb.seqs2[readID], effective_read_len, offset, hash_adaptor );
                     }
                 }
                 else // single-end mode
                 {
-                    max_kmer_count_read = find_matches( matches, filters, rb.seqs[readID], offset );
+                    max_kmer_count_read = find_matches( matches, filters, agents, rb.seqs[readID], offset, hash_adaptor );
                 }
             }
 
