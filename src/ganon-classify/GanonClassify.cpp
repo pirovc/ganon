@@ -674,53 +674,6 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << "%)" << std::endl;
 }
 
-/*uint32_t parse_single_reads( seqan::SeqFileIn&                 seqFileIn,
-                             uint32_t                          pos_start,
-                             uint32_t                          n_reads,
-                             SafeQueue< detail::ReadBatches >& queue1 )
-{
-
-    seqan::setPosition( seqFileIn, pos_start ); // rewind the file to the last valid position without errors
-    seqan::CharString id;
-    seqan::CharString seq;
-
-    seqan::StringSet< seqan::CharString > ids;
-    seqan::StringSet< seqan::CharString > seqs;
-    uint32_t                              read_cnt    = 0;
-    uint32_t                              total_reads = 0;
-    while ( !seqan::atEnd( seqFileIn ) )
-    {
-        try
-        {
-            seqan::readRecord( id, seq, seqFileIn );
-            read_cnt++;
-
-            seqan::appendValue( seqs, seq );
-            seqan::appendValue( ids, id );
-            if ( read_cnt == n_reads )
-            {
-                queue1.push( detail::ReadBatches{ false, ids, seqs } );
-                seqan::clear( ids );
-                seqan::clear( seqs );
-                total_reads += read_cnt;
-                read_cnt = 0;
-            }
-        }
-        catch ( seqan::Exception const& e )
-        {
-            std::cerr << "ERROR: " << e.what() << " [@" << id << "]" << std::endl;
-        }
-    }
-    // left overs
-    if ( seqan::length( ids ) > 0 )
-    {
-        queue1.push( detail::ReadBatches{ false, ids, seqs } );
-        total_reads += read_cnt;
-    }
-
-    return total_reads;
-}*/
-
 void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config const& config )
 {
     for ( auto const& reads_file : config.single_reads )
@@ -728,15 +681,14 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
         seqan3::sequence_file_input fin1{ reads_file };
         for ( auto&& rec : fin1 | ranges::views::chunk( config.n_reads ) )
         {
-            std::vector< std::string >                 ids;
-            std::vector< std::vector< seqan3::dna5 > > seqs;
+            detail::ReadBatches rb{ false };
             for ( auto& [seq, id, qual] : rec )
             {
-                ids.push_back( std::move( id ) );
-                seqs.push_back( std::move( seq ) );
+                rb.ids.push_back( std::move( id ) );
+                rb.seqs.push_back( std::move( seq ) );
             }
-            stats.totalReads += ids.size();
-            queue1.push( detail::ReadBatches{ false, ids, seqs } );
+            stats.totalReads += rb.ids.size();
+            queue1.push( std::move( rb ) );
         }
     }
     if ( config.paired_reads.size() > 0 )
@@ -748,24 +700,21 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             seqan3::sequence_file_input fin2{ config.paired_reads[pair_cnt + 1] };
             for ( auto&& rec : fin1 | ranges::views::chunk( config.n_reads ) )
             {
-
-                // TODO take==chunk?
-                auto&& rec2 = fin2 | std::views::take( config.n_reads );
-
-                std::vector< std::string >                 ids;
-                std::vector< std::vector< seqan3::dna5 > > seqs;
-                std::vector< std::vector< seqan3::dna5 > > seqs2;
+                detail::ReadBatches rb{ true };
                 for ( auto& [seq, id, qual] : rec )
                 {
-                    ids.push_back( std::move( id ) );
-                    seqs.push_back( std::move( seq ) );
+                    rb.ids.push_back( std::move( id ) );
+                    rb.seqs.push_back( std::move( seq ) );
                 }
-                for ( auto& [seq, id, qual] : rec2 )
+
+                // loop in the second file and get same amount of reads
+                for ( auto& [seq, id, qual] : fin2 | std::views::take( config.n_reads ) )
                 {
-                    seqs2.push_back( std::move( seq ) );
+                    rb.seqs2.push_back( std::move( seq ) );
                 }
-                stats.totalReads += ids.size();
-                queue1.push( detail::ReadBatches{ true, ids, seqs, seqs2 } );
+                stats.totalReads += rb.ids.size();
+                queue1.push( std::move( rb ) );
+
             }
         }
     }

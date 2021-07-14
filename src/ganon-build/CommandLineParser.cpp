@@ -22,8 +22,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
         ( "c,update-complete", "When using --update-filter-file and all sequences are provided to update index, set this option to not only add sequences to the filter but also remove", cxxopts::value< bool >() )
         
-        ( "s,filter-size-mb", "Final filter size in Megabytes (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint32_t >() )
-        ( "b,bin-size-bits", "Final filter size in Bits (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >() )
+        ( "s,filter-size-mb", "Final filter size (MB) [mutually exclusive --filter-size-bits]", cxxopts::value< uint32_t >() )
+        ( "b,bin-size-bits", "Bin size (bit) [mutually exclusive --filter-size]", cxxopts::value< uint64_t >() )
         
         ( "k,kmer-size", "k size to build filter", cxxopts::value< uint8_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter", cxxopts::value< uint16_t >() )
