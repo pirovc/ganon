@@ -5,10 +5,13 @@
 #include <utils/StopClock.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
+
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/views/complement.hpp>
-#include <seqan3/range/views/kmer_hash.hpp>
+#include <seqan3/alphabet/views/complement.hpp>
+#include <seqan3/search/views/kmer_hash.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+#include <seqan3/utility/views/chunk.hpp>
+
 
 #include <cereal/archives/binary.hpp>
 
@@ -679,7 +682,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     for ( auto const& reads_file : config.single_reads )
     {
         seqan3::sequence_file_input fin1{ reads_file };
-        for ( auto&& rec : fin1 | ranges::views::chunk( config.n_reads ) )
+        for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
         {
             detail::ReadBatches rb{ false };
             for ( auto& [seq, id, qual] : rec )
@@ -695,10 +698,9 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
-
             seqan3::sequence_file_input fin1{ config.paired_reads[pair_cnt] };
             seqan3::sequence_file_input fin2{ config.paired_reads[pair_cnt + 1] };
-            for ( auto&& rec : fin1 | ranges::views::chunk( config.n_reads ) )
+            for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
                 detail::ReadBatches rb{ true };
                 for ( auto& [seq, id, qual] : rec )
@@ -706,7 +708,6 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
                     rb.ids.push_back( std::move( id ) );
                     rb.seqs.push_back( std::move( seq ) );
                 }
-
                 // loop in the second file and get same amount of reads
                 for ( auto& [seq, id, qual] : fin2 | std::views::take( config.n_reads ) )
                 {
@@ -714,7 +715,6 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
                 }
                 stats.totalReads += rb.ids.size();
                 queue1.push( std::move( rb ) );
-
             }
         }
     }
