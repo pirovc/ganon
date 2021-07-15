@@ -249,6 +249,16 @@ void select_matches( TMatches&                matches,
     }
 }
 
+auto get_offset_hashes( auto& hashes, uint8_t offset )
+{
+    // return offset of hashes, always keep last one to cover full read (extra_pos)
+    int  n_kmers     = hashes.size() - 1;
+    auto nth_element = [offset, n_kmers]( auto&& tuple ) {
+        return ( std::get< 0 >( tuple ) % offset == 0 || n_kmers == std::get< 0 >( tuple ) );
+    };
+    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values;
+}
+
 uint16_t find_matches( TMatches&                    matches,
                        std::vector< Filter >&       filters,
                        std::vector< Tagent >&       agents,
@@ -263,9 +273,24 @@ uint16_t find_matches( TMatches&                    matches,
 
     for ( uint8_t i = 0; i < filters.size(); ++i )
     {
-        seqan3::counting_vector< uint16_t > selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
-        seqan3::counting_vector< uint16_t > selectedBinsRev =
-            agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+        seqan3::counting_vector< uint16_t > selectedBins;
+        seqan3::counting_vector< uint16_t > selectedBinsRev;
+
+        if ( offset > 1 )
+        {
+            std::vector hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
+            std::vector hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
+                                   | seqan3::views::to< std::vector > };
+
+            selectedBins    = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
+            selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
+        }
+        else
+        {
+            selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
+            selectedBinsRev =
+                agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+        }
 
         uint16_t threshold =
             ( filters[i].filter_config.min_kmers > -1 )
@@ -295,16 +320,36 @@ uint16_t find_matches_paired( TMatches&                    matches,
     for ( uint8_t i = 0; i < filters.size(); ++i )
     {
 
-        // IBF count
-        // FR
-        seqan3::counting_vector< uint16_t > selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
-        selectedBins +=
-            agents[i].bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor );
+        seqan3::counting_vector< uint16_t > selectedBins;
+        seqan3::counting_vector< uint16_t > selectedBinsRev;
 
-        // RF
-        seqan3::counting_vector< uint16_t > selectedBinsRev =
-            agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
-        selectedBinsRev += agents[i].bulk_count( read_seq2 | hash_adaptor );
+        if ( offset > 1 )
+        {
+            std::vector hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
+            std::vector hashes2{ read_seq2 | hash_adaptor | seqan3::views::to< std::vector > };
+            std::vector hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
+                                   | seqan3::views::to< std::vector > };
+            std::vector hashes2Rev{ read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor
+                                    | seqan3::views::to< std::vector > };
+
+            selectedBins = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
+            selectedBins = agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
+
+            selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
+            selectedBinsRev += agents[i].bulk_count( get_offset_hashes( hashes2, offset ) );
+        }
+        else
+        {
+            // FR
+            selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
+            selectedBins +=
+                agents[i].bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor );
+
+            // RF
+            selectedBinsRev =
+                agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+            selectedBinsRev += agents[i].bulk_count( read_seq2 | hash_adaptor );
+        }
 
         uint16_t threshold = ( filters[i].filter_config.min_kmers > -1 )
                                  ? get_threshold_kmers( effective_read_len,

@@ -172,7 +172,7 @@ SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[gano
     }
 }
 
-/*SCENARIO( "Classify with offset", "[ganon-classify]" )
+SCENARIO( "Classify with offset", "[ganon-classify]" )
 {
     auto cfg          = config_classify::defaultConfig();
     cfg.ibf           = { "filters/bacteria.ibf" };
@@ -191,7 +191,7 @@ SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[gano
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
                                            config_classify::results_path + cfg.output_prefix + "." + ext ) );
     }
-}*/
+}
 
 SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
 {
@@ -276,7 +276,7 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
     }
 }
 
-/*SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
+SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
 {
     auto cfg             = config_classify::defaultConfig();
     cfg.ibf              = { "filters/bacteria.ibf" };
@@ -296,9 +296,9 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
                                            config_classify::results_path + cfg.output_prefix + "." + ext ) );
     }
-}*/
+}
 
-/*SCENARIO( "Classify with offset, min kmers and different max. unique errors allowed", "[ganon-classify]" )
+SCENARIO( "Classify with offset, min kmers and different max. unique errors allowed", "[ganon-classify]" )
 {
     auto cfg             = config_classify::defaultConfig();
     cfg.ibf              = { "filters/bacteria.ibf" };
@@ -318,16 +318,16 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
                                            config_classify::results_path + cfg.output_prefix + "." + ext ) );
     }
-}*/
+}
 
-/*SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
+SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
 {
     auto cfg          = config_classify::defaultConfig();
     cfg.ibf           = { "filters/bacteria.ibf" };
     cfg.map           = { "filters/bacteria.map" };
     cfg.tax           = { "filters/bacteria.tax" };
     cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.offset        = 25; // should be limited by k-mer size (19)
+    cfg.offset        = 25; // should be limited by k-mer size (19) and give same results
     cfg.output_prefix = "b-b_f25";
     INFO( "output_prefix: " + cfg.output_prefix );
     REQUIRE( GanonClassify::run( cfg ) );
@@ -347,7 +347,7 @@ SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify
         INFO( "extension: " + ext );
         REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
     }
-}*/
+}
 
 SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
 {
