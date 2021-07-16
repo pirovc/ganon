@@ -144,7 +144,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     if ( config.filter_size_mb > 0 )
         stream << "--filter-size-mb      " << config.filter_size_mb << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
-    stream << "--kmer-size           " << config.kmer_size << newl;
+    stream << "--kmer-size           " << unsigned( config.kmer_size ) << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;
     stream << "--n-batches           " << config.n_batches << newl;

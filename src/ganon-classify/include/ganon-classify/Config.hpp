@@ -307,7 +307,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
                 stream << "  --min-kmers: " << filter_config.min_kmers << newl;
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
-            stream << "  --kmer-size: " << filter_config.kmer_size << newl;
+            stream << "  --kmer-size: " << unsigned( filter_config.kmer_size ) << newl;
             stream << "  --ibf: " << filter_config.ibf_file << newl;
             stream << "  --map: " << filter_config.map_file << newl;
             stream << "  --tax: " << filter_config.tax_file << newl;
@@ -328,7 +328,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         stream << "                            " << s << newl;
     stream << newl;
     stream << "Parameters:" << newl;
-    stream << "--offset                    " << config.offset << newl;
+    stream << "--offset                    " << unsigned( config.offset ) << newl;
     stream << "--output-prefix             " << config.output_prefix << newl;
     stream << "--output-all                " << config.output_all << newl;
     stream << "--output-unclassified       " << config.output_unclassified << newl;
