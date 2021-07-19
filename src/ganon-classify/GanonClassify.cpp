@@ -333,7 +333,7 @@ uint16_t find_matches_paired( TMatches&                    matches,
                                     | seqan3::views::to< std::vector > };
 
             selectedBins = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
-            selectedBins = agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
+            selectedBins += agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
 
             selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
             selectedBinsRev += agents[i].bulk_count( get_offset_hashes( hashes2, offset ) );
