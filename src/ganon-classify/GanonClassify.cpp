@@ -190,13 +190,15 @@ inline int16_t get_threshold_errors( uint16_t read_len, uint8_t kmer_size, uint1
 
 inline int16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float min_kmers, uint8_t offset )
 {
-    // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
+    // Return threshold (number of kmers) based on an percentage of kmers
     // ceil -> round-up min # k-mers, floor -> round-down for offset
 
     // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
     bool extra_pos = ( read_len - kmer_size ) % offset;
 
-    return std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos );
+    // min_kmers==0 return everything with at least one kmer match
+    return min_kmers > 0 ? std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos )
+                         : 1u;
 }
 
 
