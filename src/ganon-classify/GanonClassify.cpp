@@ -156,35 +156,39 @@ struct Filter
     FilterConfig filter_config;
 };
 
-inline uint16_t get_error( uint16_t read_len, uint8_t kmer_size, uint16_t kmer_count, uint8_t offset )
+inline uint16_t get_error(
+    uint16_t read1_len, uint16_t read2_len, uint8_t kmer_size, uint16_t kmer_count, uint8_t offset )
 {
     // Return the optimal number of errors for a certain sequence based on the kmer_count
 
     // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read_len - kmer_size ) % offset;
+    bool extra_pos = ( read1_len - kmer_size ) % offset;
+
+    // If second read is present, account all possible kmers to equation
+    uint16_t read2_max_kmers = 0;
+    if ( read2_len )
+    {
+        read2_max_kmers = ( ( read2_len - kmer_size ) / offset ) + ( ( read1_len - kmer_size ) % offset ) + 1;
+    }
 
     // - ((offset-1)/kmer_size) adjusts the value to be always below the threshold possible, considering the floor usage
     // to calculate the kmer_count
-    return std::ceil( ( read_len - kmer_size + offset * ( -kmer_count + extra_pos + 1 ) )
+    return std::ceil( ( read1_len - kmer_size + offset * ( -kmer_count + read2_max_kmers + extra_pos + 1 ) )
                           / static_cast< float >( kmer_size )
                       - ( ( offset - 1 ) / static_cast< float >( kmer_size ) ) );
 }
 
-inline uint16_t get_threshold_errors( uint16_t read_len, uint8_t kmer_size, uint16_t max_error, uint8_t offset )
+inline int16_t get_threshold_errors( uint16_t read_len, uint8_t kmer_size, uint16_t max_error, uint8_t offset )
 {
     // Return threshold (number of kmers) based on an optimal number of errors
-    // 1 instead of 0 - meaning that if a higher number of errors are allowed the threshold here is
-    // just one kmer match (0 would match every read everywhere)
 
     // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
     bool extra_pos = ( read_len - kmer_size ) % offset;
 
-    return read_len + 1u > kmer_size * ( 1u + max_error )
-               ? std::floor( ( ( read_len - kmer_size - max_error * kmer_size ) / offset ) + 1 + extra_pos )
-               : 1u;
+    return std::floor( ( ( read_len - kmer_size - max_error * kmer_size ) / offset ) + 1 + extra_pos );
 }
 
-inline uint16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float min_kmers, uint8_t offset )
+inline int16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float min_kmers, uint8_t offset )
 {
     // Return threshold (number of kmers) based on an percentage of kmers. 0 for anything with at least 1 k-mer
     // ceil -> round-up min # k-mers, floor -> round-down for offset
@@ -192,20 +196,24 @@ inline uint16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float
     // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
     bool extra_pos = ( read_len - kmer_size ) % offset;
 
-    return min_kmers > 0 ? std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos )
-                         : 1u;
+    return std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos );
 }
 
 
 inline void check_unique( ReadOut& read_out_lca,
-                          uint16_t read_len,
+                          uint16_t read1_len,
+                          uint16_t read2_len,
                           uint16_t kmer_size,
                           uint16_t max_error_unique,
                           uint8_t  offset,
                           TTax&    tax,
                           TRep&    rep )
 {
-    uint16_t threshold_error_unique = get_threshold_errors( read_len, kmer_size, max_error_unique, offset );
+    int16_t threshold_error_unique = get_threshold_errors( read1_len, kmer_size, max_error_unique, offset );
+    if ( read2_len )
+    {
+        threshold_error_unique += get_threshold_errors( read2_len, kmer_size, max_error_unique, offset );
+    }
     // if kmer count is lower than expected set match to parent node
     if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
     {
@@ -222,9 +230,14 @@ void select_matches( TMatches&                matches,
                      std::vector< uint16_t >& selectedBins,
                      std::vector< uint16_t >& selectedBinsRev,
                      Filter&                  filter,
-                     uint16_t                 threshold,
+                     int16_t                  threshold,
                      uint16_t&                maxKmerCountRead )
 {
+    // Threshold can be negative. If a higher number of errors are allowed the threshold here is
+    // just one kmer match (0 would match every read everywhere)
+    if ( threshold < 1 )
+        threshold = 1;
+
     // for each bin
     // for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
     // loop in map structure to avoid extra validations when map.size() < filter.ibf.noOfBins when ibf is updated and
@@ -292,7 +305,7 @@ uint16_t find_matches( TMatches&                    matches,
                 agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
         }
 
-        uint16_t threshold =
+        int16_t threshold =
             ( filters[i].filter_config.min_kmers > -1 )
                 ? get_threshold_kmers(
                       read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
@@ -309,7 +322,6 @@ uint16_t find_matches_paired( TMatches&                    matches,
                               std::vector< Tagent >&       agents,
                               std::vector< seqan3::dna5 >& read_seq,
                               std::vector< seqan3::dna5 >& read_seq2,
-                              uint16_t                     effective_read_len,
                               uint8_t                      offset,
                               auto&                        hash_adaptor )
 {
@@ -351,15 +363,18 @@ uint16_t find_matches_paired( TMatches&                    matches,
             selectedBinsRev += agents[i].bulk_count( read_seq2 | hash_adaptor );
         }
 
-        uint16_t threshold = ( filters[i].filter_config.min_kmers > -1 )
-                                 ? get_threshold_kmers( effective_read_len,
-                                                        filters[i].filter_config.kmer_size,
-                                                        filters[i].filter_config.min_kmers,
-                                                        offset )
-                                 : get_threshold_errors( effective_read_len,
-                                                         filters[i].filter_config.kmer_size,
-                                                         filters[i].filter_config.max_error,
-                                                         offset );
+        // Calculate error rate on one read
+        int16_t threshold =
+            ( filters[i].filter_config.min_kmers > -1 )
+                ? get_threshold_kmers(
+                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
+                : get_threshold_errors(
+                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
+
+        // sum kmers of second readsum zero errors for second reads
+        threshold += ( filters[i].filter_config.min_kmers > -1 )
+                         ? get_threshold_kmers( read_seq2.size(), filters[i].filter_config.kmer_size, 1, offset )
+                         : get_threshold_errors( read_seq2.size(), filters[i].filter_config.kmer_size, 0, offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
@@ -370,20 +385,28 @@ uint16_t find_matches_paired( TMatches&                    matches,
 uint32_t filter_matches( ReadOut&  read_out,
                          TMatches& matches,
                          TRep&     rep,
-                         uint16_t  len,
+                         uint16_t  read1_len,
+                         uint16_t  read2_len,
                          uint16_t  max_kmer_count_read,
                          uint16_t  kmer_size,
                          uint8_t   offset,
                          int16_t   strata_filter )
 {
 
-    uint16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
+    int16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
     if ( strata_filter > -1 )
     {
-        // get maximum possible number of error for this read
-        uint16_t max_error = get_error( len, kmer_size, max_kmer_count_read, offset );
+
+        // get maximum possible number of errors
+        uint16_t max_error = get_error( read1_len, read2_len, kmer_size, max_kmer_count_read, offset );
+
         // get min kmer count necesary to achieve the calculated number of errors
-        threshold_strata = get_threshold_errors( len, kmer_size, max_error + strata_filter, offset );
+        threshold_strata = get_threshold_errors( read1_len, kmer_size, max_error + strata_filter, offset );
+
+        if ( read2_len )
+        {
+            threshold_strata += get_threshold_errors( read2_len, kmer_size, 0, offset );
+        }
     }
 
     for ( auto const& v : matches )
@@ -457,39 +480,32 @@ void classify( std::vector< Filter >&    filters,
 
         for ( uint32_t readID = 0; readID < rb.ids.size(); ++readID )
         {
-            // receives len of first read
-            uint16_t effective_read_len = rb.seqs[readID].size();
+            uint16_t read1_len = rb.seqs[readID].size();
+            uint16_t read2_len = 0;
 
             // count lens just once
             if ( hierarchy_first )
-                stats.sumread_len += effective_read_len;
+                stats.sumread_len += read1_len;
 
             TMatches matches;
             ReadOut  read_out( rb.ids[readID] );
             uint16_t max_kmer_count_read = 0;
 
             // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
-            if ( effective_read_len >= kmer_size )
+            if ( read1_len >= kmer_size )
             {
                 if ( rb.paired ) // paired-end mode
                 {
-                    uint16_t read2_len = rb.seqs2[readID].size();
+                    read2_len = rb.seqs2[readID].size();
                     if ( read2_len >= kmer_size )
                     {
-                        // add to effective length the pair for error calculation
-                        effective_read_len += read2_len + 1 - kmer_size;
+
                         // count lens just once
                         if ( hierarchy_first )
                             stats.sumread_len += read2_len;
 
-                        max_kmer_count_read = find_matches_paired( matches,
-                                                                   filters,
-                                                                   agents,
-                                                                   rb.seqs[readID],
-                                                                   rb.seqs2[readID],
-                                                                   effective_read_len,
-                                                                   offset,
-                                                                   hash_adaptor );
+                        max_kmer_count_read = find_matches_paired(
+                            matches, filters, agents, rb.seqs[readID], rb.seqs2[readID], offset, hash_adaptor );
                     }
                 }
                 else // single-end mode
@@ -507,7 +523,8 @@ void classify( std::vector< Filter >&    filters,
                 uint32_t count_filtered_matches = filter_matches( read_out,
                                                                   matches,
                                                                   rep,
-                                                                  effective_read_len,
+                                                                  read1_len,
+                                                                  read2_len,
                                                                   max_kmer_count_read,
                                                                   kmer_size,
                                                                   config.offset,
@@ -524,8 +541,14 @@ void classify( std::vector< Filter >&    filters,
                         if ( max_error_unique >= 0 )
                         {
                             // re-classify read to parent if threshold<=max_error_unique
-                            check_unique(
-                                read_out_lca, effective_read_len, kmer_size, max_error_unique, config.offset, tax, rep );
+                            check_unique( read_out_lca,
+                                          read1_len,
+                                          read2_len,
+                                          kmer_size,
+                                          max_error_unique,
+                                          config.offset,
+                                          tax,
+                                          rep );
                         }
                         else
                         {
