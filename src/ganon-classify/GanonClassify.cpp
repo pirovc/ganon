@@ -371,10 +371,12 @@ uint16_t find_matches_paired( TMatches&                    matches,
                 : get_threshold_errors(
                       read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
 
-        // sum kmers of second readsum zero errors for second reads
-        threshold += ( filters[i].filter_config.min_kmers > -1 )
-                         ? get_threshold_kmers( read_seq2.size(), filters[i].filter_config.kmer_size, 1, offset )
-                         : get_threshold_errors( read_seq2.size(), filters[i].filter_config.kmer_size, 0, offset );
+        // sum kmers of second read (if using errors, get all possible kmers)
+        threshold +=
+            ( filters[i].filter_config.min_kmers > -1 )
+                ? get_threshold_kmers(
+                      read_seq2.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
+                : get_threshold_errors( read_seq2.size(), filters[i].filter_config.kmer_size, 0, offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
