@@ -22,7 +22,6 @@ if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
 endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
-option( GANON_OFFSET "Enable offset for ganon-classify" ON )
 option( CONDA "Flag for compilation in conda env." OFF )
 option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
@@ -68,7 +67,8 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
     -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic
     -Wno-conversion -Wno-sign-conversion -Wnull-dereference -Wdouble-promotion
-    -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros )
+    -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros -Wno-shadow 
+    -Wno-old-style-cast )
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
     add_compile_options( -Wmisleading-indentation -Wduplicated-cond
@@ -79,12 +79,6 @@ endif()
 
 if ( NOT CONDA )
 	add_compile_options( -static -march=native )
-endif()
-
-# Enable offset:
-
-if( GANON_OFFSET )
-	add_compile_options(-DGANON_OFFSET) 
 endif()
 
 # -----------------------------------------------------------------------------
@@ -104,28 +98,23 @@ else()
     target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
 endif()
 
-# 3. sdsl-lite:
-
-add_library( sdsl-lite INTERFACE )
-target_include_directories( sdsl-lite SYSTEM INTERFACE libs/sdsl-lite/include )
-
-# 4. Zlib (optional for SeqAn):
+# 3. Zlib (optional for SeqAn):
 
 find_package( ZLIB )
 
-# 5. SeqAn:
+# 4. SeqAn3:
 
-set( SEQAN_INCLUDE_PATH libs/seqan/include )
-find_package( SeqAn CONFIG REQUIRED PATHS libs/seqan/util/cmake )
+set( SEQAN3_INCLUDE_PATH libs/seqan3/include )
+find_package (SeqAn3 3.0.3 REQUIRED HINTS libs/seqan3/build_system)
 
-add_library( seqan INTERFACE )
-target_include_directories( seqan SYSTEM INTERFACE ${SEQAN_INCLUDE_DIRS} )
-target_link_libraries( seqan INTERFACE ${SEQAN_LIBRARIES} )
+add_library( seqan3 INTERFACE )
+target_include_directories( seqan3 SYSTEM INTERFACE ${SEQAN3_INCLUDE_DIRS} )
+target_link_libraries( seqan3 INTERFACE ${SEQAN3_LIBRARIES} )
 
-add_compile_options( ${SEQAN_DEFINITIONS} )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}" )
+add_compile_options( ${SEQAN3_DEFINITIONS} )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN3_CXX_FLAGS}" )
 
-# 6. Catch2:
+# 5. Catch2:
 
 add_library( Catch2 INTERFACE )
 if( INCLUDE_DIRS )
@@ -139,18 +128,18 @@ endif()
 # -----------------------------------------------------------------------------
 
 if( VERBOSE_CONFIG )
-    message( STATUS "SeqAn symbols")
-    message( STATUS "  SEQAN_DEFINITIONS   : ${SEQAN_DEFINITIONS}" )
-    message( STATUS "  SEQAN_CXX_FLAGS     : ${SEQAN_CXX_FLAGS}" )
-    message( STATUS "  SEQAN_INCLUDE_DIRS  : ${SEQAN_INCLUDE_DIRS}" )
-    message( STATUS "  SEQAN_LIBRARIES     : ${SEQAN_LIBRARIES}" )
+    message( STATUS "SeqAn3 symbols")
+    message( STATUS "  SEQAN3_VERSION   : ${SEQAN3_VERSION}" )
+    message( STATUS "  SEQAN3_DEFINITIONS   : ${SEQAN3_DEFINITIONS}" )
+    message( STATUS "  SEQAN3_CXX_FLAGS     : ${SEQAN3_CXX_FLAGS}" )
+    message( STATUS "  SEQAN3_INCLUDE_DIRS  : ${SEQAN3_INCLUDE_DIRS}" )
+    message( STATUS "  SEQAN3_LIBRARIES     : ${SEQAN3_LIBRARIES}" )
     message( STATUS "Misc symbols")
     message( STATUS "  Build type          : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS     : ${CMAKE_CXX_FLAGS}" )
     message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
     message( STATUS "  CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}" )
     message( STATUS "  CONDA               : ${CONDA}" )
-    message( STATUS "  GANON_OFFSET        : ${GANON_OFFSET}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 

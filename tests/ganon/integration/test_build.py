@@ -8,6 +8,7 @@ sys.path.append(base_dir)
 from utils import *
 data_dir = base_dir + "data/"
 
+
 class TestBuildOffline(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/build/"
@@ -21,11 +22,11 @@ class TestBuildOffline(unittest.TestCase):
                       "write_seq_info_file": True,
                       "rank": "species",
                       "quiet": True}
-    
+
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
-       
+
     def test_default(self):
         """
         ganon build with default parameters
@@ -65,7 +66,7 @@ class TestBuildOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_rank_leaves"
         params["rank"] = "leaves"
-        
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -84,7 +85,7 @@ class TestBuildOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_specialization_custom"
         params["specialization"] = "custom"
-                
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -106,7 +107,7 @@ class TestBuildOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_bin_length"
         params["bin_length"] = 10000
-        
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -125,7 +126,7 @@ class TestBuildOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_fragment_length"
         params["fragment_length"] = 5000
-        
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -145,7 +146,7 @@ class TestBuildOffline(unittest.TestCase):
         params["db_prefix"] = self.results_dir + "test_overlap_length"
         params["bin_length"] = 10000
         params["overlap_length"] = 999
-        
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -166,7 +167,7 @@ class TestBuildOffline(unittest.TestCase):
         params["bin_length"] = 5692
         params["fragment_length"] = 667
         params["overlap_length"] = 349
-        
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -285,7 +286,7 @@ class TestBuildOffline(unittest.TestCase):
         del params["input_files"]
         params["input_directory"] = data_dir+"build/"
         params["input_extension"] = ".fasta.gz"
-       
+
         # Build config from params
         cfg = Config("build", **params)
         # Run
@@ -309,6 +310,6 @@ class TestBuildOffline(unittest.TestCase):
         # General sanity check of results
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
-        
+
 if __name__ == '__main__':
     unittest.main()

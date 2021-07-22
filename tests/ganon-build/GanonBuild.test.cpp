@@ -13,7 +13,7 @@ GanonBuild::Config defaultConfig()
     GanonBuild::Config cfg;
     cfg.seqid_bin_file     = "filters/bacteria_acc_bin.txt";
     cfg.output_filter_file = "test_output.ibf";
-    cfg.filter_size_bits   = 8388352;
+    cfg.bin_size_bits   = 65534;
     cfg.reference_files    = { "sequences/bacteria_NC_010333.1.fasta.gz",
                             "sequences/bacteria_NC_017163.1.fasta.gz",
                             "sequences/bacteria_NC_017164.1.fasta.gz",
@@ -65,7 +65,7 @@ SCENARIO( "Build forced failure with different number of hash functions", "[gano
 SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
 {
     auto cfg             = config_build::defaultConfig();
-    cfg.filter_size_bits = 17000000;
+    cfg.bin_size_bits = 132813;
 
     REQUIRE( GanonBuild::run( cfg ) );
     REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
@@ -134,17 +134,11 @@ SCENARIO( "Update complete", "[ganon-build]" )
 
 SCENARIO( "Update increasing filter size", "[ganon-build]" )
 {
-    // update virus filter with bacteria and archaea
-    auto cfg            = config_build::defaultConfig();
-    cfg.seqid_bin_file  = "filters/virus_upd_archaea_bacteria_acc_bin.txt";
-    cfg.reference_files = {
-        "sequences/archaea_NC_015430.1.fasta.gz",  "sequences/archaea_NC_023011.1.fasta.gz",
-        "sequences/archaea_NC_023012.1.fasta.gz",  "sequences/bacteria_NC_010333.1.fasta.gz",
-        "sequences/bacteria_NC_017163.1.fasta.gz", "sequences/bacteria_NC_017164.1.fasta.gz",
-        "sequences/bacteria_NC_017543.1.fasta.gz",
-    };
 
-    cfg.update_filter_file = "filters/virus.ibf";
+    // update virus filter with bacteria
+    auto cfg            = config_build::defaultConfig();
+    cfg.seqid_bin_file  = "filters/virus_upd_bacteria_acc_bin.txt";
+    cfg.update_filter_file = "filters/virus_build.ibf";
 
     REQUIRE( GanonBuild::run( cfg ) );
 
@@ -152,5 +146,5 @@ SCENARIO( "Update increasing filter size", "[ganon-build]" )
     REQUIRE( aux::fileSize( cfg.output_filter_file ) > aux::fileSize( cfg.update_filter_file ) );
 
     // check file
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/virus_upd_archaea_bacteria.ibf" ) );
+    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/virus_upd_bacteria_build.ibf" ) );
 }
