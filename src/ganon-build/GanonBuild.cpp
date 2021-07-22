@@ -3,14 +3,11 @@
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
+#include <cereal/archives/binary.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/search/views/kmer_hash.hpp>
-
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
-
-#include <cereal/archives/binary.hpp>
-
+#include <seqan3/search/views/kmer_hash.hpp>
 
 #include <cinttypes>
 #include <fstream>
@@ -23,7 +20,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
 
 namespace GanonBuild
 {
@@ -299,12 +295,15 @@ bool run( Config config )
 
     timeLoadFilter.stop();
 
+    // oner hash adaptor per thread
+    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+
     // Start execution threads to add kmers
     timeBuild.start();
     std::vector< std::future< void > > tasks;
     for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [=, &seq_bin, &filter, &queue_refs] {
+        tasks.emplace_back( std::async( std::launch::async, [&seq_bin, &filter, &queue_refs, &hash_adaptor] {
             while ( true )
             {
                 detail::Seqs val = queue_refs.pop();
@@ -312,12 +311,9 @@ bool run( Config config )
                 {
                     for ( uint64_t i = 0; i < seq_bin.at( val.seqid ).size(); i++ )
                     {
+                        // Fragment sequences based on seq_bin file and generate hashes for k-mers
                         auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
-                        // Fragment sequence and generate hashes for k-mers
-                        auto hashes =
-                            val.seq | seqan3::views::slice( fragstart - 1, fragend )
-                            | seqan3::views::kmer_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } } );
-                        for ( auto const& hash : hashes )
+                        for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hash_adaptor )
                         {
                             filter.emplace( hash, seqan3::bin_index{ binid } );
                         }
