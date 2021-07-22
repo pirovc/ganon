@@ -293,9 +293,9 @@ uint16_t find_matches( TMatches&                    matches,
 
         if ( offset > 1 )
         {
-            std::vector hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
-            std::vector hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
-                                   | seqan3::views::to< std::vector > };
+            auto hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
+            auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
+                            | seqan3::views::to< std::vector > };
 
             selectedBins    = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
             selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
@@ -339,12 +339,12 @@ uint16_t find_matches_paired( TMatches&                    matches,
 
         if ( offset > 1 )
         {
-            std::vector hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
-            std::vector hashes2{ read_seq2 | hash_adaptor | seqan3::views::to< std::vector > };
-            std::vector hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
-                                   | seqan3::views::to< std::vector > };
-            std::vector hashes2Rev{ read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor
-                                    | seqan3::views::to< std::vector > };
+            auto hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
+            auto hashes2{ read_seq2 | hash_adaptor | seqan3::views::to< std::vector > };
+            auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
+                            | seqan3::views::to< std::vector > };
+            auto hashes2Rev{ read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor
+                             | seqan3::views::to< std::vector > };
 
             selectedBins = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
             selectedBins += agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
