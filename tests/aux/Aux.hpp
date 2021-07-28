@@ -1,5 +1,8 @@
 #pragma once
 
+#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+#include <cereal/archives/binary.hpp>
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -22,7 +25,7 @@ inline int fileLines( const std::string& file )
     return count;
 }
 
-inline int fileSize( const std::string& file )
+inline unsigned int fileSizeBytes( const std::string& file )
 {
     std::ifstream f( file, std::ios::binary | std::ios::ate );
     return f.tellg();
@@ -79,6 +82,14 @@ inline std::vector< std::vector< std::string > > parse_tsv( const std::string& f
     }
     infile.close();
     return parsed;
+}
+
+inline seqan3::interleaved_bloom_filter<> load_ibf( const std::string& file ){
+    seqan3::interleaved_bloom_filter<> filter;
+    std::ifstream              is( file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
+    archive( filter );
+    return filter;
 }
 
 } // namespace aux

@@ -1,150 +1,197 @@
 #include "aux/Aux.hpp"
 
+
+#include <cereal/archives/binary.hpp>
+#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/core/debug_stream.hpp>
+#include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+#include <seqan3/search/views/kmer_hash.hpp>
+
+#include <seqan3/io/sequence_file/output.hpp>
+#include <seqan3/io/sequence_file/record.hpp>
+
+#include <seqan3/std/ranges>
+
+#include <filesystem>
+#include <iostream>
+
 #include <ganon-build/Config.hpp>
 #include <ganon-build/GanonBuild.hpp>
 
 #include <catch2/catch.hpp>
 
+using namespace seqan3::literals;
+
+using sequences_type = std::vector< seqan3::dna5_vector >;
+
 namespace config_build
 {
 
-GanonBuild::Config defaultConfig()
+
+using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna5 >, std::string >,
+                                                      seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
+
+
+void validate_filter( const GanonBuild::Config& cfg, sequences_type& seqs )
 {
+    // validate generated filter file in properties and query
+
+    // check if file exists
+    REQUIRE( std::filesystem::exists( cfg.output_filter_file ) );
+    // load filter
+    seqan3::interleaved_bloom_filter<> filter = aux::load_ibf( cfg.output_filter_file );
+    // check bin count
+    REQUIRE( filter.bin_count() == seqs.size() );
+    // check hash functions
+    REQUIRE( filter.hash_function_count() == cfg.hash_functions );
+
+    // check size
+    if ( cfg.filter_size_mb > 0 )
+    {
+        REQUIRE( filter.bit_size() == cfg.filter_size_mb * 8388608u );
+    }
+    else
+    {
+        uint64_t optimal_bins = ( std::floor( filter.bin_count() / 64 ) + 1 ) * 64;
+        REQUIRE( filter.bit_size() == cfg.bin_size_bits * optimal_bins );
+    }
+
+    // check elements inserted
+    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ cfg.kmer_size } );
+    auto agent        = filter.counting_agent();
+
+    std::vector< uint16_t >             expected_output( seqs.size(), 0 );
+    seqan3::counting_vector< uint16_t > output( seqs.size(), 0 );
+
+    int i = 0;
+    for ( auto& seq : seqs )
+    {
+        // query IBF
+        output += agent.bulk_count( seq | hash_adaptor );
+        // Calculate expected (min) number of subsequences to be found (no errors)
+        expected_output[i] = std::ranges::size( seq ) - cfg.kmer_size + 1;
+        REQUIRE( output == expected_output );
+        i += 1;
+    }
+}
+
+void write_fasta( sequences_type& seqs, std::string file )
+{
+    seqan3::sequence_file_output fout{ file };
+    int                          i = 0;
+    for ( auto& seq : seqs )
+    {
+        sequence_record_type rec{ seq, "S" + std::to_string( i ) };
+        fout.push_back( rec );
+        i += 1;
+    }
+}
+
+void write_seqid_bin( sequences_type& seqs, std::string file )
+{
+    // generate basic seqid_bin file with one full sequence for each bin
+    std::ofstream seqid_bin_file{ file };
+    uint16_t      i = 0;
+    for ( auto& seq : seqs )
+    {
+        seqid_bin_file << "S" << i << "\t1\t" << std::ranges::size( seq ) << "\t" << i << '\n';
+        i += 1;
+    }
+    seqid_bin_file.close();
+}
+
+GanonBuild::Config defaultConfig( std::string prefix, sequences_type& seqs )
+{
+
+    // Make config
     GanonBuild::Config cfg;
-    cfg.seqid_bin_file     = "filters/bacteria_acc_bin.txt";
-    cfg.output_filter_file = "test_output.ibf";
-    cfg.bin_size_bits   = 65534;
-    cfg.reference_files    = { "sequences/bacteria_NC_010333.1.fasta.gz",
-                            "sequences/bacteria_NC_017163.1.fasta.gz",
-                            "sequences/bacteria_NC_017164.1.fasta.gz",
-                            "sequences/bacteria_NC_017543.1.fasta.gz" };
+    cfg.bin_size_bits      = 5000;
     cfg.verbose            = false;
     cfg.quiet              = true;
+    cfg.kmer_size          = 19;
+    cfg.hash_functions     = 3;
+    cfg.output_filter_file = prefix + ".ibf";
+
+    // if input sequences are sent, create files
+    if ( seqs.size() )
+    {
+        write_fasta( seqs, prefix + ".fasta" );
+        cfg.reference_files = { prefix + ".fasta" };
+        write_seqid_bin( seqs, prefix + "_seqid_bin.tsv" );
+        cfg.seqid_bin_file = prefix + "_seqid_bin.tsv";
+    }
     return cfg;
 }
 
-const std::string bacteria_filter = "filters/bacteria_build.ibf";
-
 } // namespace config_build
 
-SCENARIO( "Build", "[ganon-build]" )
-{
-    auto cfg = config_build::defaultConfig();
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-
-SCENARIO( "Build from folder", "[ganon-build]" )
-{
-    auto cfg                      = config_build::defaultConfig();
-    cfg.directory_reference_files = "sequences/";
-    cfg.extension                 = ".gz";
-
-    REQUIRE( GanonBuild::run( cfg ) );
-}
-
-SCENARIO( "Build forced failure with different k-mer size", "[ganon-build]" )
-{
-    auto cfg      = config_build::defaultConfig();
-    cfg.kmer_size = 18;
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-
-SCENARIO( "Build forced failure with different number of hash functions", "[ganon-build]" )
-{
-    auto cfg           = config_build::defaultConfig();
-    cfg.hash_functions = 2;
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-
-SCENARIO( "Build forced failure with different bloom size", "[ganon-build]" )
-{
-    auto cfg             = config_build::defaultConfig();
-    cfg.bin_size_bits = 132813;
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-
-SCENARIO( "Build forced failure with different reference files", "[ganon-build]" )
-{
-    auto cfg = config_build::defaultConfig();
-    cfg.reference_files.erase( cfg.reference_files.begin() );
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-SCENARIO( "Build forced failure with incomplete seqid-bin file", "[ganon-build]" )
-{
-    auto cfg           = config_build::defaultConfig();
-    cfg.seqid_bin_file = "filters/bacteria_acc_bin_incomplete.txt";
-
-    REQUIRE( GanonBuild::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqual( cfg.output_filter_file, config_build::bacteria_filter ) );
-}
-
-SCENARIO( "Update", "[ganon-build]" )
-{
-    // update bacteria filter with virus
-    auto cfg               = config_build::defaultConfig();
-    cfg.seqid_bin_file     = "filters/bacteria_upd_virus_acc_bin.txt";
-    cfg.reference_files    = { "sequences/virus_NC_003676.1.fasta.gz",
-                            "sequences/virus_NC_011646.1.fasta.gz",
-                            "sequences/virus_NC_032412.1.fasta.gz",
-                            "sequences/virus_NC_035470.1.fasta.gz" };
-    cfg.update_filter_file = config_build::bacteria_filter;
-
-    REQUIRE( GanonBuild::run( cfg ) );
-
-    // should have the same size since number of new bins does not pass the multiple of 64 threshold
-    // bacteria 67 bins + virus 9 bins
-    REQUIRE( aux::fileSize( cfg.output_filter_file ) == aux::fileSize( cfg.update_filter_file ) );
-
-    // check file
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/bacteria_upd_virus_build.ibf" ) );
-}
-
-SCENARIO( "Update complete", "[ganon-build]" )
-{
-    // update complete bacteria filter with virus
-    // removing NC_017164.1 bin 63
-    auto cfg               = config_build::defaultConfig();
-    cfg.seqid_bin_file     = "filters/bacteria_upd_complete_virus_acc_bin.txt";
-    cfg.reference_files    = { "sequences/bacteria_NC_010333.1.fasta.gz", "sequences/bacteria_NC_017163.1.fasta.gz",
-                            "sequences/bacteria_NC_017543.1.fasta.gz", "sequences/virus_NC_003676.1.fasta.gz",
-                            "sequences/virus_NC_011646.1.fasta.gz",    "sequences/virus_NC_032412.1.fasta.gz",
-                            "sequences/virus_NC_035470.1.fasta.gz" };
-    cfg.update_complete    = true;
-    cfg.update_filter_file = config_build::bacteria_filter;
-
-    REQUIRE( GanonBuild::run( cfg ) );
-
-    // should have the same size since number of new bins does not pass the multiple of 64 threshold
-    // bacteria 67 bins + virus 8 bins
-    REQUIRE( aux::fileSize( cfg.output_filter_file ) == aux::fileSize( cfg.update_filter_file ) );
-
-    // check file
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/bacteria_upd_complete_virus_build.ibf" ) );
-}
-
-SCENARIO( "Update increasing filter size", "[ganon-build]" )
+SCENARIO( "building indices", "[ganon-build]" )
 {
 
-    // update virus filter with bacteria
-    auto cfg            = config_build::defaultConfig();
-    cfg.seqid_bin_file  = "filters/virus_upd_bacteria_acc_bin.txt";
-    cfg.update_filter_file = "filters/virus_build.ibf";
+    // Sequences to build the ibf
+    sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna5,
+                         "TTGGGGCTAAACAGCACTATACAGGCGGCTAGCATGTATTAGGGGAGCTC"_dna5,
+                         "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna5 };
 
-    REQUIRE( GanonBuild::run( cfg ) );
+    SECTION( "with default conf." )
+    {
+        auto cfg = config_build::defaultConfig( "default", seqs );
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
 
-    // should have increased the filter size to keep the original FP
-    REQUIRE( aux::fileSize( cfg.output_filter_file ) > aux::fileSize( cfg.update_filter_file ) );
 
-    // check file
-    REQUIRE( aux::filesAreEqual( cfg.output_filter_file, "filters/virus_upd_bacteria_build.ibf" ) );
+    SECTION( "with --kmer-size 11" )
+    {
+        auto cfg      = config_build::defaultConfig( "kmer_size_11", seqs );
+        cfg.kmer_size = 11;
+        // run ganon-build
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
+
+    SECTION( "with --kmer-size 27" )
+    {
+        auto cfg      = config_build::defaultConfig( "kmer_size_27", seqs );
+        cfg.kmer_size = 27;
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
+
+    SECTION( "with --kmer-size 31" )
+    {
+        // Should failed due to size limitation with dna5 (max 27, otherwise 32 with dna4)
+        // https://docs.seqan.de/seqan/3-master-user/group__search__views.html#ga6e598d6a021868f704d39df73252974f
+        auto cfg      = config_build::defaultConfig( "kmer_size_31", seqs );
+        cfg.kmer_size = 31;
+        REQUIRE_THROWS( GanonBuild::run( cfg ) );
+    }
+
+    SECTION( "with --filter-size-mb 2" )
+    {
+        auto cfg           = config_build::defaultConfig( "filter_size_mb_2", seqs );
+        cfg.bin_size_bits  = 0;
+        cfg.filter_size_mb = 2;
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
+
+    SECTION( "with --hash-functions 2" )
+    {
+        auto cfg           = config_build::defaultConfig( "hash_functions_2", seqs );
+        cfg.hash_functions = 2;
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
+
+    SECTION( "with --directory-reference-files and --extension" )
+    {
+        // write file with specific extension "TEST.fasta"
+        auto cfg                      = config_build::defaultConfig( "directory_reference_files.TEST", seqs );
+        cfg.reference_files           = {};
+        cfg.directory_reference_files = std::filesystem::canonical( "." );
+        cfg.extension                 = ".TEST.fasta";
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, seqs );
+    }
 }
