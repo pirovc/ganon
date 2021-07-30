@@ -92,4 +92,12 @@ inline seqan3::interleaved_bloom_filter<> load_ibf( const std::string& file ){
     return filter;
 }
 
+template < typename T >
+inline std::vector< T > vconcat( std::vector< T > v1, std::vector< T > v2 )
+{
+    std::vector< T > cv{ v1 };
+    cv.insert( cv.end(), v2.begin(), v2.end() );
+    return cv;
+}
+
 } // namespace aux
