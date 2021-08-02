@@ -2,7 +2,6 @@
 # ganon tests
 # =============================================================================
 
-file( COPY ganon-build/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 file( COPY ganon-classify/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 file( COPY utils/data DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} )
 
