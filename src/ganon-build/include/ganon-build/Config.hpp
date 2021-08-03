@@ -55,9 +55,9 @@ public:
     bool validate()
     {
 
-        if ( seqid_bin_file.empty() || output_filter_file.empty() )
+        if ( output_filter_file.empty() )
         {
-            std::cerr << "--seqid-bin-file and --output-filter-file are mandatory" << std::endl;
+            std::cerr << "--output-filter-file is mandatory" << std::endl;
             return false;
         }
 
@@ -115,7 +115,16 @@ public:
         {
             if ( bin_size_bits == 0 && filter_size_mb == 0 )
             {
-                std::cerr << "--filter-size-mb or --bin-size-bits are required" << std::endl;
+                std::cerr << "--filter-size-mb or --bin-size-bits should be provided" << std::endl;
+                return false;
+            }
+        }
+        if ( update_complete )
+        {
+            if ( update_filter_file.empty() || seqid_bin_file.empty() )
+            {
+                std::cerr << "--update-filter-file and --seqid-bin-file are required to perform --update-complete"
+                          << std::endl;
                 return false;
             }
         }

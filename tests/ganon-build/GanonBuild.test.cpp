@@ -198,6 +198,23 @@ SCENARIO( "building indices", "[ganon-build]" )
         config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, merged_seqs, merged_bins );
     }
 
+    SECTION( "with multiple --reference-files without --seqid-bin-file" )
+    {
+        // without --seqid-bin-file it should create one bin per sequence file
+        std::string prefix = "reference_files_wo_seqid_bin";
+        auto        cfg    = config_build::defaultConfig( prefix );
+
+        // write one sequence per file
+        config_build::write_fasta( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
+        config_build::write_fasta( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
+        config_build::write_fasta( prefix + ".S3.fasta", { seqs[2] }, { ids[2] } );
+        cfg.reference_files = { prefix + ".S1.fasta", prefix + ".S2.fasta", prefix + ".S3.fasta" };
+
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter(
+            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
+        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+    }
 
     SECTION( "with --kmer-size 11" )
     {
