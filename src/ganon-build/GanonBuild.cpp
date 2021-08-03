@@ -279,7 +279,6 @@ bool run( Config config )
         {
             uint64_t optimal_bins = ( std::floor( stats.totalBinsBinId / 64 ) + 1 ) * 64;
             bsize                 = ( config.filter_size_mb / static_cast< float >( optimal_bins ) ) * 8388608u;
-            std::cerr << "optimal_bins:" << optimal_bins << std::endl;
         }
         else
         {
