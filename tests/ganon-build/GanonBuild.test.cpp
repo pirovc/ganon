@@ -203,7 +203,6 @@ SCENARIO( "building indices", "[ganon-build]" )
         // without --seqid-bin-file it should create one bin per sequence file
         std::string prefix = "reference_files_wo_seqid_bin";
         auto        cfg    = config_build::defaultConfig( prefix );
-
         // write one sequence per file
         config_build::write_fasta( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
         config_build::write_fasta( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
@@ -335,6 +334,34 @@ SCENARIO( "updating indices", "[ganon-build]" )
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
         }
     }
+
+    SECTION( "with --update-filter-file creating 3 new bins without --seqid-bin-file" )
+    {
+        // without --seqid-bin-file it should create one bin per sequence file
+        std::string prefix            = "3new_update_wo_seqid_bin";
+        auto        cfg_update        = config_build::defaultConfig( prefix );
+        cfg_update.update_filter_file = cfg_build.output_filter_file;
+
+        // write one sequence per file
+        config_build::write_fasta( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
+        config_build::write_fasta( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
+        config_build::write_fasta( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
+        cfg_update.reference_files = { prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
+
+        REQUIRE( GanonBuild::run( cfg_update ) );
+
+        auto merged_seqs = aux::vconcat( seqs, extra_seqs );
+        auto merged_bins = aux::vconcat( bins, extra_bins );
+
+        config_build::validate_filter( cfg_update.output_filter_file,
+                                       cfg_update.hash_functions,
+                                       cfg_update.filter_size_mb,
+                                       cfg_update.bin_size_bits,
+                                       merged_bins );
+        config_build::validate_elements(
+            cfg_update.output_filter_file, cfg_update.kmer_size, merged_seqs, merged_bins );
+    }
+
 
     SECTION( "with --update-filter-file creating 80 new bins" )
     {
