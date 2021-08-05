@@ -46,6 +46,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params["output_db_prefix"],
             "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
             "max_error": 0,
+            "output_lca": True,
             "output_all": True,
             "quiet": True,
             "output_prefix": self.results_dir + "test_default"}
@@ -230,6 +231,7 @@ class TestUpdateOffline(unittest.TestCase):
                             "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
                             "max_error": 0,
                             "offset": 1,
+                            "output_lca": True,
                             "output_all": True,
                             "quiet": True,
                             "output_prefix": self.results_dir + "test_add_existing_bins_classify_part1"}
@@ -290,6 +292,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
                     "max_error": 0,
+                    "output_lca": True,
                     "output_all": True,
                     "quiet": True,
                     "output_prefix": self.results_dir + "test_update_complete_add"}
@@ -329,6 +332,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": data_dir+"bac.sim.1.fq",
                     "max_error": 0,
+                    "output_lca": True,
                     "output_all": True,
                     "quiet": True,
                     "output_prefix": self.results_dir + "test_default"}
@@ -370,6 +374,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
                     "max_error": 0,
+                    "output_lca": True,
                     "output_all": True,
                     "quiet": True,
                     "output_prefix": self.results_dir + "test_default"}
@@ -448,6 +453,7 @@ class TestUpdateOffline(unittest.TestCase):
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
                     "max_error": 0,
+                    "output_lca": True,
                     "output_all": True,
                     "quiet": True,
                     "output_prefix": self.results_dir + "test_update_multiple_classify"}

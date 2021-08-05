@@ -19,7 +19,7 @@ def classify(cfg):
                                    "--strata-filter " + ",".join([str(sf) for sf in cfg.strata_filter]) if cfg.strata_filter else "",
                                    "--offset " + str(cfg.offset) if cfg.offset else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
-                                   "--output-lca",
+                                   "--output-lca" if cfg.output_lca else "",
                                    "--output-all" if cfg.output_all else "",
                                    "--output-unclassified" if cfg.output_unclassified else "",
                                    "--output-single" if cfg.output_single else "",
