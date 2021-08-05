@@ -16,9 +16,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "r,single-reads", "File[s] with single-end reads .fq .fastq .fasta .fa (e.g. file1.fq[.gz],[file2.fq[.gz] ... fileN.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         ( "p,paired-reads", "Pairs of files with paired-end reads .fq .fastq .fasta .fa (e.g. file1.1.fq[.gz],file1.2.fq[.gz],[file2.1.fq[.gz],file2.2.fq[.gz] ... fileN.1.fq[.gz],fileN.2.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         
-        ( "i,ibf", "ibf (Interleaved Bloom Filter) file[s] (e.g. -b a.ibf,b.ibf OR -b a.ibf -b b.ibf )", cxxopts::value< std::vector< std::string > >() )
-        ( "m,map", "map files[s]. Tab-separated file mapping target groups (taxids, assemblies) and bin identifiers with the following fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
-        ( "x,tax", "tax (taxonomy) files[s]. Tab-separated file with a complete tree with the following fields: node <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
+        ( "i,ibf", "IBF (Interleaved Bloom Filter) file[s] generated with ganon-build (e.g. -b a.ibf,b.ibf OR -b a.ibf -b b.ibf )", cxxopts::value< std::vector< std::string > >() )
+        ( "m,map", "Tab-separated file mapping bins in the --ibf to target groups/labels (e.g. taxids, assemblies). Targets can be repeated if multiple bins represent one group. Fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
+        ( "x,tax", "Tab-separated file with a taxonomic tree for LCA calculation. Will link targets provided in the --map files. Root node should be 1 with parent 0. Fields: node/target <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
         
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
@@ -30,10 +30,11 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint8_t >() )
         
-        ( "o,output-prefix", "Output prefix for output files (prefix.lca, prefix.rep, prefix.all, prefix.unc). If multi-level hiearchy is provded, files are generated accordingly (prefix.hiearchy.lca, ...). Omit for output to STDOUT (only .lca will be printed)", cxxopts::value< std::string >() )
-        ( "a,output-all", "Output file with all matches (prefix.all) [it can be very big]", cxxopts::value< bool >() )
+        ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.lca, prefix.all, prefix.unc]). If multi-level hiearchy is provided, files are generated accordingly (prefix.hiearchy.lca and prefix.hiearchy.all). Omit to output to STDOUT (only .rep will be printed)", cxxopts::value< std::string >() )
+        ( "w,output-lca", "Output file with lca classification, one for each classified read (prefix.lca)", cxxopts::value< bool >() )
+        ( "a,output-all", "Output file with all matches, one or more for each classified read (prefix.all) [it can be very big]", cxxopts::value< bool >() )
         ( "n,output-unclassified", "Output unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
-        ( "s,output-single", "Generate only one output (prefix.lca and prefix.rep) even with multiple hierarchy levels", cxxopts::value< bool >() )
+        ( "s,output-single", "Do not split output files (lca and all) with multiple hierarchy levels", cxxopts::value< bool >() )
         
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
@@ -94,6 +95,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     if ( args.count( "output-prefix" ) )
         config.output_prefix = args["output-prefix"].as< std::string >();
+    if ( args.count( "output-lca" ) )
+        config.output_lca = args["output-lca"].as< bool >();
     if ( args.count( "output-all" ) )
         config.output_all = args["output-all"].as< bool >();
     if ( args.count( "output-unclassified" ) )

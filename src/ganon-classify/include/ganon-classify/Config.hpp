@@ -14,9 +14,21 @@ namespace GanonClassify
 
 struct FilterConfig
 {
+    FilterConfig()
+    {
+    }
+
+    FilterConfig( std::string _ibf_file, int16_t _max_error, float _min_kmers, uint8_t _kmer_size )
+    {
+        ibf_file  = _ibf_file;
+        max_error = _max_error;
+        min_kmers = _min_kmers;
+        kmer_size = _kmer_size;
+    }
+
     std::string ibf_file;
-    std::string map_file;
-    std::string tax_file;
+    std::string map_file = "";
+    std::string tax_file = "";
     int16_t     max_error;
     float       min_kmers;
     uint8_t     kmer_size;
@@ -28,7 +40,6 @@ struct HierarchyConfig
     int16_t                     max_error_unique;
     int16_t                     strata_filter;
     std::string                 output_file_lca;
-    std::string                 output_file_rep;
     std::string                 output_file_all;
 };
 
@@ -53,6 +64,7 @@ public:
     uint8_t                offset = 1;
 
     std::string output_prefix       = "";
+    bool        output_lca          = false;
     bool        output_all          = false;
     bool        output_unclassified = false;
     bool        output_single       = false;
@@ -68,15 +80,21 @@ public:
 
     bool validate()
     {
-        if ( ibf.size() == 0 || map.size() == 0 || tax.size() == 0
-             || ( paired_reads.size() == 0 && single_reads.size() == 0 ) )
+        if ( ibf.size() == 0 || ( paired_reads.size() == 0 && single_reads.size() == 0 ) )
         {
-            std::cerr << "--ibf, --map, --tax, --[single|paired]-reads are mandatory" << std::endl;
+            std::cerr << "--ibf and --[single|paired]-reads are mandatory" << std::endl;
             return false;
         }
-        else if ( paired_reads.size() % 2 != 0 )
+
+        if ( paired_reads.size() % 2 != 0 )
         {
             std::cerr << "--paired-reads should be an even number of files (pairs)" << std::endl;
+            return false;
+        }
+
+        if ( tax.size() > 0 && map.size() == 0 )
+        {
+            std::cerr << "--map is required to use --tax" << std::endl;
             return false;
         }
 
@@ -133,6 +151,7 @@ public:
 
         if ( output_prefix.empty() )
         {
+            output_lca          = false;
             output_all          = false;
             output_unclassified = false;
         }
@@ -145,9 +164,15 @@ public:
 
     bool parse_hierarchy()
     {
-        if ( ibf.size() != map.size() || ibf.size() != tax.size() )
+        if ( map.size() > 0 && ibf.size() != map.size() )
         {
-            std::cerr << "The number of --ibf, --map and --tax should match" << std::endl;
+            std::cerr << "The number of files provided with --ibf and --map should match" << std::endl;
+            return false;
+        }
+
+        if ( tax.size() > 0 && ibf.size() != tax.size() )
+        {
+            std::cerr << "The number of files provided with --ibf and --tax should match" << std::endl;
             return false;
         }
 
@@ -245,34 +270,33 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
-            auto filter_cfg = FilterConfig{ ibf[h], map[h], tax[h], max_error[h], min_kmers[h], kmer_size[h] };
+            auto filter_cfg = FilterConfig{ ibf[h], max_error[h], min_kmers[h], kmer_size[h] };
+            if ( map.size() > 0 )
+                filter_cfg.map_file = map[h];
+            if ( tax.size() > 0 )
+                filter_cfg.tax_file = tax[h];
 
             if ( parsed_hierarchy.find( hierarchy_labels[h] ) == parsed_hierarchy.end() )
             { // not found
                 std::vector< FilterConfig > fc;
                 fc.push_back( filter_cfg );
-
-                std::string output_file_lca;
-                std::string output_file_rep;
-                std::string output_file_all;
+                std::string output_file_lca = "";
+                std::string output_file_all = "";
                 if ( !output_prefix.empty() && unique_hierarchy > 1 && !output_single )
                 {
                     output_file_lca = output_prefix + "." + hierarchy_labels[h] + ".lca";
                     output_file_all = output_prefix + "." + hierarchy_labels[h] + ".all";
-                    output_file_rep = output_prefix + ".rep";
                 }
                 else if ( !output_prefix.empty() )
                 {
                     output_file_lca = output_prefix + ".lca";
                     output_file_all = output_prefix + ".all";
-                    output_file_rep = output_prefix + ".rep";
                 }
 
                 parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{ fc,
                                                                          max_error_unique[hierarchy_count],
                                                                          strata_filter[hierarchy_count],
                                                                          output_file_lca,
-                                                                         output_file_rep,
                                                                          output_file_all };
                 ++hierarchy_count;
             }
@@ -312,11 +336,15 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
             stream << "  --map: " << filter_config.map_file << newl;
             stream << "  --tax: " << filter_config.tax_file << newl;
         }
-        stream << "  Output files:" << newl;
-        stream << "    " << hierarchy_config.second.output_file_lca << newl;
-        stream << "    " << hierarchy_config.second.output_file_rep << newl;
-        if ( config.output_all )
-            stream << "    " << hierarchy_config.second.output_file_all << newl;
+        if ( !config.output_prefix.empty() )
+        {
+            stream << "  Output files:" << newl;
+            stream << "    " << config.output_prefix + ".rep" << newl;
+            if ( config.output_lca )
+                stream << "    " << hierarchy_config.second.output_file_lca << newl;
+            if ( config.output_all )
+                stream << "    " << hierarchy_config.second.output_file_all << newl;
+        }
     }
     stream << newl;
     stream << "Input files:" << newl;
@@ -330,6 +358,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "Parameters:" << newl;
     stream << "--offset                    " << unsigned( config.offset ) << newl;
     stream << "--output-prefix             " << config.output_prefix << newl;
+    stream << "--output-lca                " << config.output_lca << newl;
     stream << "--output-all                " << config.output_all << newl;
     stream << "--output-unclassified       " << config.output_unclassified << newl;
     stream << "--output-single             " << config.output_single << newl;

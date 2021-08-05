@@ -35,11 +35,9 @@ namespace GanonClassify
 namespace detail
 {
 
-typedef seqan3::interleaved_bloom_filter<> TIbf;
-
+typedef seqan3::interleaved_bloom_filter<>                                  TIbf;
 typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > Tagent;
-
-typedef std::unordered_map< std::string, uint16_t > TMatches;
+typedef std::unordered_map< std::string, uint16_t >                         TMatches;
 
 struct Node
 {
@@ -564,7 +562,8 @@ void classify( std::vector< Filter >&    filters,
                         lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
                     }
 
-                    classified_lca_queue.push( read_out_lca );
+                    if ( config.output_lca )
+                        classified_lca_queue.push( read_out_lca );
 
                     if ( config.output_all )
                         classified_all_queue.push( read_out );
@@ -602,20 +601,8 @@ void classify( std::vector< Filter >&    filters,
     }
 }
 
-void write_report( TRep&       rep,
-                   TTax&       tax,
-                   Stats&      stats,
-                   std::string output_file_rep,
-                   std::string hierarchy_label,
-                   bool        hierarchy_first,
-                   bool        hierarchy_last )
+void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label )
 {
-    std::ofstream out_rep;
-    if ( hierarchy_first )
-        out_rep.open( output_file_rep );
-    else // append if not first and output_single
-        out_rep.open( output_file_rep, std::ofstream::app );
-
     for ( auto const& [target, report] : rep )
     {
         if ( report.direct_matches || report.lca_reads || report.unique_reads )
@@ -625,13 +612,6 @@ void write_report( TRep&       rep,
                     << '\n';
         }
     }
-
-    if ( hierarchy_last )
-    {
-        out_rep << "#total_classified\t" << stats.classifiedReads << '\n';
-        out_rep << "#total_unclassified\t" << stats.totalReads - stats.classifiedReads << '\n';
-    }
-    out_rep.close();
 }
 
 bool load_filters( std::vector< Filter >& filters,
@@ -806,11 +786,11 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     queue1.notify_push_over();
 }
 
-void write_classified( SafeQueue< detail::ReadOut >& classified_all_queue, std::ofstream& out )
+void write_classified( SafeQueue< detail::ReadOut >& classified_queue, std::ofstream& out )
 {
     while ( true )
     {
-        detail::ReadOut ro = classified_all_queue.pop();
+        detail::ReadOut ro = classified_queue.pop();
         if ( ro.readID != "" )
         {
             for ( uint32_t i = 0; i < ro.matches.size(); ++i )
@@ -889,51 +869,58 @@ void pre_process_lca( LCA& lca, TTax& tax )
 bool run( Config config )
 {
 
+    // Validate configuration input
     if ( !config.validate() )
         return false;
 
-    // Time control
+    // Print config
+    if ( !config.quiet && config.verbose )
+        std::cerr << config;
+
+    // Start time count
     StopClock timeGanon;
     timeGanon.start();
+
+    // Initialize variables
     StopClock timeLoadFilters;
     StopClock timeClassPrint;
 
-    if ( !config.quiet && config.verbose )
-    {
-        std::cerr << config;
-    }
-
-    //////////////////////////////
-
-    // Set output stream (file or stdout)
-    std::ofstream out;
-    std::ofstream out_all;
+    detail::Stats stats;
+    std::ofstream out_rep; // Set default output stream (file or stdout)
+    std::ofstream out_all; // output all file
+    std::ofstream out_lca; // output all file
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
     {
-        out.copyfmt( std::cout ); // STDOUT
-        out.clear( std::cout.rdstate() );
-        out.basic_ios< char >::rdbuf( std::cout.rdbuf() );
+        out_rep.copyfmt( std::cout ); // STDOUT
+        out_rep.clear( std::cout.rdstate() );
+        out_rep.basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
+    else
+    {
+        out_rep.open( config.output_prefix + ".rep" );
+    }
+
+    // SafeQueue for printing unclassified
+    SafeQueue< detail::ReadOut > unclassified_queue;
 
     // Queues for internal read handling
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
     // if hierachy == 3 queue1 is used for unclassified and so on
-    SafeQueue< detail::ReadBatches > queue1(
-        config.n_batches ); // config.n_batches*config.n_reads = max. amount of reads in memory
-    SafeQueue< detail::ReadBatches > queue2;
-
-    // Statistics values
-    detail::Stats stats;
+    // config.n_batches*config.n_reads = max. amount of reads in memory
+    SafeQueue< detail::ReadBatches >  queue1( config.n_batches );
+    SafeQueue< detail::ReadBatches >  queue2;
+    SafeQueue< detail::ReadBatches >* pointer_current = &queue1; // pointer to the queues
+    SafeQueue< detail::ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
+    SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
 
     // Thread for reading input files
     std::future< void > read_task = std::async(
         std::launch::async, detail::parse_reads, std::ref( queue1 ), std::ref( stats ), std::ref( config ) );
 
-    // SafeQueue for printing unclassified
-    SafeQueue< detail::ReadOut > unclassified_queue;
+
     // Thread for printing unclassified reads
     std::future< void > write_unclassified_task;
     if ( config.output_unclassified && !config.output_prefix.empty() )
@@ -945,11 +932,6 @@ bool run( Config config )
     }
 
 
-    // Pointer to the queues
-    SafeQueue< detail::ReadBatches >* pointer_current = &queue1; // pointer to the queues
-    SafeQueue< detail::ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
-    SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
-
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
 
@@ -957,24 +939,22 @@ bool run( Config config )
     for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
-        bool hierarchy_first = ( hierarchy_id == 1 );
-        bool hierarchy_last  = ( hierarchy_id == hierarchy_size );
-
-        timeLoadFilters.start();
+        bool                          hierarchy_first = ( hierarchy_id == 1 );
+        bool                          hierarchy_last  = ( hierarchy_id == hierarchy_size );
         std::vector< detail::Filter > filters;
         detail::TUniqueTarget         unique_targets;
-        bool                          loaded = detail::load_filters( filters, unique_targets, hierarchy_label, config );
+        detail::TTax                  tax;
+        detail::TRep                  rep;
+        LCA                           lca;
+
+        timeLoadFilters.start();
+        bool loaded = detail::load_filters( filters, unique_targets, hierarchy_label, config );
         if ( !loaded )
-        {
             return false;
-        }
         timeLoadFilters.stop();
 
-        // merge repeated elements
-        detail::TTax tax = detail::merge_tax( filters );
-
-        // Reports
-        detail::TRep rep;
+        // merge repeated elements if tax is provided
+        tax = detail::merge_tax( filters );
 
         // initialize entries for the report with all possible taxa (to direct access it in multiple threads)
         for ( const auto& it : tax )
@@ -987,7 +967,6 @@ bool run( Config config )
         detail::validate_targets_tax( unique_targets, tax );
 
         // pre-processing of nodes
-        LCA lca;
         detail::pre_process_lca( lca, tax );
 
         // Thread for printing classified reads (.lca, .all)
@@ -1016,11 +995,19 @@ bool run( Config config )
 
         if ( !config.output_prefix.empty() )
         {
-            if ( hierarchy_first || !config.output_single )
-                out.open( hierarchy_config.output_file_lca );
-            else // append if not first and output_single
-                out.open( hierarchy_config.output_file_lca, std::ofstream::app );
+            if ( config.output_lca )
+            {
+                if ( hierarchy_first || !config.output_single )
+                    out_lca.open( hierarchy_config.output_file_lca );
+                else // append if not first and output_single
+                    out_lca.open( hierarchy_config.output_file_lca, std::ofstream::app );
 
+                // Start writing thread for lca matches
+                write_tasks.emplace_back( std::async( std::launch::async,
+                                                      detail::write_classified,
+                                                      std::ref( classified_lca_queue ),
+                                                      std::ref( out_lca ) ) );
+            }
             if ( config.output_all )
             {
                 if ( hierarchy_first || !config.output_single )
@@ -1036,9 +1023,6 @@ bool run( Config config )
             }
         }
 
-        // Start writing thread for lca matches
-        write_tasks.emplace_back( std::async(
-            std::launch::async, detail::write_classified, std::ref( classified_lca_queue ), std::ref( out ) ) );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
@@ -1079,11 +1063,8 @@ bool run( Config config )
         stats.load_rep( hierarchy_label, rep );
 
         // write reports
-        if ( !config.output_prefix.empty() )
-        {
-            detail::write_report(
-                rep, tax, stats, hierarchy_config.output_file_rep, hierarchy_label, hierarchy_first, hierarchy_last );
-        }
+        detail::write_report( rep, tax, out_rep, hierarchy_label );
+
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
         {
@@ -1094,11 +1075,10 @@ bool run( Config config )
         // Close file for writing (if not STDOUT)
         if ( !config.output_prefix.empty() )
         {
-            out.close();
+            if ( config.output_lca )
+                out_lca.close();
             if ( config.output_all )
-            {
                 out_all.close();
-            }
         }
 
         if ( hierarchy_first )
@@ -1114,6 +1094,13 @@ bool run( Config config )
     {
         unclassified_queue.notify_push_over();
         write_unclassified_task.get();
+    }
+
+    out_rep << "#total_classified\t" << stats.classifiedReads << '\n';
+    out_rep << "#total_unclassified\t" << stats.totalReads - stats.classifiedReads << '\n';
+    if ( !config.output_prefix.empty() )
+    {
+        out_rep.close();
     }
 
     timeGanon.stop();
