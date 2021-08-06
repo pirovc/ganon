@@ -330,23 +330,7 @@ SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
     cfg.offset        = 25; // should be limited by k-mer size (19) and give same results
     cfg.output_prefix = "b-b_f25";
     INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-
-    auto cfg2          = config_classify::defaultConfig();
-    cfg2.ibf           = { "filters/bacteria.ibf" };
-    cfg2.map           = { "filters/bacteria.map" };
-    cfg2.tax           = { "filters/bacteria.tax" };
-    cfg2.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg2.offset        = 19;
-    cfg2.output_prefix = "b-b_f19";
-    INFO( "output_prefix2: " + cfg2.output_prefix );
-    REQUIRE( GanonClassify::run( cfg2 ) );
-
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
-    }
+    REQUIRE_FALSE( GanonClassify::run( cfg ) );
 }
 
 SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )

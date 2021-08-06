@@ -63,7 +63,7 @@ struct Stats
 
 typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
 typedef std::set< uint64_t >                                TBinIds;
-typedef seqan3::interleaved_bloom_filter<>                  Tfilter;
+typedef seqan3::interleaved_bloom_filter<>                  TFilter;
 
 void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, TBinIds& bin_ids )
 {
@@ -155,7 +155,7 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
     queue_refs.notify_push_over();
 }
 
-Tfilter create_filter( GanonBuild::Config& config, uint32_t bcount )
+TFilter create_filter( GanonBuild::Config& config, uint32_t bcount )
 {
     uint64_t bsize;
     // Calculate bin size based on filter size (1MB = 8388608bits)
@@ -169,22 +169,22 @@ Tfilter create_filter( GanonBuild::Config& config, uint32_t bcount )
         bsize = config.bin_size_bits;
     }
 
-    return Tfilter{ seqan3::bin_count{ bcount },
+    return TFilter{ seqan3::bin_count{ bcount },
                     seqan3::bin_size{ bsize },
                     seqan3::hash_function_count{ config.hash_functions } };
 }
 
-Tfilter load_filter( std::string const& input_filter_file )
+TFilter load_filter( std::string const& input_filter_file )
 {
 
-    Tfilter                    filter;
+    TFilter                    filter;
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
     archive( filter );
     return filter;
 }
 
-void clear_filter( Tfilter& filter, const TBinIds& bin_ids )
+void clear_filter( TFilter& filter, const TBinIds& bin_ids )
 {
     // Reset bins if complete set of sequences is provided (re-create updated bins)
     std::vector< seqan3::bin_index > updated_bins;
@@ -201,7 +201,7 @@ void clear_filter( Tfilter& filter, const TBinIds& bin_ids )
     filter.clear( updated_bins );
 }
 
-void increase_filter( Tfilter& filter, uint32_t new_total_bins )
+void increase_filter( TFilter& filter, uint32_t new_total_bins )
 {
     // If new bins were added
     if ( new_total_bins > filter.bin_count() )
@@ -213,14 +213,14 @@ void increase_filter( Tfilter& filter, uint32_t new_total_bins )
     }
 }
 
-void save_filter( Tfilter const& filter, std::string const& output_filter_file )
+void save_filter( TFilter const& filter, std::string const& output_filter_file )
 {
     std::ofstream               os( output_filter_file, std::ios::binary );
     cereal::BinaryOutputArchive archive( os );
     archive( filter );
 }
 
-void build( Tfilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::Config const& config )
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::Config const& config )
 {
     auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
     while ( true )
@@ -317,7 +317,7 @@ bool run( Config config )
     StopClock       timeSaveFilter;
     std::mutex      mtx;
     detail::Stats   stats;
-    detail::Tfilter filter;
+    detail::TFilter filter;
     detail::TSeqBin seq_bin; // Map with seqid_bin file info
     detail::TBinIds bin_ids; // Set with binids used
 

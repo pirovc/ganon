@@ -18,12 +18,11 @@ struct FilterConfig
     {
     }
 
-    FilterConfig( std::string _ibf_file, int16_t _max_error, float _min_kmers, uint8_t _kmer_size )
+    FilterConfig( std::string _ibf_file, int16_t _max_error, float _min_kmers )
     {
         ibf_file  = _ibf_file;
         max_error = _max_error;
         min_kmers = _min_kmers;
-        kmer_size = _kmer_size;
     }
 
     std::string ibf_file;
@@ -31,13 +30,13 @@ struct FilterConfig
     std::string tax_file = "";
     int16_t     max_error;
     float       min_kmers;
-    uint8_t     kmer_size;
 };
 
 struct HierarchyConfig
 {
     std::vector< FilterConfig > filters;
     int16_t                     max_error_unique;
+    uint8_t                     kmer_size;
     int16_t                     strata_filter;
     std::string                 output_file_lca;
     std::string                 output_file_all;
@@ -220,26 +219,32 @@ public:
         }
 
 
-        if ( kmer_size.size() == 1 && ibf.size() > 1 )
-        {
-            for ( uint16_t b = 1; b < ibf.size(); ++b )
-            {
-                kmer_size.push_back( kmer_size[0] );
-            }
-        }
-        else if ( kmer_size.size() != ibf.size() )
-        {
-            std::cerr << "Please provide a single or one-per-filter --kmer-size value[s]" << std::endl;
-            return false;
-        }
-
-
         std::vector< std::string > sorted_hierarchy = hierarchy_labels;
         std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
         // get unique hierarcy labels
         uint16_t unique_hierarchy =
             std::unique( sorted_hierarchy.begin(), sorted_hierarchy.end() ) - sorted_hierarchy.begin();
 
+        for ( uint16_t k = 0; k < kmer_size.size(); ++k )
+        {
+            if ( offset > kmer_size[k] )
+            {
+                std::cerr << "Offset cannot be bigger than k-mer size" << std::endl;
+                return false;
+            }
+        }
+        if ( kmer_size.size() == 1 && unique_hierarchy > 1 )
+        {
+            for ( uint16_t b = 1; b < unique_hierarchy; ++b )
+            {
+                kmer_size.push_back( kmer_size[0] );
+            }
+        }
+        else if ( kmer_size.size() != unique_hierarchy )
+        {
+            std::cerr << "Please provide a single or one-per-hierarchy --kmer-size value[s]" << std::endl;
+            return false;
+        }
 
         if ( max_error_unique.size() == 1 && unique_hierarchy > 1 )
         {
@@ -270,7 +275,7 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
-            auto filter_cfg = FilterConfig{ ibf[h], max_error[h], min_kmers[h], kmer_size[h] };
+            auto filter_cfg = FilterConfig{ ibf[h], max_error[h], min_kmers[h] };
             if ( map.size() > 0 )
                 filter_cfg.map_file = map[h];
             if ( tax.size() > 0 )
@@ -295,6 +300,7 @@ public:
 
                 parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{ fc,
                                                                          max_error_unique[hierarchy_count],
+                                                                         kmer_size[hierarchy_count],
                                                                          strata_filter[hierarchy_count],
                                                                          output_file_lca,
                                                                          output_file_all };
@@ -321,7 +327,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         if ( !hierarchy_config.first.empty() )
         {
             stream << hierarchy_config.first << ")" << newl;
-
+            stream << " --kmer-size: " << hierarchy_config.second.kmer_size << newl;
             stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
             stream << " --strata-filter: " << hierarchy_config.second.strata_filter << newl;
         }
@@ -331,7 +337,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
                 stream << "  --min-kmers: " << filter_config.min_kmers << newl;
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
-            stream << "  --kmer-size: " << unsigned( filter_config.kmer_size ) << newl;
             stream << "  --ibf: " << filter_config.ibf_file << newl;
             stream << "  --map: " << filter_config.map_file << newl;
             stream << "  --tax: " << filter_config.tax_file << newl;

@@ -35,7 +35,7 @@ namespace GanonClassify
 namespace detail
 {
 
-typedef seqan3::interleaved_bloom_filter<>                                  TIbf;
+typedef seqan3::interleaved_bloom_filter<>                                  TFilter;
 typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > Tagent;
 typedef std::unordered_map< std::string, uint16_t >                         TMatches;
 
@@ -56,8 +56,7 @@ struct Rep
 typedef std::unordered_map< std::string, Rep >  TRep;
 typedef std::unordered_map< std::string, Node > TTax;
 typedef std::map< uint32_t, std::string >       TMap;
-
-typedef std::unordered_set< std::string > TUniqueTarget;
+typedef std::unordered_set< std::string >       TUniqueTarget;
 
 struct ReadBatches
 {
@@ -148,7 +147,7 @@ struct Stats
 
 struct Filter
 {
-    TIbf         ibf;
+    TFilter      ibf;
     TMap         map;
     TTax         tax;
     FilterConfig filter_config;
@@ -276,6 +275,7 @@ uint16_t find_matches( TMatches&                    matches,
                        std::vector< Filter >&       filters,
                        std::vector< Tagent >&       agents,
                        std::vector< seqan3::dna5 >& read_seq,
+                       uint8_t                      kmer_size,
                        uint8_t                      offset,
                        auto&                        hash_adaptor )
 {
@@ -307,10 +307,8 @@ uint16_t find_matches( TMatches&                    matches,
 
         int16_t threshold =
             ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers(
-                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors(
-                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
+                ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
+                : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
@@ -322,6 +320,7 @@ uint16_t find_matches_paired( TMatches&                    matches,
                               std::vector< Tagent >&       agents,
                               std::vector< seqan3::dna5 >& read_seq,
                               std::vector< seqan3::dna5 >& read_seq2,
+                              uint8_t                      kmer_size,
                               uint8_t                      offset,
                               auto&                        hash_adaptor )
 {
@@ -366,17 +365,14 @@ uint16_t find_matches_paired( TMatches&                    matches,
         // Calculate error rate on one read
         int16_t threshold =
             ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers(
-                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors(
-                      read_seq.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.max_error, offset );
+                ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
+                : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
 
         // sum kmers of second read (if using errors, get all possible kmers)
         threshold +=
             ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers(
-                      read_seq2.size(), filters[i].filter_config.kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors( read_seq2.size(), filters[i].filter_config.kmer_size, 0, offset );
+                ? get_threshold_kmers( read_seq2.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
+                : get_threshold_errors( read_seq2.size(), kmer_size, 0, offset );
 
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
@@ -398,7 +394,6 @@ uint32_t filter_matches( ReadOut&  read_out,
     int16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
     if ( strata_filter > -1 )
     {
-
         // get maximum possible number of errors
         uint16_t max_error = get_error( read1_len, read2_len, kmer_size, max_kmer_count_read, offset );
 
@@ -452,14 +447,12 @@ void classify( std::vector< Filter >&    filters,
                bool                      hierarchy_last,
                uint8_t                   offset,
                int16_t                   max_error_unique,
+               int8_t                    kmer_size,
                int16_t                   strata_filter )
 {
 
-    // k-mer sizes should be the same among filters
-    uint8_t kmer_size = filters[0].filter_config.kmer_size;
-
     // oner hash adaptor per thread
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ filters[0].filter_config.kmer_size } );
+    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ kmer_size } );
 
     // one agent per thread per filter
     std::vector< Tagent > agents;
@@ -506,14 +499,20 @@ void classify( std::vector< Filter >&    filters,
                         if ( hierarchy_first )
                             stats.sumread_len += read2_len;
 
-                        max_kmer_count_read = find_matches_paired(
-                            matches, filters, agents, rb.seqs[readID], rb.seqs2[readID], offset, hash_adaptor );
+                        max_kmer_count_read = find_matches_paired( matches,
+                                                                   filters,
+                                                                   agents,
+                                                                   rb.seqs[readID],
+                                                                   rb.seqs2[readID],
+                                                                   kmer_size,
+                                                                   offset,
+                                                                   hash_adaptor );
                     }
                 }
                 else // single-end mode
                 {
                     max_kmer_count_read =
-                        find_matches( matches, filters, agents, rb.seqs[readID], offset, hash_adaptor );
+                        find_matches( matches, filters, agents, rb.seqs[readID], kmer_size, offset, hash_adaptor );
                 }
             }
 
@@ -614,84 +613,93 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
     }
 }
 
-bool load_filters( std::vector< Filter >& filters,
-                   TUniqueTarget&         unique_targets,
-                   std::string            hierarchy_label,
-                   Config&                config )
+TFilter load_filter( std::string const& input_filter_file )
 {
-    uint16_t first_kmer_size = 0;
+
+    TFilter                    filter;
+    std::ifstream              is( input_filter_file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
+    archive( filter );
+    return filter;
+}
+
+TMap load_map( std::string map_file, TUniqueTarget& unique_targets )
+{
+    TMap          map;
+    std::string   line;
+    std::ifstream infile;
+    infile.open( map_file );
+    while ( std::getline( infile, line, '\n' ) )
+    {
+        std::istringstream         stream_line( line );
+        std::vector< std::string > fields;
+        std::string                field;
+        while ( std::getline( stream_line, field, '\t' ) )
+            fields.push_back( field );
+        // target <tab> binid
+        map[std::stoul( fields[1] )] = fields[0];
+        unique_targets.insert( fields[0] );
+    }
+    infile.close();
+    return map;
+}
+
+TTax load_tax( std::string tax_file )
+{
+    TTax          tax;
+    std::string   line;
+    std::ifstream infile;
+    infile.open( tax_file );
+    while ( std::getline( infile, line, '\n' ) )
+    {
+        std::istringstream         stream_line( line );
+        std::vector< std::string > fields;
+        std::string                field;
+        while ( std::getline( stream_line, field, '\t' ) )
+            fields.push_back( field );
+        tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
+    }
+    infile.close();
+    return tax;
+}
+
+bool load_files( std::vector< Filter >& filters,
+                 TUniqueTarget&         unique_targets,
+                 std::string            hierarchy_label,
+                 Config&                config )
+{
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
 
-        TIbf filter;
-        TMap map;
-        TTax tax;
+        TMap    map;
+        TTax    tax;
+        TFilter filter = load_filter( filter_config.ibf_file );
 
-        // ibf file
-        std::ifstream              is( filter_config.ibf_file, std::ios::binary );
-        cereal::BinaryInputArchive archive( is );
-        archive( filter );
-
-        if ( first_kmer_size == 0 )
+        if ( !filter_config.map_file.empty() )
         {
-            first_kmer_size = filter_config.kmer_size;
+            map = load_map( filter_config.map_file, unique_targets );
+            // Check consistency of map file and ibf file
+            // map.size can be smaller than bins set on IBF if sequences were removed
+            if ( map.size() > filter.bin_count() )
+            {
+                std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
+                return false;
+            }
         }
-        else if ( first_kmer_size != filter_config.kmer_size )
+        else
         {
-            std::cerr
-                << "ERROR: filters on the same hierarchy should have same k-mer size configuration. Ignoring filter: "
-                << filter_config.ibf_file << std::endl;
-            continue;
-        }
-
-        if ( config.offset > first_kmer_size )
-        {
-            std::cerr << "WARNING: offset cannot be bigger than k-mer size. Setting offset to " << first_kmer_size
-                      << std::endl;
-            config.offset = first_kmer_size;
+            // fill map to binids
+            for ( uint32_t binid = 0; binid <= filter.bin_count(); ++binid )
+            {
+                std::cout << binid << '\n';
+                map[binid] = std::to_string( binid );
+            }
         }
 
-        std::string   line;
-        std::ifstream infile;
+        if ( !filter_config.tax_file.empty() )
+            tax = load_tax( filter_config.tax_file );
 
-        // map file
-        infile.open( filter_config.map_file );
-        while ( std::getline( infile, line, '\n' ) )
-        {
-            std::istringstream         stream_line( line );
-            std::vector< std::string > fields;
-            std::string                field;
-            while ( std::getline( stream_line, field, '\t' ) )
-                fields.push_back( field );
-            // target <tab> binid
-            map[std::stoul( fields[1] )] = fields[0];
-            unique_targets.insert( fields[0] );
-        }
-        infile.close();
-
-
-        // Check consistency of map file and ibf file
-        // map.size can be smaller than bins set on IBF if sequences were removed
-        if ( map.size() > filter.bin_count() )
-        {
-            std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
-            return false;
-        }
-
-        // tax file
-        infile.open( filter_config.tax_file );
-        while ( std::getline( infile, line, '\n' ) )
-        {
-            std::istringstream         stream_line( line );
-            std::vector< std::string > fields;
-            std::string                field;
-            while ( std::getline( stream_line, field, '\t' ) )
-                fields.push_back( field );
-            tax[fields[0]] = Node{ fields[1], fields[2], fields[3] };
-        }
-        infile.close();
-
-        filters.push_back( Filter{ std::move( filter ), map, tax, filter_config } );
+        filters.push_back( Filter{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
     }
 
     return true;
@@ -902,9 +910,6 @@ bool run( Config config )
         out_rep.open( config.output_prefix + ".rep" );
     }
 
-    // SafeQueue for printing unclassified
-    SafeQueue< detail::ReadOut > unclassified_queue;
-
     // Queues for internal read handling
     // queue1 get reads from file
     // queue2 will get unclassified reads if hierachy == 2
@@ -920,9 +925,9 @@ bool run( Config config )
     std::future< void > read_task = std::async(
         std::launch::async, detail::parse_reads, std::ref( queue1 ), std::ref( stats ), std::ref( config ) );
 
-
     // Thread for printing unclassified reads
-    std::future< void > write_unclassified_task;
+    SafeQueue< detail::ReadOut > unclassified_queue;
+    std::future< void >          write_unclassified_task;
     if ( config.output_unclassified && !config.output_prefix.empty() )
     {
         write_unclassified_task = std::async( std::launch::async,
@@ -931,11 +936,9 @@ bool run( Config config )
                                               config.output_prefix + ".unc" );
     }
 
-
+    // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
-
-    // For every hierarchy level
     for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
@@ -948,7 +951,7 @@ bool run( Config config )
         LCA                           lca;
 
         timeLoadFilters.start();
-        bool loaded = detail::load_filters( filters, unique_targets, hierarchy_label, config );
+        bool loaded = detail::load_files( filters, unique_targets, hierarchy_label, config );
         if ( !loaded )
             return false;
         timeLoadFilters.stop();
@@ -968,6 +971,7 @@ bool run( Config config )
 
         // pre-processing of nodes
         detail::pre_process_lca( lca, tax );
+
 
         // Thread for printing classified reads (.lca, .all)
         std::vector< std::future< void > > write_tasks;
@@ -1046,6 +1050,7 @@ bool run( Config config )
                                             hierarchy_last,
                                             config.offset,
                                             hierarchy_config.max_error_unique,
+                                            hierarchy_config.kmer_size,
                                             hierarchy_config.strata_filter ) );
         }
 
