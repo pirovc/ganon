@@ -327,7 +327,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         if ( !hierarchy_config.first.empty() )
         {
             stream << hierarchy_config.first << ")" << newl;
-            stream << " --kmer-size: " << hierarchy_config.second.kmer_size << newl;
+            stream << " --kmer-size: " << unsigned( hierarchy_config.second.kmer_size ) << newl;
             stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
             stream << " --strata-filter: " << hierarchy_config.second.strata_filter << newl;
         }
@@ -338,8 +338,10 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
             if ( filter_config.max_error > -1 )
                 stream << "  --max-error: " << filter_config.max_error << newl;
             stream << "  --ibf: " << filter_config.ibf_file << newl;
-            stream << "  --map: " << filter_config.map_file << newl;
-            stream << "  --tax: " << filter_config.tax_file << newl;
+            if ( !filter_config.map_file.empty() )
+                stream << "  --map: " << filter_config.map_file << newl;
+            if ( !filter_config.tax_file.empty() )
+                stream << "  --tax: " << filter_config.tax_file << newl;
         }
         if ( !config.output_prefix.empty() )
         {

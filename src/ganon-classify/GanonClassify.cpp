@@ -136,8 +136,11 @@ struct Stats
     {
         for ( auto& r : rep )
         {
+            // count matches for hierarchy
             classifiedReads_hierarchy[hierarchy_label] += r.second.unique_reads + r.second.lca_reads;
             matches_hierarchy[hierarchy_label] += r.second.direct_matches;
+
+            // count matches overall
             classifiedReads += r.second.unique_reads + r.second.lca_reads;
             matches += r.second.direct_matches;
         }
@@ -202,7 +205,7 @@ inline int16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float 
 inline void check_unique( ReadOut& read_out_lca,
                           uint16_t read1_len,
                           uint16_t read2_len,
-                          uint16_t kmer_size,
+                          uint8_t  kmer_size,
                           uint16_t max_error_unique,
                           uint8_t  offset,
                           TTax&    tax,
@@ -309,6 +312,7 @@ uint16_t find_matches( TMatches&                    matches,
             ( filters[i].filter_config.min_kmers > -1 )
                 ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
                 : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
+
         // select matches above chosen threshold
         select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
@@ -386,7 +390,7 @@ uint32_t filter_matches( ReadOut&  read_out,
                          uint16_t  read1_len,
                          uint16_t  read2_len,
                          uint16_t  max_kmer_count_read,
-                         uint16_t  kmer_size,
+                         uint8_t   kmer_size,
                          uint8_t   offset,
                          int16_t   strata_filter )
 {
@@ -532,7 +536,7 @@ void classify( std::vector< Filter >&    filters,
                                                                   config.offset,
                                                                   strata_filter );
 
-                // If there are matches
+                // If there are valid matches after filtering
                 if ( count_filtered_matches > 0 )
                 {
                     if ( run_lca )
@@ -731,7 +735,7 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.totalReads / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
               << ( stats.sumread_len / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)" << std::endl;
-    std::cerr << " - " << stats.classifiedReads << " sequences classified ("
+    std::cerr << " - " << stats.classifiedReads << " reads classified ("
               << ( stats.classifiedReads / static_cast< double >( stats.totalReads ) ) * 100 << "%)" << std::endl;
 
     if ( stats.matches > 0 )
@@ -753,7 +757,7 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         }
     }
 
-    std::cerr << " - " << stats.totalReads - stats.classifiedReads << " sequences unclassified ("
+    std::cerr << " - " << stats.totalReads - stats.classifiedReads << " reads unclassified ("
               << ( ( stats.totalReads - stats.classifiedReads ) / static_cast< double >( stats.totalReads ) ) * 100
               << "%)" << std::endl;
 }
