@@ -448,7 +448,8 @@ void classify( std::vector< Filter >&    filters,
                uint8_t                   offset,
                int16_t                   max_error_unique,
                int8_t                    kmer_size,
-               int16_t                   strata_filter )
+               int16_t                   strata_filter,
+               bool                      run_lca )
 {
 
     // oner hash adaptor per thread
@@ -534,35 +535,37 @@ void classify( std::vector< Filter >&    filters,
                 // If there are matches
                 if ( count_filtered_matches > 0 )
                 {
-
-                    ReadOut read_out_lca( rb.ids[readID] );
-                    if ( count_filtered_matches == 1 )
+                    if ( run_lca )
                     {
-                        read_out_lca = read_out; // just one match, copy read read_out
-                        if ( max_error_unique >= 0 )
+                        ReadOut read_out_lca( rb.ids[readID] );
+                        if ( count_filtered_matches == 1 )
                         {
-                            // re-classify read to parent if threshold<=max_error_unique
-                            check_unique( read_out_lca,
-                                          read1_len,
-                                          read2_len,
-                                          kmer_size,
-                                          max_error_unique,
-                                          config.offset,
-                                          tax,
-                                          rep );
+                            read_out_lca = read_out; // just one match, copy read read_out
+                            if ( max_error_unique >= 0 )
+                            {
+                                // re-classify read to parent if threshold<=max_error_unique
+                                check_unique( read_out_lca,
+                                              read1_len,
+                                              read2_len,
+                                              kmer_size,
+                                              max_error_unique,
+                                              config.offset,
+                                              tax,
+                                              rep );
+                            }
+                            else
+                            {
+                                rep.at( read_out.matches[0].target ).unique_reads++;
+                            }
                         }
                         else
                         {
-                            rep.at( read_out.matches[0].target ).unique_reads++;
+                            lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
                         }
-                    }
-                    else
-                    {
-                        lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
-                    }
 
-                    if ( config.output_lca )
-                        classified_lca_queue.push( read_out_lca );
+                        if ( config.output_lca )
+                            classified_lca_queue.push( read_out_lca );
+                    }
 
                     if ( config.output_all )
                         classified_all_queue.push( read_out );
@@ -600,15 +603,19 @@ void classify( std::vector< Filter >&    filters,
     }
 }
 
-void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label )
+void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label, bool run_lca )
 {
     for ( auto const& [target, report] : rep )
     {
         if ( report.direct_matches || report.lca_reads || report.unique_reads )
         {
             out_rep << hierarchy_label << '\t' << target << '\t' << report.direct_matches << '\t' << report.unique_reads
-                    << '\t' << report.lca_reads << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name
-                    << '\n';
+                    << '\t' << report.lca_reads;
+            if ( run_lca )
+            {
+                out_rep << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name;
+            }
+            out_rep << '\n';
         }
     }
 }
@@ -666,7 +673,8 @@ TTax load_tax( std::string tax_file )
 bool load_files( std::vector< Filter >& filters,
                  TUniqueTarget&         unique_targets,
                  std::string            hierarchy_label,
-                 Config&                config )
+                 Config&                config,
+                 bool                   run_lca )
 {
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
@@ -691,12 +699,12 @@ bool load_files( std::vector< Filter >& filters,
             // fill map to binids
             for ( uint32_t binid = 0; binid <= filter.bin_count(); ++binid )
             {
-                std::cout << binid << '\n';
+                unique_targets.insert( std::to_string( binid ) );
                 map[binid] = std::to_string( binid );
             }
         }
 
-        if ( !filter_config.tax_file.empty() )
+        if ( run_lca )
             tax = load_tax( filter_config.tax_file );
 
         filters.push_back( Filter{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
@@ -939,6 +947,8 @@ bool run( Config config )
     // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
+    // Check if tax files are present to run lca
+    bool run_lca = config.tax.size();
     for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
@@ -951,27 +961,37 @@ bool run( Config config )
         LCA                           lca;
 
         timeLoadFilters.start();
-        bool loaded = detail::load_files( filters, unique_targets, hierarchy_label, config );
+        bool loaded = detail::load_files( filters, unique_targets, hierarchy_label, config, run_lca );
         if ( !loaded )
             return false;
         timeLoadFilters.stop();
 
-        // merge repeated elements if tax is provided
-        tax = detail::merge_tax( filters );
-
-        // initialize entries for the report with all possible taxa (to direct access it in multiple threads)
-        for ( const auto& it : tax )
+        if ( run_lca )
         {
-            rep[it.first]; // initialize using [] due to std::atomic being not movable/copyable
+            // merge repeated elements if tax is provided
+            tax = detail::merge_tax( filters );
+
+            // initialize entries for the report with all possible taxa (to direct access it in multiple threads)
+            for ( const auto& it : tax )
+            {
+                rep[it.first]; // initialize using [] due to std::atomic being not movable/copyable
+            }
+
+            // validate targets and tax
+            // if target not found in tax, add node target with parent = "1" (root)
+            detail::validate_targets_tax( unique_targets, tax );
+
+            // pre-processing of nodes
+            detail::pre_process_lca( lca, tax );
         }
-
-        // validate targets and tax
-        // if target not found in tax, add node target with parent = "1" (root)
-        detail::validate_targets_tax( unique_targets, tax );
-
-        // pre-processing of nodes
-        detail::pre_process_lca( lca, tax );
-
+        else
+        {
+            // initialize entries for the report with all possible targets
+            for ( const auto& t : unique_targets )
+            {
+                rep[t]; // initialize using [] due to std::atomic being not movable/copyable
+            }
+        }
 
         // Thread for printing classified reads (.lca, .all)
         std::vector< std::future< void > > write_tasks;
@@ -999,7 +1019,7 @@ bool run( Config config )
 
         if ( !config.output_prefix.empty() )
         {
-            if ( config.output_lca )
+            if ( config.output_lca && run_lca )
             {
                 if ( hierarchy_first || !config.output_single )
                     out_lca.open( hierarchy_config.output_file_lca );
@@ -1051,7 +1071,8 @@ bool run( Config config )
                                             config.offset,
                                             hierarchy_config.max_error_unique,
                                             hierarchy_config.kmer_size,
-                                            hierarchy_config.strata_filter ) );
+                                            hierarchy_config.strata_filter,
+                                            run_lca ) );
         }
 
         // Wait here until classification is over
@@ -1068,7 +1089,7 @@ bool run( Config config )
         stats.load_rep( hierarchy_label, rep );
 
         // write reports
-        detail::write_report( rep, tax, out_rep, hierarchy_label );
+        detail::write_report( rep, tax, out_rep, hierarchy_label, run_lca );
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )
