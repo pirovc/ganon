@@ -690,22 +690,23 @@ bool load_files( std::vector< Filter >& filters,
         if ( !filter_config.map_file.empty() )
         {
             map = load_map( filter_config.map_file, unique_targets );
-            // Check consistency of map file and ibf file
-            // map.size can be smaller than bins set on IBF if sequences were removed
-            if ( map.size() > filter.bin_count() )
-            {
-                std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
-                return false;
-            }
         }
         else
         {
-            // fill map to binids
-            for ( uint32_t binid = 0; binid <= filter.bin_count(); ++binid )
+            // fill map with binids as targets
+            for ( uint32_t binid = 0; binid < filter.bin_count(); ++binid )
             {
                 unique_targets.insert( std::to_string( binid ) );
                 map[binid] = std::to_string( binid );
             }
+        }
+
+        // Check consistency of map file and ibf file
+        // map.size can be smaller than bins set on IBF if sequences were removed
+        if ( map.size() > filter.bin_count() )
+        {
+            std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
+            return false;
         }
 
         if ( run_lca )
@@ -1085,7 +1086,7 @@ bool run( Config config )
             task.get();
         }
 
-        // Inform that no more reads are going to be pushed
+        // After classification, no more reads are going to be pushed to the output
         classified_all_queue.notify_push_over();
         classified_lca_queue.notify_push_over();
 
