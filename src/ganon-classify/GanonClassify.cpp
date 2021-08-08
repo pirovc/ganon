@@ -909,7 +909,7 @@ bool run( Config config )
     detail::Stats stats;
     std::ofstream out_rep; // Set default output stream (file or stdout)
     std::ofstream out_all; // output all file
-    std::ofstream out_lca; // output all file
+    std::ofstream out_lca; // output lca file
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )

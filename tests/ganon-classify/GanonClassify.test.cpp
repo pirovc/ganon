@@ -16,6 +16,7 @@ GanonClassify::Config defaultConfig()
     GanonClassify::Config cfg;
     cfg.output_single       = true;
     cfg.output_all          = true;
+    cfg.output_lca          = true;
     cfg.output_unclassified = false;
     cfg.kmer_size           = { 19 };
     cfg.threads             = 4;
