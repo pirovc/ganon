@@ -773,9 +773,9 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
                      * 100
               << "%)" << std::endl;
 
-    uint64_t avg_matches = stats.total.reads_classified
-                               ? ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) )
-                               : 0;
+    float avg_matches = stats.total.reads_classified
+                            ? ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) )
+                            : 0;
     std::cerr << " - " << stats.total.matches << " matches (avg. " << avg_matches << " match/read classified)"
               << std::endl;
     uint64_t total_reads_unclassified = stats.total.reads_processed - stats.total.reads_classified;
