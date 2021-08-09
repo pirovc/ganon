@@ -893,7 +893,7 @@ void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_queue, std::
     }
 }
 
-TTax merge_tax( std::vector< detail::Filter >& filters )
+TTax merge_tax( std::vector< detail::Filter > const& filters )
 {
     if ( filters.size() == 1 )
     {
@@ -911,7 +911,7 @@ TTax merge_tax( std::vector< detail::Filter >& filters )
     }
 }
 
-void validate_targets_tax( std::vector< detail::Filter > filters, TTax& tax )
+void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax )
 {
     for ( auto const& filter : filters )
     {
