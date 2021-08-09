@@ -595,6 +595,11 @@ void classify( std::vector< Filter >&    filters,
                         if ( config.output_lca )
                             classified_lca_queue.push( read_out_lca );
                     }
+                    else if ( count_filtered_matches == 1 )
+                    {
+                        // Not running lca and unique match
+                        rep[read_out.matches[0].target].unique_reads++;
+                    }
 
                     if ( config.output_all )
                         classified_all_queue.push( read_out );
@@ -759,38 +764,52 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
     std::cerr << " - " << stats.total.reads_classified << " reads classified ("
               << ( stats.total.reads_classified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
-    std::cerr << "   - " << stats.total.unique_reads << " reads uniquely classified ("
-              << ( stats.total.unique_reads / static_cast< double >( stats.total.reads_classified ) ) * 100 << "%)"
+    std::cerr << "   - " << stats.total.unique_reads << " with unique matches ("
+              << ( stats.total.unique_reads / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
+    std::cerr << "   - " << stats.total.reads_classified - stats.total.unique_reads << " with multiple matches ("
+              << ( ( stats.total.reads_classified - stats.total.unique_reads )
+                   / static_cast< double >( stats.total.reads_processed ) )
+                     * 100
+              << "%)" << std::endl;
 
-    if ( stats.total.matches > 0 )
-    {
-        std::cerr << " - " << stats.total.matches << " matches (avg. "
-                  << ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) ) << " match/read)"
-                  << std::endl;
-        if ( config.parsed_hierarchy.size() > 1 )
-        {
-            for ( auto const& [hierarchy_label, rep] : stats.report_summary )
-            {
-                std::cerr << "    " << hierarchy_label << ": " << stats.reads_classified[hierarchy_label]
-                          << " sequences ("
-                          << ( stats.reads_classified[hierarchy_label]
-                               / static_cast< double >( stats.total.reads_processed ) )
-                                 * 100
-                          << "%) " << stats.unique_reads[hierarchy_label] << " unique ("
-                          << ( stats.unique_reads[hierarchy_label]
-                               / static_cast< double >( stats.reads_classified[hierarchy_label] ) )
-                                 * 100
-                          << "%) " << rep.matches << " matches (avg. "
-                          << ( rep.matches / static_cast< double >( stats.reads_classified[hierarchy_label] ) ) << ")"
-                          << std::endl;
-            }
-        }
-    }
+    uint64_t avg_matches = stats.total.reads_classified
+                               ? ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) )
+                               : 0;
+    std::cerr << " - " << stats.total.matches << " matches (avg. " << avg_matches << " match/read classified)"
+              << std::endl;
     uint64_t total_reads_unclassified = stats.total.reads_processed - stats.total.reads_classified;
     std::cerr << " - " << total_reads_unclassified << " reads unclassified ("
               << ( total_reads_unclassified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
+
+    if ( config.parsed_hierarchy.size() > 1 )
+    {
+        std::cerr << std::endl;
+        std::cerr << "By database hierarchy:" << std::endl;
+        for ( auto const& h : config.parsed_hierarchy )
+        {
+            std::string hierarchy_label = h.first;
+            avg_matches                 = stats.reads_classified[hierarchy_label]
+                              ? ( stats.report_summary[hierarchy_label].matches
+                                  / static_cast< double >( stats.reads_classified[hierarchy_label] ) )
+                              : 0;
+            std::cerr << " - " << hierarchy_label << ": " << stats.reads_classified[hierarchy_label] << " classified ("
+                      << ( stats.reads_classified[hierarchy_label]
+                           / static_cast< double >( stats.total.reads_processed ) )
+                             * 100
+                      << "%) " << stats.unique_reads[hierarchy_label] << " unique ("
+                      << ( stats.unique_reads[hierarchy_label] / static_cast< double >( stats.total.reads_processed ) )
+                             * 100
+                      << "%) " << stats.reads_classified[hierarchy_label] - stats.unique_reads[hierarchy_label]
+                      << " multiple ("
+                      << ( ( stats.reads_classified[hierarchy_label] - stats.unique_reads[hierarchy_label] )
+                           / static_cast< double >( stats.total.reads_processed ) )
+                             * 100
+                      << "%) " << stats.report_summary[hierarchy_label].matches << " matches (avg. " << avg_matches
+                      << ")" << std::endl;
+        }
+    }
 }
 
 void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config const& config )
