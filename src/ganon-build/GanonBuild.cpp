@@ -27,18 +27,24 @@ namespace GanonBuild
 namespace detail
 {
 
+struct FragmentBin
+{
+    uint64_t start;
+    uint64_t end;
+    uint64_t bin_id;
+};
 
 struct Seqs
 {
     std::string                 seqid;
     std::vector< seqan3::dna5 > seq;
+    std::vector< FragmentBin >  fragbin;
 };
 
 struct Stats
 {
     Stats()
     : sumSeqLen{ 0 }
-    , totalSeqsBinId{ 0 }
     , totalBinsBinId{ 0 }
     , totalSeqsFile{ 0 }
     , totalBinsFile{ 0 }
@@ -48,7 +54,6 @@ struct Stats
     }
 
     uint64_t sumSeqLen;
-    uint64_t totalSeqsBinId;
     uint32_t totalBinsBinId;
     uint64_t totalSeqsFile;
     uint32_t totalBinsFile;
@@ -56,18 +61,11 @@ struct Stats
     uint32_t newBins;
 };
 
-struct FragmentBin
-{
-    uint64_t start;
-    uint64_t end;
-    uint64_t bin_id;
-};
-
 typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
+typedef std::set< uint64_t >                                TBinIds;
+typedef seqan3::interleaved_bloom_filter<>                  TFilter;
 
-typedef seqan3::interleaved_bloom_filter<> Tfilter;
-
-void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::set< uint64_t >& bin_ids )
+void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, TBinIds& bin_ids )
 {
     std::string   line;
     std::ifstream infile( seqid_bin_file );
@@ -81,53 +79,169 @@ void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, std::
         // seqid <tab> seqstart <tab> seqend <tab> binid
         uint32_t binid = std::stoul( fields[3] );
         seq_bin[fields[0]].push_back( FragmentBin{ std::stoul( fields[1] ), std::stoul( fields[2] ), binid } );
+        // save list of unique bins used
         bin_ids.insert( binid );
     }
 }
 
-void store_filter( Tfilter const& filter, std::string const& output_filter_file )
+void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
+                 detail::TSeqBin&           seq_bin,
+                 std::mutex&                mtx,
+                 Stats&                     stats,
+                 GanonBuild::Config&        config,
+                 uint64_t                   nbin_aux )
 {
-    std::ofstream               os( output_filter_file, std::ios::binary ); // Where output should be stored.
-    cereal::BinaryOutputArchive archive( os ); // Create an output archive from the output stream.
-    archive( filter );                         // Store data.
+
+    for ( auto const& reference_file : config.reference_files )
+    {
+        // Open file (type define by extension)
+        seqan3::sequence_file_input fin{ reference_file };
+
+        // read in chuncks of config.n_refs
+        for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
+        {
+            for ( auto& [seq, id, qual] : records )
+            {
+                // Header id goes up-to first empty space
+                std::string seqid = id.substr( 0, id.find( ' ' ) );
+
+                stats.totalSeqsFile += 1;
+                if ( seq.size() < config.kmer_size )
+                {
+                    if ( config.verbose )
+                    {
+                        std::scoped_lock lock( mtx );
+                        std::cerr << "WARNING: skipping sequence smaller than k-mer size"
+                                  << " [" << seqid << "]" << std::endl;
+                    }
+                    stats.invalidSeqs += 1;
+                    continue;
+                }
+
+                std::vector< detail::FragmentBin > fb;
+                if ( seq_bin.empty() )
+                {
+                    // insert whole sequence coordinates into the bin for the reference file
+                    // nbin_aux is set with the bin number to start adding sequences
+                    // 0 for build and first bin for update
+                    fb.push_back( detail::FragmentBin{ 1, seq.size(), nbin_aux } );
+                }
+                else
+                {
+                    // get fragments in the seq_bin
+                    if ( seq_bin.count( seqid ) > 0 )
+                    {
+                        fb = seq_bin.at( seqid );
+                    }
+                    else
+                    {
+                        // seqid not found in the seq_bin
+                        if ( config.verbose )
+                        {
+                            std::scoped_lock lock( mtx );
+                            std::cerr << "WARNING: skipping sequence not defined on seqid-bin-file"
+                                      << " [" << seqid << "]" << std::endl;
+                        }
+                        stats.invalidSeqs += 1;
+                        continue;
+                    }
+                }
+                stats.sumSeqLen += seq.size();
+                queue_refs.push( detail::Seqs{ std::move( seqid ), std::move( seq ), std::move( fb ) } );
+            }
+        }
+        nbin_aux++;
+    }
+    queue_refs.notify_push_over();
 }
 
+TFilter create_filter( GanonBuild::Config& config, uint32_t bcount )
+{
+    uint64_t bsize;
+    // Calculate bin size based on filter size (1MB = 8388608bits)
+    if ( config.bin_size_bits == 0 && config.filter_size_mb > 0 )
+    {
+        uint64_t optimal_bins = ( std::floor( bcount / 64 ) + 1 ) * 64;
+        bsize                 = ( config.filter_size_mb / static_cast< float >( optimal_bins ) ) * 8388608u;
+    }
+    else
+    {
+        bsize = config.bin_size_bits;
+    }
 
-void load_filter( Tfilter& filter, GanonBuild::Config& config, const std::set< uint64_t >& bin_ids, Stats& stats )
+    return TFilter{ seqan3::bin_count{ bcount },
+                    seqan3::bin_size{ bsize },
+                    seqan3::hash_function_count{ config.hash_functions } };
+}
+
+TFilter load_filter( std::string const& input_filter_file )
 {
 
-    // load filter
-    std::ifstream              is( config.update_filter_file, std::ios::binary ); // Where input can be found.
-    cereal::BinaryInputArchive archive( is ); // Create an input archive from the input stream.
-    archive( filter );                        // Load data.
+    TFilter                    filter;
+    std::ifstream              is( input_filter_file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
+    archive( filter );
+    return filter;
+}
 
-    stats.totalBinsFile = filter.bin_count();
+void clear_filter( TFilter& filter, const TBinIds& bin_ids )
+{
+    // Reset bins if complete set of sequences is provided (re-create updated bins)
+    std::vector< seqan3::bin_index > updated_bins;
+    // For all binids in the file provided, only clean bins for the old bins
+    // new bins are already cleared by default when created
+    for ( auto const& binid : bin_ids )
+    {
+        if ( binid >= filter.bin_count() - 1 )
+        {
+            break;
+        }
+        updated_bins.emplace_back( seqan3::bin_index{ binid } );
+    }
+    filter.clear( updated_bins );
+}
 
-    // last element (set is ordered) plus one
-    uint32_t number_new_bins = *bin_ids.rbegin() + 1;
-    if ( number_new_bins > stats.totalBinsFile )
+void increase_filter( TFilter& filter, uint32_t new_total_bins )
+{
+    // If new bins were added
+    if ( new_total_bins > filter.bin_count() )
     {
         // just resize if number of bins is bigger than amount on IBF
         // when updating an IBF with empty bins or removing the last bins, this will not be true
-        filter.increase_bin_number_to( seqan3::bin_count{ number_new_bins } );
-        stats.newBins = number_new_bins - stats.totalBinsFile;
-    } // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
+        // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
+        filter.increase_bin_number_to( seqan3::bin_count{ new_total_bins } );
+    }
+}
 
-    // Reset bins if complete set of sequences is provided (re-create updated bins)
-    if ( config.update_complete )
+void save_filter( TFilter const& filter, std::string const& output_filter_file )
+{
+    std::ofstream               os( output_filter_file, std::ios::binary );
+    cereal::BinaryOutputArchive archive( os );
+    archive( filter );
+}
+
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::Config const& config )
+{
+    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+    while ( true )
     {
-        std::vector< seqan3::bin_index > updated_bins;
-        // For all binids in the file provided, only clean bins for the old bins
-        // new bins are already cleared
-        for ( auto const& binid : bin_ids )
+        detail::Seqs val = queue_refs.pop();
+        if ( val.seqid != "" )
         {
-            if ( binid >= stats.totalBinsFile - 1 )
+            for ( uint64_t i = 0; i < val.fragbin.size(); i++ )
             {
-                break;
+                // Fragment sequences
+                auto [fragstart, fragend, binid] = val.fragbin[i];
+                for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hash_adaptor )
+                {
+                    filter.emplace( hash, seqan3::bin_index{ binid } );
+                }
             }
-            updated_bins.emplace_back( seqan3::bin_index{ binid } );
         }
-        filter.clear( updated_bins );
+        else
+        {
+            break;
+        }
     }
 }
 
@@ -174,8 +288,8 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
         std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
     if ( stats.newBins > 0 )
         std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
-    std::cerr << " - " << validSeqs << " sequences in " << stats.totalBinsFile + stats.newBins
-              << " bins were written to the IBF" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences in " << stats.totalBinsFile << " bins written to the IBF"
+              << std::endl;
 }
 
 } // namespace detail
@@ -183,168 +297,124 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
 bool run( Config config )
 {
 
+    // Validate configuration input
     if ( !config.validate() )
         return false;
 
-    StopClock timeGanon;
-    timeGanon.start();
-    StopClock timeLoadFiles;
-    StopClock timeLoadFilter;
-    StopClock timeLoadSeq;
-    StopClock timeBuild;
-    StopClock timeSaveFilter;
-
+    // Print config
     if ( config.verbose )
         std::cerr << config;
 
-    //////////////////////////////
+    // Start time count
+    StopClock timeGanon;
+    timeGanon.start();
 
-    detail::Stats stats;
+    // Initialize variables
+    StopClock       timeLoadFiles;
+    StopClock       timeLoadFilter;
+    StopClock       timeLoadSeq;
+    StopClock       timeBuild;
+    StopClock       timeSaveFilter;
+    std::mutex      mtx;
+    detail::Stats   stats;
+    detail::TFilter filter;
+    detail::TSeqBin seq_bin; // Map with seqid_bin file info
+    detail::TBinIds bin_ids; // Set with binids used
 
-    timeLoadFiles.start();
-    // parse seqid bin
-    detail::TSeqBin      seq_bin;
-    std::set< uint64_t > bin_ids;
-    parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids );
-    stats.totalSeqsBinId = seq_bin.size();
-    stats.totalBinsBinId = bin_ids.size();
-    timeLoadFiles.stop();
+    // SafeQueue with reference sequences
+    // config.n_batches*config.n_refs = max. amount of references in memory
+    SafeQueue< detail::Seqs > queue_refs( config.n_batches );
 
-    //////////////////////////////
-
-    std::mutex                mtx;
-    SafeQueue< detail::Seqs > queue_refs(
-        config.n_batches ); // config.n_batches*config.n_refs = max. amount of references in memory
-
-    // Start extra thread for reading the input
-    timeLoadSeq.start();
-    std::future< void > read_task( std::async( std::launch::async, [=, &seq_bin, &queue_refs, &mtx, &stats] {
-        for ( auto const& reference_file : config.reference_files )
-        {
-            // Open file (type define by extension)
-            seqan3::sequence_file_input fin{ reference_file };
-
-            // read in chuncks of config.n_refs
-            for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
-            {
-                for ( auto& [seq, id, qual] : records )
-                {
-                    stats.totalSeqsFile += 1;
-                    if ( seq.size() < config.kmer_size )
-                    {
-                        if ( config.verbose )
-                        {
-                            std::scoped_lock lock( mtx );
-                            std::cerr << "WARNING: sequence smaller than k-mer size"
-                                      << " [" << id << "]" << std::endl;
-                        }
-                        stats.invalidSeqs += 1;
-                        continue;
-                    }
-
-                    // Header id goes up-to first empty space
-                    std::string seqid = id.substr( 0, id.find( ' ' ) );
-
-                    if ( seq_bin.count( seqid ) == 0 )
-                    {
-                        if ( config.verbose )
-                        {
-                            std::scoped_lock lock( mtx );
-                            std::cerr << "WARNING: sequence not defined on seqid-bin-file"
-                                      << " [" << seqid << "]" << std::endl;
-                        }
-                        stats.invalidSeqs += 1;
-                        continue;
-                    }
-                    stats.sumSeqLen += seq.size();
-                    queue_refs.push( detail::Seqs{ std::move( seqid ), std::move( seq ) } );
-                }
-            }
-        }
-        queue_refs.notify_push_over();
-    } ) );
-
-    // load new or given filter
+    // load filter if provided (do it early to get number of bins)
     timeLoadFilter.start();
-    detail::Tfilter filter;
     if ( !config.update_filter_file.empty() )
     {
-        load_filter( filter, config, bin_ids, stats );
+        filter = detail::load_filter( config.update_filter_file );
+    }
+    timeLoadFilter.stop();
+
+    // load seq_bin and bin_ids from --seqid-bin file or create bins automatically
+    timeLoadFiles.start();
+    if ( !config.seqid_bin_file.empty() )
+    {
+        detail::parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids );
     }
     else
     {
-        uint64_t bsize;
-        // Calculate bin size based on filter size (1MB = 8388608bits)
-        if ( config.bin_size_bits == 0 && config.filter_size_mb > 0 )
+        // seq_bin should remain empty
+        int start_bin = 0;
+        if ( !config.update_filter_file.empty() )
         {
-            uint64_t optimal_bins = ( std::floor( stats.totalBinsBinId / 64 ) + 1 ) * 64;
-            bsize                 = ( config.filter_size_mb / static_cast< float >( optimal_bins ) ) * 8388608u;
+            start_bin = filter.bin_count(); // if updating, create additional bins starting from the last
         }
-        else
-        {
-            bsize = config.bin_size_bits;
-        }
-
-        // New filter
-        filter = detail::Tfilter{ seqan3::bin_count{ stats.totalBinsBinId },
-                                  seqan3::bin_size{ bsize },
-                                  seqan3::hash_function_count{ config.hash_functions } };
+        bin_ids = std::views::iota( start_bin, start_bin + int( config.reference_files.size() ) )
+                  | seqan3::views::to< detail::TBinIds >; // fill bin_ids with range
     }
-    stats.totalBinsFile = filter.bin_count();
+    timeLoadFiles.stop();
 
+    // If updating: extend and clear filter
+    timeLoadFilter.start();
+    if ( !config.update_filter_file.empty() )
+    {
+        uint32_t old_total_bins = filter.bin_count();
+        uint32_t new_total_bins = *bin_ids.rbegin() + 1; // new total is the last bin (set is ordered) + 1
+        detail::increase_filter( filter, new_total_bins );
+        stats.newBins = new_total_bins - old_total_bins;
+        if ( config.update_complete )
+        {
+            detail::clear_filter( filter, bin_ids );
+        }
+    }
+    else
+    {
+        // create new filter
+        filter = detail::create_filter( config, bin_ids.size() );
+    }
+    stats.totalBinsFile  = filter.bin_count();
+    stats.totalBinsBinId = bin_ids.size();
     timeLoadFilter.stop();
 
-    // oner hash adaptor per thread
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+    // Start thread for reading the input reference files
+    timeLoadSeq.start();
+    // nbin_aux loaded with first bin in case of automatic bin generation
+    uint32_t            nbin_aux  = *bin_ids.begin();
+    std::future< void > read_task = std::async( std::launch::async,
+                                                detail::parse_refs,
+                                                std::ref( queue_refs ),
+                                                std::ref( seq_bin ),
+                                                std::ref( mtx ),
+                                                std::ref( stats ),
+                                                std::ref( config ),
+                                                nbin_aux );
 
-    // Start execution threads to add kmers
+    // Start threads to build filter
     timeBuild.start();
     std::vector< std::future< void > > tasks;
     for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
     {
-        tasks.emplace_back( std::async( std::launch::async, [&seq_bin, &filter, &queue_refs, &hash_adaptor] {
-            while ( true )
-            {
-                detail::Seqs val = queue_refs.pop();
-                if ( val.seqid != "" )
-                {
-                    for ( uint64_t i = 0; i < seq_bin.at( val.seqid ).size(); i++ )
-                    {
-                        // Fragment sequences based on seq_bin file and generate hashes for k-mers
-                        auto [fragstart, fragend, binid] = seq_bin.at( val.seqid )[i];
-                        for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hash_adaptor )
-                        {
-                            filter.emplace( hash, seqan3::bin_index{ binid } );
-                        }
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-        } ) );
+        tasks.emplace_back( std::async(
+            std::launch::async, detail::build, std::ref( filter ), std::ref( queue_refs ), std::ref( config ) ) );
     }
-    //////////////////////////////
-
+    // Wait until all references sequences are parsed
     read_task.get();
     timeLoadSeq.stop();
 
+    // Wait until all threads building finish
     for ( auto&& task : tasks )
     {
         task.get();
     }
     timeBuild.stop();
-    //////////////////////////////
 
     // Store filter
     timeSaveFilter.start();
-    detail::store_filter( filter, config.output_filter_file );
+    detail::save_filter( filter, config.output_filter_file );
     timeSaveFilter.stop();
-    //////////////////////////////
 
+    // Stop timer for ganon run
     timeGanon.stop();
 
+    // Print time and statistics
     if ( !config.quiet )
     {
         std::cerr << std::endl;
