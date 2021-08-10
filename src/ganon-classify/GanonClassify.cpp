@@ -99,6 +99,7 @@ struct ReadOut
 
 struct Rep
 {
+    // Report with counts of matches and reads assigned (unique or lca) for each target
     uint64_t matches      = 0;
     uint64_t lca_reads    = 0;
     uint64_t unique_reads = 0;
@@ -114,42 +115,40 @@ struct Total
     uint64_t length_processed = 0;
     uint64_t reads_classified = 0;
     uint64_t matches          = 0;
-    uint64_t unique_reads     = 0;
+    uint64_t unique_matches   = 0;
 };
 
 struct Stats
 {
     Total total;
-    // sum of reports by each hiearchy
-    std::map< std::string, Rep > report_summary;
-    // reads classified for each hiearchy
-    std::map< std::string, uint64_t > reads_classified;
-    // unique reads for each hiearchy
-    std::map< std::string, uint64_t > unique_reads;
+    // number of reads in the input files
+    uint64_t input_reads = 0;
+    // Total for each hiearchy
+    std::map< std::string, Total > hiearchy_total;
 
     void add_totals( std::string hierarchy_label, std::vector< Total > const& totals )
     {
-        // add several totals (from threads)into one
+        // add several totals (from threads) into the stats
         for ( auto const& t : totals )
         {
-            // total.reads_processed+=t.reads_processed; // filled while reading files
+            total.reads_processed += t.reads_processed;
             total.length_processed += t.length_processed;
             total.reads_classified += t.reads_classified;
-            reads_classified[hierarchy_label] += t.reads_classified;
+            hiearchy_total[hierarchy_label].reads_processed += t.reads_processed;
+            hiearchy_total[hierarchy_label].reads_classified += t.reads_classified;
+            hiearchy_total[hierarchy_label].length_processed += t.reads_classified;
         }
     }
 
-    void add_report_summary( std::string hierarchy_label, TRep const& report )
+    void add_reports( std::string hierarchy_label, TRep const& report )
     {
-        // sum all report numbers for each target to the hiearchy
+        // add values from reports to stats
         for ( auto const& [target, rep] : report )
         {
             total.matches += rep.matches;
-            total.unique_reads += rep.unique_reads;
-            unique_reads[hierarchy_label] += rep.unique_reads;
-            report_summary[hierarchy_label].matches += rep.matches;
-            report_summary[hierarchy_label].lca_reads += rep.lca_reads;
-            report_summary[hierarchy_label].unique_reads += rep.unique_reads;
+            total.unique_matches += rep.unique_reads;
+            hiearchy_total[hierarchy_label].matches += rep.matches;
+            hiearchy_total[hierarchy_label].unique_matches += rep.unique_reads;
         }
     }
 };
@@ -506,41 +505,36 @@ void classify( std::vector< Filter >&    filters,
             uint16_t read1_len = rb.seqs[readID].size();
             uint16_t read2_len = 0;
 
-            // count lens just once
-            if ( hierarchy_first )
-                total.length_processed += read1_len;
-
             TMatches matches;
             ReadOut  read_out( rb.ids[readID] );
             uint16_t max_kmer_count_read = 0;
 
-            // just skip classification, add read to left over (dbs can have different kmer sizes) or unclassified
-            if ( read1_len >= kmer_size )
-            {
-                if ( rb.paired ) // paired-end mode
+            // Find matches for read
+            if ( rb.paired )
+            { // paired-end mode
+                read2_len = rb.seqs2[readID].size();
+                if ( read1_len >= kmer_size && read2_len >= kmer_size )
                 {
-                    read2_len = rb.seqs2[readID].size();
-                    if ( read2_len >= kmer_size )
+                    max_kmer_count_read = find_matches_paired(
+                        matches, filters, agents, rb.seqs[readID], rb.seqs2[readID], kmer_size, offset, hash_adaptor );
+                    if ( hierarchy_first )
                     {
-
-                        // count lens just once
-                        if ( hierarchy_first )
-                            total.length_processed += read2_len;
-
-                        max_kmer_count_read = find_matches_paired( matches,
-                                                                   filters,
-                                                                   agents,
-                                                                   rb.seqs[readID],
-                                                                   rb.seqs2[readID],
-                                                                   kmer_size,
-                                                                   offset,
-                                                                   hash_adaptor );
+                        total.reads_processed++;
+                        total.length_processed += read1_len + read2_len;
                     }
                 }
-                else // single-end mode
+            }
+            else
+            {
+                if ( read1_len >= kmer_size )
                 {
                     max_kmer_count_read =
                         find_matches( matches, filters, agents, rb.seqs[readID], kmer_size, offset, hash_adaptor );
+                    if ( hierarchy_first )
+                    {
+                        total.reads_processed++;
+                        total.length_processed += read1_len;
+                    }
                 }
             }
 
@@ -563,7 +557,6 @@ void classify( std::vector< Filter >&    filters,
                 if ( count_filtered_matches > 0 )
                 {
                     total.reads_classified++;
-
                     if ( run_lca )
                     {
                         ReadOut read_out_lca( rb.ids[readID] );
@@ -764,11 +757,11 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
     std::cerr << " - " << stats.total.reads_classified << " reads classified ("
               << ( stats.total.reads_classified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
-    std::cerr << "   - " << stats.total.unique_reads << " with unique matches ("
-              << ( stats.total.unique_reads / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
+    std::cerr << "   - " << stats.total.unique_matches << " with unique matches ("
+              << ( stats.total.unique_matches / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
-    std::cerr << "   - " << stats.total.reads_classified - stats.total.unique_reads << " with multiple matches ("
-              << ( ( stats.total.reads_classified - stats.total.unique_reads )
+    std::cerr << "   - " << stats.total.reads_classified - stats.total.unique_matches << " with multiple matches ("
+              << ( ( stats.total.reads_classified - stats.total.unique_matches )
                    / static_cast< double >( stats.total.reads_processed ) )
                      * 100
               << "%)" << std::endl;
@@ -783,6 +776,12 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
               << ( total_reads_unclassified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
 
+    if ( stats.total.reads_processed < stats.input_reads )
+    {
+        std::cerr << " - " << stats.input_reads - stats.total.reads_processed
+                  << " reads skipped (shorther than k-mer size)" << std::endl;
+    }
+
     if ( config.parsed_hierarchy.size() > 1 )
     {
         std::cerr << std::endl;
@@ -790,23 +789,28 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         for ( auto const& h : config.parsed_hierarchy )
         {
             std::string hierarchy_label = h.first;
-            avg_matches                 = stats.reads_classified[hierarchy_label]
-                              ? ( stats.report_summary[hierarchy_label].matches
-                                  / static_cast< double >( stats.reads_classified[hierarchy_label] ) )
+            avg_matches                 = stats.hiearchy_total[hierarchy_label].reads_classified
+                              ? ( stats.hiearchy_total[hierarchy_label].matches
+                                  / static_cast< double >( stats.hiearchy_total[hierarchy_label].reads_classified ) )
                               : 0;
-            std::cerr << " - " << hierarchy_label << ": " << stats.reads_classified[hierarchy_label] << " classified ("
-                      << ( stats.reads_classified[hierarchy_label]
+            std::cerr << " - " << hierarchy_label << ": " << stats.hiearchy_total[hierarchy_label].reads_classified
+                      << " classified ("
+                      << ( stats.hiearchy_total[hierarchy_label].reads_classified
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.unique_reads[hierarchy_label] << " unique ("
-                      << ( stats.unique_reads[hierarchy_label] / static_cast< double >( stats.total.reads_processed ) )
+                      << "%) " << stats.hiearchy_total[hierarchy_label].unique_matches << " unique ("
+                      << ( stats.hiearchy_total[hierarchy_label].unique_matches
+                           / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.reads_classified[hierarchy_label] - stats.unique_reads[hierarchy_label]
+                      << "%) "
+                      << stats.hiearchy_total[hierarchy_label].reads_classified
+                             - stats.hiearchy_total[hierarchy_label].unique_matches
                       << " multiple ("
-                      << ( ( stats.reads_classified[hierarchy_label] - stats.unique_reads[hierarchy_label] )
+                      << ( ( stats.hiearchy_total[hierarchy_label].reads_classified
+                             - stats.hiearchy_total[hierarchy_label].unique_matches )
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.report_summary[hierarchy_label].matches << " matches (avg. " << avg_matches
+                      << "%) " << stats.hiearchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
                       << ")" << std::endl;
         }
     }
@@ -825,7 +829,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
                 rb.ids.push_back( std::move( id ) );
                 rb.seqs.push_back( std::move( seq ) );
             }
-            stats.total.reads_processed += rb.ids.size();
+            stats.input_reads += rb.ids.size();
             queue1.push( std::move( rb ) );
         }
     }
@@ -848,7 +852,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
                 {
                     rb.seqs2.push_back( std::move( seq ) );
                 }
-                stats.total.reads_processed += rb.ids.size();
+                stats.input_reads += rb.ids.size();
                 queue1.push( std::move( rb ) );
             }
         }
@@ -1133,7 +1137,7 @@ bool run( Config config )
 
         // Sum totals for each thread and report into stats
         stats.add_totals( hierarchy_label, totals );
-        stats.add_report_summary( hierarchy_label, rep );
+        stats.add_reports( hierarchy_label, rep );
 
         // write reports
         detail::write_report( rep, tax, out_rep, hierarchy_label, run_lca );
@@ -1170,7 +1174,8 @@ bool run( Config config )
     }
 
     out_rep << "#total_classified\t" << stats.total.reads_classified << '\n';
-    out_rep << "#total_unclassified\t" << stats.total.reads_processed - stats.total.reads_classified << '\n';
+    // account for unclassified and skipped sequences
+    out_rep << "#total_unclassified\t" << stats.input_reads - stats.total.reads_classified << '\n';
     if ( !config.output_prefix.empty() )
     {
         out_rep.close();
