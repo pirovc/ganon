@@ -1,16 +1,11 @@
 #include "aux/Aux.hpp"
 
-#include <seqan3/core/debug_stream.hpp>
-
 #include <cereal/archives/binary.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/io/sequence_file/output.hpp>
-#include <seqan3/io/sequence_file/record.hpp>
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/kmer_hash.hpp>
 #include <seqan3/std/ranges>
 
-#include <filesystem>
 #include <iostream>
 
 #include <ganon-build/Config.hpp>
@@ -19,10 +14,6 @@
 #include <catch2/catch.hpp>
 
 using namespace seqan3::literals;
-
-using sequences_type = std::vector< seqan3::dna5_vector >;
-using ids_type       = std::vector< std::string >;
-using bins_type      = std::vector< uint16_t >;
 
 // Sequences to build the ibf
 const ids_type       ids{ "S1", "S2", "S3" };
@@ -39,10 +30,6 @@ const bins_type      extra_bins{ 3, 4, 5 };
 
 namespace config_build
 {
-
-using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna5 >, std::string >,
-                                                      seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
-
 
 void validate_filter( std::string      output_filter_file,
                       uint16_t         hash_functions,
@@ -102,30 +89,6 @@ void validate_elements( std::string           output_filter_file,
     REQUIRE( output == expected_output );
 }
 
-void write_fasta( const std::string file, const sequences_type& seqs, const ids_type& ids )
-{
-    seqan3::sequence_file_output fout{ file };
-    int                          i = 0;
-    for ( auto& seq : seqs )
-    {
-        sequence_record_type rec{ seq, ids[i] };
-        fout.push_back( rec );
-        i += 1;
-    }
-}
-
-void write_seqid_bin( std::string file, const sequences_type& seqs, const ids_type& ids, const bins_type& bins )
-{
-    // generate basic seqid_bin -> every sequence in one bin, no fragmentation
-    std::ofstream seqid_bin_file{ file };
-    uint16_t      i = 0;
-    for ( auto& seq : seqs )
-    {
-        seqid_bin_file << ids[i] << "\t1\t" << std::ranges::size( seq ) << "\t" << bins[i] << '\n';
-        i += 1;
-    }
-    seqid_bin_file.close();
-}
 
 GanonBuild::Config defaultConfig( const std::string prefix )
 {
@@ -151,9 +114,9 @@ GanonBuild::Config defaultConfig( const std::string     prefix,
     // if input sequences are sent, create files
     if ( seqs.size() )
     {
-        write_fasta( prefix + ".fasta", seqs, ids );
+        aux::write_sequences( prefix + ".fasta", seqs, ids );
         cfg.reference_files = { prefix + ".fasta" };
-        write_seqid_bin( prefix + "_seqid_bin.tsv", seqs, ids, bins );
+        aux::write_seqid_bin( prefix + "_seqid_bin.tsv", seqs, ids, bins );
         cfg.seqid_bin_file = prefix + "_seqid_bin.tsv";
     }
     return cfg;
@@ -180,14 +143,14 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg    = config_build::defaultConfig( prefix );
 
         // write files separetly
-        config_build::write_fasta( prefix + ".A.fasta", seqs, ids );
-        config_build::write_fasta( prefix + ".B.fasta", extra_seqs, extra_ids );
+        aux::write_sequences( prefix + ".A.fasta", seqs, ids );
+        aux::write_sequences( prefix + ".B.fasta", extra_seqs, extra_ids );
 
         // merge entries
         auto merged_ids  = aux::vconcat( ids, extra_ids );
         auto merged_seqs = aux::vconcat( seqs, extra_seqs );
         auto merged_bins = aux::vconcat( bins, extra_bins );
-        config_build::write_seqid_bin( prefix + "_seqid_bin.tsv", merged_seqs, merged_ids, merged_bins );
+        aux::write_seqid_bin( prefix + "_seqid_bin.tsv", merged_seqs, merged_ids, merged_bins );
 
         cfg.reference_files = { prefix + ".A.fasta", prefix + ".B.fasta" };
         cfg.seqid_bin_file  = prefix + "_seqid_bin.tsv";
@@ -204,9 +167,9 @@ SCENARIO( "building indices", "[ganon-build]" )
         std::string prefix = "reference_files_wo_seqid_bin";
         auto        cfg    = config_build::defaultConfig( prefix );
         // write one sequence per file
-        config_build::write_fasta( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
-        config_build::write_fasta( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
-        config_build::write_fasta( prefix + ".S3.fasta", { seqs[2] }, { ids[2] } );
+        aux::write_sequences( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
+        aux::write_sequences( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
+        aux::write_sequences( prefix + ".S3.fasta", { seqs[2] }, { ids[2] } );
         cfg.reference_files = { prefix + ".S1.fasta", prefix + ".S2.fasta", prefix + ".S3.fasta" };
 
         REQUIRE( GanonBuild::run( cfg ) );
@@ -343,9 +306,9 @@ SCENARIO( "updating indices", "[ganon-build]" )
         cfg_update.update_filter_file = cfg_build.output_filter_file;
 
         // write one sequence per file
-        config_build::write_fasta( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
-        config_build::write_fasta( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
-        config_build::write_fasta( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
+        aux::write_sequences( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
+        aux::write_sequences( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
+        aux::write_sequences( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
         cfg_update.reference_files = { prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
 
         REQUIRE( GanonBuild::run( cfg_update ) );

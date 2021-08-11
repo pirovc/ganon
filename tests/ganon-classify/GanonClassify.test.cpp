@@ -1,5 +1,7 @@
 #include "aux/Aux.hpp"
 
+#include <seqan3/core/debug_stream.hpp>
+
 #include <ganon-classify/Config.hpp>
 #include <ganon-classify/GanonClassify.hpp>
 
@@ -8,725 +10,188 @@
 
 #include <catch2/catch.hpp>
 
+using namespace seqan3::literals;
+
 namespace config_classify
 {
 
-GanonClassify::Config defaultConfig()
+GanonClassify::Config defaultConfig( const std::string prefix  )
 {
     GanonClassify::Config cfg;
-    cfg.output_single       = true;
+    cfg.output_prefix = prefix;
     cfg.output_all          = true;
     cfg.output_lca          = true;
-    cfg.output_unclassified = false;
-    cfg.kmer_size           = { 19 };
+    cfg.output_unclassified = true;
     cfg.threads             = 4;
+    cfg.kmer_size           = { 10 };
     cfg.verbose             = false;
     cfg.quiet               = true;
-    cfg.hierarchy_labels    = { "1" };
-    cfg.offset              = 1;
-
     return cfg;
 }
 
-std::vector< std::string > output_ext{ "all", "lca", "rep" };
-std::string                results_path = "results/";
+typedef std::map< std::string, std::map<std::string, uint32_t> > TOut;
+typedef std::vector< std::string > TUnc;
+
+struct Res{
+    
+    void parse_rep(std::string file){
+        std::string   line;
+        std::ifstream infile{file};
+        while ( std::getline( infile, line, '\n' ) )
+        {
+            std::istringstream         stream_line( line );
+            std::vector< std::string > fields;
+            std::string                field;
+            while ( std::getline( stream_line, field, '\t' ) )
+                fields.push_back( field );
+            /* 0 hierarchy_label <tab> 
+               1 target <tab>
+               2 matches <tab> 
+               3 unique reads <tab> 
+               4 lca reads <tab> 
+               5 [rank <tab>]
+               6 [name]
+            */
+            if(fields[0]=="#total_classified"){
+                total_classified = std::stoul( fields[1] );
+            }else if(fields[0]=="#total_unclassified"){
+                total_unclassified = std::stoul( fields[1] );
+            }else{
+                matches += std::stoul( fields[2] );
+                unique_reads += std::stoul( fields[3] );
+                lca_reads += std::stoul( fields[4] );
+            }
+        }
+        total_reads = total_classified + total_unclassified;
+        infile.close();
+    }
+
+    TOut parse_all_lca(std::string file, uint64_t & nlines){
+        TOut out;
+        std::string   line;
+        std::ifstream infile{file};
+        while ( std::getline( infile, line, '\n' ) )
+        {
+            std::istringstream         stream_line( line );
+            std::vector< std::string > fields;
+            std::string                field;
+            while ( std::getline( stream_line, field, '\t' ) )
+                fields.push_back( field );
+            // readid <tab> target <tab> k-mer count
+            out[fields[0]][fields[1]] = std::stoul( fields[2] );
+            nlines++;
+        }
+        infile.close();
+        return out;
+    }
+
+    TUnc parse_unc(std::string file){
+        TUnc out;
+        std::string line;
+        std::ifstream infile{file};
+        // Read the next line from File untill it reaches the end.
+        while (std::getline(infile, line))
+        {
+            out.push_back(line);
+        }
+        return out;
+    }
+
+    Res()
+    {
+    }
+
+    Res(GanonClassify::Config& cfg){
+        parse_rep(cfg.output_prefix + ".rep");
+        if(cfg.output_all){
+            all = parse_all_lca( cfg.output_prefix + ".all", lines_all );
+        }
+        if(cfg.output_lca){
+            lca = parse_all_lca( cfg.output_prefix + ".lca", lines_lca );
+        }
+        if(cfg.output_unclassified){
+           unc = parse_unc( cfg.output_prefix + ".unc" );
+        }
+    }
+
+    TOut all;
+    TOut lca;
+    TUnc unc;
+    uint64_t total_classified=0;
+    uint64_t total_unclassified=0;
+    uint64_t total_reads=0;
+    uint64_t matches=0;
+    uint64_t unique_reads=0;
+    uint64_t lca_reads=0;
+    uint64_t lines_all = 0;
+    uint64_t lines_lca = 0;
+};
+
+void sanity_check(GanonClassify::Config const& cfg, Res const& res){
+    if(cfg.output_all){
+        // Output as many reads and matches as reported (.rep)
+        REQUIRE( res.all.size()==res.total_classified );
+        REQUIRE( res.lines_all==res.matches );
+    }
+
+    if(cfg.output_lca && !cfg.tax.empty()){
+        // Output as many lca reads as reported (.rep)
+        REQUIRE( res.lca.size()==res.total_classified );
+        REQUIRE( res.lines_lca==res.total_classified );
+    }
+
+    if(cfg.output_unclassified){
+        // Output as many unclassified reads as reported (.rep)
+        REQUIRE( res.unc.size()==res.total_unclassified );
+    }
+}
 
 } // namespace config_classify
 
-// Static results
 
-SCENARIO( "Classify", "[ganon-classify]" )
+SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 {
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error     = { 3 };
-    cfg.output_prefix = "b-b_e3";
 
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify LCA", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error     = { 0 }; // one match per read - all=lca
-    cfg.output_prefix = "b-b_e0";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-
-    cfg.max_error     = { 5 }; // more than one match per read
-    cfg.output_prefix = "b-b_e5";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE_FALSE( aux::filesAreEqualSorted( cfg.output_prefix + ".all", cfg.output_prefix + ".lca" ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify paired-reads concat", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.paired_reads  = { "reads/bacteria_id.1.fq", "reads/bacteria_id.2.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "b-b_e0-paired";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify paired-reads concat with unique errors", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf" };
-    cfg.map              = { "filters/bacteria.map" };
-    cfg.tax              = { "filters/bacteria.tax" };
-    cfg.paired_reads     = { "reads/bacteria_id.1.fq", "reads/bacteria_id.2.fq" };
-    cfg.max_error        = { 1 };
-    cfg.max_error_unique = { 0 };
-    cfg.output_prefix    = "b-b_e1u0-paired";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify reads with no filtering", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error     = { 5 };
-    cfg.strata_filter = { -1 };
-    cfg.output_prefix = "b-b_e5l-1";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify paired-reads and single-reads with multiple indices", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/archaea.ibf", "filters/bacteria.ibf" };
-    cfg.map              = { "filters/archaea.map", "filters/bacteria.map" };
-    cfg.tax              = { "filters/archaea.tax", "filters/bacteria.tax" };
-    cfg.paired_reads     = { "reads/bacteria_id.1.fq", "reads/bacteria_id.2.fq" };
-    cfg.single_reads     = { "reads/archaea.simulated.1.fq" };
-    cfg.max_error        = { 0 };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.output_prefix    = "ab-ab_e0-paired";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with offset", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.offset        = 2;
-    cfg.max_error     = { 3 };
-    cfg.output_prefix = "b-b_e3f2";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with no errors allowed", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "b-b_e0-noerrors";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-
-    // using min_kmers = 1 should achieve the same result
-    auto cfg2          = config_classify::defaultConfig();
-    cfg2.ibf           = { "filters/bacteria.ibf" };
-    cfg2.map           = { "filters/bacteria.map" };
-    cfg2.tax           = { "filters/bacteria.tax" };
-    cfg2.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg2.min_kmers     = { 1 };
-    cfg2.output_prefix = "b-b_m1-noerrors";
-
-    INFO( "output_prefix2: " + cfg2.output_prefix );
-    REQUIRE( GanonClassify::run( cfg2 ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg2.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg2.output_prefix + "." + ext ) );
-    }
-
-    // check if both files are the same
-    for ( auto const& ext : config_classify::output_ext )
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
-}
-
-SCENARIO( "Classify with min kmers", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.min_kmers     = { 0.29 }; // should work the same as -e 3, threshold = 25 19-mers
-    cfg.output_prefix = "b-b_m0.29";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with different max. unique errors allowed", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf" };
-    cfg.map              = { "filters/bacteria.map" };
-    cfg.tax              = { "filters/bacteria.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error_unique = { 1 };
-    cfg.max_error        = { 3 };
-    cfg.output_prefix    = "b-b_e3u1";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with offset and different max. unique errors allowed", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf" };
-    cfg.map              = { "filters/bacteria.map" };
-    cfg.tax              = { "filters/bacteria.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error        = { 2 };
-    cfg.max_error_unique = { 0 };
-    cfg.offset           = 6;
-    cfg.output_prefix    = "b-b_e2u0f6";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with offset, min kmers and different max. unique errors allowed", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf" };
-    cfg.map              = { "filters/bacteria.map" };
-    cfg.tax              = { "filters/bacteria.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq" };
-    cfg.min_kmers        = { 0.53 }; // should be equal as 2 errors (9 k-mers)
-    cfg.max_error_unique = { 0 };
-    cfg.offset           = 6;
-    cfg.output_prefix    = "b-b_m0.53u0f6";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify with offset higher than k", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.offset        = 25; // should be limited by k-mer size (19) and give same results
-    cfg.output_prefix = "b-b_f25";
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE_FALSE( GanonClassify::run( cfg ) );
-}
-
-SCENARIO( "Classify multi-filter without errors allowed", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map           = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax           = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "ba-ba_e0";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-filter with errors allowed", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map           = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax           = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error     = { 4 };
-    cfg.output_prefix = "ba-ba_e4";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-filter with multiple errors", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map           = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax           = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error     = { 0, 4 };
-    cfg.output_prefix = "ba-ba_e04";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-hierarchy without errors allowed", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map              = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax              = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error        = { 0 };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.output_prefix    = "ba-ba_e0c12";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-hierarchy split files", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map              = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax              = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error        = { 0 };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.output_prefix    = "ba-ba_e0c12-split";
-    std::string output1  = cfg.output_prefix + ".1.all";
-    std::string output2  = cfg.output_prefix + ".2.all";
-    cfg.output_single    = false;
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".rep",
-                                       config_classify::results_path + cfg.output_prefix + ".rep" ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".1.lca",
-                                       config_classify::results_path + cfg.output_prefix + ".1.lca" ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".2.lca",
-                                       config_classify::results_path + cfg.output_prefix + ".2.lca" ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".1.all",
-                                       config_classify::results_path + cfg.output_prefix + ".1.all" ) );
-    REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + ".2.all",
-                                       config_classify::results_path + cfg.output_prefix + ".2.all" ) );
-}
-
-SCENARIO( "Classify multi-hierarchy with errors allowed", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map              = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax              = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads     = { "reads/bacteria.simulated.1.fq", "reads/archaea.simulated.1.fq" };
-    cfg.max_error        = { 4 };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.output_prefix    = "ba-ba_e4c12";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-hierarchy with multiple errors", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/archaea.ibf", "filters/bacteria.ibf" };
-    cfg.map              = { "filters/archaea.map", "filters/bacteria.map" };
-    cfg.tax              = { "filters/archaea.tax", "filters/bacteria.tax" };
-    cfg.single_reads     = { "reads/archaea.simulated.1.fq" };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.max_error        = { 3, 4 };
-    cfg.output_prefix    = "ab-a_e34c12";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-hierarchy with multiple errors and multiple unique errors", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/archaea.ibf", "filters/bacteria.ibf" };
-    cfg.map              = { "filters/archaea.map", "filters/bacteria.map" };
-    cfg.tax              = { "filters/archaea.tax", "filters/bacteria.tax" };
-    cfg.single_reads     = { "reads/archaea.simulated.1.fq" };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.max_error        = { 3, 4 };
-    cfg.max_error_unique = { 0, 1 };
-    cfg.output_prefix    = "ab-a_e34c12u01";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}
-
-// Functionality
-
-/*SCENARIO( "Classify problematic fastq", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/problematic.fq" };
-    cfg.max_error     = { 3 };
-    cfg.output_prefix = "b-problematic_e3";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::fileLines( cfg.output_prefix + ".all" ) == 4 );
-
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg.output_prefix + "." + ext ) );
-    }
-}*/
-
-SCENARIO( "Classify without matches", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/virus.simulated.1.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "b-v_e0";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
-}
-
-SCENARIO( "Classify multi-filter without matches", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map           = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax           = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads  = { "reads/virus.simulated.1.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "ba-v_e0";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
-}
-
-SCENARIO( "Classify multi-hierarchy without matches", "[ganon-classify]" )
-{
-    auto cfg             = config_classify::defaultConfig();
-    cfg.ibf              = { "filters/bacteria.ibf", "filters/archaea.ibf" };
-    cfg.map              = { "filters/bacteria.map", "filters/archaea.map" };
-    cfg.tax              = { "filters/bacteria.tax", "filters/archaea.tax" };
-    cfg.single_reads     = { "reads/virus.simulated.1.fq" };
-    cfg.max_error        = { 0 };
-    cfg.hierarchy_labels = { "1", "2" };
-    cfg.output_prefix    = "ba-v_e0c12";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
-}
-
-SCENARIO( "Classify forced failure with different max. errors allowed", "[ganon-classify]" )
-{
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/bacteria.simulated.1.fq" };
-    cfg.max_error     = { 0 };
-    cfg.output_prefix = "b-b_e0-failure";
-
-    const std::string undesired_output_prefix = "b-b_e3";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE_FALSE( aux::filesAreEqualSorted(
-            cfg.output_prefix + "." + ext, config_classify::results_path + undesired_output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-filter with partial matching reads", "[ganon-classify]" )
-{
-    // should match results as if working with only one filter because max_error = 0
-    auto cfg1          = config_classify::defaultConfig();
-    cfg1.ibf           = { "filters/archaea.ibf" };
-    cfg1.map           = { "filters/archaea.map" };
-    cfg1.tax           = { "filters/archaea.tax" };
-    cfg1.single_reads  = { "reads/archaea.simulated.1.fq" };
-    cfg1.max_error     = { 0 };
-    cfg1.output_prefix = "a-a_e0";
-
-    auto cfg2          = config_classify::defaultConfig();
-    cfg2.ibf           = { "filters/bacteria.ibf", "filters/archaea.ibf", "filters/virus.ibf" };
-    cfg2.map           = { "filters/bacteria.map", "filters/archaea.map", "filters/virus.map" };
-    cfg2.tax           = { "filters/bacteria.tax", "filters/archaea.tax", "filters/virus.tax" };
-    cfg2.single_reads  = { "reads/archaea.simulated.1.fq" };
-    cfg2.max_error     = { 0 };
-    cfg2.output_prefix = "bav-a_e0";
-
-    INFO( "output_prefix: " + cfg1.output_prefix );
-    INFO( "output_prefix2: " + cfg2.output_prefix );
-    REQUIRE( GanonClassify::run( cfg1 ) );
-    REQUIRE( GanonClassify::run( cfg2 ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify multi-hierarchy with partial matching reads", "[ganon-classify]" )
-{
-    // should match results as if working with only one filter because max_error = 0
-    // reads should 'survive' till the last filter
-    auto cfg1             = config_classify::defaultConfig();
-    cfg1.ibf              = { "filters/virus.ibf" };
-    cfg1.map              = { "filters/virus.map" };
-    cfg1.tax              = { "filters/virus.tax" };
-    cfg1.single_reads     = { "reads/virus.simulated.1.fq" };
-    cfg1.max_error        = { 0 };
-    cfg1.hierarchy_labels = { "3" }; // to match .rep
-    cfg1.output_prefix    = "v-v_e0";
-
-    // Test if the reads are surviving the hierachies
-    auto cfg2             = config_classify::defaultConfig();
-    cfg2.ibf              = { "filters/bacteria.ibf", "filters/archaea.ibf", "filters/virus.ibf" };
-    cfg2.map              = { "filters/bacteria.map", "filters/archaea.map", "filters/virus.map" };
-    cfg2.tax              = { "filters/bacteria.tax", "filters/archaea.tax", "filters/virus.tax" };
-    cfg2.single_reads     = { "reads/virus.simulated.1.fq" };
-    cfg2.max_error        = { 0 };
-    cfg2.hierarchy_labels = { "1", "2", "3" };
-    cfg2.output_prefix    = "bav-v_e0";
-
-    INFO( "output_prefix: " + cfg1.output_prefix );
-    REQUIRE( GanonClassify::run( cfg1 ) );
-    INFO( "output_prefix2: " + cfg2.output_prefix );
-    REQUIRE( GanonClassify::run( cfg2 ) );
-    for ( auto const& ext : config_classify::output_ext )
-    {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg1.output_prefix + "." + ext, cfg2.output_prefix + "." + ext ) );
-    }
-}
-
-SCENARIO( "Classify after update", "[ganon-classify]" )
-{
-    // No match
-    auto cfg          = config_classify::defaultConfig();
-    cfg.ibf           = { "filters/bacteria.ibf" };
-    cfg.map           = { "filters/bacteria.map" };
-    cfg.tax           = { "filters/bacteria.tax" };
-    cfg.single_reads  = { "reads/virus.simulated.1.fq" };
-    cfg.max_error     = { 3 };
-    cfg.output_prefix = "b-v_e3";
-
-    INFO( "output_prefix: " + cfg.output_prefix );
-    REQUIRE( GanonClassify::run( cfg ) );
-    REQUIRE( aux::fileIsEmpty( cfg.output_prefix + ".all" ) );
-
+    const ids_type       ids{ "seqA", "seqC", "seqT", "seqG" };
+    const sequences_type seqs{ "AAAAAAAAAAAAAAAAAAAA"_dna5,
+                               "CCCCCCCCCCCCCCCCCCCC"_dna5,
+                               "TTTTTTTTTTTTTTTTTTTT"_dna5,
+                               "GGGGGGGGGGGGGGGGGGGG"_dna5 };
+    
+
+    std::string base_prefix{"classify_base_build"};
     GanonBuild::Config cfg_build;
-    cfg_build.update_filter_file = "filters/bacteria.ibf";
-    cfg_build.seqid_bin_file     = "filters/bacteria_upd_virus_acc_bin.txt";
-    cfg_build.output_filter_file = "bacteria_virus.ibf";
-    // cfg_build.filter_size_bits   = 8388608;
-    cfg_build.bin_size_bits   = 65534;
-    cfg_build.reference_files = { "sequences/virus_NC_003676.1.fasta.gz",
-                                  "sequences/virus_NC_011646.1.fasta.gz",
-                                  "sequences/virus_NC_032412.1.fasta.gz",
-                                  "sequences/virus_NC_035470.1.fasta.gz" };
-    cfg_build.verbose         = cfg.verbose;
-    cfg_build.quiet           = cfg.quiet;
-
+    cfg_build.bin_size_bits      = 5000;
+    cfg_build.quiet              = true;
+    cfg_build.kmer_size          = 10;
+    cfg_build.output_filter_file = base_prefix + ".ibf";
+    cfg_build.reference_files = aux::write_sequences_files( base_prefix, "fasta", seqs, ids );
     REQUIRE( GanonBuild::run( cfg_build ) );
 
-    auto cfg2                               = config_classify::defaultConfig();
-    cfg2.max_error                          = { 3 };
-    cfg2.ibf                                = { cfg_build.output_filter_file };
-    cfg2.map                                = { "filters/bacteria_virus.map" };
-    cfg2.tax                                = { "filters/bacteria_virus.tax" };
-    cfg2.single_reads                       = { "reads/bacteria.simulated.1.fq" };
-    cfg2.output_prefix                      = "bv-b_e3";
-    const std::string desired_output_prefix = "b-b_e3";
-
-    // Results of bacteria should be the same as without update (check if FP changed or filter was affected)
-    INFO( "output_prefix2: " + cfg2.output_prefix );
-    REQUIRE( GanonClassify::run( cfg2 ) );
-    for ( auto const& ext : config_classify::output_ext )
+    SECTION( "with default config." )
     {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg2.output_prefix + "." + ext,
-                                           config_classify::results_path + desired_output_prefix + "." + ext ) );
+        std::string prefix{"classify_base_build"};
+        auto cfg = config_classify::defaultConfig( prefix );
+        cfg.ibf ={ base_prefix + ".ibf" };
+        aux::write_sequences( "Areads.fasta", { "AAAAAAAAAAAAAA"_dna5 }, { "readA" });
+        cfg.single_reads ={ "Areads.fasta" };
+        
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{cfg};
+        config_classify::sanity_check(cfg, res);
+
+        REQUIRE( res.all["readA"]["0"] == 5 );
+        REQUIRE( res.all["readA"]["1"] == 0 );
+        REQUIRE( res.all["readA"]["2"] == 5 );
+        REQUIRE( res.all["readA"]["3"] == 0 );
+        
     }
+}
 
-    // Virus reads should now map
-    auto cfg3          = config_classify::defaultConfig();
-    cfg3.max_error     = { 3 };
-    cfg3.ibf           = { cfg_build.output_filter_file };
-    cfg3.map           = { "filters/bacteria_virus.map" };
-    cfg3.tax           = { "filters/bacteria_virus.tax" };
-    cfg3.single_reads  = { "reads/virus.simulated.1.fq" };
-    cfg3.output_prefix = "bv-v_e3";
-
-    INFO( "output_prefix2: " + cfg3.output_prefix );
-    REQUIRE( GanonClassify::run( cfg3 ) );
-    for ( auto const& ext : config_classify::output_ext )
+SCENARIO( "classifying reads with errors", "[ganon-classify]" )
+{
+    SECTION( "..." )
     {
-        INFO( "extension: " + ext );
-        REQUIRE( aux::filesAreEqualSorted( cfg3.output_prefix + "." + ext,
-                                           config_classify::results_path + cfg3.output_prefix + "." + ext ) );
+        REQUIRE( true);
     }
 }

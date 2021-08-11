@@ -17,15 +17,15 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "p,paired-reads", "Pairs of files with paired-end reads .fq .fastq .fasta .fa (e.g. file1.1.fq[.gz],file1.2.fq[.gz],[file2.1.fq[.gz],file2.2.fq[.gz] ... fileN.1.fq[.gz],fileN.2.fq[.gz]])", cxxopts::value< std::vector< std::string > >() )
         
         ( "i,ibf", "IBF (Interleaved Bloom Filter) file[s] generated with ganon-build (e.g. -b a.ibf,b.ibf OR -b a.ibf -b b.ibf )", cxxopts::value< std::vector< std::string > >() )
-        ( "m,map", "Tab-separated file mapping bins in the --ibf to target groups/labels (e.g. taxids, assemblies). Targets can be repeated if multiple bins represent one group. Fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
-        ( "x,tax", "Tab-separated file with a taxonomic tree for LCA calculation. Will link targets provided in the --map files. Root node should be 1 with parent 0. Fields: node/target <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
+        ( "m,map", "Optional tab-separated file mapping bins ids (--ibf) to target groups/labels (e.g. taxids, assemblies). Targets can be repeated within/among filters if multiple bins represent the same group. If no --map file is provided, targets are bin ids. If multiple filters of hiearchies are provided, targets are: hierarchy label-filter id-bin id. Fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
+        ( "x,tax", "Optional tab-separated file with a taxonomic tree for LCA calculation. Will link targets provided in the --map files. Root node should be 1 with parent 0. Fields: node/target <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
         
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
         ( "b,kmer-size", "k size to query - should be the same used to build filter. One per hiearchy label.", cxxopts::value< std::vector< uint8_t > >() )
         ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. One per filter. Default: 0.25", cxxopts::value< std::vector< float > >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]. One per filter.", cxxopts::value< std::vector< int16_t > >() )
-        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
+        ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. If below threshold, read is assigned to its parent. Only possible with --tax. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
         ( "l,strata-filter", "Additional errors allowed (relative to the best match) to filter and select matches. -1 for no filtering. One per hiearchy label. Default: 0", cxxopts::value< std::vector< int16_t > >() )
         
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint8_t >() )
