@@ -31,9 +31,11 @@ GanonClassify::Config defaultConfig( const std::string prefix )
     return cfg;
 }
 
+
 typedef std::map< std::string, std::map< std::string, uint32_t > > TOut;
 typedef std::vector< std::string >                                 TUnc;
 typedef std::map< std::string, std::string >                       TMap;
+typedef std::map< std::string,  std::string >                      TTax;
 
 struct Res
 {
@@ -176,6 +178,19 @@ void write_map( std::string file, TMap const& map_data )
     outfile.close();
 }
 
+void write_tax( std::string file, TTax const& tax_data )
+{
+    // Automatically create name and ranks
+    std::ofstream outfile( file );
+    // Add root "1"
+    outfile << "1" << '\t' << "0" << '\t' << "root" << '\t' << "root" << '\n';
+    for ( auto const& [target, parent] : tax_data )
+    {
+        outfile << target << '\t' << parent << '\t' << "rank-" + target << '\t' << "name-" + target << '\n';
+    }
+    outfile.close();
+}
+
 } // namespace config_classify
 
 
@@ -230,7 +245,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { "rA.fasta" };
         config_classify::write_map( "classify_map.map",
-                                    { { "0", "AT" }, { "1", "CG" }, { "2", "AT" }, { "3", "CG" } } );
+                                    { { "0", "AorT" }, { "1", "CorG" }, { "2", "AorT" }, { "3", "CorG" } } );
         cfg.map = { "classify_map.map" };
 
         REQUIRE( GanonClassify::run( cfg ) );
@@ -238,8 +253,39 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // Matches on target (max. k-mer count)
-        REQUIRE( res.all["readA"]["AT"] == 5 );
-        REQUIRE( res.all["readA"]["CG"] == 0 );
+        REQUIRE( res.all["readA"]["AorT"] == 5 );
+        REQUIRE( res.all["readA"]["CorG"] == 0 );
+    }
+
+    SECTION( "with --map and --tax" )
+    {
+        std::string prefix{ "classify_map_tax" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.single_reads = { "rA.fasta" };
+        config_classify::write_map( "classify_map_tax.map",
+                                    { { "0", "A" }, { "1", "C" }, { "2", "T" }, { "3", "G" } } );
+        cfg.map = { "classify_map_tax.map" };
+
+        //     1
+        //    ATCG
+        //  AT    CG
+        // A  T  C  G
+        config_classify::write_tax( "classify_map_tax.tax",
+                                    { { "A", "AT" }, { "C", "CG" }, { "T", "AT" }, { "G", "CG" },
+                                      { "CG", "ATCG" },  { "AT", "ATCG" }, { "ATCG", "1" } } );
+        cfg.tax = { "classify_map_tax.tax" };
+        
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        // All matches on targets from map
+        REQUIRE( res.all["readA"]["A"] == 5 );
+        REQUIRE( res.all["readA"]["T"] == 5 );
+
+        // LCA matches from tax
+        REQUIRE( res.lca["readA"]["AT"] == 5 );
     }
 
     SECTION( "with --paired-reads" )
