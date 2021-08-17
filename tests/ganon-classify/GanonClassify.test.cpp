@@ -35,7 +35,7 @@ GanonClassify::Config defaultConfig( const std::string prefix )
 typedef std::map< std::string, std::map< std::string, uint32_t > > TOut;
 typedef std::vector< std::string >                                 TUnc;
 typedef std::map< std::string, std::string >                       TMap;
-typedef std::map< std::string,  std::string >                      TTax;
+typedef std::map< std::string, std::string >                       TTax;
 
 struct Res
 {
@@ -197,11 +197,14 @@ void write_tax( std::string file, TTax const& tax_data )
 SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 {
 
+    std::string folder_prefix{ "ganon-classify-wo-errors/" };
+    std::filesystem::create_directory( folder_prefix );
+
     // Reads (14bp)
-    aux::write_sequences( "rA.fasta", { "AAAAAAAAAAAAAA"_dna5 }, { "readA" } );
-    aux::write_sequences( "rC.fasta", { "CCCCCCCCCCCCCC"_dna5 }, { "readC" } );
-    aux::write_sequences( "rT.fasta", { "TTTTTTTTTTTTTT"_dna5 }, { "readT" } );
-    aux::write_sequences( "rG.fasta", { "GGGGGGGGGGGGGG"_dna5 }, { "readG" } );
+    aux::write_sequences( folder_prefix + "rA.fasta", { "AAAAAAAAAAAAAA"_dna5 }, { "readA" } );
+    aux::write_sequences( folder_prefix + "rC.fasta", { "CCCCCCCCCCCCCC"_dna5 }, { "readC" } );
+    aux::write_sequences( folder_prefix + "rT.fasta", { "TTTTTTTTTTTTTT"_dna5 }, { "readT" } );
+    aux::write_sequences( folder_prefix + "rG.fasta", { "GGGGGGGGGGGGGG"_dna5 }, { "readG" } );
 
     // Sequences (20bp)
     const ids_type       ids{ "seqA", "seqC", "seqT", "seqG" };
@@ -211,7 +214,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
                                "GGGGGGGGGGGGGGGGGGGG"_dna5 };
 
 
-    std::string        base_prefix{ "classify_base_build" };
+    std::string        base_prefix{ folder_prefix + "base_build" };
     GanonBuild::Config cfg_build;
     cfg_build.bin_size_bits      = 5000;
     cfg_build.quiet              = true;
@@ -222,10 +225,10 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with default config." )
     {
-        std::string prefix{ "classify_base_build" };
+        std::string prefix{ folder_prefix + "base_build" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.single_reads = { "rA.fasta" };
+        cfg.single_reads = { folder_prefix + "rA.fasta" };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -240,13 +243,13 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with --map" )
     {
-        std::string prefix{ "classify_map" };
+        std::string prefix{ folder_prefix + "map" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.single_reads = { "rA.fasta" };
-        config_classify::write_map( "classify_map.map",
+        cfg.single_reads = { folder_prefix + "rA.fasta" };
+        config_classify::write_map( prefix + ".map",
                                     { { "0", "AorT" }, { "1", "CorG" }, { "2", "AorT" }, { "3", "CorG" } } );
-        cfg.map = { "classify_map.map" };
+        cfg.map = { prefix + ".map" };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -259,23 +262,27 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with --map and --tax" )
     {
-        std::string prefix{ "classify_map_tax" };
+        std::string prefix{ folder_prefix + "map_tax" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.single_reads = { "rA.fasta" };
-        config_classify::write_map( "classify_map_tax.map",
-                                    { { "0", "A" }, { "1", "C" }, { "2", "T" }, { "3", "G" } } );
-        cfg.map = { "classify_map_tax.map" };
+        cfg.single_reads = { folder_prefix + "rA.fasta" };
+        config_classify::write_map( prefix + ".map", { { "0", "A" }, { "1", "C" }, { "2", "T" }, { "3", "G" } } );
+        cfg.map = { prefix + ".map" };
 
         //     1
         //    ATCG
         //  AT    CG
         // A  T  C  G
-        config_classify::write_tax( "classify_map_tax.tax",
-                                    { { "A", "AT" }, { "C", "CG" }, { "T", "AT" }, { "G", "CG" },
-                                      { "CG", "ATCG" },  { "AT", "ATCG" }, { "ATCG", "1" } } );
-        cfg.tax = { "classify_map_tax.tax" };
-        
+        config_classify::write_tax( prefix + ".tax",
+                                    { { "A", "AT" },
+                                      { "C", "CG" },
+                                      { "T", "AT" },
+                                      { "G", "CG" },
+                                      { "CG", "ATCG" },
+                                      { "AT", "ATCG" },
+                                      { "ATCG", "1" } } );
+        cfg.tax = { prefix + ".tax" };
+
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -290,10 +297,10 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with --paired-reads" )
     {
-        std::string prefix{ "classify_paired_reads" };
+        std::string prefix{ folder_prefix + "paired_reads" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.paired_reads = { "rA.fasta", "rT.fasta" };
+        cfg.paired_reads = { folder_prefix + "rA.fasta", folder_prefix + "rT.fasta" };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -307,11 +314,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with --single-reads and --paired-reads" )
     {
-        std::string prefix{ "classify_single_paired_reads" };
+        std::string prefix{ folder_prefix + "single_paired_reads" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.single_reads = { "rC.fasta", "rG.fasta" };
-        cfg.paired_reads = { "rA.fasta", "rT.fasta" };
+        cfg.single_reads = { folder_prefix + "rC.fasta", folder_prefix + "rG.fasta" };
+        cfg.paired_reads = { folder_prefix + "rA.fasta", folder_prefix + "rT.fasta" };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -327,10 +334,10 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "with wrong --kmer-size" )
     {
-        std::string prefix{ "classify_wrong_kmer_size" };
+        std::string prefix{ folder_prefix + "wrong_kmer_size" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
-        cfg.single_reads = { "rA.fasta" };
+        cfg.single_reads = { folder_prefix + "rA.fasta" };
         cfg.kmer_size    = { 19 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -344,61 +351,125 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
     SECTION( "without --output-prefix" )
     {
-        std::string prefix{ "classify_wo_output_prefix" };
+        std::string prefix{ folder_prefix + "wo_output_prefix" };
         auto        cfg   = config_classify::defaultConfig( prefix );
         cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.single_reads  = { "rA.fasta" };
+        cfg.single_reads  = { folder_prefix + "rA.fasta" };
         cfg.output_prefix = "";
         REQUIRE( GanonClassify::run( cfg ) );
         // No files created
-        REQUIRE_FALSE( std::filesystem::exists( "classify_wo_output_prefix.rep" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "classify_wo_output_prefix.lca" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "classify_wo_output_prefix.all" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "classify_wo_output_prefix.unc" ) );
+        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.rep" ) );
+        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.lca" ) );
+        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.all" ) );
+        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.unc" ) );
     }
 
 
     SECTION( "with multiple --ibf" )
     {
+        // Additional filter with repeated sequences (As) and new sequence (CG)
+
+        // Reads (14bp)
+        aux::write_sequences( folder_prefix + "rCG.fasta", { "CGCGCGCGCGCGCG"_dna5 }, { "readCG" } );
 
         // Sequences (20bp)
-        const ids_type       ids2{ "seqA", "seqN" };
-        const sequences_type seqs2{ "AAAAAAAAAAAAAAAAAAAA"_dna5, "NNNNNNNNNNNNNNNNNNNN"_dna5 };
+        const ids_type       ids2{ "seqA", "seqCG" };
+        const sequences_type seqs2{ "AAAAAAAAAAAAAAAAAAAA"_dna5, "CGCGCGCGCGCGCGCGCGCG"_dna5 };
 
-        std::string        base_prefix2{ "classify_base_build2" };
+        // Write additional IBF
+        std::string        base_prefix2{ folder_prefix + "base_build2" };
         GanonBuild::Config cfg_build;
         cfg_build.bin_size_bits      = 5000;
         cfg_build.quiet              = true;
         cfg_build.kmer_size          = 10;
         cfg_build.output_filter_file = base_prefix2 + ".ibf";
-        cfg_build.reference_files    = aux::write_sequences_files( base_prefix2, "fasta", seqs, ids );
+        cfg_build.reference_files    = aux::write_sequences_files( base_prefix2, "fasta", seqs2, ids2 );
         REQUIRE( GanonBuild::run( cfg_build ) );
+
+        // Write map for base filter and additional filter
+        // A2 for sequence of As in the 2nd filter
+        config_classify::write_map( base_prefix + ".map", { { "0", "A" }, { "1", "C" }, { "2", "T" }, { "3", "G" } } );
+
+        config_classify::write_map( base_prefix2 + ".map", { { "0", "A2" }, { "1", "CG" } } );
+
+        // Write tax for base filter and  additional filter
+        //        1
+        //      ATCG
+        //    AT    CG
+        // A2 A T  C  G
+        config_classify::write_tax( base_prefix + ".tax",
+                                    { { "A", "AT" },
+                                      { "C", "CG" },
+                                      { "T", "AT" },
+                                      { "G", "CG" },
+                                      { "CG", "ATCG" },
+                                      { "AT", "ATCG" },
+                                      { "ATCG", "1" } } );
+        config_classify::write_tax( base_prefix2 + ".tax",
+                                    { { "A2", "AT" }, { "CG", "ATCG" }, { "AT", "ATCG" }, { "ATCG", "1" } } );
 
         SECTION( "without hiearchy" )
         {
-            std::string prefix{ "classify_multiple_ibf_wo_hiearchy" };
+            std::string prefix{ folder_prefix + "multiple_ibf_wo_hiearchy" };
             auto        cfg  = config_classify::defaultConfig( prefix );
             cfg.ibf          = { base_prefix + ".ibf", base_prefix2 + ".ibf" };
-            cfg.single_reads = { "rA.fasta" };
+            cfg.single_reads = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
 
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
 
             // Report targets as hiearchy label + filter id + bin id
-            // same as paired and single C and G
-            REQUIRE( res.all["readA"]["1_default-1-2"] == 5 );
-            REQUIRE( res.all["readA"]["1_default-1-0"] == 5 );
-            REQUIRE( res.all["readA"]["1_default-0-0"] == 5 );
-            REQUIRE( res.all["readA"]["1_default-0-2"] == 5 );
+            REQUIRE( res.all["readA"]["1_default-0-0"] == 5 );  // A
+            REQUIRE( res.all["readA"]["1_default-0-2"] == 5 );  // T (rev.comp.)
+            REQUIRE( res.all["readA"]["1_default-1-0"] == 5 );  // A second filter
+            REQUIRE( res.all["readCG"]["1_default-1-1"] == 5 ); // CG second filter
+
+            SECTION( "with --map" )
+            {
+                std::string prefix{ folder_prefix + "multiple_ibf_wo_hiearchy_map" };
+                cfg.output_prefix = prefix;
+                cfg.map           = { base_prefix + ".map", base_prefix2 + ".map" };
+
+                REQUIRE( GanonClassify::run( cfg ) );
+                config_classify::Res res{ cfg };
+                config_classify::sanity_check( cfg, res );
+
+                // Matches on target (max. k-mer count)
+                REQUIRE( res.all["readA"]["A"] == 5 );
+                REQUIRE( res.all["readA"]["T"] == 5 );
+                REQUIRE( res.all["readA"]["A2"] == 5 );
+                REQUIRE( res.all["readCG"]["CG"] == 5 );
+
+                SECTION( "with --tax" )
+                {
+                    std::string prefix{ folder_prefix + "multiple_ibf_wo_hiearchy_map_tax" };
+                    cfg.output_prefix = prefix;
+                    cfg.tax           = { base_prefix + ".tax", base_prefix2 + ".tax" };
+
+                    REQUIRE( GanonClassify::run( cfg ) );
+                    config_classify::Res res{ cfg };
+                    config_classify::sanity_check( cfg, res );
+
+                    // All matches on targets from map
+                    REQUIRE( res.all["readA"]["A"] == 5 );
+                    REQUIRE( res.all["readA"]["T"] == 5 );
+                    REQUIRE( res.all["readA"]["A2"] == 5 );
+                    REQUIRE( res.all["readCG"]["CG"] == 5 );
+
+                    // LCA matches from tax
+                    REQUIRE( res.lca["readA"]["AT"] == 5 );
+                    REQUIRE( res.lca["readCG"]["CG"] == 5 );
+                }
+            }
         }
 
         SECTION( "with hiearchy" )
         {
-            std::string prefix{ "classify_multiple_ibf_w_hiearchy" };
+            std::string prefix{ folder_prefix + "multiple_ibf_w_hiearchy" };
             auto        cfg      = config_classify::defaultConfig( prefix );
             cfg.ibf              = { base_prefix + ".ibf", base_prefix2 + ".ibf" };
-            cfg.single_reads     = { "rA.fasta" };
+            cfg.single_reads     = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
             cfg.hierarchy_labels = { "one", "two" };
             cfg.output_single    = true;
 
@@ -410,6 +481,46 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
             // same as paired and single C and G
             REQUIRE( res.all["readA"]["one-0-2"] == 5 );
             REQUIRE( res.all["readA"]["one-0-0"] == 5 );
+            REQUIRE( res.all["readCG"]["two-0-1"] == 5 );
+
+            SECTION( "with --map" )
+            {
+                std::string prefix{ folder_prefix + "multiple_ibf_w_hiearchy_map" };
+                cfg.output_prefix = prefix;
+                cfg.map           = { base_prefix + ".map", base_prefix2 + ".map" };
+
+                REQUIRE( GanonClassify::run( cfg ) );
+                config_classify::Res res{ cfg };
+                config_classify::sanity_check( cfg, res );
+
+                // Matches on target (max. k-mer count)
+                REQUIRE( res.all["readA"]["A"] == 5 );
+                REQUIRE( res.all["readA"]["T"] == 5 );
+                REQUIRE( res.all["readA"]["A2"] == 0 ); // Do not match A2 (second hiearchy, readA already classified)
+                REQUIRE( res.all["readCG"]["CG"] == 5 );
+
+                SECTION( "with --tax" )
+                {
+                    std::string prefix{ folder_prefix + "multiple_ibf_w_hiearchy_map_tax" };
+                    cfg.output_prefix = prefix;
+                    cfg.tax           = { base_prefix + ".tax", base_prefix2 + ".tax" };
+
+                    REQUIRE( GanonClassify::run( cfg ) );
+                    config_classify::Res res{ cfg };
+                    config_classify::sanity_check( cfg, res );
+
+                    // All matches on targets from map
+                    REQUIRE( res.all["readA"]["A"] == 5 );
+                    REQUIRE( res.all["readA"]["T"] == 5 );
+                    REQUIRE( res.all["readA"]["A2"]
+                             == 0 ); // Do not match A2 (second hiearchy, readA already classified)
+                    REQUIRE( res.all["readCG"]["CG"] == 5 );
+
+                    // LCA matches from tax
+                    REQUIRE( res.lca["readA"]["AT"] == 5 );
+                    REQUIRE( res.lca["readCG"]["CG"] == 5 );
+                }
+            }
         }
     }
 }

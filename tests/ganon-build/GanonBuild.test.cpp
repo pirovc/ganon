@@ -128,9 +128,12 @@ GanonBuild::Config defaultConfig( const std::string     prefix,
 SCENARIO( "building indices", "[ganon-build]" )
 {
 
+    std::string folder_prefix{ "ganon-build-build/" };
+    std::filesystem::create_directory( folder_prefix );
+
     SECTION( "with default conf." )
     {
-        auto cfg = config_build::defaultConfig( "default", seqs, ids, bins );
+        auto cfg = config_build::defaultConfig( folder_prefix + "default", seqs, ids, bins );
         REQUIRE( GanonBuild::run( cfg ) );
         config_build::validate_filter(
             cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
@@ -139,7 +142,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
     SECTION( "with multiple --reference-files" )
     {
-        std::string prefix = "reference_files";
+        std::string prefix = folder_prefix + "reference_files";
         auto        cfg    = config_build::defaultConfig( prefix );
 
         // write files separetly
@@ -164,7 +167,7 @@ SCENARIO( "building indices", "[ganon-build]" )
     SECTION( "with multiple --reference-files without --seqid-bin-file" )
     {
         // without --seqid-bin-file it should create one bin per sequence file
-        std::string prefix = "reference_files_wo_seqid_bin";
+        std::string prefix = folder_prefix + "reference_files_wo_seqid_bin";
         auto        cfg    = config_build::defaultConfig( prefix );
         // write one sequence per file
         aux::write_sequences( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
@@ -180,7 +183,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
     SECTION( "with --kmer-size 11" )
     {
-        auto cfg      = config_build::defaultConfig( "kmer_size_11", seqs, ids, bins );
+        auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_11", seqs, ids, bins );
         cfg.kmer_size = 11;
         // run ganon-build
         REQUIRE( GanonBuild::run( cfg ) );
@@ -191,7 +194,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
     SECTION( "with --kmer-size 27" )
     {
-        auto cfg      = config_build::defaultConfig( "kmer_size_27", seqs, ids, bins );
+        auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_27", seqs, ids, bins );
         cfg.kmer_size = 27;
         REQUIRE( GanonBuild::run( cfg ) );
         config_build::validate_filter(
@@ -203,14 +206,14 @@ SCENARIO( "building indices", "[ganon-build]" )
     {
         // Should failed due to size limitation with dna5 (max 27, otherwise 32 with dna4)
         // https://docs.seqan.de/seqan/3-master-user/group__search__views.html#ga6e598d6a021868f704d39df73252974f
-        auto cfg      = config_build::defaultConfig( "kmer_size_31", seqs, ids, bins );
+        auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_31", seqs, ids, bins );
         cfg.kmer_size = 31;
         REQUIRE_THROWS( GanonBuild::run( cfg ) );
     }
 
     SECTION( "with --filter-size-mb 2" )
     {
-        auto cfg           = config_build::defaultConfig( "filter_size_mb_2", seqs, ids, bins );
+        auto cfg           = config_build::defaultConfig( folder_prefix + "filter_size_mb_2", seqs, ids, bins );
         cfg.bin_size_bits  = 0;
         cfg.filter_size_mb = 2;
         REQUIRE( GanonBuild::run( cfg ) );
@@ -221,7 +224,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
     SECTION( "with --hash-functions 2" )
     {
-        auto cfg           = config_build::defaultConfig( "hash_functions_2", seqs, ids, bins );
+        auto cfg           = config_build::defaultConfig( folder_prefix + "hash_functions_2", seqs, ids, bins );
         cfg.hash_functions = 2;
         REQUIRE( GanonBuild::run( cfg ) );
         config_build::validate_filter(
@@ -232,9 +235,9 @@ SCENARIO( "building indices", "[ganon-build]" )
     SECTION( "with --directory-reference-files and --extension" )
     {
         // write file with specific extension "TEST.fasta"
-        auto cfg            = config_build::defaultConfig( "directory_reference_files.TEST", seqs, ids, bins );
-        cfg.reference_files = {};
-        cfg.directory_reference_files = std::filesystem::canonical( "." );
+        auto cfg = config_build::defaultConfig( folder_prefix + "directory_reference_files.TEST", seqs, ids, bins );
+        cfg.reference_files           = {};
+        cfg.directory_reference_files = std::filesystem::canonical( folder_prefix );
         cfg.extension                 = ".TEST.fasta";
         REQUIRE( GanonBuild::run( cfg ) );
         config_build::validate_filter(
@@ -247,8 +250,12 @@ SCENARIO( "building indices", "[ganon-build]" )
 SCENARIO( "updating indices", "[ganon-build]" )
 {
 
+
+    std::string folder_prefix{ "ganon-build-update/" };
+    std::filesystem::create_directory( folder_prefix );
+
     // build default filter
-    auto cfg_build = config_build::defaultConfig( "update_base_build", seqs, ids, bins );
+    auto cfg_build = config_build::defaultConfig( folder_prefix + "update_base_build", seqs, ids, bins );
     REQUIRE( GanonBuild::run( cfg_build ) );
     config_build::validate_filter( cfg_build.output_filter_file,
                                    cfg_build.hash_functions,
@@ -260,7 +267,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
     SECTION( "with --update-filter-file creating 3 new bins" )
     {
         // update it
-        auto cfg_update = config_build::defaultConfig( "3new_update", extra_seqs, extra_ids, extra_bins );
+        auto cfg_update =
+            config_build::defaultConfig( folder_prefix + "3new_update", extra_seqs, extra_ids, extra_bins );
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
@@ -280,8 +288,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         {
             auto merged_ids = aux::vconcat( ids, extra_ids );
             // update complete, send all sequences
-            auto cfg_update_complete =
-                config_build::defaultConfig( "3new_update_complete", merged_seqs, merged_ids, merged_bins );
+            auto cfg_update_complete = config_build::defaultConfig(
+                folder_prefix + "3new_update_complete", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
@@ -301,7 +309,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
     SECTION( "with --update-filter-file creating 3 new bins without --seqid-bin-file" )
     {
         // without --seqid-bin-file it should create one bin per sequence file
-        std::string prefix            = "3new_update_wo_seqid_bin";
+        std::string prefix            = folder_prefix + "3new_update_wo_seqid_bin";
         auto        cfg_update        = config_build::defaultConfig( prefix );
         cfg_update.update_filter_file = cfg_build.output_filter_file;
 
@@ -331,7 +339,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         // set sequences to new bins
         const bins_type new_bins{ 12, 64, 82 };
         // update it
-        auto cfg_update = config_build::defaultConfig( "80new_update", extra_seqs, extra_ids, new_bins );
+        auto cfg_update =
+            config_build::defaultConfig( folder_prefix + "80new_update", extra_seqs, extra_ids, new_bins );
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
@@ -355,8 +364,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         {
             auto merged_ids = aux::vconcat( ids, extra_ids );
             // update complete, send all sequences
-            auto cfg_update_complete =
-                config_build::defaultConfig( "80new_update_complete", merged_seqs, merged_ids, merged_bins );
+            auto cfg_update_complete = config_build::defaultConfig(
+                folder_prefix + "80new_update_complete", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
@@ -377,7 +386,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
     {
         // update it
         // use bins instead of extra_bins
-        auto cfg_update = config_build::defaultConfig( "0new_update", extra_seqs, extra_ids, bins );
+        auto cfg_update = config_build::defaultConfig( folder_prefix + "0new_update", extra_seqs, extra_ids, bins );
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
@@ -397,8 +406,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
             auto merged_ids    = aux::vconcat( ids, extra_ids );
             auto repeated_bins = aux::vconcat( bins, bins );
             // update complete, send all sequences
-            auto cfg_update_complete =
-                config_build::defaultConfig( "0new_update_complete", merged_seqs, merged_ids, repeated_bins );
+            auto cfg_update_complete = config_build::defaultConfig(
+                folder_prefix + "0new_update_complete", merged_seqs, merged_ids, repeated_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
@@ -431,8 +440,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
             auto merged_seqs = aux::vconcat( rem_seqs, extra_seqs );
             auto merged_bins = aux::vconcat( rem_bins, bins );
 
-            auto cfg_update_complete =
-                config_build::defaultConfig( "0new_update_complete_remove", merged_seqs, merged_ids, merged_bins );
+            auto cfg_update_complete = config_build::defaultConfig(
+                folder_prefix + "0new_update_complete_remove", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
 
