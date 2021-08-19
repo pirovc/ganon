@@ -473,7 +473,7 @@ void classify( std::vector< Filter >&    filters,
                bool                      hierarchy_last,
                uint8_t                   offset,
                int16_t                   max_error_unique,
-               int8_t                    kmer_size,
+               uint8_t                   kmer_size,
                int16_t                   strata_filter,
                bool                      run_lca )
 {
@@ -698,9 +698,9 @@ TTax load_tax( std::string tax_file )
 
 bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Config& config, bool run_lca )
 {
+    uint16_t filter_cnt = 0;
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
-
         TMap    map;
         TTax    tax;
         TFilter filter = load_filter( filter_config.ibf_file );
@@ -711,10 +711,16 @@ bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Co
         }
         else
         {
+            // If multiple hierarchies or filters are used, create unique binid target
+            std::string binid_prefix = "";
+            if ( config.parsed_hierarchy.size() > 1 || config.parsed_hierarchy[hierarchy_label].filters.size() > 1 )
+            {
+                binid_prefix = hierarchy_label + "-" + std::to_string( filter_cnt ) + "-";
+            }
             // fill map with binids as targets
             for ( uint32_t binid = 0; binid < filter.bin_count(); ++binid )
             {
-                map[binid] = std::to_string( binid );
+                map[binid] = binid_prefix + std::to_string( binid );
             }
         }
 
@@ -730,6 +736,7 @@ bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Co
             tax = load_tax( filter_config.tax_file );
 
         filters.push_back( Filter{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
+        filter_cnt++;
     }
 
     return true;
