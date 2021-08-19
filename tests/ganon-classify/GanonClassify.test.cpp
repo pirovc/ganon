@@ -235,10 +235,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // Matches on binids (Rev. Comp.)
+        REQUIRE( res.all["readA"].size() == 2 );
         REQUIRE( res.all["readA"]["0"] == 5 );
-        REQUIRE( res.all["readA"]["1"] == 0 );
         REQUIRE( res.all["readA"]["2"] == 5 );
-        REQUIRE( res.all["readA"]["3"] == 0 );
     }
 
     SECTION( "with --map" )
@@ -256,8 +255,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // Matches on target (max. k-mer count)
+        REQUIRE( res.all["readA"].size() == 1 );
         REQUIRE( res.all["readA"]["AorT"] == 5 );
-        REQUIRE( res.all["readA"]["CorG"] == 0 );
     }
 
     SECTION( "with --map and --tax" )
@@ -288,11 +287,50 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // All matches on targets from map
+        REQUIRE( res.all["readA"].size() == 2 );
         REQUIRE( res.all["readA"]["A"] == 5 );
         REQUIRE( res.all["readA"]["T"] == 5 );
 
         // LCA matches from tax
+        REQUIRE( res.lca["readA"].size() == 1 );
         REQUIRE( res.lca["readA"]["AT"] == 5 );
+    }
+
+    SECTION( "with incomplete --map and --tax" )
+    {
+        std::string prefix{ folder_prefix + "incomplete_map_tax" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.single_reads = { folder_prefix + "rA.fasta" };
+        config_classify::write_map( prefix + ".map",
+                                    { { "1", "C" }, { "2", "T" }, { "3", "G" } } ); // missing { "0", "A" }
+        cfg.map = { prefix + ".map" };
+
+        //     1
+        //    ATCG
+        //  AT    CG
+        // A  T    G
+        config_classify::write_tax( prefix + ".tax",
+                                    { { "A", "AT" },
+                                      { "T", "AT" },
+                                      { "G", "CG" },
+                                      { "CG", "ATCG" },
+                                      { "AT", "ATCG" },
+                                      { "ATCG", "1" } } ); // missing  { "C", "CG" }
+        cfg.tax = { prefix + ".tax" };
+
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        // All matches on targets from map
+        REQUIRE( res.all["readA"].size() == 1 );
+        REQUIRE( res.all["readA"]["A"] == 0 ); // A not found
+        REQUIRE( res.all["readA"]["T"] == 5 );
+
+        // LCA matches  are the same as all (no A matchces)
+        REQUIRE( res.lca["readA"].size() == 1 );
+        REQUIRE( res.lca["readA"]["T"] == 5 );
     }
 
     SECTION( "with --paired-reads" )
@@ -306,10 +344,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // will report header of first pair "readA" and match the rev.comp. of readT (and opposite)
+        REQUIRE( res.all["readA"].size() == 2 );
         REQUIRE( res.all["readA"]["0"] == 10 );
-        REQUIRE( res.all["readA"]["1"] == 0 );
         REQUIRE( res.all["readA"]["2"] == 10 );
-        REQUIRE( res.all["readA"]["3"] == 0 );
     }
 
     SECTION( "with --single-reads and --paired-reads" )
@@ -324,6 +361,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         config_classify::sanity_check( cfg, res );
 
         // same as paired and single C and G
+        REQUIRE( res.all["readA"].size() == 2 );
+        REQUIRE( res.all["readC"].size() == 2 );
+        REQUIRE( res.all["readG"].size() == 2 );
         REQUIRE( res.all["readA"]["0"] == 10 );
         REQUIRE( res.all["readC"]["1"] == 5 );
         REQUIRE( res.all["readG"]["1"] == 5 );
@@ -420,9 +460,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
             config_classify::sanity_check( cfg, res );
 
             // Report targets as hiearchy label + filter id + bin id
-            REQUIRE( res.all["readA"]["1_default-0-0"] == 5 );  // A
-            REQUIRE( res.all["readA"]["1_default-0-2"] == 5 );  // T (rev.comp.)
-            REQUIRE( res.all["readA"]["1_default-1-0"] == 5 );  // A second filter
+            REQUIRE( res.all["readA"].size() == 3 );
+            REQUIRE( res.all["readA"]["1_default-0-0"] == 5 ); // A
+            REQUIRE( res.all["readA"]["1_default-0-2"] == 5 ); // T (rev.comp.)
+            REQUIRE( res.all["readA"]["1_default-1-0"] == 5 ); // A second filter
+            REQUIRE( res.all["readCG"].size() == 1 );
             REQUIRE( res.all["readCG"]["1_default-1-1"] == 5 ); // CG second filter
 
             SECTION( "with --map" )
@@ -436,9 +478,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
                 config_classify::sanity_check( cfg, res );
 
                 // Matches on target (max. k-mer count)
+                REQUIRE( res.all["readA"].size() == 3 );
                 REQUIRE( res.all["readA"]["A"] == 5 );
                 REQUIRE( res.all["readA"]["T"] == 5 );
                 REQUIRE( res.all["readA"]["A2"] == 5 );
+                REQUIRE( res.all["readCG"].size() == 1 );
                 REQUIRE( res.all["readCG"]["CG"] == 5 );
 
                 SECTION( "with --tax" )
@@ -452,13 +496,17 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
                     config_classify::sanity_check( cfg, res );
 
                     // All matches on targets from map
+                    REQUIRE( res.all["readA"].size() == 3 );
                     REQUIRE( res.all["readA"]["A"] == 5 );
                     REQUIRE( res.all["readA"]["T"] == 5 );
                     REQUIRE( res.all["readA"]["A2"] == 5 );
+                    REQUIRE( res.all["readCG"].size() == 1 );
                     REQUIRE( res.all["readCG"]["CG"] == 5 );
 
                     // LCA matches from tax
+                    REQUIRE( res.lca["readA"].size() == 1 );
                     REQUIRE( res.lca["readA"]["AT"] == 5 );
+                    REQUIRE( res.lca["readCG"].size() == 1 );
                     REQUIRE( res.lca["readCG"]["CG"] == 5 );
                 }
             }
@@ -479,8 +527,10 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
             // Report targets as hiearchy label + filter id + bin id
             // same as paired and single C and G
+            REQUIRE( res.all["readA"].size() == 2 );
             REQUIRE( res.all["readA"]["one-0-2"] == 5 );
             REQUIRE( res.all["readA"]["one-0-0"] == 5 );
+            REQUIRE( res.all["readCG"].size() == 1 );
             REQUIRE( res.all["readCG"]["two-0-1"] == 5 );
 
             SECTION( "with --map" )
@@ -494,9 +544,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
                 config_classify::sanity_check( cfg, res );
 
                 // Matches on target (max. k-mer count)
+                REQUIRE( res.all["readA"].size() == 2 );
                 REQUIRE( res.all["readA"]["A"] == 5 );
                 REQUIRE( res.all["readA"]["T"] == 5 );
                 REQUIRE( res.all["readA"]["A2"] == 0 ); // Do not match A2 (second hiearchy, readA already classified)
+                REQUIRE( res.all["readCG"].size() == 1 );
                 REQUIRE( res.all["readCG"]["CG"] == 5 );
 
                 SECTION( "with --tax" )
@@ -510,17 +562,35 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
                     config_classify::sanity_check( cfg, res );
 
                     // All matches on targets from map
+                    REQUIRE( res.all["readA"].size() == 2 );
                     REQUIRE( res.all["readA"]["A"] == 5 );
                     REQUIRE( res.all["readA"]["T"] == 5 );
                     REQUIRE( res.all["readA"]["A2"]
                              == 0 ); // Do not match A2 (second hiearchy, readA already classified)
+                    REQUIRE( res.all["readCG"].size() == 1 );
                     REQUIRE( res.all["readCG"]["CG"] == 5 );
 
                     // LCA matches from tax
+                    REQUIRE( res.lca["readA"].size() == 1 );
                     REQUIRE( res.lca["readA"]["AT"] == 5 );
+                    REQUIRE( res.lca["readCG"].size() == 1 );
                     REQUIRE( res.lca["readCG"]["CG"] == 5 );
                 }
             }
+        }
+
+        SECTION( "with hiearchy without --output-single" )
+        {
+            std::string prefix{ folder_prefix + "multiple_ibf_wo_output_single" };
+            auto        cfg      = config_classify::defaultConfig( prefix );
+            cfg.ibf              = { base_prefix + ".ibf", base_prefix2 + ".ibf" };
+            cfg.single_reads     = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
+            cfg.hierarchy_labels = { "one", "two" };
+            cfg.output_single    = false;
+
+            REQUIRE( GanonClassify::run( cfg ) );
+            REQUIRE( std::filesystem::file_size( prefix + ".one.all" ) > 0 );
+            REQUIRE( std::filesystem::file_size( prefix + ".two.all" ) > 0 );
         }
     }
 }
@@ -1035,7 +1105,6 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
 
-        // Should match only e0
         REQUIRE( res.all["readFe1"].size() == 4 );
         REQUIRE( res.all["readFe1"]["e0"] == 8 );
         REQUIRE( res.all["readFe1"]["e1F"] == 5 );
@@ -1055,6 +1124,56 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
             // Should match only e0
             REQUIRE( res.all["readFe1"].size() == 1 );
             REQUIRE( res.all["readFe1"]["e0"] == 16 );
+        }
+
+        SECTION( "with --max-error-unique 0" )
+        {
+            std::string prefix{ folder_prefix + "max_error_unique_0" };
+            cfg.output_prefix = prefix;
+
+            // create dummy tax (all to root) to enable --max-error-unique
+            config_classify::write_tax( prefix + ".tax",
+                                        { { "e0", "1" },
+                                          { "e1F", "1" },
+                                          { "e1F_e1R", "1" },
+                                          { "e1F_e2R", "1" },
+                                          { "e2F_e1R", "1" },
+                                          { "e2F_e2R", "1" },
+                                          { "e3F_e3R", "1" } } );
+            cfg.tax              = { prefix + ".tax" };
+            cfg.max_error_unique = { 0 };
+
+            REQUIRE( GanonClassify::run( cfg ) );
+            config_classify::Res res{ cfg };
+            config_classify::sanity_check( cfg, res );
+
+
+            REQUIRE( res.all["readFe1"].size() == 4 );
+            REQUIRE( res.all["readFe1"]["e0"] == 8 );
+            REQUIRE( res.all["readFe1"]["e1F"] == 5 );
+            REQUIRE( res.all["readFe1"]["e1F_e1R"] == 5 );
+            REQUIRE( res.all["readFe1"]["e1F_e2R"] == 5 );
+
+            // should assign match to parent on lca
+            REQUIRE( res.lca["readFe1"]["1"] == 8 );
+
+            SECTION( "with --paired-reads" )
+            {
+                prefix            = prefix + "_paired";
+                cfg.output_prefix = prefix;
+                cfg.single_reads  = {};
+                cfg.paired_reads  = { folder_prefix + "rFe1.fasta", folder_prefix + "rRe1.fasta" };
+                REQUIRE( GanonClassify::run( cfg ) );
+                config_classify::Res res{ cfg };
+                config_classify::sanity_check( cfg, res );
+
+                // Should match only e0
+                REQUIRE( res.all["readFe1"].size() == 1 );
+                REQUIRE( res.all["readFe1"]["e0"] == 16 );
+
+                // should assign match to parent on lca
+                REQUIRE( res.lca["readFe1"]["1"] == 16 );
+            }
         }
     }
 }
