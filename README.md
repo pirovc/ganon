@@ -8,12 +8,14 @@ a k-mer based DNA classification tool using Interleaved Bloom Filters for short 
 
 ## Details
 
-ganon is a tool designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. Reads are classified and filtered based on shared k-mers with a defined error rate using the k-mer counting lemma (q-gram lemma). The tool was mainly developed, but not limited, to the metagenomic classification problem: assign short fragments to their closest reference among thousands of references 
+ganon is a tool designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. Reads are classified and filtered based on shared k-mers with a defined error rate using the k-mer counting lemma (q-gram lemma). The tool was mainly developed, but not limited, to the metagenomic classification problem: assign short fragments to their closest reference among thousands of references.
 
 ganon can further:
  - [update indices](#updating-the-index) incrementaly in a fraction of time used to built them
  - perform [hiearchical classification](#hierarchical-classification)
+ - integrated NCBI taxonomy to build and classify
  - report the lowest common ancestor (LCA) and/or multiple matches
+ - classify at strain or taxonomic level but also at a custom [specialization](#specialization)
  - report unique matches between reads and references
  - generate reports and tables for multi-sample studies
 
@@ -22,7 +24,7 @@ ganon relies mainly on 3 external tools/libraries
  - [TaxSBP](https://github.com/pirovc/taxsbp) to cluster sequences into taxonomic related groups
  - [genome_updater](https://github.com/pirovc/genome_updater) (optional) to download reference sequences 
 
-ganon achieved very good results in independent evaluations: [LEMMI](https://lemmi.ezlab.org/) and [CAMI2](https://www.biorxiv.org/content/10.1101/2021.07.12.451567v1)
+ganon achieved very good results in [our evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi.ezlab.org/) and [CAMI2](https://www.biorxiv.org/content/10.1101/2021.07.12.451567v1)
 
 ## Installation
 
