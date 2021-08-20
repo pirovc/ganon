@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cinttypes>
-#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <ostream>
+#include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
 
