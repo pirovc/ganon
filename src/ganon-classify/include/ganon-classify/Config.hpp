@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <ostream>
+#include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
 
@@ -77,8 +78,39 @@ public:
     uint16_t                                 threads_classify;
     std::map< std::string, HierarchyConfig > parsed_hierarchy;
 
+
+    bool check_files( std::vector< std::string > const& files )
+    {
+        for ( auto const& file : files )
+        {
+            if ( !std::filesystem::exists( file ) )
+            {
+                std::cerr << "file not found: " << file << std::endl;
+                return false;
+            }
+            else if ( std::filesystem::file_size( file ) == 0 )
+            {
+                std::cerr << "file is empty: " << file << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+
+
     bool validate()
     {
+        if ( !check_files( single_reads ) )
+            return false;
+        if ( !check_files( paired_reads ) )
+            return false;
+        if ( !check_files( ibf ) )
+            return false;
+        if ( !check_files( map ) )
+            return false;
+        if ( !check_files( tax ) )
+            return false;
+
         if ( ibf.size() == 0 || ( paired_reads.size() == 0 && single_reads.size() == 0 ) )
         {
             std::cerr << "--ibf and --[single|paired]-reads are mandatory" << std::endl;

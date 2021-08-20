@@ -1029,7 +1029,10 @@ bool run( Config config )
         timeLoadFilters.start();
         bool loaded = detail::load_files( filters, hierarchy_label, config, run_lca );
         if ( !loaded )
+        {
+            std::cerr << "ERROR: loading ibf, map or tax files" << std::endl;
             return false;
+        }
         timeLoadFilters.stop();
 
         if ( run_lca )

@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <ostream>
+#include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
 
@@ -52,8 +53,29 @@ public:
         }
     }
 
+    bool check_files( std::vector< std::string > const& files )
+    {
+        for ( auto const& file : files )
+        {
+            if ( !std::filesystem::exists( file ) )
+            {
+                std::cerr << "file not found: " << file << std::endl;
+                return false;
+            }
+            else if ( std::filesystem::file_size( file ) == 0 )
+            {
+                std::cerr << "file is empty: " << file << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool validate()
     {
+
+        if ( !check_files( reference_files ) )
+            return false;
 
         if ( output_filter_file.empty() )
         {
@@ -104,6 +126,9 @@ public:
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
+            if ( !check_files( { update_filter_file } ) )
+                return false;
+
             if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 ) )
             {
                 std::cerr << "WARNING: --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
