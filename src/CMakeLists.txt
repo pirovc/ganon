@@ -28,12 +28,11 @@ target_include_directories( defaults
 function( link_to_ganon_dependencies target )
     target_link_libraries( ${target}
         PRIVATE
-        sdsl-lite
-        seqan
         Threads::Threads
         cxxopts
         utils
         defaults )
+    target_link_libraries ( ${target} PUBLIC seqan3::seqan3 )
 endfunction()
 
 # -----------------------------------------------------------------------------

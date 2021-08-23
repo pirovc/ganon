@@ -1,5 +1,4 @@
-366602	2648921	species	Caulobacter sp. K31
-2648921	75	no rank	unclassified Caulobacter
+366602	75	species	Caulobacter sp. K31
 75	76892	genus	Caulobacter
 76892	204458	family	Caulobacteraceae
 204458	28211	order	Caulobacterales
@@ -7,7 +6,7 @@
 1224	2	phylum	Proteobacteria
 2	131567	superkingdom	Bacteria
 131567	1	no rank	cellular organisms
-1	0	no rank	root
+1	0	root	root
 470	909768	species	Acinetobacter baumannii
 909768	469	species group	Acinetobacter calcoaceticus/baumannii complex
 469	468	genus	Acinetobacter
@@ -20,4 +19,4 @@
 1385	91061	order	Bacillales
 91061	1239	class	Bacilli
 1239	1783272	phylum	Firmicutes
-1783272	2	clade	Terrabacteria group
+1783272	2	no rank	Terrabacteria group

@@ -1,8 +1,7 @@
-import time
-from ganon.tax import Tax
 from ganon.util import *
 from ganon.report import report
 from ganon.config import Config
+from ganon.gnn import Gnn
 
 def classify(cfg):
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
@@ -12,6 +11,7 @@ def classify(cfg):
                                    "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in cfg.db_prefix]),
                                    "--map " + ",".join([db_prefix+".map" for db_prefix in cfg.db_prefix]), 
                                    "--tax " + ",".join([db_prefix+".tax" for db_prefix in cfg.db_prefix]),
+                                   "--kmer-size " + ",".join([str(Gnn(file=db_prefix+".gnn").kmer_size) for db_prefix in cfg.db_prefix]),
                                    "--hierarchy-labels " + ",".join(cfg.hierarchy_labels) if cfg.hierarchy_labels else "",
                                    "--max-error " + ",".join([str(me) for me in cfg.max_error]) if cfg.max_error else "",
                                    "--min-kmers " + ",".join([str(mk) for mk in cfg.min_kmers]) if cfg.min_kmers else "",
@@ -19,6 +19,7 @@ def classify(cfg):
                                    "--strata-filter " + ",".join([str(sf) for sf in cfg.strata_filter]) if cfg.strata_filter else "",
                                    "--offset " + str(cfg.offset) if cfg.offset else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
+                                   "--output-lca" if cfg.output_lca else "",
                                    "--output-all" if cfg.output_all else "",
                                    "--output-unclassified" if cfg.output_unclassified else "",
                                    "--output-single" if cfg.output_single else "",
@@ -27,8 +28,10 @@ def classify(cfg):
                                    "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
                                    "--verbose" if cfg.verbose else "",
                                    "--quiet" if cfg.quiet else ""])
+    #print(run_ganon_classify)
     stdout, stderr = run(run_ganon_classify)
-    if not cfg.output_prefix: print(stdout)
+    if not cfg.output_prefix:
+        print(stdout)
     print_log(stderr, cfg.quiet)
 
     if cfg.output_prefix:
@@ -44,4 +47,3 @@ def classify(cfg):
         return ret
     else:
         return True
-

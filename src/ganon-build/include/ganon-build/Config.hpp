@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <iostream>
 #include <ostream>
+#include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
 
@@ -17,8 +18,6 @@ struct Config
 {
 
 public:
-    static constexpr uint32_t MBinBits = 8388608;
-
     std::vector< std::string > reference_files;
     std::string                directory_reference_files = "";
     std::string                extension                 = "";
@@ -28,10 +27,10 @@ public:
     std::string update_filter_file = "";
     bool        update_complete    = false;
 
-    uint32_t filter_size      = 0;
-    uint64_t filter_size_bits = 0;
+    uint32_t filter_size_mb = 0;
+    uint64_t bin_size_bits  = 0;
 
-    uint16_t kmer_size      = 19;
+    uint8_t  kmer_size      = 19;
     uint16_t hash_functions = 3;
 
     uint16_t threads   = 2;
@@ -54,12 +53,33 @@ public:
         }
     }
 
+    bool check_files( std::vector< std::string > const& files )
+    {
+        for ( auto const& file : files )
+        {
+            if ( !std::filesystem::exists( file ) )
+            {
+                std::cerr << "file not found: " << file << std::endl;
+                return false;
+            }
+            else if ( std::filesystem::file_size( file ) == 0 )
+            {
+                std::cerr << "file is empty: " << file << std::endl;
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool validate()
     {
 
-        if ( seqid_bin_file.empty() || output_filter_file.empty() )
+        if ( !check_files( reference_files ) )
+            return false;
+
+        if ( output_filter_file.empty() )
         {
-            std::cerr << "--seqid-bin-file and --output-filter-file are mandatory" << std::endl;
+            std::cerr << "--output-filter-file is mandatory" << std::endl;
             return false;
         }
 
@@ -106,35 +126,31 @@ public:
         // Skip variables if updating, loads from existing filter file
         if ( !update_filter_file.empty() )
         {
-            if ( verbose )
-            {
-                std::cerr << "WARNING: --filter-size[-bits], --kmer-size --hash-funtions ignored, using metadata from "
-                             "--update-filter-file"
-                          << std::endl;
-            }
+            if ( !check_files( { update_filter_file } ) )
+                return false;
 
-            kmer_size        = 0;
-            hash_functions   = 0;
-            filter_size      = 0;
-            filter_size_bits = 0;
+            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 ) )
+            {
+                std::cerr << "WARNING: --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
+            }
+            filter_size_mb = 0;
+            bin_size_bits  = 0;
         }
         else
         {
-            if ( filter_size_bits == 0 )
+            if ( bin_size_bits == 0 && filter_size_mb == 0 )
             {
-                if ( filter_size == 0 )
-                {
-                    std::cerr << "--filter-size or --filter-size-bits are required" << std::endl;
-                    return false;
-                }
-                else
-                {
-                    filter_size_bits = filter_size * MBinBits;
-                }
+                std::cerr << "--filter-size-mb or --bin-size-bits should be provided" << std::endl;
+                return false;
             }
-            else
+        }
+        if ( update_complete )
+        {
+            if ( update_filter_file.empty() || seqid_bin_file.empty() )
             {
-                filter_size = filter_size_bits / MBinBits;
+                std::cerr << "--update-filter-file and --seqid-bin-file are required to perform --update-complete"
+                          << std::endl;
+                return false;
             }
         }
 
@@ -157,10 +173,12 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-filter-file  " << config.output_filter_file << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;
-    stream << "--filter-size         " << config.filter_size << newl;
-    stream << "--filter-size-bits    " << config.filter_size_bits << newl;
+    if ( config.bin_size_bits > 0 )
+        stream << "--bin-size-bits       " << config.bin_size_bits << newl;
+    if ( config.filter_size_mb > 0 )
+        stream << "--filter-size-mb      " << config.filter_size_mb << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
-    stream << "--kmer-size           " << config.kmer_size << newl;
+    stream << "--kmer-size           " << unsigned( config.kmer_size ) << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;
     stream << "--n-batches           " << config.n_batches << newl;
