@@ -83,7 +83,7 @@ ganon table -i sample_results.tre new_report.tre -o sample_table.tsv
 Update index/database adding and/or removing reference genomic sequences
 
 ```bash
-ganon update --db-prefix sample_bacteria --output-db-prefix sample_bateria_virus --input-files tests/ganon/data/update/virus_*.fasta.gz
+ganon update --db-prefix sample_bacteria --output-db-prefix sample_bacteria_virus --input-files tests/ganon/data/update/virus_*.fasta.gz
 ```
 
 ## Building custom indices
