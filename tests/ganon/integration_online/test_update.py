@@ -46,6 +46,7 @@ class TestUpdateOnline(unittest.TestCase):
             "max_error": 0,
             "output_all": True,
             "quiet": True,
+            "output_lca": True,
             "output_prefix": self.results_dir + "test_default"}
 
         # Build config from params

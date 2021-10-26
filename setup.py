@@ -23,10 +23,7 @@ setup(
     package_dir={'': 'src'},
     packages=["ganon"],
     entry_points={'console_scripts': ['ganon=ganon.ganon:main_cli']},
-    scripts=['scripts/ganon-convert-db-0.1-0.2.py',
-            'scripts/ganon-convert-db-0.2-0.3.py',
-            'scripts/ganon-convert-db-0.3-0.4.py',
-            'scripts/ganon-get-seq-info.sh'],
+    scripts=['scripts/ganon-get-seq-info.sh'],
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.5',
