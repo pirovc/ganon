@@ -220,74 +220,74 @@ Obs:
   3) target lineage *(e.g 1|2|1224|...)*
   4) target name *(e.g. Paenibacillus polymyxa)*
   5) \# unique assignments *(number of reads that matched exclusively to this target)*
-  6) \# assignments *(number of reads or matches directly assigned to this target. This includes the number of unique assignments plus lca assignments (in case of `--report-type reads`) or shared assignments (in case of `--report-type matches`))*
-  7) \# cumulative assignments *(cumulative number of reads/matches assigned up-to this taxa)*
+  6) \# shared assignments *(number of reads with non-unique matches directly assigned to this target. Represents the lca matches (`--report-type reads`) or shared matches (`--report-type matches`))*
+  7) \# children assignments *(number of reads assigned to all children nodes of this target)*
+  8) \# cumulative assignments *(the sum of the unique, shared and children reads/matches assigned up-to this target)*
   8) \% cumulative assignments
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
 - The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported. To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
 
 ### table
 
- - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples (rows) for a specific rank (cols)
+ - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples
  
 ### Examples of output files
 
 The main output file is the `{prefix}.tre` which will summarize the results:
 
 ```
-unclassified                                                 unclassified             0   0   1   1.00000 
-root          1       1                                      root                     0   0   99  99.00000
-superkingdom  2       1|2                                    Bacteria                 0   0   99  99.00000
-phylum        1239    1|2|1239                               Firmicutes               0   0   57  57.00000
-phylum        1224    1|2|1224                               Proteobacteria           0   0   42  42.00000
-class         91061   1|2|1239|91061                         Bacilli                  0   0   57  57.00000
-class         28211   1|2|1224|28211                         Alphaproteobacteria      0   0   29  29.00000
-class         1236    1|2|1224|1236                          Gammaproteobacteria      0   0   13  13.00000
-order         1385    1|2|1239|91061|1385                    Bacillales               0   0   57  57.00000
-order         204458  1|2|1224|28211|204458                  Caulobacterales          0   0   29  29.00000
-order         72274   1|2|1224|1236|72274                    Pseudomonadales          0   0   13  13.00000
-family        186822  1|2|1239|91061|1385|186822             Paenibacillaceae         0   0   57  57.00000
-family        76892   1|2|1224|28211|204458|76892            Caulobacteraceae         0   0   29  29.00000
-family        468     1|2|1224|1236|72274|468                Moraxellaceae            0   0   13  13.00000
-genus         44249   1|2|1239|91061|1385|186822|44249       Paenibacillus            0   0   57  57.00000
-genus         75      1|2|1224|28211|204458|76892|75         Caulobacter              0   0   29  29.00000
-genus         469     1|2|1224|1236|72274|468|469            Acinetobacter            0   0   13  13.00000
-species       1406    1|2|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa   57  57  57  57.00000
-species       366602  1|2|1224|28211|204458|76892|75|366602  Caulobacter sp. K31      29  29  29  29.00000
-species       470     1|2|1224|1236|72274|468|469|470        Acinetobacter baumannii  13  13  13  13.00000
+unclassified                                                 unclassified             0   0  0   2   2.02020
+root          1       1                                      root                     0   0  97  97  97.97980
+superkingdom  2       1|2                                    Bacteria                 0   0  97  97  97.97980
+phylum        1239    1|2|1239                               Firmicutes               0   0  57  57  57.57576
+phylum        1224    1|2|1224                               Proteobacteria           0   0  40  40  40.40404
+class         91061   1|2|1239|91061                         Bacilli                  0   0  57  57  57.57576
+class         28211   1|2|1224|28211                         Alphaproteobacteria      0   0  28  28  28.28283
+class         1236    1|2|1224|1236                          Gammaproteobacteria      0   0  12  12  12.12121
+order         1385    1|2|1239|91061|1385                    Bacillales               0   0  57  57  57.57576
+order         204458  1|2|1224|28211|204458                  Caulobacterales          0   0  28  28  28.28283
+order         72274   1|2|1224|1236|72274                    Pseudomonadales          0   0  12  12  12.12121
+family        186822  1|2|1239|91061|1385|186822             Paenibacillaceae         0   0  57  57  57.57576
+family        76892   1|2|1224|28211|204458|76892            Caulobacteraceae         0   0  28  28  28.28283
+family        468     1|2|1224|1236|72274|468                Moraxellaceae            0   0  12  12  12.12121
+genus         44249   1|2|1239|91061|1385|186822|44249       Paenibacillus            0   0  57  57  57.57576
+genus         75      1|2|1224|28211|204458|76892|75         Caulobacter              0   0  28  28  28.28283
+genus         469     1|2|1224|1236|72274|468|469            Acinetobacter            0   0  12  12  12.12121
+species       1406    1|2|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa   57  0  0   57  57.57576
+species       366602  1|2|1224|28211|204458|76892|75|366602  Caulobacter sp. K31      28  0  0   28  28.28283
+species       470     1|2|1224|1236|72274|468|469|470        Acinetobacter baumannii  12  0  0   12  12.12121
 ```
 
-running `ganon classify` or `ganon report` with `--ranks all`, the output will show all ranks used for classification and presented sorted by lineage:
+running `ganon classify` or `ganon report` with `--ranks all`, the output will show all ranks used for classification and presented sorted by lineage (also available with `ganon report --sort lineage`):
 
 ```
-unclassified                                                                  unclassified                                   0   0   1   1.00000 
-root           1        1                                                     root                                           0   0   99  99.00000
-no rank        131567   1|131567                                              cellular organisms                             0   0   99  99.00000
-superkingdom   2        1|131567|2                                            Bacteria                                       0   0   99  99.00000
-phylum         1224     1|131567|2|1224                                       Proteobacteria                                 0   0   42  42.00000
-class          1236     1|131567|2|1224|1236                                  Gammaproteobacteria                            0   0   13  13.00000
-order          72274    1|131567|2|1224|1236|72274                            Pseudomonadales                                0   0   13  13.00000
-family         468      1|131567|2|1224|1236|72274|468                        Moraxellaceae                                  0   0   13  13.00000
-genus          469      1|131567|2|1224|1236|72274|468|469                    Acinetobacter                                  0   0   13  13.00000
-species group  909768   1|131567|2|1224|1236|72274|468|469|909768             Acinetobacter calcoaceticus/baumannii complex  0   0   13  13.00000
-species        470      1|131567|2|1224|1236|72274|468|469|909768|470         Acinetobacter baumannii                        13  13  13  13.00000
-class          28211    1|131567|2|1224|28211                                 Alphaproteobacteria                            0   0   29  29.00000
-order          204458   1|131567|2|1224|28211|204458                          Caulobacterales                                0   0   29  29.00000
-family         76892    1|131567|2|1224|28211|204458|76892                    Caulobacteraceae                               0   0   29  29.00000
-genus          75       1|131567|2|1224|28211|204458|76892|75                 Caulobacter                                    0   0   29  29.00000
-species        366602   1|131567|2|1224|28211|204458|76892|75|366602          Caulobacter sp. K31                            29  29  29  29.00000
-no rank        1783272  1|131567|2|1783272                                    Terrabacteria group                            0   0   57  57.00000
-phylum         1239     1|131567|2|1783272|1239                               Firmicutes                                     0   0   57  57.00000
-class          91061    1|131567|2|1783272|1239|91061                         Bacilli                                        0   0   57  57.00000
-order          1385     1|131567|2|1783272|1239|91061|1385                    Bacillales                                     0   0   57  57.00000
-family         186822   1|131567|2|1783272|1239|91061|1385|186822             Paenibacillaceae                               0   0   57  57.00000
-genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Paenibacillus                                  0   0   57  57.00000
-species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  57  57  57.00000
-
+unclassified                                                                  unclassified                                   0   0  0   2   2.02020
+root           1        1                                                     root                                           0   0  97  97  97.97980
+no rank        131567   1|131567                                              cellular organisms                             0   0  97  97  97.97980
+superkingdom   2        1|131567|2                                            Bacteria                                       0   0  97  97  97.97980
+phylum         1224     1|131567|2|1224                                       Proteobacteria                                 0   0  40  40  40.40404
+class          1236     1|131567|2|1224|1236                                  Gammaproteobacteria                            0   0  12  12  12.12121
+order          72274    1|131567|2|1224|1236|72274                            Pseudomonadales                                0   0  12  12  12.12121
+family         468      1|131567|2|1224|1236|72274|468                        Moraxellaceae                                  0   0  12  12  12.12121
+genus          469      1|131567|2|1224|1236|72274|468|469                    Acinetobacter                                  0   0  12  12  12.12121
+species group  909768   1|131567|2|1224|1236|72274|468|469|909768             Acinetobacter calcoaceticus/baumannii complex  0   0  12  12  12.12121
+species        470      1|131567|2|1224|1236|72274|468|469|909768|470         Acinetobacter baumannii                        12  0  0   12  12.12121
+class          28211    1|131567|2|1224|28211                                 Alphaproteobacteria                            0   0  28  28  28.28283
+order          204458   1|131567|2|1224|28211|204458                          Caulobacterales                                0   0  28  28  28.28283
+family         76892    1|131567|2|1224|28211|204458|76892                    Caulobacteraceae                               0   0  28  28  28.28283
+genus          75       1|131567|2|1224|28211|204458|76892|75                 Caulobacter                                    0   0  28  28  28.28283
+species        366602   1|131567|2|1224|28211|204458|76892|75|366602          Caulobacter sp. K31                            28  0  0   28  28.28283
+no rank        1783272  1|131567|2|1783272                                    Terrabacteria group                            0   0  57  57  57.57576
+phylum         1239     1|131567|2|1783272|1239                               Firmicutes                                     0   0  57  57  57.57576
+class          91061    1|131567|2|1783272|1239|91061                         Bacilli                                        0   0  57  57  57.57576
+order          1385     1|131567|2|1783272|1239|91061|1385                    Bacillales                                     0   0  57  57  57.57576
+family         186822   1|131567|2|1783272|1239|91061|1385|186822             Paenibacillaceae                               0   0  57  57  57.57576
+genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Paenibacillus                                  0   0  57  57  57.57576
+species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  0  0   57  57.57576
 ```
 
 ## Hierarchical classification

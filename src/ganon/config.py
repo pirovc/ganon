@@ -143,7 +143,7 @@ class Config:
         table_group_optional.add_argument('-f', '--output-format',            type=str,   metavar='', default="tsv",        help='Output format [tsv, csv]. Default: tsv')
         table_group_optional.add_argument('-t', '--top-sample',               type=int,   metavar='', default=0,            help="Top hits of each sample individually")
         table_group_optional.add_argument('-a', '--top-all',                  type=int,   metavar='', default=0,            help="Top hits of all samples (ranked by percentage)")
-        table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default=None,         help="Define specific rank to report. Empty will report all ranks (only direct read assignments - col. 6 from the report files)")
+        table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default=None,         help="Define specific rank to report. Empty will report all ranks.")
         table_group_optional.add_argument('-m', '--min-occurrence',           type=int,   metavar='', default=0,            help="# occurrence of a taxa among reports to be kept [1-*]")
         table_group_optional.add_argument('-p', '--min-occurrence-percentage',type=float, metavar='', default=0,            help="%% occurrence of a taxa among reports to be kept [0-1]")
         table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')

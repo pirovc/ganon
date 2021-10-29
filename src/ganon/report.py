@@ -1,14 +1,16 @@
-import time, os
+import time
+import os
 from ganon.tax import Tax
 from ganon.util import *
 
+
 def report(cfg):
-    tx = time.time()
     #validate input input files
     rep_files = validate_input_files(cfg.rep_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
-    
+
+    # Parse taxonomy or download new
     if cfg.db_prefix:
-        dbp=[]
+        dbp = []
         for prefix in cfg.db_prefix:
             if prefix.endswith(".tax"):
                 dbp.append(prefix)
@@ -17,8 +19,9 @@ def report(cfg):
         tax = Tax(dbp)
     else:
         tmp_output_folder = os.path.dirname(cfg.output_prefix)
-        if not tmp_output_folder: tmp_output_folder = "."
-        tmp_output_folder+="/ganon_report_tmp/"
+        if not tmp_output_folder:
+            tmp_output_folder = "."
+        tmp_output_folder += "/ganon_report_tmp/"
         if not set_tmp_folder(tmp_output_folder): return False
         # Set up taxonomy
         ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
@@ -73,7 +76,7 @@ def report(cfg):
                 any_rep = True
 
     return True if any_rep else False
-    
+
 def parse_rep(rep_file):
     counts = {}
     reports = {}
@@ -101,18 +104,16 @@ def parse_rep(rep_file):
                     reports[hierarchy_name][target] = {"direct_matches":0, 
                                                        "unique_reads":0, 
                                                        "lca_reads":0}
-                
 
-                reports[hierarchy_name][target]["direct_matches"]+=direct_matches
-                reports[hierarchy_name][target]["unique_reads"]+=unique_reads
-                reports[hierarchy_name][target]["lca_reads"]+=lca_reads
+                reports[hierarchy_name][target]["direct_matches"] += direct_matches
+                reports[hierarchy_name][target]["unique_reads"] += unique_reads
+                reports[hierarchy_name][target]["lca_reads"] += lca_reads
 
-
-                counts[hierarchy_name]["matches"]+=direct_matches
+                counts[hierarchy_name]["matches"] += direct_matches
                 # sum up classified reads for the hiearchy
-                counts[hierarchy_name]["reads"]+=unique_reads+lca_reads
+                counts[hierarchy_name]["reads"] += unique_reads + lca_reads
 
-                total_direct_matches+=direct_matches
+                total_direct_matches += direct_matches
 
     counts["total"] = {"matches":total_direct_matches, 
                        "reads":classified_reads, 
@@ -120,18 +121,27 @@ def parse_rep(rep_file):
 
     return reports, counts
 
+
 def print_final_report(reports, counts, tax, output_file, cfg):
-    if not cfg.ranks:  
+    if not cfg.ranks:
         all_ranks = False
-        fixed_ranks = ['root', 'superkingdom','phylum','class','order','family','genus','species','assembly']
-    elif cfg.ranks[0]=="all":
+        fixed_ranks = ["root",
+                       "superkingdom",
+                       "phylum",
+                       "class",
+                       "order",
+                       "family",
+                       "genus",
+                       "species",
+                       "assembly"]
+    elif cfg.ranks[0] == "all":
         all_ranks = True
         fixed_ranks = []
     else:
         all_ranks = False
         fixed_ranks = ['root'] + cfg.ranks
 
-    if cfg.report_type=="reads":
+    if cfg.report_type == "reads":
         total = counts["total"]["reads"] + counts["total"]["unclassified"]
     else:
         total = counts["total"]["matches"]
@@ -142,7 +152,10 @@ def print_final_report(reports, counts, tax, output_file, cfg):
 
     # Iterate over the taxonomic tree and sum the entries (cummulative)
     # tree_cum_counts[node] = cum_count
-    tree_cum_counts = cummulative_count_tree(merged_counts, tax, all_ranks, fixed_ranks)
+    tree_cum_counts = cummulative_count_tree(merged_counts,
+                                             tax,
+                                             all_ranks,
+                                             fixed_ranks)
 
     # build lineage for each entry based on chosen ranks
     # lineage[node] = ["1", "1224", ..., node]
@@ -156,14 +169,14 @@ def print_final_report(reports, counts, tax, output_file, cfg):
     # sort entries based on report or user-defined
     # sorted_nodes = ["1", "1224", ...]
     sorted_nodes = sort_report(filtered_cum_counts, cfg.sort, all_ranks, fixed_ranks, lineage, tax, merged_counts)
-    
+
     # Output file
     tre_file = open(output_file, 'w')
     output_rows = []
 
     # Reporting reads, first line prints unclassified entries
     if cfg.report_type=="reads":
-        unclassified_line = ["unclassified","","","unclassified","0","0",str(counts["total"]["unclassified"]),str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
+        unclassified_line = ["unclassified","","","unclassified","0","0","0",str(counts["total"]["unclassified"]),str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
         if cfg.output_format in ["tsv","csv"]:
             print(*unclassified_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
@@ -172,20 +185,21 @@ def print_final_report(reports, counts, tax, output_file, cfg):
     # All entries
     for node in sorted_nodes:
         n = tax.get_node(node)
-        rank=n['rank'] 
-        name=n["name"]
-        
-        unique = merged_counts[node]['unique'] if node in merged_counts else 0
-        all_count = merged_counts[node]['unique'] + merged_counts[node]['count'] if node in merged_counts else 0
-        cum_count=filtered_cum_counts[node]
-        cum_count_perc=(filtered_cum_counts[node]/total)*100
+        rank = n['rank']
+        name = n["name"]
 
-        out_line = [rank, node, "|".join(lineage[node]), name, str(unique), str(all_count), str(cum_count), str("%.5f" % cum_count_perc)]
+        unique = merged_counts[node]['unique'] if node in merged_counts else 0
+        lca = merged_counts[node]['count'] if node in merged_counts else 0
+        cum_count = filtered_cum_counts[node]
+        cum_count_perc = (filtered_cum_counts[node]/total)*100
+        children = cum_count - unique - lca
+
+        out_line = [rank, node, "|".join(lineage[node]), name, str(unique), str(lca), str(children), str(cum_count), str("%.5f" % cum_count_perc)]
         if cfg.output_format in ["tsv","csv"]:
             print(*out_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
             output_rows.append(out_line)
-    
+
     # Print formated text
     if cfg.output_format=="text":
         # Check max width for each col
@@ -205,13 +219,13 @@ def print_final_report(reports, counts, tax, output_file, cfg):
 
 def count_targets(reports, report_type):
     merged_counts = {}
-    for hierarchy_name,report in reports.items():
-        for target,rep in report.items():
-            if report_type=="reads":
+    for hierarchy_name, report in reports.items():
+        for target, rep in report.items():
+            if report_type == "reads":
                 # if there were reads assigned to the target (not only shared matches)
                 if rep['unique_reads'] + rep['lca_reads']:
                     if target not in merged_counts:
-                        merged_counts[target] = {'unique':0, 'count': 0}
+                        merged_counts[target] = {'unique': 0, 'count': 0}
                     merged_counts[target]['unique'] += rep['unique_reads']
                     merged_counts[target]['count'] += rep['lca_reads']
             else:
@@ -265,6 +279,7 @@ def build_lineage(filtered_cum_counts, tax, all_ranks, fixed_ranks, taxids):
 
     return lineage
 
+
 def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, cfg):
     filtered_cum_counts = {}
     unknown_taxa = 0
@@ -282,12 +297,13 @@ def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, 
         if cfg.taxids and node!="1" and not any(t in cfg.taxids for t in lineage[node]): continue
         if cfg.names and not r["name"] in cfg.names: continue
         if cfg.names_with and not any(n in r["name"] for n in cfg.names_with): continue
-        
+
         filtered_cum_counts[node] = cum_count
     return unknown_taxa, filtered_cum_counts
 
+
 def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax, merged_counts):
-    
+
     # Always keep root at the top
     # Sort report entries, return sorted keys of the dict
     if not sort: # not user-defined, use defaults
@@ -307,7 +323,7 @@ def sort_report(filtered_cum_counts, sort, all_ranks, fixed_ranks, lineage, tax,
             sorted_nodes = sorted(filtered_cum_counts, key=lambda k: (-merged_counts[k]['unique'] if k in merged_counts else 0, -filtered_cum_counts[k]), reverse=False)
         else: # sort=="count"
             sorted_nodes = sorted(filtered_cum_counts, key=lambda k: -filtered_cum_counts[k], reverse=False)
-    
+
     # Move root to the front to print always first first
     sorted_nodes.insert(0, sorted_nodes.pop(sorted_nodes.index("1")))
 
