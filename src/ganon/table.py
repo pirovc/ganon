@@ -40,10 +40,10 @@ def table(cfg):
 
     if not cfg.rank:
         # remove cumulative values from multiple ranks
-        # done after filtration
-        adjust_counts_ranks(reports)
+        # if requested, counts directed to root are remove to unclassified
+        adjust_counts_ranks(reports, cfg.no_root)
 
-    if not filtered_total_taxa: 
+    if not filtered_total_taxa:
         print_log(" - No taxa left to report", cfg.quiet)
     else:
         lines, cols = write_tsv(reports, cfg)
@@ -84,6 +84,8 @@ def parse_tre_rank(tre_file, selected_rank):
                 continue
             elif rank == "root":
                 classified = int(cum_assign)
+                if selected_rank:
+                    continue  # do not include root to the report when using single rank
             elif selected_rank and rank != selected_rank:
                 continue
 
@@ -189,7 +191,7 @@ def get_total_counts(reports):
     return total_counts
 
 
-def adjust_counts_ranks(reports):
+def adjust_counts_ranks(reports, no_root):
     # If reporting multiple ranks, cumulative counts have to be adjusted
     # On the .tre report, every ranks sums up to the total with repeated counts
     # but in the table output, only single counts should be reported
@@ -203,6 +205,15 @@ def adjust_counts_ranks(reports):
                 if parent in rep["count"]:
                     rep["count"][parent] -= rep["count"][t]
 
+            if no_root:  # remove root from lineage
+                del rep["lineage"][t][0]
+
+        # Move left over counts at root to unclassified
+        if no_root:
+            rep["unclassified"] += rep["count"]["1"]
+            del rep["count"]["1"]
+            del rep["lineage"]["1"]
+            del rep["name"]["1"]
 
 def write_tsv(reports, cfg):
     total_counts = get_total_counts(reports)

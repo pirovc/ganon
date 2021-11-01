@@ -89,11 +89,92 @@ class TestTableOffline(unittest.TestCase):
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # should output just bacteria
-        self.assertEqual(res["out_pd"].columns.values.size, 49, "ganon table without rank failed")
+        self.assertEqual(res["out_pd"].columns.values.size, 50, "ganon table without rank failed")
         # Test some outcomes
         self.assertTrue("1|2" in res["out_pd"].columns.values, "ganon table without rank failed")
         self.assertTrue("1|2|1239|909932|1843489|31977" in res["out_pd"].columns.values, "ganon table without rank failed")
+
+        # Sum of counts should be total of all reads
+        self.assertEqual(res["out_pd"].sum().sum(), 1973568, "ganon table without rank failed")
+
+    def test_no_rank_unclassified(self):
+        """
+        Test ganon table without specific --rank reporting unclassified
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_no_rank_unc.tsv"
+        params["rank"] = ""
+        params["header"] = "lineage"
+        params["add_unclassified"] = True
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        self.assertEqual(res["out_pd"].columns.values.size, 51, "ganon table without rank failed")
+        # Test some outcomes
+        self.assertTrue("1|2" in res["out_pd"].columns.values, "ganon table without rank failed")
+        self.assertTrue("1|2|1239|909932|1843489|31977" in res["out_pd"].columns.values, "ganon table without rank failed")
+
+        # Sum of counts should be total of all reads
+        self.assertEqual(res["out_pd"].sum().sum(), 3786439, "ganon table without rank failed")
+
+    def test_no_rank_no_root(self):
+        """
+        Test ganon table without specific --rank and no root
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_no_rank_no_root.tsv"
+        params["rank"] = ""
+        params["header"] = "lineage"
+        params["no_root"] = True
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should output just bacteria
+        self.assertEqual(res["out_pd"].columns.values.size, 49, "ganon table without rank failed")
+        # Test some outcomes
+        self.assertTrue("2" in res["out_pd"].columns.values, "ganon table without rank failed")
+        self.assertTrue("2|1239|909932|1843489|31977" in res["out_pd"].columns.values, "ganon table without rank failed")
+        # Sum of counts should be total of all reads with remaining root counts not reported
+        self.assertEqual(res["out_pd"].sum().sum(), 1703834, "ganon table without rank failed")
+
+    def test_no_rank_no_root_unclassified(self):
+        """
+        Test ganon table without specific --rank and no root reporting to unclassified
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_no_rank_no_root_unc.tsv"
+        params["rank"] = ""
+        params["header"] = "lineage"
+        params["no_root"] = True
+        params["add_unclassified"] = True
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should output just bacteria
+        self.assertEqual(res["out_pd"].columns.values.size, 50, "ganon table without rank failed")
+        # Test some outcomes
+        self.assertTrue("2" in res["out_pd"].columns.values, "ganon table without rank failed")
+        self.assertTrue("2|1239|909932|1843489|31977" in res["out_pd"].columns.values, "ganon table without rank failed")
+        self.assertTrue("unclassified" in res["out_pd"].columns.values, "ganon table without rank failed")
+
+        # Sum of counts should be total of all reads with remaining root matches counted as unclassified
+        self.assertEqual(res["out_pd"].sum().sum(), 3786439, "ganon table without rank failed")
+
 
     def test_min_count(self):
         """
@@ -289,6 +370,7 @@ class TestTableOffline(unittest.TestCase):
         params["output_file"] = self.results_dir + "test_extra_cols.tsv"
         params["skip_zeros"] = True
         params["min_percentage"] = 0.02
+        params["no_root"] = True
 
         # Build config from params
         cfg = Config("table", **params)
@@ -336,7 +418,7 @@ class TestTableOffline(unittest.TestCase):
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # check if printed lineage
+        # check if printed lineage on all headers (but one root)
         self.assertTrue(all(["|" in c for c in res["out_pd"].columns.values]), "ganon table headers are wrong (lineage)")
 
         params["header"] = "taxid"
