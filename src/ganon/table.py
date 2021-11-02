@@ -142,7 +142,8 @@ def filter_reports(reports, cfg):
             elif cfg.names_with and not any(n in rep["name"][taxid] for n in cfg.names_with):
                 filtered = True
 
-            if filtered:
+            # do not filter root
+            if filtered and taxid!="1":
                 rep["filtered"] += count
                 del rep["count"][taxid]
                 del rep["lineage"][taxid]
@@ -157,7 +158,7 @@ def select_top_sample(reports, top_sample):
     top_sample_total_taxa = set()
     for file, rep in reports.items():
         for i, (taxid, count) in enumerate(sorted(rep["count"].items(), key=lambda x: x[1], reverse=True)): # sorted by count
-            if i < top_sample:
+            if i < top_sample or taxid=="1":
                 top_sample_total_taxa.add(taxid)
                 continue
             rep["filtered"] += count
@@ -173,7 +174,7 @@ def select_top_all(reports, top_all):
     total_counts = get_total_counts(reports)
     top_taxids = []
     for i, taxid in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
-        if i < top_all:
+        if i < top_all or taxid=="1":
             top_taxids.append(taxid)
 
     for file, rep in reports.items():

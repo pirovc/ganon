@@ -223,7 +223,7 @@ Obs:
   6) \# shared assignments *(number of reads with non-unique matches directly assigned to this target. Represents the lca matches (`--report-type reads`) or shared matches (`--report-type matches`))*
   7) \# children assignments *(number of reads assigned to all children nodes of this target)*
   8) \# cumulative assignments *(the sum of the unique, shared and children reads/matches assigned up-to this target)*
-  8) \% cumulative assignments
+  9) \% cumulative assignments
 
 - Using `--report-type reads` the first line of the file will show the number of unclassified reads
 
