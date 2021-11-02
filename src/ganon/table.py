@@ -28,15 +28,14 @@ def table(cfg):
         print_log(" - Skipped " + str(filtered_total_taxa - top_all_total_taxa) + " taxa (--top-all "+ str(cfg.top_all)+")", cfg.quiet)
         filtered_total_taxa = top_all_total_taxa
 
-    if cfg.min_occurrence or cfg.min_occurrence_percentage:
-        if cfg.min_occurrence_percentage:
-            cfg.min_occurrence = int(len(reports)*cfg.min_occurrence_percentage)
-        min_occurrence_total_taxa = select_occurrence(reports, cfg.min_occurrence)
-        if cfg.min_occurrence_percentage:
-            print_log(" - Skipped " + str(filtered_total_taxa-min_occurrence_total_taxa) + " taxa (--min-occurrence-percentage " + str(cfg.min_occurrence_percentage)+" [" + str(cfg.min_occurrence)+ " files])", cfg.quiet)
+    if cfg.min_frequency:
+        if cfg.min_frequency < 1:
+            mf = int(len(reports)*cfg.min_frequency)
         else:
-            print_log(" - Skipped " + str(filtered_total_taxa-min_occurrence_total_taxa) + " taxa (--min-occurrence " + str(cfg.min_occurrence)+ ")", cfg.quiet)
-        filtered_total_taxa = min_occurrence_total_taxa
+            mf = cfg.min_frequency
+        min_frequency_total_taxa = select_frequency(reports, mf)
+        print_log(" - Skipped " + str(filtered_total_taxa - min_frequency_total_taxa) + " taxa (--min-frequency " + str(cfg.min_frequency) + ")", cfg.quiet)
+        filtered_total_taxa = min_frequency_total_taxa
 
     if not cfg.rank:
         # remove cumulative values from multiple ranks
@@ -124,7 +123,9 @@ def filter_reports(reports, cfg):
         for taxid in list(rep["count"]):
             count = rep["count"][taxid]
             filtered = False
-            if (cfg.min_count and count < cfg.min_count) or (cfg.min_percentage and count/rep["total"] < cfg.min_percentage):
+            if cfg.min_count > 1 and count < cfg.min_count:
+                filtered = True
+            if cfg.min_count < 1 and (count/rep["total"]) < cfg.min_count:
                 filtered = True
             elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]):
                 filtered = True
@@ -180,24 +181,24 @@ def select_top_all(reports, top_all):
     return len(total_taxa)
 
 
-def select_occurrence(reports, min_occurrence):
+def select_frequency(reports, min_frequency):
     min_occ_taxids = []
     for taxid, val in get_total_counts(reports).items():
-        if val["occurrence"] >= min_occurrence:
+        if val["frequency"] >= min_frequency:
             min_occ_taxids.append(taxid)
 
-    min_occurrence_total_taxa = set()
+    min_frequency_total_taxa = set()
     for file, rep in reports.items():
         for taxid in list(rep["count"]):
             if taxid in min_occ_taxids:
-                min_occurrence_total_taxa.add(taxid)
+                min_frequency_total_taxa.add(taxid)
                 continue
             rep["filtered"] += rep["count"][taxid]
             del rep["count"][taxid]
             del rep["lineage"][taxid]
             del rep["name"][taxid]
 
-    return len(min_occurrence_total_taxa)
+    return len(min_frequency_total_taxa)
 
 
 def get_total_counts(reports):
@@ -206,9 +207,9 @@ def get_total_counts(reports):
     for d in reports.values():
         for taxid, count in d["count"].items():
             if taxid not in total_counts:
-                total_counts[taxid] = {"sum_percentage": 0, "occurrence": 0}
+                total_counts[taxid] = {"sum_percentage": 0, "frequency": 0}
             total_counts[taxid]["sum_percentage"] += count/d["total"]
-            total_counts[taxid]["occurrence"] += 1
+            total_counts[taxid]["frequency"] += 1
     return total_counts
 
 

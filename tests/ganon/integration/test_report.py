@@ -35,33 +35,14 @@ class TestReportOffline(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
-    
-    def test_min_percentage(self):
-        """
-        Test run with min_percentage
-        """
-        params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_min_percentage"
-        params["min_percentage"] = 0.2
-        
-        # Build config from params
-        cfg = Config("report", **params)
-        # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
-        # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon report has inconsistent results")
-        # check if none is higher than min_percentage
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] >= params["min_percentage"]).all(), "ganon report failed filtering with --min-percentage")
-
     def test_min_count(self):
         """
         Test run with min_count
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_min_count"
-        params["min_count"] = 60
-        
+        params["min_count"] = 7
+
         # Build config from params
         cfg = Config("report", **params)
         # Run
@@ -69,18 +50,16 @@ class TestReportOffline(unittest.TestCase):
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
-        # check if none is higher than min_percentage
+        # check if none is higher than min_count
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(), "ganon report failed filtering with --min-count")
 
-
-    def test_min_count_and_percentages(self):
+    def test_min_count_perc(self):
         """
-        Test run with min_percentage and min_count
+        Test run with min_count using percentages
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_min_count_and_percentages"
-        params["min_percentage"] = 0.2
-        params["min_count"] = 50
+        params["output_prefix"] = self.results_dir + "test_min_count_perc"
+        params["min_count"] = 0.2
         
         # Build config from params
         cfg = Config("report", **params)
@@ -89,10 +68,8 @@ class TestReportOffline(unittest.TestCase):
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
-        # check if none is higher than min_percentage
+        # check if none is higher than min_count
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(), "ganon report failed filtering with --min-count")
-        # check if none is higher than min_percentage
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] >= params["min_percentage"]).all(), "ganon report failed filtering with --min-percentage")
 
     def test_report_type(self):
         """

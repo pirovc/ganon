@@ -195,13 +195,13 @@ class TestTableOffline(unittest.TestCase):
         # should output just counts higher than min_count (or zeros)
         self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]>=params["min_count"])).all(axis=None) , "ganon table min count filter failed")
 
-    def test_min_percentage(self):
+    def test_min_count_perc(self):
         """
-        Test ganon table with --min-percentage
+        Test ganon table with --min-count below 1
         """
         params = self.default_params.copy()
-        params["output_file"] = self.results_dir + "test_min_percentage.tsv"
-        params["min_percentage"] = 0.01
+        params["output_file"] = self.results_dir + "test_min_count_perc.tsv"
+        params["min_count"] = 0.01
 
         # Build config from params
         cfg = Config("table", **params)
@@ -210,8 +210,8 @@ class TestTableOffline(unittest.TestCase):
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # should output just value higher than min_percentage (or zeros)
-        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]>=params["min_percentage"])).all(axis=None) , "ganon table min count filter failed")
+        # should output just value higher than min_count (or zeros)
+        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]>=params["min_count"])).all(axis=None) , "ganon table min count filter failed")
 
     def test_taxids_relative(self):
         """
@@ -323,13 +323,13 @@ class TestTableOffline(unittest.TestCase):
         # should have 1 col (top genus)
         self.assertEqual(res["out_pd"].shape[1], 1, "ganon table top sample filter failed")
 
-    def test_min_occurrence(self):
+    def test_min_frequency(self):
         """
-        Test ganon table with --min-occurrence
+        Test ganon table with --min-frequency
         """
         params = self.default_params.copy()
-        params["output_file"] = self.results_dir + "test_min_occurrence.tsv"
-        params["min_occurrence"] = 3
+        params["output_file"] = self.results_dir + "test_min_frequency.tsv"
+        params["min_frequency"] = 3
         params["rank"] = "phylum" # Fusobacteria is left out from report_reads3.tre
 
         # Build config from params
@@ -339,8 +339,27 @@ class TestTableOffline(unittest.TestCase):
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # should have no zero entries (3 samples/3 min occurrence)
-        self.assertTrue((res["out_pd"].values>0).all(), "ganon table min occurrence filter failed")
+        # should have no zero entries (3 samples/3 min frequency)
+        self.assertTrue((res["out_pd"].values>0).all(), "ganon table min frequency filter failed")
+
+    def test_min_frequency_perc(self):
+        """
+        Test ganon table with --min-frequency below 1
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_min_frequency_perc.tsv"
+        params["min_frequency"] = 0.9
+        params["rank"] = "phylum" # Fusobacteria is left out from report_reads3.tre
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should have no zero entries (3 samples/3 min frequency)
+        self.assertTrue((res["out_pd"].values>0).all(), "ganon table min frequency filter failed")
 
     def test_extra_cols(self):
         """
@@ -369,7 +388,7 @@ class TestTableOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_extra_cols.tsv"
         params["skip_zeros"] = True
-        params["min_percentage"] = 0.02
+        params["min_count"] = 0.02
         params["no_root"] = True
 
         # Build config from params
@@ -401,7 +420,7 @@ class TestTableOffline(unittest.TestCase):
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should have unclassified summing to 0 (not unclassified line reported)
-        self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min occurrence filter failed")
+        self.assertEqual(res["out_pd"]["unclassified"].sum(), 0, "ganon table min frequency filter failed")
 
     def test_header(self):
         """

@@ -102,16 +102,16 @@ class Config:
         classify_group_optional.add_argument('--ganon-path',                type=str, default="",  metavar='', help=argparse.SUPPRESS) 
         classify_group_optional.add_argument('--n-reads',                   type=int,              metavar='', help=argparse.SUPPRESS)
         classify_group_optional.add_argument('--n-batches',                 type=int,              metavar='', help=argparse.SUPPRESS)
-        
+
         ####################################################################################################
-        
+
         report_parser = argparse.ArgumentParser(description='Report options', add_help=False)
 
         # Required
         report_group_required = report_parser.add_argument_group('required arguments')
         report_group_required.add_argument('-i', '--rep-files',     type=str, nargs="*", required=False, help='One or more *.rep files from ganon classify')
         report_group_required.add_argument('-o', '--output-prefix', type=str,            required=True,  help='Output prefix for report file "{output_prefix}.tre". In case of multiple files, the base input filename will be appended at the end of the output file "{output_prefix + FILENAME}.tre"')
-    
+
         # Defaults
         report_group_optional = report_parser.add_argument_group('optional arguments')
         report_group_optional.add_argument('-d', '--db-prefix',      type=str, nargs="*", metavar='', default=[],      help='Database prefix[es] used for classification (in any order). Only ".tax" file is required. If not provided, new taxonomy will be downloaded')
@@ -143,8 +143,8 @@ class Config:
         table_group_optional.add_argument('-f', '--output-format',            type=str,   metavar='', default="tsv",        help='Output format [tsv, csv]. Default: tsv')
         table_group_optional.add_argument('-t', '--top-sample',               type=int,   metavar='', default=0,            help="Top hits of each sample individually")
         table_group_optional.add_argument('-a', '--top-all',                  type=int,   metavar='', default=0,            help="Top hits of all samples (ranked by percentage)")
-        table_group_optional.add_argument('-m', '--min-occurrence',           type=int,   metavar='', default=0,            help="# occurrence of a taxa among reports to be kept [1-*]")
-        table_group_optional.add_argument('-p', '--min-occurrence-percentage',type=float, metavar='', default=0,            help="%% occurrence of a taxa among reports to be kept [0-1]")
+        table_group_optional.add_argument('-m', '--min-frequency',            type=float, metavar='', default=0,            help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
+        #table_group_optional.add_argument('-p', '--max-frequency',            type=float, metavar='', default=0,            help="Maximum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
         table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default=None,         help="Define specific rank to report. Empty will report all ranks.")
         table_group_optional.add_argument('-n', '--no-root',                  action='store_true',    default=False,        help="Do not report root node when reporting all ranks. Direct and shared matches to root will be considered unclassified")
         table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')
@@ -161,14 +161,14 @@ class Config:
 
         filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
         filter_arguments = filter_parser.add_argument_group('filter arguments')
-        filter_arguments.add_argument('--min-count',      type=int,            metavar='', default=0,  help="Minimum number of counts to keep the taxa")
-        filter_arguments.add_argument('--min-percentage', type=float,          metavar='', default=0,  help="Minimum percentage of counts to keep the taxa [0-1]")
+        filter_arguments.add_argument('--min-count',      type=float,          metavar='', default=0,  help="Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
+        #filter_arguments.add_argument('--max-count',      type=float,          metavar='', default=0,  help="Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
         filter_arguments.add_argument('--names',          type=str, nargs="*", metavar='', default=[], help="Show only entries matching exact names of the provided list")
         filter_arguments.add_argument('--names-with',     type=str, nargs="*", metavar='', default=[], help="Show entries containing full or partial names of the provided list")
         filter_arguments.add_argument('--taxids',         type=str, nargs="*", metavar='', default=[], help='One or more taxids to report (including children taxa)')
-        
+
         subparsers = parser.add_subparsers()
-        
+
         build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
         build.set_defaults(which='build')
 
@@ -188,13 +188,13 @@ class Config:
         if which is not None:
             # Set which as the first parameter (mandatory)
             list_kwargs = [which]
-            for arg,value in kwargs.items():
+            for arg, value in kwargs.items():
                 # convert all others to argparse format (eg: input_files to --input-files)
                 arg_formatted = "--" + arg.replace('_', '-')
-                if isinstance(value, list): # unpack if list
+                if isinstance(value, list):  # unpack if list
                     list_kwargs.append(arg_formatted)
                     list_kwargs.extend(value)
-                elif type(value)==bool and value is True: # add only arg if boolean flag activated
+                elif type(value) == bool and value is True:  # add only arg if boolean flag activated
                     list_kwargs.append(arg_formatted)
                 elif value:
                     list_kwargs.append(arg_formatted)
@@ -324,26 +324,22 @@ class Config:
                     print_log(",".join(set(dbp).difference(dbp_ok)))
                     return False
 
-        elif self.which=='table':
+        elif self.which == 'table':
             if not check_input_directory(self.tre_files, self.input_directory, self.input_extension):
                 return False
 
-            if self.min_occurrence < 0:
-                print_log("Invalid value for --min-occurrence (>0)")
-                return False
-
-            if self.min_occurrence_percentage < 0 or self.min_occurrence_percentage > 1:
-                print_log("Invalid value for --min-occurrence-percentage [0-1]")
+            if self.min_frequency < 0:
+                print_log("Invalid value for --min-frequency (>0)")
                 return False
 
         return True
 
     def validate_specialization(self):
-        if self.specialization not in ["sequence","file","assembly","custom"]:
+        if self.specialization not in ["sequence", "file", "assembly", "custom"]:
             print_log("Invalid value for --specialization")
             return False
-        
-        if self.specialization=="custom" and not self.seq_info_file:
+
+        if self.specialization == "custom" and not self.seq_info_file:
             print_log("--seq-info-file should be provided with --specialization custom")
             return False
 
