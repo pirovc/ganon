@@ -201,6 +201,7 @@ class TestTableOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_min_count_perc.tsv"
+        params["output_value"] = "percentage"
         params["min_count"] = 0.01
 
         # Build config from params
@@ -211,7 +212,47 @@ class TestTableOffline(unittest.TestCase):
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should output just value higher than min_count (or zeros)
-        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]>=params["min_count"])).all(axis=None) , "ganon table min count filter failed")
+        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"] >= params["min_count"])).all(axis=None) , "ganon table min count filter failed")
+
+    def test_max_count(self):
+        """
+        Test ganon table with --max-count
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_max_count.tsv"
+        params["output_value"] = "counts"
+        params["max_count"] = 14000
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should output just counts higher than min_count (or zeros)
+        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]<=params["max_count"])).all(axis=None) , "ganon table min count filter failed")
+
+    def test_max_count_perc(self):
+        """
+        Test ganon table with --max-count below 1
+        """
+        params = self.default_params.copy()
+        params["output_file"] = self.results_dir + "test_max_count_perc.tsv"
+        params["output_value"] = "percentage"
+        params["max_count"] = 0.02
+
+        # Build config from params
+        cfg = Config("table", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        # General sanity check of results
+        res = table_sanity_check_and_parse(vars(cfg))
+        print(res)
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        # should output just counts higher than min_count (or zeros)
+        self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]<=params["max_count"])).all(axis=None) , "ganon table min count filter failed")
+
 
     def test_taxids_relative(self):
         """

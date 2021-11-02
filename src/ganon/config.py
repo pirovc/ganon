@@ -162,7 +162,7 @@ class Config:
         filter_parser = argparse.ArgumentParser(description='Table options', add_help=False)
         filter_arguments = filter_parser.add_argument_group('filter arguments')
         filter_arguments.add_argument('--min-count',      type=float,          metavar='', default=0,  help="Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
-        #filter_arguments.add_argument('--max-count',      type=float,          metavar='', default=0,  help="Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
+        filter_arguments.add_argument('--max-count',      type=float,          metavar='', default=0,  help="Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
         filter_arguments.add_argument('--names',          type=str, nargs="*", metavar='', default=[], help="Show only entries matching exact names of the provided list")
         filter_arguments.add_argument('--names-with',     type=str, nargs="*", metavar='', default=[], help="Show entries containing full or partial names of the provided list")
         filter_arguments.add_argument('--taxids',         type=str, nargs="*", metavar='', default=[], help='One or more taxids to report (including children taxa)')

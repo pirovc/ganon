@@ -60,7 +60,7 @@ class TestReportOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_min_count_perc"
         params["min_count"] = 0.2
-        
+
         # Build config from params
         cfg = Config("report", **params)
         # Run
@@ -69,7 +69,45 @@ class TestReportOffline(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if none is higher than min_count
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(), "ganon report failed filtering with --min-count")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] >= (params["min_count"]*100)).all(), "ganon report failed filtering with --min-count")
+
+
+    def test_max_count(self):
+        """
+        Test run with --max-count
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_max_count"
+        params["max_count"] = 30
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if none is higher than min_count
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] <= params["max_count"]).all(), "ganon report failed filtering with --max-count")
+
+    def test_max_count_perc(self):
+        """
+        Test run with --max-count below 1
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_max_count_perc"
+        params["max_count"] = 0.2
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if none is higher than min_count
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] <= (params["max_count"]*100)).all(), "ganon report failed filtering with --max-count")
+
 
     def test_report_type(self):
         """

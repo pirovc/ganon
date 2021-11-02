@@ -123,11 +123,19 @@ def filter_reports(reports, cfg):
         for taxid in list(rep["count"]):
             count = rep["count"][taxid]
             filtered = False
-            if cfg.min_count > 1 and count < cfg.min_count:
-                filtered = True
-            if cfg.min_count < 1 and (count/rep["total"]) < cfg.min_count:
-                filtered = True
-            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]):
+            if cfg.min_count:
+                if cfg.min_count > 1 and count < cfg.min_count:
+                    filtered = True
+                elif cfg.min_count < 1 and (count/rep["total"]) < cfg.min_count:
+                    filtered = True
+
+            if cfg.max_count:
+                if cfg.max_count > 1 and count > cfg.max_count:
+                    filtered = True
+                elif cfg.max_count < 1 and (count/rep["total"]) > cfg.max_count:
+                    filtered = True
+
+            if cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]):
                 filtered = True
             elif cfg.names and not rep["name"][taxid] in cfg.names:
                 filtered = True
