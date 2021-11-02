@@ -248,7 +248,6 @@ class TestTableOffline(unittest.TestCase):
         self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
-        print(res)
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         # should output just counts higher than min_count (or zeros)
         self.assertTrue(((res["out_pd"]==0) | (res["out_pd"]<=params["max_count"])).all(axis=None) , "ganon table min count filter failed")

@@ -144,7 +144,6 @@ class Config:
         table_group_optional.add_argument('-t', '--top-sample',               type=int,   metavar='', default=0,            help="Top hits of each sample individually")
         table_group_optional.add_argument('-a', '--top-all',                  type=int,   metavar='', default=0,            help="Top hits of all samples (ranked by percentage)")
         table_group_optional.add_argument('-m', '--min-frequency',            type=float, metavar='', default=0,            help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
-        #table_group_optional.add_argument('-p', '--max-frequency',            type=float, metavar='', default=0,            help="Maximum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
         table_group_optional.add_argument('-r', '--rank',                     type=str,   metavar='', default=None,         help="Define specific rank to report. Empty will report all ranks.")
         table_group_optional.add_argument('-n', '--no-root',                  action='store_true',    default=False,        help="Do not report root node when reporting all ranks. Direct and shared matches to root will be considered unclassified")
         table_group_optional.add_argument('--header',                         type=str,   metavar='', default="name",       help='Header information [name, taxid, lineage]. Default: name')
