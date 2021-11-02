@@ -40,16 +40,37 @@ def table(cfg):
 
     if not cfg.rank:
         # remove cumulative values from multiple ranks
+        # step should be at the end after filters were applied on the cumulative counts
         # if requested, counts directed to root are remove to unclassified
         adjust_counts_ranks(reports, cfg.no_root)
 
     if not filtered_total_taxa:
         print_log(" - No taxa left to report", cfg.quiet)
     else:
-        lines, cols = write_tsv(reports, cfg)
+        # build table in a list of lists
+        out_table = build_table(reports, cfg)
+
+        # "--skip-zeros" trim table on lines and cols
+        if cfg.skip_zeros:
+            l = len(out_table)
+            # trim rows and cols
+            out_table = trim_table(out_table)
+            if len(out_table) < l:
+                print_log(" - Skipped " + str(l-len(out_table)) + " files with only zero counts", cfg.quiet)
+            c = len(out_table[0])
+            out_table = transpose(trim_table(transpose(out_table)))
+            if len(out_table) < c:
+                print_log(" - Skipped " + str(c-len(out_table[0])) + " taxa with only zero counts", cfg.quiet)
+
+        # "--transpose" table (by default is already transposed)
+        if not cfg.transpose:
+            out_table = transpose(out_table)
+
+        lines, cols = write_tsv(out_table, cfg.output_file, cfg.output_format)
         print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
 
     return True
+
 
 def parse_reports(tre_files, rank):
     reports = {}
@@ -105,7 +126,7 @@ def filter_reports(reports, cfg):
             filtered = False
             if (cfg.min_count and count < cfg.min_count) or (cfg.min_percentage and count/rep["total"] < cfg.min_percentage):
                 filtered = True
-            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]): 
+            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]):
                 filtered = True
             elif cfg.names and not rep["name"][taxid] in cfg.names:
                 filtered = True
@@ -215,7 +236,8 @@ def adjust_counts_ranks(reports, no_root):
             del rep["lineage"]["1"]
             del rep["name"]["1"]
 
-def write_tsv(reports, cfg):
+
+def build_table(reports, cfg):
     total_counts = get_total_counts(reports)
 
     # Sort by taxid
@@ -256,47 +278,38 @@ def write_tsv(reports, cfg):
                 v = 0
             out_line.append(v)
 
+        # Add unclassified/filtered at the end
         if cfg.add_unclassified:
             out_line.append(res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"])
-
         if cfg.add_filtered:
             out_line.append(res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"])
 
-        if cfg.skip_zeros and (len(out_line) > 1 and max(out_line[1:]) == 0):
-            continue
-
         out_table.append(out_line)
 
-    if len(reports) > len(out_table):
-        print_log(" - Skipped " + str(len(reports)-len(out_table)) + " files with only zero counts", cfg.quiet)
+    return out_table
 
-    # check only zero samples/taxa
-    if cfg.skip_zeros:
-        filtered_out_table = []
-        # loop on transposed
-        for i, line in enumerate(map(list, zip(*out_table))):
-            if i == 0:
-                continue  # skip header
-            if len(line) > 1 and max(line[1:]) > 0:
-                filtered_out_table.append(line)
-        if len(out_table) > len(filtered_out_table):
-            print_log(" - Skipped " + str(len(out_table)-len(filtered_out_table)) + " taxa with only zero counts", cfg.quiet)
-        # transpose again
-        out_table = map(list, zip(*filtered_out_table))
-    else:
-        taxa = len(header) - 1
 
-    # "--transpose" table (by default is already transposed)
-    if not cfg.transpose:
-        out_table = map(list, zip(*out_table))
-
+def write_tsv(out_table, output_file, output_format):
     # Write file
-    out_file = open(cfg.output_file, "w")
+    out_file = open(output_file, "w")
     lines = 0
     for line in out_table:
-        print(*line, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+        print(*line, sep="\t" if output_format == "tsv" else ",", file=out_file)
         lines += 1
     cols = len(line)
     out_file.close()
 
     return lines-1, cols-1
+
+
+def trim_table(table):
+    trimmed_table = [table[0]]  # get header
+    for line in table[1:]:
+        values = line[1:]  # skip header on each line
+        if max(values) > 0:
+            trimmed_table.append(line)  # keep non-zero line
+    return trimmed_table
+
+
+def transpose(table):
+    return list(map(list, zip(*table)))

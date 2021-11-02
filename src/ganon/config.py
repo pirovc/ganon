@@ -14,12 +14,12 @@ class Config:
         parser.add_argument('-v', '--version', action='version', version='version: %(prog)s ' + self.version, help="Show program's version number and exit.")
 
         build_parser = argparse.ArgumentParser(description='Build options', add_help=False)
-        
+
         # Required
         build_group_required = build_parser.add_argument_group('required arguments')
         build_group_required.add_argument('-d', '--db-prefix',   type=str,            required=True,  help='Database output prefix (.ibf, .map, .tax, .gnn will be created)')
         build_group_required.add_argument('-i', '--input-files', type=str, nargs="*", required=False, help='Input reference sequence fasta files [.gz]')
-        
+
         # Defaults
         build_group_optional = build_parser.add_argument_group('optional arguments')
         build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Rank specific target for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. If specified rank is not found in the lineage, use the leaf taxonomic node as target. Default: species')
@@ -44,7 +44,7 @@ class Config:
         build_group_optional.add_argument('--ganon-path',            type=str,            metavar='', default="",        help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-refs',                type=int,            metavar='',                    help=argparse.SUPPRESS)
         build_group_optional.add_argument('--n-batches',             type=int,            metavar='',                    help=argparse.SUPPRESS)
-        
+
         ####################################################################################################
 
         update_parser = argparse.ArgumentParser(description='Update options', add_help=False)
@@ -53,7 +53,7 @@ class Config:
         update_group_required = update_parser.add_argument_group('required arguments')
         update_group_required.add_argument('-d', '--db-prefix',   type=str,            required=True,  help='Database input prefix (.ibf, .map, .tax, .gnn)')
         update_group_required.add_argument('-i', '--input-files', type=str, nargs="*", required=False, help='Input reference sequence fasta files [.gz] to be included to the database. Complete set of updated sequences should be provided when using --update-complete')
-        
+
         # Defaults
         update_group_optional = update_parser.add_argument_group('optional arguments')
         update_group_optional.add_argument('-o', '--output-db-prefix', type=str,            metavar='',                   help='Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix')

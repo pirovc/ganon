@@ -94,16 +94,16 @@ def parse_rep(rep_file):
                 unique_reads = int(unique_reads)
                 lca_reads = int(lca_reads)
 
-                if hierarchy_name not in reports: 
-                    reports[hierarchy_name] = {}   
-                    counts[hierarchy_name] = {"matches":0, 
-                                              "reads":0}   
+                if hierarchy_name not in reports:
+                    reports[hierarchy_name] = {}
+                    counts[hierarchy_name] = {"matches": 0,
+                                              "reads": 0}
 
                 # entries should be unique by hiearchy_name
                 if target not in reports[hierarchy_name]:
-                    reports[hierarchy_name][target] = {"direct_matches":0, 
-                                                       "unique_reads":0, 
-                                                       "lca_reads":0}
+                    reports[hierarchy_name][target] = {"direct_matches": 0,
+                                                       "unique_reads": 0,
+                                                       "lca_reads": 0}
 
                 reports[hierarchy_name][target]["direct_matches"] += direct_matches
                 reports[hierarchy_name][target]["unique_reads"] += unique_reads
@@ -115,9 +115,9 @@ def parse_rep(rep_file):
 
                 total_direct_matches += direct_matches
 
-    counts["total"] = {"matches":total_direct_matches, 
-                       "reads":classified_reads, 
-                       "unclassified":unclassified_reads}
+    counts["total"] = {"matches": total_direct_matches,
+                       "reads": classified_reads,
+                       "unclassified": unclassified_reads}
 
     return reports, counts
 
@@ -164,7 +164,8 @@ def print_final_report(reports, counts, tax, output_file, cfg):
     # filter with fixed ranks and user parameters (names, taxid)
     # filtered_cum_counts[node] = cum_count
     unknown_taxa, filtered_cum_counts = filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, cfg)
-    if not filtered_cum_counts: return False
+    if not filtered_cum_counts:
+        return False
 
     # sort entries based on report or user-defined
     # sorted_nodes = ["1", "1224", ...]
@@ -211,11 +212,14 @@ def print_final_report(reports, counts, tax, output_file, cfg):
         # apply format when printing with max_width
         for row in output_rows:
             print("\t".join(['{0: <{width}}'.format(field, width=max_width[i]) for i,field in enumerate(row)]), file=tre_file)
-  
-    if output_file: tre_file.close()
-    if unknown_taxa: print_log(" - " + str(unknown_taxa) + " taxa not found in the taxonomy. Those entries are counted as orphan nodes (with root as parent node). Too report them, use --ranks all or add 'na' to the end of ranks list (e.g. --ranks genus species na)", cfg.quiet)
+
+    if output_file:
+        tre_file.close()
+    if unknown_taxa:
+        print_log(" - " + str(unknown_taxa) + " taxa not found in the taxonomy. Those entries are counted as orphan nodes (with root as parent node). Too report them, use --ranks all or add 'na' to the end of ranks list (e.g. --ranks genus species na)", cfg.quiet)
     print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
     return True
+
 
 def count_targets(reports, report_type):
     merged_counts = {}
@@ -239,25 +243,28 @@ def count_targets(reports, report_type):
                     merged_counts[target]['count'] += rep['direct_matches']-rep['unique_reads']
     return merged_counts
 
+
 def cummulative_count_tree(merged_counts, tax, all_ranks, fixed_ranks):
     filtered_cum_counts = {}
     for leaf in merged_counts.keys():
         sum_count = merged_counts[leaf]['unique'] + merged_counts[leaf]['count']
         t = leaf
-        while t!="0":
-            if t not in filtered_cum_counts: filtered_cum_counts[t] = 0
+        while t != "0":
+            if t not in filtered_cum_counts:
+                filtered_cum_counts[t] = 0
             n = tax.get_node(t)
-            filtered_cum_counts[t]+=sum_count
+            filtered_cum_counts[t] += sum_count
             t = n["parent"]
     return filtered_cum_counts
+
 
 def build_lineage(filtered_cum_counts, tax, all_ranks, fixed_ranks, taxids):
     lineage = {}
     for node in filtered_cum_counts:
         if all_ranks:
-            lineage[node]=[]
+            lineage[node] = []
             t=node
-            while t!="0":
+            while t != "0":
                 lineage[node].insert(0,t)
                 t = tax.get_node(t)["parent"]
         else:
@@ -272,9 +279,9 @@ def build_lineage(filtered_cum_counts, tax, all_ranks, fixed_ranks, taxids):
                     # Add empty || if fixed rank is missing
                     for i in range(max_rank_idx-fixed_ranks.index(r)):
                         lineage[node].insert(0,"")
-                        max_rank_idx-=1
-                    lineage[node].insert(0,t)
-                    max_rank_idx-=1
+                        max_rank_idx -= 1
+                    lineage[node].insert(0, t)
+                    max_rank_idx -= 1
                     t, r = tax.get_node_rank_fixed(tax.get_node(t)["parent"], fixed_ranks)
 
     return lineage
@@ -283,20 +290,31 @@ def build_lineage(filtered_cum_counts, tax, all_ranks, fixed_ranks, taxids):
 def filter_report(tree_cum_counts, lineage, tax, all_ranks, fixed_ranks, total, cfg):
     filtered_cum_counts = {}
     unknown_taxa = 0
-    for node,cum_count in tree_cum_counts.items():
+    for node, cum_count in tree_cum_counts.items():
         r = tax.get_node(node)
         # always keep root
-        if r['rank'] == "root": filtered_cum_counts[node] = cum_count
+        if r['rank'] == "root":
+            filtered_cum_counts[node] = cum_count
+            continue
 
-        if r['rank'] == "na": unknown_taxa+=1
+        # mark unknown rank
+        if r['rank'] == "na":
+            unknown_taxa += 1
+
         # keep only selected fixed_ranks
-        if not all_ranks and r['rank'] not in fixed_ranks: continue
+        if not all_ranks and r['rank'] not in fixed_ranks:
+            continue
         # Filter by value
-        if cum_count < cfg.min_count: continue
-        if (cum_count/total) < cfg.min_percentage: continue
-        if cfg.taxids and node!="1" and not any(t in cfg.taxids for t in lineage[node]): continue
-        if cfg.names and not r["name"] in cfg.names: continue
-        if cfg.names_with and not any(n in r["name"] for n in cfg.names_with): continue
+        if cum_count < cfg.min_count:
+            continue
+        if (cum_count/total) < cfg.min_percentage:
+            continue
+        if cfg.taxids and node != "1" and not any(t in cfg.taxids for t in lineage[node]):
+            continue
+        if cfg.names and not r["name"] in cfg.names:
+            continue
+        if cfg.names_with and not any(n in r["name"] for n in cfg.names_with):
+            continue
 
         filtered_cum_counts[node] = cum_count
     return unknown_taxa, filtered_cum_counts
