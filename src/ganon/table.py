@@ -43,6 +43,12 @@ def table(cfg):
         # if requested, counts directed to root are remove to unclassified
         adjust_counts_ranks(reports, cfg.no_root)
 
+    # remove root from lineages
+    if cfg.no_root:
+        for file, rep in reports.items():
+            for t in rep["count"]:
+                del rep["lineage"][t][0]
+
     if not filtered_total_taxa:
         print_log(" - No taxa left to report", cfg.quiet)
     else:
@@ -58,7 +64,7 @@ def table(cfg):
                 print_log(" - Skipped " + str(l-len(out_table)) + " files with only zero counts", cfg.quiet)
             c = len(out_table[0])
             out_table = transpose(trim_table(transpose(out_table)))
-            if len(out_table) < c:
+            if len(out_table[0]) < c:
                 print_log(" - Skipped " + str(c-len(out_table[0])) + " taxa with only zero counts", cfg.quiet)
 
         # "--transpose" table (by default is already transposed)
@@ -155,11 +161,15 @@ def filter_reports(reports, cfg):
 
 
 def select_top_sample(reports, top_sample):
-    top_sample_total_taxa = set()
+    top_sample_total_taxa = set("1") # always keep root
     for file, rep in reports.items():
-        for i, (taxid, count) in enumerate(sorted(rep["count"].items(), key=lambda x: x[1], reverse=True)): # sorted by count
-            if i < top_sample or taxid=="1":
+        i = 0
+        for taxid, count in sorted(rep["count"].items(), key=lambda x: x[1], reverse=True): # sorted by count
+            if taxid == "1":  # do not count root as an top entry
+                continue
+            if i < top_sample:
                 top_sample_total_taxa.add(taxid)
+                i += 1
                 continue
             rep["filtered"] += count
             del rep["count"][taxid]
@@ -172,10 +182,14 @@ def select_top_sample(reports, top_sample):
 def select_top_all(reports, top_all):
     total_taxa = set()
     total_counts = get_total_counts(reports)
-    top_taxids = []
-    for i, taxid in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
-        if i < top_all or taxid=="1":
-            top_taxids.append(taxid)
+    top_taxids = set("1")  # always keep root
+    i = 0
+    for taxid in sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True):
+        if taxid == "1":  # do not count root as an top entry
+            continue
+        elif i < top_all:
+            top_taxids.add(taxid)
+            i += 1
 
     for file, rep in reports.items():
         for taxid in list(rep["count"]):
@@ -235,9 +249,6 @@ def adjust_counts_ranks(reports, no_root):
             for parent in rep["lineage"][t][:-1]:
                 if parent in rep["count"]:
                     rep["count"][parent] -= rep["count"][t]
-
-            if no_root:  # remove root from lineage
-                del rep["lineage"][t][0]
 
         # Move left over counts at root to unclassified
         if no_root:
