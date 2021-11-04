@@ -105,7 +105,7 @@ class TestTableOffline(unittest.TestCase):
         params["output_file"] = self.results_dir + "test_no_rank_unc.tsv"
         params["rank"] = ""
         params["header"] = "lineage"
-        params["add_unclassified"] = True
+        params["unclassified_label"] = "unclassified"
 
         # Build config from params
         cfg = Config("table", **params)
@@ -156,7 +156,7 @@ class TestTableOffline(unittest.TestCase):
         params["rank"] = ""
         params["header"] = "lineage"
         params["no_root"] = True
-        params["add_unclassified"] = True
+        params["unclassified_label"] = "unclassified"
 
         # Build config from params
         cfg = Config("table", **params)
@@ -403,23 +403,59 @@ class TestTableOffline(unittest.TestCase):
 
     def test_extra_cols(self):
         """
-        Test ganon table with --add-unclassified --add-filtered
+        Test ganon table with --unclassified-label and --filtered-label
         """
         params = self.default_params.copy()
-        params["output_file"] = self.results_dir + "test_extra_cols.tsv"
-        params["add_unclassified"] = True
-        params["add_filtered"] = True
+        params["output_file"] = self.results_dir + "test_extra_cols1.tsv"
+        params["min_count"] = 0.02
+        params["unclassified_label"] = "UNC"
+        params["filtered_label"] = "FIL"
         params["rank"] = "genus"
-
-        # Build config from params
         cfg = Config("table", **params)
-        # Run
         self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
-        # General sanity check of results
-        res = table_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon table has inconsistent results")
-        # last 3 cols should be the fixed ones
-        self.assertTrue(all(c in ["unclassified", "filtered"] for c in res["out_pd"].columns.values[-2:]), "ganon table extra cols failed")
+        res1 = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res1, "ganon table has inconsistent results")
+        # last 2 cols should be the fixed unclassified and filtered
+        self.assertTrue(all(c in ["UNC", "FIL"] for c in res1["out_pd"].columns.values[-2:]), "ganon table extra cols failed")
+
+        params["output_file"] = self.results_dir + "test_extra_cols2.tsv"
+        params["unclassified_label"] = "UNC"
+        params["filtered_label"] = None
+        cfg = Config("table", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        res2 = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res2, "ganon table has inconsistent results")
+        # last col should be the fixed unclassified
+        self.assertEqual(res2["out_pd"].columns.values[-1], "UNC", "ganon table extra cols failed")
+        # should not have the filtered
+        self.assertFalse("FIL" in res2["out_pd"].columns.values, "ganon table extra cols failed")
+
+        params["output_file"] = self.results_dir + "test_extra_cols3.tsv"
+        params["unclassified_label"] = None
+        params["filtered_label"] = "FIL"
+        cfg = Config("table", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        res3 = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res3, "ganon table has inconsistent results")
+        # last col should be the fixed filtered
+        self.assertEqual(res3["out_pd"].columns.values[-1], "FIL", "ganon table extra cols failed")
+        # should not have the unclassified
+        self.assertFalse("UNC" in res3["out_pd"].columns.values, "ganon table extra cols failed")
+
+        ## SAME LABEL, report together
+        params["output_file"] = self.results_dir + "test_extra_cols4.tsv"
+        params["unclassified_label"] = "UNASSIGNED"
+        params["filtered_label"] = "UNASSIGNED"
+        cfg = Config("table", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        res4 = table_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res4, "ganon table has inconsistent results")
+        # last col should be the fixed label
+        self.assertEqual(res4["out_pd"].columns.values[-1], "UNASSIGNED", "ganon table extra cols failed")
+
+        # when reporting together, should match values
+        self.assertTrue(all(res1["out_pd"][["UNC", "FIL"]].sum(axis=1)==res4["out_pd"]["UNASSIGNED"]), "ganon table extra cols failed")
+
 
     def test_skip_zeros(self):
         """
@@ -450,7 +486,7 @@ class TestTableOffline(unittest.TestCase):
         params["tre_files"] = [data_dir+"table/report_matches1.tre", 
                                data_dir+"table/report_matches2.tre",
                                data_dir+"table/report_matches3.tre"]
-        params["add_unclassified"] = True
+        params["unclassified_label"] = "unclassified"
 
         # Build config from params
         cfg = Config("table", **params)

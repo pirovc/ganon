@@ -279,10 +279,10 @@ def build_table(reports, cfg):
         for file in reports:
             lineages.update(reports[file]["lineage"])
         header = [""] + ["|".join(lineages[taxid]) for taxid in sorted_taxids]
-    if cfg.add_unclassified:
-        header.append("unclassified")
-    if cfg.add_filtered:
-        header.append("filtered")
+    if cfg.unclassified_label:
+        header.append(cfg.unclassified_label)
+    if cfg.filtered_label and cfg.filtered_label!=cfg.unclassified_label:
+        header.append(cfg.filtered_label)
 
     # generate output as a list of lists with each file in one line
     out_table = []
@@ -299,14 +299,19 @@ def build_table(reports, cfg):
                 v = 0
             out_line.append(v)
 
-        # Add unclassified/filtered at the end
-        if cfg.add_unclassified:
-            out_line.append(res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"])
-        if cfg.add_filtered:
-            out_line.append(res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"])
+        # Add unclassified/filtered at the end in the according labels
+        if cfg.unclassified_label:
+            unc = res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"]
+            if cfg.unclassified_label != cfg.filtered_label:
+                out_line.append(unc)
+        if cfg.filtered_label:
+            fil = res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"]
+            if cfg.filtered_label == cfg.unclassified_label:
+                out_line.append(unc+fil)
+            else:
+                out_line.append(fil)
 
         out_table.append(out_line)
-
     return out_table
 
 
