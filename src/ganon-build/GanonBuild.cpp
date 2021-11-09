@@ -243,6 +243,7 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::
                 auto [fragstart, fragend, binid] = val.fragbin[i];
                 if ( config.window_size > 0 )
                 {
+
                     for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | minimiser_hash )
                     {
                         filter.emplace( hash, seqan3::bin_index{ binid } );
