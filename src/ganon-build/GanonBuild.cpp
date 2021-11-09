@@ -8,6 +8,7 @@
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/kmer_hash.hpp>
+#include <seqan3/search/views/minimiser_hash.hpp>
 
 #include <cinttypes>
 #include <fstream>
@@ -91,7 +92,8 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                  GanonBuild::Config&        config,
                  uint64_t                   nbin_aux )
 {
-
+    // min. size necessary to parse reference (either window with minim. or kmer)
+    uint8_t base_size = config.window_size > 0 ? config.window_size : config.kmer_size;
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
@@ -106,12 +108,12 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                 std::string seqid = id.substr( 0, id.find( ' ' ) );
 
                 stats.totalSeqsFile += 1;
-                if ( seq.size() < config.kmer_size )
+                if ( seq.size() < base_size )
                 {
                     if ( config.verbose )
                     {
                         std::scoped_lock lock( mtx );
-                        std::cerr << "WARNING: skipping sequence smaller than k-mer size"
+                        std::cerr << "WARNING: skipping sequence smaller than k-mer/window size"
                                   << " [" << seqid << "]" << std::endl;
                     }
                     stats.invalidSeqs += 1;
@@ -222,7 +224,14 @@ void save_filter( TFilter const& filter, std::string const& output_filter_file )
 
 void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::Config const& config )
 {
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+
+    auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+
+    auto minimiser_hash = seqan3::views::minimiser_hash(
+        seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+        seqan3::window_size{ config.window_size > 0 ? config.window_size : config.kmer_size },
+        seqan3::seed{ 0 } );
+
     while ( true )
     {
         detail::Seqs val = queue_refs.pop();
@@ -232,9 +241,19 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::
             {
                 // Fragment sequences
                 auto [fragstart, fragend, binid] = val.fragbin[i];
-                for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hash_adaptor )
+                if ( config.window_size > 0 )
                 {
-                    filter.emplace( hash, seqan3::bin_index{ binid } );
+                    for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | minimiser_hash )
+                    {
+                        filter.emplace( hash, seqan3::bin_index{ binid } );
+                    }
+                }
+                else
+                {
+                    for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | kmer_hash )
+                    {
+                        filter.emplace( hash, seqan3::bin_index{ binid } );
+                    }
                 }
             }
         }

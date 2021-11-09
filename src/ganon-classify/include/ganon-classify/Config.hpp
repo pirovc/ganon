@@ -38,6 +38,7 @@ struct HierarchyConfig
     std::vector< FilterConfig > filters;
     int16_t                     max_error_unique;
     uint8_t                     kmer_size;
+    uint8_t                     window_size;
     int16_t                     strata_filter;
     std::string                 output_file_lca;
     std::string                 output_file_all;
@@ -57,6 +58,7 @@ public:
     std::vector< std::string > hierarchy_labels{ "1_default" };
 
     std::vector< uint8_t > kmer_size{ 19 };
+    std::vector< uint8_t > window_size{ 0 };
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
@@ -278,6 +280,28 @@ public:
             return false;
         }
 
+        for ( uint16_t w = 0; w < window_size.size(); ++w )
+        {
+            if ( window_size[w] > 0 && window_size[w] <= kmer_size[w] )
+            {
+                std::cerr << "--window-size has to be bigger than --kmer-size" << std::endl;
+                return false;
+            }
+        }
+        if ( window_size.size() == 1 && unique_hierarchy > 1 )
+        {
+            for ( uint16_t b = 1; b < unique_hierarchy; ++b )
+            {
+                window_size.push_back( window_size[0] );
+            }
+        }
+        else if ( window_size.size() != unique_hierarchy )
+        {
+            std::cerr << "Please provide a single or one-per-hierarchy --window-size value[s]" << std::endl;
+            return false;
+        }
+
+
         if ( max_error_unique.size() == 1 && unique_hierarchy > 1 )
         {
             for ( uint16_t b = 1; b < unique_hierarchy; ++b )
@@ -333,6 +357,7 @@ public:
                 parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{ fc,
                                                                          max_error_unique[hierarchy_count],
                                                                          kmer_size[hierarchy_count],
+                                                                         window_size[hierarchy_count],
                                                                          strata_filter[hierarchy_count],
                                                                          output_file_lca,
                                                                          output_file_all };
@@ -360,6 +385,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         {
             stream << hierarchy_config.first << ")" << newl;
             stream << " --kmer-size: " << unsigned( hierarchy_config.second.kmer_size ) << newl;
+            stream << " --window-size: " << unsigned( hierarchy_config.second.window_size ) << newl;
             stream << " --max-error-unique: " << hierarchy_config.second.max_error_unique << newl;
             stream << " --strata-filter: " << hierarchy_config.second.strata_filter << newl;
         }
