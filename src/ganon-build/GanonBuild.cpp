@@ -222,15 +222,9 @@ void save_filter( TFilter const& filter, std::string const& output_filter_file )
     archive( filter );
 }
 
-void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::Config const& config )
+template < class Thashes >
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& hashes_view )
 {
-
-    auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
-
-    auto minimiser_hash = seqan3::views::minimiser_hash(
-        seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-        seqan3::window_size{ config.window_size > 0 ? config.window_size : config.kmer_size },
-        seqan3::seed{ 0 } );
 
     while ( true )
     {
@@ -241,20 +235,9 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, GanonBuild::
             {
                 // Fragment sequences
                 auto [fragstart, fragend, binid] = val.fragbin[i];
-                if ( config.window_size > 0 )
+                for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
                 {
-
-                    for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | minimiser_hash )
-                    {
-                        filter.emplace( hash, seqan3::bin_index{ binid } );
-                    }
-                }
-                else
-                {
-                    for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | kmer_hash )
-                    {
-                        filter.emplace( hash, seqan3::bin_index{ binid } );
-                    }
+                    filter.emplace( hash, seqan3::bin_index{ binid } );
                 }
             }
         }
@@ -410,10 +393,27 @@ bool run( Config config )
     // Start threads to build filter
     timeBuild.start();
     std::vector< std::future< void > > tasks;
-    for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
+    if ( config.window_size > 0 )
     {
-        tasks.emplace_back( std::async(
-            std::launch::async, detail::build, std::ref( filter ), std::ref( queue_refs ), std::ref( config ) ) );
+        for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
+        {
+            auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                                                 seqan3::window_size{ config.window_size },
+                                                                 seqan3::seed{ 0 } );
+            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
+                detail::build( filter, queue_refs, minimiser_hash );
+            } ) );
+        }
+    }
+    else
+    {
+        for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
+        {
+            auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &kmer_hash]() {
+                detail::build( filter, queue_refs, kmer_hash );
+            } ) );
+        }
     }
     // Wait until all references sequences are parsed
     read_task.get();
