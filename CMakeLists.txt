@@ -123,6 +123,15 @@ else()
     target_include_directories( Catch2 SYSTEM INTERFACE libs/Catch2/single_include )
 endif()
 
+# 6. robin-hood-hashing:
+
+add_library( robin-hood-hashing INTERFACE )
+if( INCLUDE_DIRS )
+    target_include_directories( robin-hood-hashing SYSTEM INTERFACE ${INCLUDE_DIRS} )
+else()
+    target_include_directories( robin-hood-hashing SYSTEM INTERFACE libs/robin-hood-hashing/src/include )
+endif()
+
 # -----------------------------------------------------------------------------
 # verbose log
 # -----------------------------------------------------------------------------

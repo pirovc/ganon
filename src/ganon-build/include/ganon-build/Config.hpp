@@ -27,6 +27,7 @@ public:
     std::string update_filter_file = "";
     bool        update_complete    = false;
 
+    float    false_positive = 0;
     uint32_t filter_size_mb = 0;
     uint64_t bin_size_bits  = 0;
 
@@ -130,18 +131,18 @@ public:
             if ( !check_files( { update_filter_file } ) )
                 return false;
 
-            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 ) )
+            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0  || false_positive > 0 ) )
             {
-                std::cerr << "WARNING: --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
+                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
             }
             filter_size_mb = 0;
             bin_size_bits  = 0;
         }
         else
         {
-            if ( bin_size_bits == 0 && filter_size_mb == 0 )
+            if ( bin_size_bits == 0 && filter_size_mb == 0 && false_positive == 0 )
             {
-                std::cerr << "--filter-size-mb or --bin-size-bits should be provided" << std::endl;
+                std::cerr << "--false-positive, --filter-size-mb or --bin-size-bits should be provided" << std::endl;
                 return false;
             }
         }
@@ -180,6 +181,8 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-filter-file  " << config.output_filter_file << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;
+    if ( config.false_positive > 0 )
+        stream << "--false-positive      " << config.false_positive << newl;
     if ( config.bin_size_bits > 0 )
         stream << "--bin-size-bits       " << config.bin_size_bits << newl;
     if ( config.filter_size_mb > 0 )

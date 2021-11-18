@@ -30,6 +30,7 @@ function( link_to_ganon_dependencies target )
         PRIVATE
         Threads::Threads
         cxxopts
+        robin-hood-hashing
         utils
         defaults )
     target_link_libraries ( ${target} PUBLIC seqan3::seqan3 )

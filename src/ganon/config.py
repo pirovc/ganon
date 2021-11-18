@@ -22,14 +22,15 @@ class Config:
 
         # Defaults
         build_group_optional = build_parser.add_argument_group('optional arguments')
-        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Rank specific target for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. If specified rank is not found in the lineage, use the leaf taxonomic node as target. Default: species')
-        build_group_optional.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Add extra specialized "rank" as target for classification after taxonomic leaves. When selected --rank is set to leaves. Options: [sequence,file,assembly,custom]. "sequence" will use sequence accession as target. "file" uses the filename as target. "assembly" will use assembly info from NCBI as target. "custom" uses the 4th column of the file provided in --seq-info-file as target.')
-        build_group_optional.add_argument('-k', '--kmer-size',       type=int,            metavar='', default=19,        help='The k-mer size for the interleaved bloom filter. Default: 19')
-        build_group_optional.add_argument('-n', '--hash-functions',  type=int,            metavar='', default=3,         help='The number of hash functions for the interleaved bloom filter. Default: 3')
-        build_group_optional.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for k-mer classification. Default: 0.05')
-        build_group_optional.add_argument('-m', '--max-bloom-size',  type=int,            metavar='',                    help='Approx. maximum filter size in Megabytes (MB). Will estimate best --bin-length based on --kmer-size, --hash-functions and --max-fp  [Mutually exclusive --fixed-bloom-size]')
-        build_group_optional.add_argument('-l', '--bin-length',      type=int,            metavar='',                    help='Maximum length (in bp) for each bin. Default: auto')
         build_group_optional.add_argument('-t', '--threads',         type=int,            metavar='', default=2,         help='Number of sub-processes/threads to use. Default: 2')
+        build_group_optional.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Rank specific target for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. If specified rank is not found in the lineage, use the leaf taxonomic node as target. Default: species')
+        build_group_optional.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Add extra specialized "rank" as target for classification after taxonomic leaves. If set, --rank is defaulted to leaves. Options: [sequence,file,assembly,custom]. "sequence" will use sequence accession as target. "file" uses the filename as target. "assembly" will use assembly info from NCBI as target. "custom" uses the 4th column of the file provided in --seq-info-file as target.')
+        build_group_optional.add_argument('-m', '--max-bloom-size',  type=int,            metavar='',                    help='Approx. maximum filter size in Megabytes (MB). Will attempt best --bin-length based on --kmer-size, --hash-functions and --max-fp  [Mutually exclusive --fixed-bloom-size]')
+        build_group_optional.add_argument('--max-fp',                type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters. Default: 0.05')
+        build_group_optional.add_argument('--kmer-size',             type=int,            metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
+        build_group_optional.add_argument('--window-size',           type=int,            metavar='', default=0,         help='The window-size to build filter with minimizers. Default: 0 (off)')
+        build_group_optional.add_argument('--hash-functions',        type=int,            metavar='', default=3,         help='The number of hash functions for the interleaved bloom filter. Default: 3')
+        build_group_optional.add_argument('--bin-length',            type=int,            metavar='',                    help='Maximum length (in bp) for each bin. Default: auto')
         build_group_optional.add_argument('--fixed-bloom-size',      type=int,            metavar='',                    help='Fixed size for filter in Megabytes (MB), will ignore --max-fp [Mutually exclusive --max-bloom-size] ')
         build_group_optional.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
         build_group_optional.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
@@ -169,18 +170,23 @@ class Config:
         subparsers = parser.add_subparsers()
 
         build = subparsers.add_parser('build', help='Build ganon database', parents=[build_parser])
+        build._action_groups.reverse()  # required first
         build.set_defaults(which='build')
 
         update = subparsers.add_parser('update', help='Update ganon database', parents=[update_parser])
+        update._action_groups.reverse()  # required first
         update.set_defaults(which='update')
 
         classify = subparsers.add_parser('classify', help='Classify reads', parents=[classify_parser])
+        classify._action_groups.reverse()  # required first
         classify.set_defaults(which='classify')
 
         report = subparsers.add_parser('report', help='Generate reports', parents=[filter_parser,report_parser])
+        report._action_groups.reverse()  # required first
         report.set_defaults(which='report')
 
         table = subparsers.add_parser('table', help='Generate table from reports', parents=[filter_parser,table_parser])
+        table._action_groups.reverse()  # required first
         table.set_defaults(which='table')
 
         # Passing arguments internally from call main(which, **kwargs)
@@ -188,7 +194,8 @@ class Config:
             # Set which as the first parameter (mandatory)
             list_kwargs = [which]
             for arg, value in kwargs.items():
-                # convert all others to argparse format (eg: input_files to --input-files)
+                # convert all others to argparse format
+                # (eg: input_files to --input-files)
                 arg_formatted = "--" + arg.replace('_', '-')
                 if isinstance(value, list):  # unpack if list
                     list_kwargs.append(arg_formatted)
@@ -270,7 +277,7 @@ class Config:
                 print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
                 return False
 
-        elif self.which=='classify':
+        elif self.which == 'classify':
             for prefix in self.db_prefix:
                 if not check_db(prefix):
                     return False
@@ -280,19 +287,19 @@ class Config:
                 return False
 
             len_single_reads = 0
-            if self.single_reads: 
+            if self.single_reads:
                 self.single_reads = check_files(self.single_reads)
                 len_single_reads = len(self.single_reads)
             len_paired_reads = 0
-            if self.paired_reads: 
+            if self.paired_reads:
                 self.paired_reads = check_files(self.paired_reads)
                 len_paired_reads = len(self.paired_reads)
-            
+
             if len_paired_reads % 2 != 0:
                 print_log("Invalid paired reads")
                 return False
 
-            if len_single_reads+len_paired_reads==0:
+            if len_single_reads + len_paired_reads==0:
                 print_log("No valid input files to classify")
                 return False
 

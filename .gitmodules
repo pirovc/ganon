@@ -7,3 +7,6 @@
 [submodule "libs/seqan3"]
 	path = libs/seqan3
 	url = https://github.com/seqan/seqan3.git
+[submodule "libs/robin-hood-hashing"]
+	path = libs/robin-hood-hashing
+	url = https://github.com/martinus/robin-hood-hashing/
