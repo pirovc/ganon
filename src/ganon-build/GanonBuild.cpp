@@ -57,21 +57,26 @@ struct Stats
     }
 
     uint64_t sumSeqLen;
-    uint32_t totalBinsBinId;
+    uint64_t totalBinsBinId;
     uint64_t totalSeqsFile;
-    uint32_t totalBinsFile;
+    uint64_t totalBinsFile;
     uint64_t invalidSeqs;
-    uint32_t newBins;
+    uint64_t newBins;
+    float    filterSizeMB;
+    float    filterFalsePositive;
 };
 
-typedef std::map< std::string, std::vector< FragmentBin > > TSeqBin;
-typedef std::set< uint64_t >                                TBinIds;
-typedef seqan3::interleaved_bloom_filter<>                  TFilter;
+typedef robin_hood::unordered_map< std::string, std::vector< FragmentBin > > TSeqBin;
+typedef std::set< uint64_t >                                                 TBinIds;
+typedef std::map< uint64_t, uint64_t >                                       TBinLen;
+typedef seqan3::interleaved_bloom_filter<>                                   TFilter;
 
-void parse_seqid_bin( const std::string&       seqid_bin_file,
-                      TSeqBin&                 seq_bin,
-                      TBinIds&                 bin_ids,
-                      std::vector< uint64_t >& bin_total_length )
+inline std::string get_seqid( std::string header )
+{
+    return header.substr( 0, header.find( ' ' ) );
+}
+
+void parse_seqid_bin( const std::string& seqid_bin_file, TSeqBin& seq_bin, TBinLen& bin_len )
 {
     std::string   line;
     std::ifstream infile( seqid_bin_file );
@@ -84,17 +89,26 @@ void parse_seqid_bin( const std::string&       seqid_bin_file,
             fields.push_back( field ); // seqid <tab> seqstart <tab> seqend <tab> binid
 
         const uint64_t binid = std::stoul( fields[3] );
-        if ( binid >= bin_total_length.size() )
-        {
-            bin_total_length.resize( binid + 1 );
-        }
-
-        const uint64_t frag_len = std::stoul( fields[2] ) - std::stoul( fields[1] ) + 1;
         seq_bin[fields[0]].push_back( FragmentBin{ std::stoul( fields[1] ), std::stoul( fields[2] ), binid } );
-        bin_total_length[binid] += frag_len;
+        bin_len[binid] += std::stoul( fields[2] ) - std::stoul( fields[1] ) + 1;
+    }
+}
 
-        // save list of unique bins used
-        bin_ids.insert( binid );
+void parse_sequences( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len, uint64_t parse_sequences )
+{
+    uint64_t binid = parse_sequences;
+    for ( auto const& reference_file : reference_files )
+    {
+        seqan3::sequence_file_input fin{ reference_file };
+
+        for ( auto& [seq, header, qual] : fin )
+        {
+            // Header id goes up-to first empty space
+            const auto seqid = get_seqid( header );
+            seq_bin[seqid].push_back( FragmentBin{ 1, seq.size(), binid } );
+            bin_len[binid] += seq.size();
+        }
+        binid++;
     }
 }
 
@@ -102,11 +116,9 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                  detail::TSeqBin&           seq_bin,
                  std::mutex&                mtx,
                  Stats&                     stats,
-                 GanonBuild::Config&        config,
-                 uint64_t                   nbin_aux )
+                 GanonBuild::Config&        config )
 {
-    // min. size necessary to parse reference (either window with minim. or kmer)
-    uint8_t base_size = config.window_size > 0 ? config.window_size : config.kmer_size;
+
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
@@ -115,18 +127,16 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
         // read in chuncks of config.n_refs
         for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
         {
-            for ( auto& [seq, id, qual] : records )
+            for ( auto& [seq, header, qual] : records )
             {
-                // Header id goes up-to first empty space
-                std::string seqid = id.substr( 0, id.find( ' ' ) );
-
+                const auto seqid = get_seqid( header );
                 stats.totalSeqsFile += 1;
-                if ( seq.size() < base_size )
+                if ( seq.size() < config.kmer_size )
                 {
                     if ( config.verbose )
                     {
                         std::scoped_lock lock( mtx );
-                        std::cerr << "WARNING: skipping sequence smaller than k-mer/window size"
+                        std::cerr << "WARNING: skipping sequence smaller than k-mer size"
                                   << " [" << seqid << "]" << std::endl;
                     }
                     stats.invalidSeqs += 1;
@@ -134,82 +144,67 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                 }
 
                 std::vector< detail::FragmentBin > fb;
-                if ( seq_bin.empty() )
+
+                // get fragments in the seq_bin
+                if ( seq_bin.count( seqid ) > 0 )
                 {
-                    // insert whole sequence coordinates into the bin for the reference file
-                    // nbin_aux is set with the bin number to start adding sequences
-                    // 0 for build and first bin for update
-                    fb.push_back( detail::FragmentBin{ 1, seq.size(), nbin_aux } );
+                    fb = seq_bin.at( seqid );
                 }
                 else
                 {
-                    // get fragments in the seq_bin
-                    if ( seq_bin.count( seqid ) > 0 )
+                    // seqid not found in the seq_bin
+                    if ( config.verbose )
                     {
-                        fb = seq_bin.at( seqid );
+                        std::scoped_lock lock( mtx );
+                        std::cerr << "WARNING: skipping sequence not defined on seqid-bin-file"
+                                  << " [" << seqid << "]" << std::endl;
                     }
-                    else
-                    {
-                        // seqid not found in the seq_bin
-                        if ( config.verbose )
-                        {
-                            std::scoped_lock lock( mtx );
-                            std::cerr << "WARNING: skipping sequence not defined on seqid-bin-file"
-                                      << " [" << seqid << "]" << std::endl;
-                        }
-                        stats.invalidSeqs += 1;
-                        continue;
-                    }
+                    stats.invalidSeqs += 1;
+                    continue;
                 }
+
                 stats.sumSeqLen += seq.size();
                 queue_refs.push( detail::Seqs{ std::move( seqid ), std::move( seq ), std::move( fb ) } );
             }
         }
-        nbin_aux++;
     }
     queue_refs.notify_push_over();
 }
 
-uint64_t count_hashes( GanonBuild::Config& config, TSeqBin& seq_bin, std::vector< uint64_t >& bin_total_length )
+template < class Thashes >
+uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len, Thashes& hashes_view )
 {
 
-    uint64_t bin_count = bin_total_length.size();
 
     // map instead of vector to easily erase
     robin_hood::unordered_map< uint64_t, robin_hood::unordered_set< uint64_t > > hashes;
 
     // store parsed lenght. Once whole bin is calculated, remove hashes from memory
-    std::vector< uint64_t > bin_parsed_length( bin_count, 0 );
-
-    auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                         seqan3::window_size{ config.window_size },
-                                                         seqan3::seed{ 0 } );
+    robin_hood::unordered_map< uint64_t, uint64_t > bin_parsed_length;
 
     uint64_t finished   = 0;
     uint64_t max_hashes = 0;
-
-    for ( auto const& reference_file : config.reference_files )
+    uint64_t bin_count  = bin_len.size();
+    for ( auto const& reference_file : reference_files )
     {
         seqan3::sequence_file_input fin{ reference_file };
 
-        for ( auto& [seq, id, qual] : fin )
+        for ( auto& [seq, header, qual] : fin )
         {
-            // Header id goes up-to first empty space
-            const std::string seqid = id.substr( 0, id.find( ' ' ) );
-
+            const auto seqid = get_seqid( header );
             if ( seq_bin.count( seqid ) > 0 )
             {
                 for ( const auto& [fragstart, fragend, binid] : seq_bin.at( seqid ) )
                 {
-                    if ( bin_parsed_length[binid] == bin_total_length[binid] )
+                    if ( bin_parsed_length[binid] == bin_len[binid] )
                         continue;
 
                     const auto mh =
-                        seq | seqan3::views::slice( fragstart - 1, fragend ) | minimiser_hash | std::views::common;
+                        seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view | std::views::common;
                     hashes[binid].insert( mh.begin(), mh.end() );
                     bin_parsed_length[binid] += ( fragend - fragstart + 1 );
 
-                    if ( bin_parsed_length[binid] == bin_total_length[binid] )
+                    if ( bin_parsed_length[binid] == bin_len[binid] )
                     {
                         if ( hashes[binid].size() > max_hashes )
                             max_hashes = hashes[binid].size();
@@ -221,7 +216,8 @@ uint64_t count_hashes( GanonBuild::Config& config, TSeqBin& seq_bin, std::vector
             }
         }
     }
-    // parsed lenght did not achieve max len defined on seqid_bin (possible missing sequences)
+    // parsed lenght did not achieve max len defined on seqid_bin
+    // possible missing sequences or wrong info on seqid_bin
     // count parsed existing hashes
     for ( const auto& [binid, h] : hashes )
     {
@@ -232,46 +228,99 @@ uint64_t count_hashes( GanonBuild::Config& config, TSeqBin& seq_bin, std::vector
     return max_hashes;
 }
 
-TFilter create_filter( GanonBuild::Config& config, uint32_t bin_count, uint64_t max_hashes )
+inline uint64_t get_optimal_bins( uint64_t nbins )
+{
+    return std::ceil( nbins / 64.0 ) * 64;
+}
+
+inline uint64_t get_bin_size( float false_positive, uint16_t hash_functions, uint64_t max_hashes )
+{
+    return std::ceil( -( 1
+                         / ( pow( ( 1 - pow( false_positive, ( 1 / float( hash_functions ) ) ) ),
+                                  ( 1 / float( hash_functions * max_hashes ) ) )
+                             - 1 ) ) );
+}
+
+inline float get_fp( uint64_t bin_size, uint16_t hash_functions, uint64_t max_hashes )
+{
+    return pow( ( 1 - ( pow( ( 1 - ( 1 / float( bin_size ) ) ), ( hash_functions * max_hashes ) ) ) ), hash_functions );
+}
+
+
+void print_ibf_stats(
+    Stats& stats, uint64_t max_hashes, uint64_t bin_size, uint64_t bin_count, uint64_t optimal_bin_count )
+{
+    std::cerr << "IBF stats: " << std::endl;
+    std::cerr << "max hashes: " << max_hashes << std::endl;
+    std::cerr << "bin count/optimal: " << bin_count << "/" << optimal_bin_count << std::endl;
+    std::cerr << "bin size bits: " << bin_size << std::endl;
+    std::cerr << "filter size bits/MB: " << ( optimal_bin_count * bin_size ) << "/" << ( stats.filterSizeMB )
+              << std::endl;
+    std::cerr << "filter max false positive: " << stats.filterFalsePositive << std::endl;
+    std::cerr << std::endl;
+}
+
+uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, TBinLen& bin_len )
 {
 
-    const auto mb_bits           = 8388608u;
-    float      false_positive    = 0;
-    uint64_t   bin_size          = 0;
-    uint64_t   optimal_bin_count = ( std::floor( bin_count / 64 ) + 1 ) * 64;
+    uint64_t max_hashes = 0;
+    if ( config.count_hashes )
+    {
+        // count hashes for minimizers or kmers
+        if ( config.window_size > 0 )
+        {
+            auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                                                 seqan3::window_size{ config.window_size },
+                                                                 seqan3::seed{ 0 } );
+            max_hashes          = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash );
+        }
+        else
+        {
+            auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+            max_hashes     = count_hashes( config.reference_files, seq_bin, bin_len, kmer_hash );
+        }
+    }
+    else
+    {
+        // calculate max hashes based on biggest bin lenght
+        auto max_bin_len =
+            std::max_element( bin_len.begin(),
+                              bin_len.end(),
+                              []( const std::pair< uint64_t, uint64_t >& p1,
+                                  const std::pair< uint64_t, uint64_t >& p2 ) { return p1.second < p2.second; } );
+        max_hashes = max_bin_len->second - config.kmer_size + 1;
+    }
+
+    return max_hashes;
+}
+
+TFilter create_filter( GanonBuild::Config& config, Stats& stats, uint64_t bin_count, uint64_t max_hashes )
+{
+    // calculate size/false positive
+    float    false_positive    = 0;
+    uint64_t bin_size          = 0;
+    uint64_t optimal_bin_count = get_optimal_bins( bin_count );
     // Calculate bin size based on filter size (1MB = 8388608bits)
     if ( config.false_positive )
     {
-        bin_size       = std::ceil( -( 1
-                                 / ( pow( ( 1 - pow( config.false_positive, ( 1 / float( config.hash_functions ) ) ) ),
-                                          ( 1 / float( config.hash_functions * max_hashes ) ) )
-                                     - 1 ) ) );
         false_positive = config.false_positive;
+        bin_size       = get_bin_size( false_positive, config.hash_functions, max_hashes );
     }
     else
     {
         if ( config.filter_size_mb > 0 )
-        {
-            bin_size = ( config.filter_size_mb / static_cast< float >( optimal_bin_count ) ) * mb_bits;
-        }
+            bin_size = ( config.filter_size_mb / static_cast< float >( optimal_bin_count ) ) * 8388608u;
         else
-        {
             bin_size = config.bin_size_bits;
-        }
-        false_positive =
-            pow( ( 1 - ( pow( ( 1 - ( 1 / float( bin_size ) ) ), ( config.hash_functions * max_hashes ) ) ) ),
-                 config.hash_functions );
+        false_positive = get_fp( bin_size, config.hash_functions, max_hashes );
     }
 
+    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< float >( 8388608u );
+    stats.filterFalsePositive = false_positive;
+
     if ( config.verbose )
-    {
-        std::cerr << "max hashes: " << max_hashes << std::endl;
-        std::cerr << "bin count/optimal: " << bin_count << "/" << optimal_bin_count << std::endl;
-        std::cerr << "bin size bits: " << bin_size << std::endl;
-        std::cerr << "filter size bits/MB: " << ( optimal_bin_count * bin_size ) << "/"
-                  << ( ( optimal_bin_count * bin_size ) / static_cast< float >( mb_bits ) ) << std::endl;
-        std::cerr << "filter max false positive: " << false_positive << std::endl;
-    }
+        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count );
+
     return TFilter{ seqan3::bin_count{ bin_count },
                     seqan3::bin_size{ bin_size },
                     seqan3::hash_function_count{ config.hash_functions } };
@@ -287,13 +336,13 @@ TFilter load_filter( std::string const& input_filter_file )
     return filter;
 }
 
-void clear_filter( TFilter& filter, const TBinIds& bin_ids )
+void clear_filter( TFilter& filter, const TBinLen& bin_len )
 {
     // Reset bins if complete set of sequences is provided (re-create updated bins)
     std::vector< seqan3::bin_index > updated_bins;
     // For all binids in the file provided, only clean bins for the old bins
     // new bins are already cleared by default when created
-    for ( auto const& binid : bin_ids )
+    for ( auto const& [binid, len] : bin_len )
     {
         if ( binid >= filter.bin_count() - 1 )
         {
@@ -304,15 +353,32 @@ void clear_filter( TFilter& filter, const TBinIds& bin_ids )
     filter.clear( updated_bins );
 }
 
-void increase_filter( TFilter& filter, uint32_t new_total_bins )
+void increase_filter( Config& config, Stats& stats, TFilter& filter, uint64_t bin_count, uint64_t max_hashes )
 {
+    // Calculate false positive
+    uint64_t bin_size          = filter.bin_size();
+    uint64_t optimal_bin_count = get_optimal_bins( bin_count );
+
+    float false_positive =
+        pow( ( 1 - ( pow( ( 1 - ( 1 / float( bin_size ) ) ), ( config.hash_functions * max_hashes ) ) ) ),
+             config.hash_functions );
+
+    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< float >( 8388608u );
+    stats.filterFalsePositive = false_positive;
+
+    if ( config.verbose )
+        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count );
+
     // If new bins were added
-    if ( new_total_bins > filter.bin_count() )
+    uint64_t old_total_bins = filter.bin_count();
+    stats.newBins           = bin_count - old_total_bins;
+
+    if ( bin_count > filter.bin_count() )
     {
         // just resize if number of bins is bigger than amount on IBF
         // when updating an IBF with empty bins or removing the last bins, this will not be true
         // if new bins are smaller (less bins, sequences removed) IBF still keep all bins but empty
-        filter.increase_bin_number_to( seqan3::bin_count{ new_total_bins } );
+        filter.increase_bin_number_to( seqan3::bin_count{ bin_count } );
     }
 }
 
@@ -388,12 +454,15 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
               << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed_build / 60.0 ) << " Mbp/m)" << std::endl;
-    if ( stats.invalidSeqs > 0 )
-        std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
+
     if ( stats.newBins > 0 )
         std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
-    std::cerr << " - " << validSeqs << " sequences in " << stats.totalBinsFile << " bins written to the IBF"
-              << std::endl;
+    if ( stats.invalidSeqs > 0 )
+        std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
+
+    std::cerr << " - " << stats.filterFalsePositive << " max. false positive (only added sequences)" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile
+              << " bins written to the IBF (size: " << stats.filterSizeMB << "MB)" << std::endl;
 }
 
 } // namespace detail
@@ -414,17 +483,16 @@ bool run( Config config )
     timeGanon.start();
 
     // Initialize variables
-    StopClock               timeLoadFiles;
-    StopClock               timeLoadFilter;
-    StopClock               timeLoadSeq;
-    StopClock               timeBuild;
-    StopClock               timeSaveFilter;
-    std::mutex              mtx;
-    detail::Stats           stats;
-    detail::TFilter         filter;
-    detail::TSeqBin         seq_bin;          // Map with seqid_bin file info
-    detail::TBinIds         bin_ids;          // Set with binids used
-    std::vector< uint64_t > bin_total_length; // Store total lenght (bp) for each bin
+    StopClock       timeLoadFiles;
+    StopClock       timeLoadFilter;
+    StopClock       timeLoadSeq;
+    StopClock       timeBuild;
+    StopClock       timeSaveFilter;
+    std::mutex      mtx;
+    detail::Stats   stats;
+    detail::TFilter filter;
+    detail::TSeqBin seq_bin; // Map with seqid_bin file info
+    detail::TBinLen bin_len; // Map with binids used and their total lenght (bp)
 
     // SafeQueue with reference sequences
     // config.n_batches*config.n_refs = max. amount of references in memory
@@ -438,72 +506,54 @@ bool run( Config config )
     }
     timeLoadFilter.stop();
 
-    // load seq_bin and bin_ids from --seqid-bin file or create bins automatically
+    // load seq_bin and bin_len from --seqid-bin file or create bins automatically
     timeLoadFiles.start();
     if ( !config.seqid_bin_file.empty() )
     {
-        detail::parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_ids, bin_total_length );
+        detail::parse_seqid_bin( config.seqid_bin_file, seq_bin, bin_len );
     }
     else
     {
-        // seq_bin should remain empty
-        int start_bin = 0;
-        if ( !config.update_filter_file.empty() )
-        {
-            start_bin = filter.bin_count(); // if updating, create additional bins starting from the last
-        }
-        bin_ids = std::views::iota( start_bin, start_bin + int( config.reference_files.size() ) )
-                  | seqan3::views::to< detail::TBinIds >; // fill bin_ids with range
+        // Iterate over sequences to get their bins and total bin lenghts
+        // if updating, create additional bins starting from the last
+        uint64_t start_bin = !config.update_filter_file.empty() ? filter.bin_count() : 0;
+        detail::parse_sequences( config.reference_files, seq_bin, bin_len, start_bin );
     }
     timeLoadFiles.stop();
 
+    // last key, last bin (std::map)
+    uint64_t last_bin = bin_len.rbegin()->first + 1;
+    //  based on counted hashes or length of the largest bin
+    uint64_t max_hashes = get_max_hashes( config, seq_bin, bin_len );
+
     // If updating: extend and clear filter
     timeLoadFilter.start();
-    if ( !config.update_filter_file.empty() )
+    if ( config.update_filter_file.empty() )
     {
-        uint32_t old_total_bins = filter.bin_count();
-        uint32_t new_total_bins = *bin_ids.rbegin() + 1; // new total is the last bin (set is ordered) + 1
-        detail::increase_filter( filter, new_total_bins );
-        stats.newBins = new_total_bins - old_total_bins;
-        if ( config.update_complete )
-        {
-            detail::clear_filter( filter, bin_ids );
-        }
+        // create new filter:
+        filter = detail::create_filter( config, stats, last_bin, max_hashes );
     }
     else
     {
-        // Calculae bin_size based on hashes (minimisers) or length of the largest bin (kmers)
-        uint64_t max_hashes = 0;
-        if ( config.window_size > 0 )
+        detail::increase_filter( config, stats, filter, last_bin, max_hashes );
+        if ( config.update_complete )
         {
-            // count hashes
-            max_hashes = count_hashes( config, seq_bin, bin_total_length );
+            detail::clear_filter( filter, bin_len );
         }
-        else
-        {
-            const auto max_bin_len = *std::max_element( bin_total_length.begin(), bin_total_length.end() );
-            max_hashes             = max_bin_len - config.kmer_size + 1;
-        }
-
-        // create new filter
-        filter = detail::create_filter( config, bin_total_length.size(), max_hashes );
     }
     stats.totalBinsFile  = filter.bin_count();
-    stats.totalBinsBinId = bin_ids.size();
+    stats.totalBinsBinId = last_bin; // last key, last bin (std::map)
     timeLoadFilter.stop();
 
     // Start thread for reading the input reference files
     timeLoadSeq.start();
-    // nbin_aux loaded with first bin in case of automatic bin generation
-    uint32_t            nbin_aux  = *bin_ids.begin();
     std::future< void > read_task = std::async( std::launch::async,
                                                 detail::parse_refs,
                                                 std::ref( queue_refs ),
                                                 std::ref( seq_bin ),
                                                 std::ref( mtx ),
                                                 std::ref( stats ),
-                                                std::ref( config ),
-                                                nbin_aux );
+                                                std::ref( config ) );
 
     // Start threads to build filter
     timeBuild.start();
@@ -552,7 +602,6 @@ bool run( Config config )
     // Print time and statistics
     if ( !config.quiet )
     {
-        std::cerr << std::endl;
         if ( config.verbose )
         {
             detail::print_time(

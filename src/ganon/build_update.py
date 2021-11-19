@@ -17,15 +17,15 @@ def build(cfg):
         return False
 
     # Set db prefixes
-    db_prefix = {prefix:cfg.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
-    
+    db_prefix = {prefix: cfg.db_prefix + "." + prefix for prefix in  ["ibf", "map", "tax", "gnn"]}
+
     # Set temporary working folder 
     tmp_output_folder = cfg.db_prefix + "_tmp/"
     if not set_tmp_folder(tmp_output_folder): return False
 
     # Set up taxonomy
     ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
-    
+
     # Parse .tax    
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
@@ -38,7 +38,7 @@ def build(cfg):
     # Retrieve sequence information
     if not cfg.seq_info_file:    
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
-    
+
     # Check for valid specialization
     if cfg.specialization:
         replaced_spec = seqinfo.validate_specialization()
@@ -103,39 +103,48 @@ def build(cfg):
     # Write .tax file
     print_log(" - " + db_prefix["tax"], cfg.quiet)
     # filter only used taxids
-    tax.filter(bins.get_taxids()) 
+    tax.filter(bins.get_taxids())
     # add specialization nodes
-    if cfg.specialization: tax.add_nodes(bins.get_specialization_taxid(), cfg.specialization) 
+    if cfg.specialization:
+        tax.add_nodes(bins.get_specialization_taxid(), cfg.specialization)
     tax.write(db_prefix["tax"])
 
-    if cfg.specialization and cfg.rank!="leaves":
+    if cfg.specialization and cfg.rank != "leaves":
         print_log(" - --rank is set to leaves when using specialization values", cfg.quiet)
-        cfg.rank="leaves"
+        cfg.rank = "leaves"
+
     # Write .gnn file
     print_log(" - " + db_prefix["gnn"], cfg.quiet)
-    gnn = Gnn(kmer_size=cfg.kmer_size, 
-            hash_functions=cfg.hash_functions, 
-            number_of_bins=actual_number_of_bins, 
-            rank=cfg.rank,
-            specialization=cfg.specialization,
-            bin_length=bin_length,
-            fragment_length=fragment_length,
-            overlap_length=cfg.overlap_length,
-            bins=bins.get_list())
+    gnn = Gnn(kmer_size=cfg.kmer_size,
+              window_size=cfg.window_size,
+              hash_functions=cfg.hash_functions,
+              number_of_bins=actual_number_of_bins,
+              rank=cfg.rank,
+              specialization=cfg.specialization,
+              bin_length=bin_length,
+              fragment_length=fragment_length,
+              overlap_length=cfg.overlap_length,
+              bins=bins.get_list())
     gnn.write(db_prefix["gnn"])
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     print_log("Building index (ganon-build)", cfg.quiet)
     # define bloom filter size based on given false positive
     MBinBits = 8388608
-    print_log(" - max unique " + str(cfg.kmer_size) +  "-mers: " + str(max_kmer_count), cfg.quiet)
-    if not cfg.fixed_bloom_size:
-        bin_size_bits = math.ceil(-(1/((1-cfg.max_fp**(1/float(cfg.hash_functions)))**(1/float(cfg.hash_functions*max_kmer_count))-1)))   
-        print_log(" - IBF calculated size with fp<=" + str(cfg.max_fp) + ": " + str("{0:.2f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])", cfg.quiet)
-    else:
+    if cfg.fixed_bloom_size:
         bin_size_bits = math.ceil((cfg.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
+    else:
+        bin_size_bits = math.ceil(-(1/((1-cfg.max_fp**(1/float(cfg.hash_functions)))**(1/float(cfg.hash_functions*max_kmer_count))-1)))
+
+    print_log(" - " + str(bin_size_bits) + " bits * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])", cfg.quiet)
+    if cfg.fixed_bloom_size:
+        cfg.max_fp = 0
         estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(cfg.hash_functions*max_kmer_count)))**cfg.hash_functions
-        print_log(" - IBF calculated max. fp with size=" + str(cfg.fixed_bloom_size) + "MB: " + str("{0:.2f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])"), cfg.quiet)
+        print_log(" - IBF max. false positive:" + str("{0:.2f}".format(estimated_max_fp)) + " with fixed size " + str(cfg.fixed_bloom_size) + "MB", cfg.quiet)
+    else:
+        estimated_max_size = (bin_size_bits*optimal_number_of_bins)/MBinBits
+        print_log(" - IBF max. size: " + str("{0:.2f}".format(estimated_max_size)) + "MB with fixed false positive " + str(cfg.max_fp), cfg.quiet)
+    print_log("")
 
     # Write aux. file for ganon
     acc_bin_file = tmp_output_folder + "acc_bin.txt"
@@ -149,8 +158,10 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    "--bin-size-bits " + str(bin_size_bits) if cfg.max_fp else "--filter-size-mb " + str(cfg.fixed_bloom_size),
+                                    "--false-positive " + str(cfg.max_fp) if cfg.max_fp else "--filter-size-mb " + str(cfg.fixed_bloom_size),
                                     "--kmer-size " + str(cfg.kmer_size),
+                                    "--window-size " + str(cfg.window_size) if cfg.window_size else "",
+                                    "--count-hashes " if cfg.window_size else "",
                                     "--hash-functions " + str(cfg.hash_functions),
                                     "--threads " + str(cfg.threads),
                                     "--output-filter-file " + db_prefix["ibf"],

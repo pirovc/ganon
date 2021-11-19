@@ -16,7 +16,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "r,reference-files", "Sequence files .fasta .fa .fna (e.g ref.fna[.gz],[ref2.fna[.gz],...,refN.fna[.gz]])", cxxopts::value< std::vector< std::string > >() )
         ( "d,directory-reference-files", "Directory with reference files. Do not provide wildcards, just path (e.g. /path/to/folder/)", cxxopts::value< std::string >() )
         ( "x,extension", "Extension of the files to search in the --directory-reference-files (e.g. '.fna')", cxxopts::value< std::string >() )
-        ( "e,seqid-bin-file", "Tab-separated file linking sequences identifiers, length and bin number. If not provided, each reference input file will be inserted in one bin. Sequence identifier is anything between the header start '>' and an empty space ' '. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin number", cxxopts::value< std::string >() )
+        ( "e,seqid-bin-file", "Tab-separated file linking sequences identifiers, start pos., end pos. and bin number. If not provided, iterate over input reference files and assumes one file=one bin. Sequence identifier is anything between the header start '>' and an empty space ' '. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin number", cxxopts::value< std::string >() )
         
         ( "o,output-filter-file", "Output file for filter (e.g. filter.ibf)", cxxopts::value< std::string >() )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
@@ -27,9 +27,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "b,bin-size-bits", "Bin size (bit) [mutually exclusive --filter-size, --false-positive]", cxxopts::value< uint64_t >() )
 
         ( "k,kmer-size", "k-mer size to build filter (only forward strand). Default: 19", cxxopts::value< uint8_t >() )
-        ( "w,window-size", "Window size. Define to use minimizers (beta)", cxxopts::value< uint8_t >() )
+        ( "w,window-size", "Window size. If set, filter is built with minimizers. ", cxxopts::value< uint8_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter. Default: 3", cxxopts::value< uint16_t >() )
-
+        ( "a,count-hashes", "Iterate over input to count the exact number of elements to insert into the filter", cxxopts::value<bool>())
+        
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "n-refs", "Number of sequences for each batch. Default: 400", cxxopts::value< uint32_t >() )        
         ( "n-batches", "Number of batches of n-refs to hold in memory. Default: 1000", cxxopts::value< uint32_t >() )
@@ -84,13 +85,14 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "bin-size-bits" ) )
         config.bin_size_bits = args["bin-size-bits"].as< uint64_t >();
 
-
     if ( args.count( "kmer-size" ) )
         config.kmer_size = args["kmer-size"].as< uint8_t >();
     if ( args.count( "window-size" ) )
         config.window_size = args["window-size"].as< uint8_t >();
     if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
+    if ( args.count( "count-hashes" ) )
+        config.count_hashes = args["count-hashes"].as< bool >();
 
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
