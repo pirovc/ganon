@@ -75,11 +75,11 @@ def build(cfg):
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     # Set fragment length
-    if cfg.fragment_length==-1: # if ==-1 set default
+    if cfg.fragment_length == -1:  # if ==-1 set default
         fragment_length = bin_length - cfg.overlap_length
-    elif cfg.fragment_length==0: # if ==0 deactivate
+    elif cfg.fragment_length == 0:  # if ==0 deactivate
         fragment_length = 0
-    else: # user input
+    else:   # user input
         fragment_length = cfg.fragment_length - cfg.overlap_length 
 
     tx = time.time()
@@ -93,9 +93,10 @@ def build(cfg):
     print_log(" - " + str(actual_number_of_bins) + " bins created", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+
     tx = time.time()
     print_log("Building database files", cfg.quiet)
-    
+
     # Write .map file
     print_log(" - " + db_prefix["map"], cfg.quiet)
     bins.write_map_file(db_prefix["map"], use_specialization=True if cfg.specialization else False)
@@ -131,16 +132,15 @@ def build(cfg):
     print_log("Building index (ganon-build)", cfg.quiet)
     # define bloom filter size based on given false positive
     MBinBits = 8388608
-    if cfg.fixed_bloom_size:
-        bin_size_bits = math.ceil((cfg.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
+    if cfg.filter_size:
+        bin_size_bits = math.ceil((cfg.filter_size * MBinBits)/optimal_number_of_bins);
     else:
         bin_size_bits = math.ceil(-(1/((1-cfg.max_fp**(1/float(cfg.hash_functions)))**(1/float(cfg.hash_functions*max_kmer_count))-1)))
 
     print_log(" - " + str(bin_size_bits) + " bits * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])", cfg.quiet)
-    if cfg.fixed_bloom_size:
-        cfg.max_fp = 0
+    if cfg.filter_size:
         estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(cfg.hash_functions*max_kmer_count)))**cfg.hash_functions
-        print_log(" - IBF max. false positive:" + str("{0:.2f}".format(estimated_max_fp)) + " with fixed size " + str(cfg.fixed_bloom_size) + "MB", cfg.quiet)
+        print_log(" - IBF max. false positive:" + str("{0:.2f}".format(estimated_max_fp)) + " with fixed size " + str(cfg.filter_size) + "MB", cfg.quiet)
     else:
         estimated_max_size = (bin_size_bits*optimal_number_of_bins)/MBinBits
         print_log(" - IBF max. size: " + str("{0:.2f}".format(estimated_max_size)) + "MB with fixed false positive " + str(cfg.max_fp), cfg.quiet)
@@ -158,7 +158,7 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    "--false-positive " + str(cfg.max_fp) if cfg.max_fp else "--filter-size-mb " + str(cfg.fixed_bloom_size),
+                                    "--false-positive " + str(cfg.max_fp) if cfg.max_fp else "--filter-size-mb " + str(cfg.filter_size),
                                     "--kmer-size " + str(cfg.kmer_size),
                                     "--window-size " + str(cfg.window_size) if cfg.window_size else "",
                                     "--count-hashes " if cfg.window_size else "",
@@ -547,7 +547,7 @@ def approx_n_bins(bin_len, overlap_len, groups_len):
 
 def optimal_bins(n): 
     #return optimal number of bins for the IBF (multiples of 64)
-    return (math.floor(n/64)+1)*64 
+    return math.ceil(n / float(64)) * 64
 
 def estimate_bin_len_size(cfg, seqinfo, tax):
     # Simulate bins that will be created by taxsbp with many bin lenghts
@@ -584,14 +584,14 @@ def estimate_bin_len_size(cfg, seqinfo, tax):
     print_log(" - Approx. min. size possible: " + str("{0:.2f}".format(min_filter_size)) + "MB", cfg.quiet)
     # Define max size
     # if none defined or too small, Define the max as 1.5 time size of the min
-    if cfg.max_bloom_size is None:
+    if cfg.max_filter_size is None:
         max_filter_size = min_filter_size*1.5
-    elif cfg.max_bloom_size<min_filter_size:
+    elif cfg.max_filter_size<min_filter_size:
         max_filter_size = min_filter_size*1.5
-        print_log(" - --max-bloom-size " + str(cfg.max_bloom_size) + "MB is too small, using max. default (1.5x min.): " + str("{0:.2f}".format(max_filter_size)) + "MB", cfg.quiet)
+        print_log(" - --max-bloom-size " + str(cfg.max_filter_size) + "MB is too small, using max. default (1.5x min.): " + str("{0:.2f}".format(max_filter_size)) + "MB", cfg.quiet)
     else:
-        max_filter_size = cfg.max_bloom_size
-    
+        max_filter_size = cfg.max_filter_size
+
     # keep only valid points below max_filter_size
     idx_below_max = filter_sizes<=max_filter_size
 
@@ -618,7 +618,7 @@ def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, speci
     taxsbp_params["nodes_file"] = ncbi_nodes_file
     if ncbi_merged_file: 
         taxsbp_params["merged_file"] = ncbi_merged_file
-    
+
     taxsbp_params["bin_len"] = bin_length
     if fragment_length: 
         taxsbp_params["fragment_len"] = fragment_length

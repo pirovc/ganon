@@ -37,7 +37,10 @@ class Gnn:
     def parse(self, file):
         gnn = pickle.load(gzip.open(file, "rb"))
         self.kmer_size = gnn['kmer_size']
-        self.window_size = gnn['window_size']
+        if 'window_size' in gnn:
+            self.window_size = gnn['window_size']
+        else:
+            self.window_size = 0
         self.hash_functions = gnn['hash_functions']
         self.number_of_bins = gnn['number_of_bins']
         self.rank = gnn['rank']
