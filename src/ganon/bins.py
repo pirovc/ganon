@@ -17,7 +17,7 @@ class Bins:
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'Bins({})'.format(', '.join(args))
-    
+
     def size(self):
         return self.bins.shape[0]
 

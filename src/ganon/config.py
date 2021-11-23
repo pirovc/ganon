@@ -24,16 +24,16 @@ class Config:
         build_group_important = build_parser.add_argument_group('important arguments')
         build_group_important.add_argument('-t', '--threads',         type=int,            metavar='', default=2,         help='Number of sub-processes/threads to use. Default: 2')
         build_group_important.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. To use assembly, strain or further specializations, check --specialization. Default: species')
-        build_group_important.add_argument('-m', '--max-filter-size', type=int,            metavar='',                    help='Given an approx. maximum desired size in Megabytes (MB) for filter/memory. It will attempt to derive best --bin-length (based on --kmer-size and --max-fp) [Mutually exclusive --bin-length]')
+        build_group_important.add_argument('-m', '--max-filter-size', type=int,            metavar='',                    help='Given an approx. upper limit in Megabytes (MB) for filter/memory. It will attempt to derive best parameters (based on --max-fp or --filter-size). When using minimizers, filter may be significantly smaller after build. [Mutually exclusive --bin-length]')
 
         build_group_filter = build_parser.add_argument_group('filter arguments')
         build_group_filter.add_argument('--max-fp',                type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters [Mutually exclusive --filter-size]. Default: 0.05')
         build_group_filter.add_argument('--filter-size',           type=int,            metavar='', default=0,         help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp].')
         build_group_filter.add_argument('--kmer-size',             type=int,            metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
         build_group_filter.add_argument('--window-size',           type=int,            metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
-        build_group_filter.add_argument('--hash-functions',        type=int,            metavar='', default=3,         help='The number of hash functions for the interleaved bloom filter. Default: 3')
+        build_group_filter.add_argument('--hash-functions',        type=int,            metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
         build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin [Mutually exclusive --max-filter-size]')
-        build_group_filter.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment length (in bp). Set to 0 to not fragment sequences. Default: --bin-length - --overlap-length')
+        build_group_filter.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment sequences into specified length (in bp). Set to 0 to not fragment sequences. Default: bin-length - overlap-length')
         build_group_filter.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
 
         build_group_other = build_parser.add_argument_group('other arguments')
@@ -246,17 +246,19 @@ class Config:
                 print_log("--overlap-length cannot be bigger than --fragment-length")
                 return False
 
-            if self.max_fp <= 0:
-                print_log("--max-fp has to be bigger than 0")
+            if self.hash_functions < 0 or self.hash_functions>5:
+                print_log("--hash-functions has to be between 0 and 5")
                 return False
 
-            if self.bin_length > 0  and self.max_filter_size  > 0 :
-                print_log("--bin-length and --max-filter-size are mutually exclusive")
+            if self.max_fp <= 0 or self.max_fp>=1:
+                print_log("--max-fp has to be bigger than 0 and smaller than 1")
                 return False
 
-            if self.max_fp > 0 and self.filter_size > 0:
-                print_log("--max-fp and --filter-size are mutually exclusive")
-                return False
+            if self.bin_length > 0:
+                self.max_filter_size = 0
+
+            if self.filter_size > 0:
+                self.max_fp = 0
 
             if self.specialization:
                 valid_spec = self.validate_specialization()
