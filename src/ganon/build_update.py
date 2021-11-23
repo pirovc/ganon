@@ -102,8 +102,8 @@ def build(cfg):
     print_log("Bins: " + str(actual_number_of_bins) + " (Optimal bins: " + str(optimal_number_of_bins) + ")", cfg.quiet)
     print_log("Max. elements (" + str(cfg.kmer_size) + "-mers) per bin: " + str(max_kmer_count), cfg.quiet)
     print_log("Max. filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB (" + str(optimal_params["size_bits"]) + " bits per bin)", cfg.quiet)
-    print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
     print_log("Max. false positive: " + str(optimal_params["false_positive"]), cfg.quiet)
+    print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
     print_log("")
 
     # Build database files (map, tax, gnn)
