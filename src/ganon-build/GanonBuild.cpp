@@ -458,8 +458,8 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
         std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
 
     std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins written to the IBF ("
-              << std::setprecision( 2 ) << stats.filterSizeMB << "MB)" << std::endl;
-    std::cerr << " - " << std::setprecision( 5 ) << stats.filterFalsePositive
+              << std::setprecision( 2 ) << std::fixed << stats.filterSizeMB << "MB)" << std::endl;
+    std::cerr << " - " << std::setprecision( 5 ) << std::fixed << stats.filterFalsePositive
               << " max. false positive (only added sequences)" << std::endl;
 }
 
