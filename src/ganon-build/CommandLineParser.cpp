@@ -22,9 +22,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
         ( "c,update-complete", "When using --update-filter-file and all sequences are provided to update index, set this option to not only add sequences to the filter but also remove", cxxopts::value< bool >() )
         
-        ( "f,false-positive", "False positive rate to build filter [mutually exclusive --filter-size-bits, --filter-size]. Default: 0.05", cxxopts::value< float >() )
-        ( "s,filter-size-mb", "Final filter size (MB) [mutually exclusive --filter-size-bits, --false-positive]", cxxopts::value< uint32_t >() )
-        ( "b,bin-size-bits", "Bin size (bit) [mutually exclusive --filter-size, --false-positive]", cxxopts::value< uint64_t >() )
+        ( "f,false-positive", "False positive rate to build filter [mutually exclusive --bin-size-bits, --filter-size-mb]. Default: 0.05", cxxopts::value< double >() )
+        ( "s,filter-size-mb", "Final filter size (MB) [mutually exclusive --bin-size-bits, --false-positive]", cxxopts::value< double >() )
+        ( "b,bin-size-bits", "Bin size (bits) [mutually exclusive --filter-size-mb, --false-positive]", cxxopts::value< uint64_t >() )
 
         ( "k,kmer-size", "k-mer size to build filter (only forward strand). Default: 19", cxxopts::value< uint8_t >() )
         ( "w,window-size", "Window size. If set, filter is built with minimizers. ", cxxopts::value< uint8_t >() )
@@ -79,9 +79,9 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.update_complete = args["update-complete"].as< bool >();
     
     if ( args.count( "false-positive" ) )
-        config.false_positive = args["false-positive"].as< float >();
+        config.false_positive = args["false-positive"].as< double >();
     if ( args.count( "filter-size-mb" ) )
-        config.filter_size_mb = args["filter-size-mb"].as< uint32_t >();
+        config.filter_size_mb = args["filter-size-mb"].as< double >();
     if ( args.count( "bin-size-bits" ) )
         config.bin_size_bits = args["bin-size-bits"].as< uint64_t >();
 

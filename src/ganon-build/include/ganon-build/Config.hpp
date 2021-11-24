@@ -27,8 +27,8 @@ public:
     std::string update_filter_file = "";
     bool        update_complete    = false;
 
-    float    false_positive = 0;
-    uint32_t filter_size_mb = 0;
+    double   false_positive = 0;
+    double   filter_size_mb = 0;
     uint64_t bin_size_bits  = 0;
 
     uint8_t  kmer_size      = 19;

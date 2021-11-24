@@ -102,7 +102,7 @@ def build(cfg):
     print_log("Bins: " + str(actual_number_of_bins) + " (Optimal bins: " + str(optimal_number_of_bins) + ")", cfg.quiet)
     print_log("Max. elements (" + str(cfg.kmer_size) + "-mers) per bin: " + str(max_kmer_count), cfg.quiet)
     print_log("Max. filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB (" + str(optimal_params["size_bits"]) + " bits per bin)", cfg.quiet)
-    print_log("Max. false positive: " + str(optimal_params["false_positive"]), cfg.quiet)
+    print_log("Max. false positive: " + str("{0:.5f}".format(optimal_params["false_positive"])), cfg.quiet)
     print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
     print_log("")
 
@@ -154,7 +154,7 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    "--false-positive " + str(cfg.max_fp) if cfg.max_fp else "--filter-size-mb " + str(cfg.filter_size),
+                                    "--bin-size-bits " + str(optimal_params["size_bits"]) if cfg.filter_size else "--false-positive " + str(cfg.max_fp),
                                     "--kmer-size " + str(cfg.kmer_size),
                                     "--window-size " + str(cfg.window_size) if cfg.window_size else "",
                                     "--count-hashes " if cfg.window_size else "",
@@ -679,6 +679,7 @@ def derive_bf_params(elements, false_positive, size_bits, hash_functions):
     returns a dict with  {"size_bits", "false_positive", "hash_functions"}
     """
     max_hash_functions = 5
+
     def ratio_from_size_elements(size, elements):
         return size / elements
 
@@ -703,6 +704,10 @@ def derive_bf_params(elements, false_positive, size_bits, hash_functions):
         final_hash_functions = hashf_from_fp(final_false_positive) if not hash_functions else hash_functions
         r = 0 if not final_hash_functions else ratio_from_hashf_fp(final_hash_functions, final_false_positive)
         final_size_bits = math.ceil(elements * r)
+    else:
+        final_size_bits = size_bits
+        final_false_positive = false_positive
+        final_hash_functions = hash_functions
 
     return {"size_bits": final_size_bits,
             "false_positive": final_false_positive,

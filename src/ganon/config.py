@@ -31,7 +31,7 @@ class Config:
         build_group_filter.add_argument('--kmer-size',             type=int,            metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
         build_group_filter.add_argument('--window-size',           type=int,            metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
         build_group_filter.add_argument('--hash-functions',        type=int,            metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
-        build_group_filter.add_argument('--filter-size',           type=int,            metavar='', default=0,         help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp].')
+        build_group_filter.add_argument('--filter-size',           type=float,          metavar='', default=0,         help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp].')
         build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin [Mutually exclusive --max-filter-size]')
         build_group_filter.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment sequences into specified length (in bp). Set to 0 to not fragment sequences. Default: bin-length - overlap-length')
         build_group_filter.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')

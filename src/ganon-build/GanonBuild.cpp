@@ -62,8 +62,8 @@ struct Stats
     uint64_t totalBinsFile;
     uint64_t invalidSeqs;
     uint64_t newBins;
-    float    filterSizeMB;
-    float    filterFalsePositive;
+    double   filterSizeMB;
+    double   filterFalsePositive;
 };
 
 typedef robin_hood::unordered_map< std::string, std::vector< FragmentBin > > TSeqBin;
@@ -233,19 +233,19 @@ inline uint64_t get_optimal_bins( uint64_t nbins )
     return std::ceil( nbins / 64.0 ) * 64;
 }
 
-inline uint64_t get_bin_size( float false_positive, uint16_t hash_functions, uint64_t max_hashes )
+inline uint64_t get_bin_size( double false_positive, uint16_t hash_functions, uint64_t max_hashes )
 {
-    return std::ceil( -( 1
-                         / ( pow( ( 1 - pow( false_positive, ( 1 / float( hash_functions ) ) ) ),
-                                  ( 1 / float( hash_functions * max_hashes ) ) )
-                             - 1 ) ) );
+    return std::ceil( max_hashes
+                      * ( -hash_functions / std::log( 1 - std::exp( std::log( false_positive ) / hash_functions ) ) ) );
 }
 
-inline float get_fp( uint64_t bin_size, uint16_t hash_functions, uint64_t max_hashes )
+inline double get_fp( uint64_t bin_size, uint16_t hash_functions, uint64_t max_hashes )
 {
-    return pow( ( 1 - ( pow( ( 1 - ( 1 / float( bin_size ) ) ), ( hash_functions * max_hashes ) ) ) ), hash_functions );
+    // std::pow( ( 1 - ( std::pow( ( 1 - ( 1 / static_cast< double >( bin_size ) ) ), ( hash_functions * max_hashes ) )
+    // ) ), hash_functions );
+    return std::pow( 1 - std::exp( -hash_functions / ( bin_size / static_cast< double >( max_hashes ) ) ),
+                     hash_functions );
 }
-
 
 void print_ibf_stats(
     Stats& stats, uint64_t max_hashes, uint64_t bin_size, uint64_t bin_count, uint64_t optimal_bin_count )
@@ -297,7 +297,7 @@ uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, T
 TFilter create_filter( GanonBuild::Config& config, Stats& stats, uint64_t bin_count, uint64_t max_hashes )
 {
     // calculate size/false positive
-    float    false_positive    = 0;
+    double   false_positive    = 0;
     uint64_t bin_size          = 0;
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
     // Calculate bin size based on filter size (1MB = 8388608bits)
@@ -309,13 +309,13 @@ TFilter create_filter( GanonBuild::Config& config, Stats& stats, uint64_t bin_co
     else
     {
         if ( config.filter_size_mb > 0 )
-            bin_size = ( config.filter_size_mb / static_cast< float >( optimal_bin_count ) ) * 8388608u;
+            bin_size = ( config.filter_size_mb / static_cast< double >( optimal_bin_count ) ) * 8388608u;
         else
             bin_size = config.bin_size_bits;
         false_positive = get_fp( bin_size, config.hash_functions, max_hashes );
     }
 
-    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< float >( 8388608u );
+    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
     stats.filterFalsePositive = false_positive;
 
     if ( config.verbose )
@@ -358,12 +358,9 @@ void increase_filter( Config& config, Stats& stats, TFilter& filter, uint64_t bi
     // Calculate false positive
     uint64_t bin_size          = filter.bin_size();
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
+    double   false_positive    = get_fp( bin_size, config.hash_functions, max_hashes );
 
-    float false_positive =
-        pow( ( 1 - ( pow( ( 1 - ( 1 / float( bin_size ) ) ), ( config.hash_functions * max_hashes ) ) ) ),
-             config.hash_functions );
-
-    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< float >( 8388608u );
+    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
     stats.filterFalsePositive = false_positive;
 
     if ( config.verbose )
@@ -460,9 +457,10 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
     if ( stats.invalidSeqs > 0 )
         std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
 
-    std::cerr << " - " << stats.filterFalsePositive << " max. false positive (only added sequences)" << std::endl;
-    std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile
-              << " bins written to the IBF (size: " << stats.filterSizeMB << "MB)" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins written to the IBF ("
+              << std::setprecision( 2 ) << stats.filterSizeMB << "MB)" << std::endl;
+    std::cerr << " - " << std::setprecision( 5 ) << stats.filterFalsePositive
+              << " max. false positive (only added sequences)" << std::endl;
 }
 
 } // namespace detail
