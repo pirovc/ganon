@@ -174,8 +174,6 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
 template < class Thashes >
 uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len, Thashes& hashes_view )
 {
-
-
     // map instead of vector to easily erase
     robin_hood::unordered_map< uint64_t, robin_hood::unordered_set< uint64_t > > hashes;
 
@@ -206,8 +204,10 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
 
                     if ( bin_parsed_length[binid] == bin_len[binid] )
                     {
+                        // if has more hashes than max, keep number
                         if ( hashes[binid].size() > max_hashes )
                             max_hashes = hashes[binid].size();
+                        hashes.erase( binid );
                         finished++;
                     }
                 }
