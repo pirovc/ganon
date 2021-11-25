@@ -451,17 +451,22 @@ uint32_t filter_matches( ReadOut&  read_out,
                          uint16_t  max_kmer_count_read,
                          uint8_t   kmer_size,
                          uint8_t   offset,
-                         int16_t   strata_filter )
+                         double    strata_filter )
 {
 
     int16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
-    if ( strata_filter > -1 )
+    
+    if ( strata_filter < 1 ){
+        threshold_strata = std::floor(max_kmer_count_read * (1-strata_filter));
+    }
+    else if ( strata_filter >= 1 )
     {
+
         // get maximum possible number of errors
         uint16_t max_error = get_error( read1_len, read2_len, kmer_size, max_kmer_count_read, offset );
 
         // get min kmer count necesary to achieve the calculated number of errors
-        threshold_strata = get_threshold_errors( read1_len, kmer_size, max_error + strata_filter, offset );
+        threshold_strata = get_threshold_errors( read1_len, kmer_size, max_error + static_cast<uint16_t>(strata_filter), offset );
 
         if ( read2_len )
         {
@@ -512,7 +517,7 @@ void classify( std::vector< Filter >&    filters,
                int16_t                   max_error_unique,
                uint8_t                   kmer_size,
                uint8_t                   window_size,
-               int16_t                   strata_filter,
+               double                    strata_filter,
                bool                      run_lca )
 {
 
@@ -603,7 +608,6 @@ void classify( std::vector< Filter >&    filters,
             {
 
                 // filter matches (strata)
-                // skip if using minimizers
                 uint32_t count_filtered_matches = filter_matches( read_out,
                                                                   matches,
                                                                   rep,
@@ -612,7 +616,7 @@ void classify( std::vector< Filter >&    filters,
                                                                   max_kmer_count_read,
                                                                   kmer_size,
                                                                   config.offset,
-                                                                  window_size > 0 ? -1 : strata_filter );
+                                                                  strata_filter );
 
                 // If there are valid matches after filtering
                 if ( count_filtered_matches > 0 )

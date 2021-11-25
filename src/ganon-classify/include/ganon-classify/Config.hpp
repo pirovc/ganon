@@ -39,7 +39,7 @@ struct HierarchyConfig
     int16_t                     max_error_unique;
     uint8_t                     kmer_size;
     uint8_t                     window_size;
-    int16_t                     strata_filter;
+    double                      strata_filter;
     std::string                 output_file_lca;
     std::string                 output_file_all;
 };
@@ -62,7 +62,7 @@ public:
     std::vector< float >   min_kmers{ 0.25 };
     std::vector< int16_t > max_error;
     std::vector< int16_t > max_error_unique{ -1 };
-    std::vector< int16_t > strata_filter{ 0 };
+    std::vector< double >  strata_filter{ 0 };
     uint8_t                offset = 1;
 
     std::string output_prefix       = "";

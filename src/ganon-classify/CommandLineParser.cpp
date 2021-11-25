@@ -23,11 +23,11 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "c,hierarchy-labels", "Hierarchy labels for the database files (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
         
         ( "b,kmer-size", "k size to query - should be the same used to build filter. One per hiearchy label.", cxxopts::value< std::vector< uint8_t > >() )
-        ( "z,window-size", "define window size for minimizers (beta). One per filter.", cxxopts::value< std::vector< uint8_t > >() )
+        ( "z,window-size", "define window size for minimizers (beta). One hiearchy label.", cxxopts::value< std::vector< uint8_t > >() )
         ( "k,min-kmers", "Minimum percentage of k-mers matching for a read to to be assigned [muttualy exclusive --max-error]. One per filter. Default: 0.25", cxxopts::value< std::vector< float > >() )
         ( "e,max-error", "Maximum number of errors/mismatches allowed [muttualy exclusive --min-kmers]. One per filter.", cxxopts::value< std::vector< int16_t > >() )
         ( "u,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. If below threshold, read is assigned to its parent. Only possible with --tax. One per hiearchy label.", cxxopts::value< std::vector< int16_t > >() )
-        ( "l,strata-filter", "Additional errors allowed (relative to the best match) to filter and select matches. -1 for no filtering. One per hiearchy label. Default: 0", cxxopts::value< std::vector< int16_t > >() )
+        ( "l,strata-filter", "Additional errors allowed (relative to the best match) to filter and select matches. -1 for no filtering. One per hiearchy label. Default: 0", cxxopts::value< std::vector< double > >() )
         
         ( "f,offset", "Offset for skipping k-mers while counting. Default: 1 = no offset", cxxopts::value< uint8_t >() )
         
@@ -92,7 +92,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "max-error-unique" ) )
         config.max_error_unique = args["max-error-unique"].as< std::vector< int16_t > >();
     if ( args.count( "strata-filter" ) )
-        config.strata_filter = args["strata-filter"].as< std::vector< int16_t > >();
+        config.strata_filter = args["strata-filter"].as< std::vector< double > >();
     if ( args.count( "offset" ) )
         config.offset = args["offset"].as< uint8_t >();
 
