@@ -179,52 +179,20 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
     return report_sum;
 }
 
-
-inline uint16_t get_error(
-    uint16_t read1_len, uint16_t read2_len, uint8_t kmer_size, uint16_t kmer_count, uint8_t offset )
+inline uint16_t threshold_abs( uint16_t kmers, uint16_t e, uint8_t k, uint8_t o )
 {
-    // Return the optimal number of errors for a certain sequence based on the kmer_count
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read1_len - kmer_size ) % offset;
-
-    // If second read is present, account all possible kmers to equation
-    uint16_t read2_max_kmers = 0;
-    if ( read2_len )
-    {
-        read2_max_kmers = ( ( read2_len - kmer_size ) / offset ) + ( ( read1_len - kmer_size ) % offset ) + 1;
-    }
-
-    // - ((offset-1)/kmer_size) adjusts the value to be always below the threshold possible, considering the floor usage
-    // to calculate the kmer_count
-    return std::ceil( ( read1_len - kmer_size + offset * ( -kmer_count + read2_max_kmers + extra_pos + 1 ) )
-                          / static_cast< float >( kmer_size )
-                      - ( ( offset - 1 ) / static_cast< float >( kmer_size ) ) );
+    return ( kmers * o > e * k ) ? std::ceil( kmers - ( e * k ) / static_cast< double >( o ) ) : 0u;
 }
 
-inline int16_t get_threshold_errors( uint16_t read_len, uint8_t kmer_size, uint16_t max_error, uint8_t offset )
+inline uint16_t threshold_rel( uint16_t kmers, double p )
 {
-    // Return threshold (number of kmers) based on an optimal number of errors
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read_len - kmer_size ) % offset;
-
-    return std::floor( ( ( read_len - kmer_size - max_error * kmer_size ) / offset ) + 1 + extra_pos );
+    return std::floor( kmers * p );
 }
 
-inline int16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float min_kmers, uint8_t offset )
+inline uint16_t get_errors( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
 {
-    // Return threshold (number of kmers) based on an percentage of kmers
-    // ceil -> round-up min # k-mers, floor -> round-down for offset
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read_len - kmer_size ) % offset;
-
-    // min_kmers==0 return everything with at least one kmer match
-    return min_kmers > 0 ? std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos )
-                         : 1u;
+    return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
-
 
 inline void check_unique( ReadOut& read_out_lca,
                           uint16_t read1_len,
@@ -235,10 +203,10 @@ inline void check_unique( ReadOut& read_out_lca,
                           TTax&    tax,
                           TRep&    rep )
 {
-    int16_t threshold_error_unique = get_threshold_errors( read1_len, kmer_size, max_error_unique, offset );
+    int16_t threshold_error_unique = 0; // get_threshold_errors( read1_len, kmer_size, max_error_unique, offset );
     if ( read2_len )
     {
-        threshold_error_unique += get_threshold_errors( read2_len, kmer_size, max_error_unique, offset );
+        threshold_error_unique += 0; // get_threshold_errors( read2_len, kmer_size, max_error_unique, offset );
     }
     // if kmer count is lower than expected set match to parent node
     if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
@@ -252,231 +220,113 @@ inline void check_unique( ReadOut& read_out_lca,
     }
 }
 
-void select_matches( TMatches&                matches,
-                     std::vector< uint16_t >& selectedBins,
-                     std::vector< uint16_t >& selectedBinsRev,
-                     Filter&                  filter,
-                     int16_t                  threshold,
-                     uint16_t&                maxKmerCountRead )
+void select_matches( TMatches& matches,
+                     auto&     counts_f,
+                     auto&     counts_r,
+                     Filter&   filter,
+                     uint16_t  threshold_cutoff,
+                     uint16_t& max_kmer_count_read )
 {
-    // Threshold can be negative. If a higher number of errors are allowed the threshold here is
-    // just one kmer match (0 would match every read everywhere)
-    if ( threshold < 1 )
-        threshold = 1;
+    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
+    if ( threshold_cutoff == 0 )
+        threshold_cutoff = 1;
 
     // for each bin
-    // for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
+    // for ( uint32_t bin_n = 0; bin_n < filter.ibf.noOfBins; ++bin_n )
     // loop in map structure to avoid extra validations when map.size() < filter.ibf.noOfBins when ibf is updated and
     // sequences removed also avoid the error of spurius results from empty bins (bug reported)
-    for ( auto const& [binNo, target] : filter.map )
+    for ( auto const& [bin_n, target] : filter.map )
     {
-        // if kmer count is higher than threshold
-        if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
+        // if kmer count is higher than threshold_cutoff
+        if ( counts_f[bin_n] >= threshold_cutoff || counts_r[bin_n] >= threshold_cutoff )
         {
             // get best matching strand
-            uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
+            uint16_t max_kmer_count_bin = std::max( counts_f[bin_n], counts_r[bin_n] );
             // keep only the best match target/read when same targets are split in several
             // bins
-            if ( matches.count( target ) == 0 || maxKmerCountBin > matches[target] )
+            if ( matches.count( target ) == 0 || max_kmer_count_bin > matches[target] )
             {
                 // store match to target
-                matches[target] = maxKmerCountBin;
-                if ( maxKmerCountBin > maxKmerCountRead )
-                    maxKmerCountRead = maxKmerCountBin;
+                matches[target] = max_kmer_count_bin;
+                if ( max_kmer_count_bin > max_kmer_count_read )
+                    max_kmer_count_read = max_kmer_count_bin;
             }
         }
     }
 }
+
 
 auto get_offset_hashes( auto& hashes, uint8_t offset )
 {
     // return offset of hashes, always keep last one to cover full read (extra_pos)
-    int  n_kmers     = hashes.size() - 1;
-    auto nth_element = [offset, n_kmers]( auto&& tuple ) {
+    uint16_t n_kmers     = hashes.size() - 1;
+    auto     nth_element = [offset, n_kmers]( auto&& tuple ) {
         return ( std::get< 0 >( tuple ) % offset == 0 || n_kmers == std::get< 0 >( tuple ) );
     };
-    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values;
+    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values
+           | seqan3::views::to< std::vector >;
 }
 
-uint16_t find_matches( TMatches&                    matches,
-                       std::vector< Filter >&       filters,
-                       std::vector< TAgent >&       agents,
-                       std::vector< seqan3::dna5 >& read_seq,
-                       uint8_t                      kmer_size,
-                       uint8_t                      window_size,
-                       uint8_t                      offset,
-                       auto&                        kmer_hash,
-                       auto&                        minimiser_hash )
+void get_hashes( std::vector< seqan3::dna5 >& seq,
+                 std::vector< size_t >&       hashes_f,
+                 std::vector< size_t >&       hashes_r,
+                 uint8_t                      window_size,
+                 uint8_t                      offset,
+                 auto&                        kmer_hash,
+                 auto&                        minimiser_hash )
 {
 
-
-    // send it as a reference to be valid for every filter
-    uint16_t max_kmer_count_read = 0;
-    int16_t  threshold           = 1;
-
-    for ( uint8_t i = 0; i < filters.size(); ++i )
+    if ( window_size > 0 )
     {
-        seqan3::counting_vector< uint16_t > selectedBins;
-        seqan3::counting_vector< uint16_t > selectedBinsRev;
-
-        if ( window_size > 0 )
+        // minimizers
+        hashes_f = { seq | minimiser_hash | seqan3::views::to< std::vector > };
+    }
+    else
+    {
+        if ( offset > 1 )
         {
-            auto hashes{ read_seq | minimiser_hash | seqan3::views::to< std::vector > };
-            selectedBins    = agents[i].bulk_count( hashes );
-            selectedBinsRev = selectedBins;
-
-            threshold = ( filters[i].filter_config.min_kmers > -1 )
-                            ? std::ceil( hashes.size() * filters[i].filter_config.min_kmers )
-                            : 1; // TODO get_threshold_errors
+            // offset
+            auto h   = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_f = get_offset_hashes( h, offset );
+            h = seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r = get_offset_hashes( h, offset );
         }
         else
         {
-            if ( offset > 1 )
-            {
-                auto hashes{ read_seq | kmer_hash | seqan3::views::to< std::vector > };
-                auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | kmer_hash
-                                | seqan3::views::to< std::vector > };
-
-                selectedBins    = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
-                selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
-            }
-            else
-            {
-                selectedBins = agents[i].bulk_count( read_seq | kmer_hash );
-                selectedBinsRev =
-                    agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | kmer_hash );
-            }
-
-            threshold =
-                ( filters[i].filter_config.min_kmers > -1 )
-                    ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                    : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
+            // kmer
+            hashes_f = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r =
+                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
         }
-        // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
-    return max_kmer_count_read;
 }
 
-uint16_t find_matches_paired( TMatches&                    matches,
-                              std::vector< Filter >&       filters,
-                              std::vector< TAgent >&       agents,
-                              std::vector< seqan3::dna5 >& read_seq,
-                              std::vector< seqan3::dna5 >& read_seq2,
-                              uint8_t                      kmer_size,
-                              uint8_t                      window_size,
-                              uint8_t                      offset,
-                              auto&                        kmer_hash,
-                              auto&                        minimiser_hash )
+uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
+                               uint16_t               kmers,
+                               uint16_t               max_kmer_count_read,
+                               uint8_t                kmer_size,
+                               uint8_t                offset )
 {
-
-    // send it as a reference to be valid for every filter
-    uint16_t max_kmer_count_read = 0;
-    int16_t  threshold           = 1;
-
-    for ( uint8_t i = 0; i < filters.size(); ++i )
+    uint16_t threshold_filter = 0;
+    if ( hierarchy_config.rel_filter > 0 )
+        threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
+    else
     {
-
-        seqan3::counting_vector< uint16_t > selectedBins;
-        seqan3::counting_vector< uint16_t > selectedBinsRev;
-
-        if ( window_size > 0 )
-        {
-            auto hashes{ read_seq | minimiser_hash | seqan3::views::to< std::vector > };
-            auto hashes2{ read_seq2 | minimiser_hash | seqan3::views::to< std::vector > };
-
-            selectedBins = agents[i].bulk_count( hashes );
-            selectedBins += agents[i].bulk_count( hashes2 );
-            selectedBinsRev = selectedBins;
-
-            threshold = ( filters[i].filter_config.min_kmers > -1 )
-                            ? std::ceil( hashes.size() * filters[i].filter_config.min_kmers )
-                                  + std::ceil( hashes2.size() * filters[i].filter_config.min_kmers )
-                            : 1; // TODO get_threshold_errors
-        }
-        else
-        {
-
-            if ( offset > 1 )
-            {
-                auto hashes{ read_seq | kmer_hash | seqan3::views::to< std::vector > };
-                auto hashes2{ read_seq2 | kmer_hash | seqan3::views::to< std::vector > };
-                auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | kmer_hash
-                                | seqan3::views::to< std::vector > };
-                auto hashes2Rev{ read_seq2 | std::views::reverse | seqan3::views::complement | kmer_hash
-                                 | seqan3::views::to< std::vector > };
-
-                selectedBins = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
-                selectedBins += agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
-
-                selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
-                selectedBinsRev += agents[i].bulk_count( get_offset_hashes( hashes2, offset ) );
-            }
-            else
-            {
-                // FR
-                selectedBins = agents[i].bulk_count( read_seq | kmer_hash );
-                selectedBins +=
-                    agents[i].bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | kmer_hash );
-
-                // RF
-                selectedBinsRev =
-                    agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | kmer_hash );
-                selectedBinsRev += agents[i].bulk_count( read_seq2 | kmer_hash );
-            }
-
-            // Calculate error rate on one read
-            threshold =
-                ( filters[i].filter_config.min_kmers > -1 )
-                    ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                    : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
-
-            // sum kmers of second read (if using errors, get all possible kmers)
-            threshold +=
-                ( filters[i].filter_config.min_kmers > -1 )
-                    ? get_threshold_kmers( read_seq2.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                    : get_threshold_errors( read_seq2.size(), kmer_size, 0, offset );
-        }
-        // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
-    }
-    return max_kmer_count_read;
-}
-
-uint32_t filter_matches( ReadOut&  read_out,
-                         TMatches& matches,
-                         TRep&     rep,
-                         uint16_t  read1_len,
-                         uint16_t  read2_len,
-                         uint16_t  max_kmer_count_read,
-                         uint8_t   kmer_size,
-                         uint8_t   offset,
-                         double    strata_filter )
-{
-
-    int16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
-    
-    if ( strata_filter < 1 ){
-        threshold_strata = std::floor(max_kmer_count_read * (1-strata_filter));
-    }
-    else if ( strata_filter >= 1 )
-    {
-
-        // get maximum possible number of errors
-        uint16_t max_error = get_error( read1_len, read2_len, kmer_size, max_kmer_count_read, offset );
-
+        // get maximum possible number of errors of best match + abs_filter
+        uint16_t max_error_threshold =
+            get_errors( kmers, kmer_size, offset, max_kmer_count_read ) + hierarchy_config.abs_filter;
         // get min kmer count necesary to achieve the calculated number of errors
-        threshold_strata = get_threshold_errors( read1_len, kmer_size, max_error + static_cast<uint16_t>(strata_filter), offset );
-
-        if ( read2_len )
-        {
-            threshold_strata += get_threshold_errors( read2_len, kmer_size, 0, offset );
-        }
+        threshold_filter = threshold_abs( kmers, max_error_threshold, kmer_size, offset );
     }
+    return threshold_filter;
+}
+
+uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
+{
 
     for ( auto const& v : matches )
     { // matches[target] = kmerCount
-        if ( v.second >= threshold_strata )
+        if ( v.second >= threshold_filter )
         { // apply strata filter
             rep[v.first].matches++;
             read_out.matches.push_back( ReadMatch{ v.first, v.second } );
@@ -511,25 +361,21 @@ void classify( std::vector< Filter >&    filters,
                Config const&             config,
                SafeQueue< ReadBatches >* pointer_current,
                SafeQueue< ReadBatches >* pointer_helper,
+               HierarchyConfig const&    hierarchy_config,
                bool                      hierarchy_first,
                bool                      hierarchy_last,
-               uint8_t                   offset,
-               int16_t                   max_error_unique,
-               uint8_t                   kmer_size,
-               uint8_t                   window_size,
-               double                    strata_filter,
                bool                      run_lca )
 {
 
     // oner hash adaptor per thread
-    auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ kmer_size } );
-    auto minimiser_hash =
-        seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ kmer_size } },
-                                       seqan3::window_size{ window_size > 0 ? window_size : kmer_size },
-                                       seqan3::seed{ 0 } );
+    auto kmer_hash      = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
+    auto minimiser_hash = seqan3::views::minimiser_hash(
+        seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
+        seqan3::window_size{ hierarchy_config.window_size > 0 ? hierarchy_config.window_size
+                                                              : hierarchy_config.kmer_size },
+        seqan3::seed{ 0 } );
 
-    int wk_size = window_size > 0 ? window_size : kmer_size;
-
+    int wk_size = hierarchy_config.window_size > 0 ? hierarchy_config.window_size : hierarchy_config.kmer_size;
 
     // one agent per thread per filter
     std::vector< TAgent > agents;
@@ -552,71 +398,87 @@ void classify( std::vector< Filter >&    filters,
 
         for ( uint32_t readID = 0; readID < rb.ids.size(); ++readID )
         {
+            // read lenghts
             uint16_t read1_len = rb.seqs[readID].size();
             uint16_t read2_len = 0;
 
+            // Best scoring kmer count
+            uint16_t              max_kmer_count_read = 0;
+            std::vector< size_t > hashes_f;
+            std::vector< size_t > hashes_r;
+
+            // Store matches for this read
             TMatches matches;
-            ReadOut  read_out( rb.ids[readID] );
-            uint16_t max_kmer_count_read = 0;
 
-            // Find matches for read
-            if ( rb.paired )
-            { // paired-end mode
-                read2_len = rb.seqs2[readID].size();
-                if ( read1_len >= wk_size && read2_len >= wk_size )
-                {
-                    max_kmer_count_read = find_matches_paired( matches,
-                                                               filters,
-                                                               agents,
-                                                               rb.seqs[readID],
-                                                               rb.seqs2[readID],
-                                                               kmer_size,
-                                                               window_size,
-                                                               offset,
-                                                               kmer_hash,
-                                                               minimiser_hash );
-                    if ( hierarchy_first )
-                    {
-                        total.reads_processed++;
-                        total.length_processed += read1_len + read2_len;
-                    }
-                }
-            }
-            else
+
+            ReadOut read_out( rb.ids[readID] );
+            if ( read1_len >= wk_size )
             {
-                if ( read1_len >= wk_size )
+                // Retrieve hashes from kmers/minimizers
+                get_hashes( rb.seqs[readID],
+                            hashes_f,
+                            hashes_r,
+                            hierarchy_config.window_size,
+                            hierarchy_config.offset,
+                            kmer_hash,
+                            minimiser_hash );
+                // Add hashes from second pair
+                if ( rb.paired )
                 {
-                    max_kmer_count_read = find_matches( matches,
-                                                        filters,
-                                                        agents,
-                                                        rb.seqs[readID],
-                                                        kmer_size,
-                                                        window_size,
-                                                        offset,
-                                                        kmer_hash,
-                                                        minimiser_hash );
-                    if ( hierarchy_first )
+                    read2_len = rb.seqs2[readID].size();
+                    if ( read2_len >= wk_size )
                     {
-                        total.reads_processed++;
-                        total.length_processed += read1_len;
+                        get_hashes( rb.seqs2[readID],
+                                    hashes_f,
+                                    hashes_r,
+                                    hierarchy_config.window_size,
+                                    hierarchy_config.offset,
+                                    kmer_hash,
+                                    minimiser_hash );
                     }
+                }
+
+                // Sum sequence to totals
+                if ( hierarchy_first )
+                {
+                    total.reads_processed++;
+                    total.length_processed += read1_len + read2_len;
+                }
+
+
+                // For each filter in the hierarchy
+                for ( uint8_t i = 0; i < filters.size(); ++i )
+                {
+                    // count matches
+                    seqan3::counting_vector< uint16_t > counts_f = agents[i].bulk_count( hashes_f );
+                    seqan3::counting_vector< uint16_t > counts_r = agents[i].bulk_count( hashes_r );
+
+                    // Calculate threshold for cutoff (keep matches above)
+                    uint16_t threshold_cutoff =
+                        ( filters[i].filter_config.rel_cutoff > 0 )
+                            ? threshold_rel( hashes_f.size(), filters[i].filter_config.rel_cutoff )
+                            : threshold_abs( hashes_f.size(),
+                                             hierarchy_config.kmer_size,
+                                             filters[i].filter_config.abs_cutoff,
+                                             hierarchy_config.offset );
+                    // select matches based on threshold cutoff
+                    select_matches( matches, counts_f, counts_r, filters[i], threshold_cutoff, max_kmer_count_read );
                 }
             }
 
-            // if there were some assignments
+
+            // if read got matches
             if ( max_kmer_count_read > 0 )
             {
-
-                // filter matches (strata)
-                uint32_t count_filtered_matches = filter_matches( read_out,
-                                                                  matches,
-                                                                  rep,
-                                                                  read1_len,
-                                                                  read2_len,
+                // Calculate threshold for filtering (keep matches above)
+                uint16_t threshold_filter = get_threshold_filter( hierarchy_config,
+                                                                  hashes_f.size(),
                                                                   max_kmer_count_read,
-                                                                  kmer_size,
-                                                                  config.offset,
-                                                                  strata_filter );
+                                                                  hierarchy_config.kmer_size,
+                                                                  hierarchy_config.offset );
+
+                // Filter matches
+                uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
 
                 // If there are valid matches after filtering
                 if ( count_filtered_matches > 0 )
@@ -628,15 +490,15 @@ void classify( std::vector< Filter >&    filters,
                         if ( count_filtered_matches == 1 )
                         {
                             read_out_lca = read_out; // just one match, copy read read_out
-                            if ( max_error_unique >= 0 )
+                            if ( hierarchy_config.max_error_unique >= 0 )
                             {
                                 // re-classify read to parent if threshold<=max_error_unique
                                 check_unique( read_out_lca,
                                               read1_len,
                                               read2_len,
-                                              kmer_size,
-                                              max_error_unique,
-                                              config.offset,
+                                              hierarchy_config.kmer_size,
+                                              hierarchy_config.max_error_unique,
+                                              hierarchy_config.offset,
                                               tax,
                                               rep );
                             }
@@ -1012,7 +874,6 @@ void pre_process_lca( LCA& lca, TTax& tax )
     lca.doEulerWalk();
 }
 
-
 } // namespace detail
 
 bool run( Config config )
@@ -1076,6 +937,7 @@ bool run( Config config )
                                               std::ref( unclassified_queue ),
                                               config.output_prefix + ".unc" );
     }
+
 
     // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
@@ -1188,13 +1050,9 @@ bool run( Config config )
                                             std::ref( config ),
                                             pointer_current,
                                             pointer_helper,
+                                            hierarchy_config,
                                             hierarchy_first,
                                             hierarchy_last,
-                                            config.offset,
-                                            hierarchy_config.max_error_unique,
-                                            hierarchy_config.kmer_size,
-                                            hierarchy_config.window_size,
-                                            hierarchy_config.strata_filter,
                                             run_lca ) );
         }
 

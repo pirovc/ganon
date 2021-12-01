@@ -663,15 +663,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
                                   { "6", "e3F_e3R" } } );
 
 
-    SECTION( "with --max-error 0" )
+    SECTION( "with --abs-cutoff 0" )
     {
-        std::string prefix{ folder_prefix + "max_error_0" };
+        std::string prefix{ folder_prefix + "abs_cutoff_0" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.max_error    = { 0 };
+        cfg.abs_cutoff   = { 0 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -697,15 +697,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --max-error 1" )
+    SECTION( "with --abs-cutoff 1" )
     {
-        std::string prefix{ folder_prefix + "max_error_1" };
+        std::string prefix{ folder_prefix + "abs_cutoff_1" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.max_error    = { 1 };
+        cfg.abs_cutoff   = { 1 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -731,15 +731,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --min-kmers 1" )
+    SECTION( "with --rel-cutoff 1" )
     {
-        std::string prefix{ folder_prefix + "min_kmers_1" };
+        std::string prefix{ folder_prefix + "rel_cutoff_1" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.min_kmers    = { 1 }; // 100%
+        cfg.rel_cutoff   = { 1 }; // 100%
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -765,15 +765,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --min-kmers 0.2" )
+    SECTION( "with --rel-cutoff 0.2" )
     {
-        std::string prefix{ folder_prefix + "min_kmers_0.2" };
+        std::string prefix{ folder_prefix + "rel_cutoff_0.2" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.min_kmers    = { 0.2 }; // 100%
+        cfg.rel_cutoff   = { 0.2 }; // 100%
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -799,16 +799,16 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --strata-filter 1 and --max-error 2" )
+    SECTION( "with --abs-filter 1 and --abs-cutoff 2" )
     {
-        std::string prefix{ folder_prefix + "strata_filter_1_max_error_2" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.map           = { base_prefix + ".map" };
-        cfg.single_reads  = { folder_prefix + "rF.fasta" };
-        cfg.kmer_size     = { 4 };
-        cfg.max_error     = { 2 };
-        cfg.strata_filter = { 1 };
+        std::string prefix{ folder_prefix + "abs_filter_1_abs_cutoff_2" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.map          = { base_prefix + ".map" };
+        cfg.single_reads = { folder_prefix + "rF.fasta" };
+        cfg.kmer_size    = { 4 };
+        cfg.abs_cutoff   = { 2 };
+        cfg.abs_filter   = { 1 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -838,16 +838,16 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --strata-filter -1 and --max-error 4" )
+    SECTION( "with --abs-filter -1 and --abs-cutoff 4" )
     {
-        std::string prefix{ folder_prefix + "strata_filter_-1_max_error_4" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.map           = { base_prefix + ".map" };
-        cfg.single_reads  = { folder_prefix + "rF.fasta" };
-        cfg.kmer_size     = { 4 };
-        cfg.max_error     = { 4 };
-        cfg.strata_filter = { -1 };
+        std::string prefix{ folder_prefix + "abs_filter_-1_abs_cutoff_4" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.map          = { base_prefix + ".map" };
+        cfg.single_reads = { folder_prefix + "rF.fasta" };
+        cfg.kmer_size    = { 4 };
+        cfg.abs_cutoff   = { 4 };
+        cfg.abs_filter   = { -1 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -883,17 +883,17 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --strata-filter -1 --min-kmers 0" )
+    SECTION( "with --abs-filter -1 --rel-cutoff 0" )
     {
         // should output every k-mer match for any k-mer count
-        std::string prefix{ folder_prefix + "strata_filter_-1_min_kmers_0" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.map           = { base_prefix + ".map" };
-        cfg.single_reads  = { folder_prefix + "rF.fasta" };
-        cfg.kmer_size     = { 4 };
-        cfg.min_kmers     = { 0 };
-        cfg.strata_filter = { -1 };
+        std::string prefix{ folder_prefix + "abs_filter_-1_rel_cutoff_0" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.map          = { base_prefix + ".map" };
+        cfg.single_reads = { folder_prefix + "rF.fasta" };
+        cfg.kmer_size    = { 4 };
+        cfg.rel_cutoff   = { 0 };
+        cfg.abs_filter   = { -1 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -933,16 +933,16 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --strata-filter -1 --min-kmers 0.5" )
+    SECTION( "with --abs-filter -1 --rel-cutoff 0.5" )
     {
-        std::string prefix{ folder_prefix + "strata_filter_-1_min_kmers_0.5" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.map           = { base_prefix + ".map" };
-        cfg.single_reads  = { folder_prefix + "rF.fasta" };
-        cfg.kmer_size     = { 4 };
-        cfg.min_kmers     = { 0.5 }; // 50%
-        cfg.strata_filter = { -1 };
+        std::string prefix{ folder_prefix + "abs_filter_-1_rel_cutoff_0.5" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.map          = { base_prefix + ".map" };
+        cfg.single_reads = { folder_prefix + "rF.fasta" };
+        cfg.kmer_size    = { 4 };
+        cfg.rel_cutoff   = { 0.5 }; // 50%
+        cfg.abs_filter   = { -1 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -975,15 +975,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --offset 2 and --max-error 0" )
+    SECTION( "with --offset 2 and --abs-cutoff 0" )
     {
-        std::string prefix{ folder_prefix + "offset_2_max_error_0" };
+        std::string prefix{ folder_prefix + "offset_2_abs_cutoff_0" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.max_error    = { 0 };
+        cfg.abs_cutoff   = { 0 };
         cfg.offset       = { 2 };
 
         REQUIRE( GanonClassify::run( cfg ) );
@@ -1010,17 +1010,17 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --offset 3 and --max-error 4 and --strata-filter -1" )
+    SECTION( "with --offset 3 and --abs-cutoff 4 and --abs-filter -1" )
     {
-        std::string prefix{ folder_prefix + "offset_3_max_error_4_strata_filter_-1" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.map           = { base_prefix + ".map" };
-        cfg.single_reads  = { folder_prefix + "rF.fasta" };
-        cfg.kmer_size     = { 4 };
-        cfg.max_error     = { 4 };
-        cfg.offset        = { 3 };
-        cfg.strata_filter = { -1 };
+        std::string prefix{ folder_prefix + "offset_3_abs_cutoff_4_abs_filter_-1" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.map          = { base_prefix + ".map" };
+        cfg.single_reads = { folder_prefix + "rF.fasta" };
+        cfg.kmer_size    = { 4 };
+        cfg.abs_cutoff   = { 4 };
+        cfg.offset       = { 3 };
+        cfg.abs_filter   = { -1 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -1051,15 +1051,15 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with --offset 3 and --min-kmers 0.3" )
+    SECTION( "with --offset 3 and --rel-cutoff 0.3" )
     {
-        std::string prefix{ folder_prefix + "offset_3_min_kmers_0.3" };
+        std::string prefix{ folder_prefix + "offset_3_rel_cutoff_0.3" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rF.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.min_kmers    = { 0.3 };
+        cfg.rel_cutoff   = { 0.3 };
         cfg.offset       = { 3 };
 
         REQUIRE( GanonClassify::run( cfg ) );
@@ -1086,20 +1086,20 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
         }
     }
 
-    SECTION( "with reads with errors and --max-error 1" )
+    SECTION( "with reads with errors and --abs-cutoff 1" )
     {
         // using same filter twice
         // reads with 1 error at beginning
         aux::write_sequences( folder_prefix + "rFe1.fasta", { "-AACCCTTTAAA"_dna5 }, { "readFe1" } );
         aux::write_sequences( folder_prefix + "rRe1.fasta", { "-TCTCCCCAGAG"_dna5 }, { "readRe1" } );
 
-        std::string prefix{ folder_prefix + "reads_with_error_max_error_1" };
+        std::string prefix{ folder_prefix + "reads_with_error_abs_cutoff_1" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.map          = { base_prefix + ".map" };
         cfg.single_reads = { folder_prefix + "rFe1.fasta" };
         cfg.kmer_size    = { 4 };
-        cfg.max_error    = { 1 };
+        cfg.abs_cutoff   = { 1 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -1126,12 +1126,12 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
             REQUIRE( res.all["readFe1"]["e0"] == 16 );
         }
 
-        SECTION( "with --max-error-unique 0" )
+        SECTION( "with --abs-cutoff-unique 0" )
         {
             std::string prefix{ folder_prefix + "max_error_unique_0" };
             cfg.output_prefix = prefix;
 
-            // create dummy tax (all to root) to enable --max-error-unique
+            // create dummy tax (all to root) to enable --abs-cutoff-unique
             config_classify::write_tax( prefix + ".tax",
                                         { { "e0", "1" },
                                           { "e1F", "1" },
