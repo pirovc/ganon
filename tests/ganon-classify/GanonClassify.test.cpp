@@ -229,6 +229,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rA.fasta" };
+        cfg.verbose      = true;
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -1124,56 +1125,6 @@ SCENARIO( "classifying reads with errors", "[ganon-classify]" )
             // Should match only e0
             REQUIRE( res.all["readFe1"].size() == 1 );
             REQUIRE( res.all["readFe1"]["e0"] == 16 );
-        }
-
-        SECTION( "with --abs-cutoff-unique 0" )
-        {
-            std::string prefix{ folder_prefix + "max_error_unique_0" };
-            cfg.output_prefix = prefix;
-
-            // create dummy tax (all to root) to enable --abs-cutoff-unique
-            config_classify::write_tax( prefix + ".tax",
-                                        { { "e0", "1" },
-                                          { "e1F", "1" },
-                                          { "e1F_e1R", "1" },
-                                          { "e1F_e2R", "1" },
-                                          { "e2F_e1R", "1" },
-                                          { "e2F_e2R", "1" },
-                                          { "e3F_e3R", "1" } } );
-            cfg.tax              = { prefix + ".tax" };
-            cfg.max_error_unique = { 0 };
-
-            REQUIRE( GanonClassify::run( cfg ) );
-            config_classify::Res res{ cfg };
-            config_classify::sanity_check( cfg, res );
-
-
-            REQUIRE( res.all["readFe1"].size() == 4 );
-            REQUIRE( res.all["readFe1"]["e0"] == 8 );
-            REQUIRE( res.all["readFe1"]["e1F"] == 5 );
-            REQUIRE( res.all["readFe1"]["e1F_e1R"] == 5 );
-            REQUIRE( res.all["readFe1"]["e1F_e2R"] == 5 );
-
-            // should assign match to parent on lca
-            REQUIRE( res.lca["readFe1"]["1"] == 8 );
-
-            SECTION( "with --paired-reads" )
-            {
-                prefix            = prefix + "_paired";
-                cfg.output_prefix = prefix;
-                cfg.single_reads  = {};
-                cfg.paired_reads  = { folder_prefix + "rFe1.fasta", folder_prefix + "rRe1.fasta" };
-                REQUIRE( GanonClassify::run( cfg ) );
-                config_classify::Res res{ cfg };
-                config_classify::sanity_check( cfg, res );
-
-                // Should match only e0
-                REQUIRE( res.all["readFe1"].size() == 1 );
-                REQUIRE( res.all["readFe1"]["e0"] == 16 );
-
-                // should assign match to parent on lca
-                REQUIRE( res.lca["readFe1"]["1"] == 16 );
-            }
         }
     }
 }

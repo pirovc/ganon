@@ -1,5 +1,7 @@
 #include "GanonClassify.hpp"
 
+#include <robin_hood.h>
+
 #include <utils/LCA.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
@@ -18,7 +20,6 @@
 #include <fstream>
 #include <future>
 #include <iostream>
-#include <map>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -32,7 +33,7 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter<>                                  TFilter;
 typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > TAgent;
-typedef std::unordered_map< std::string, uint16_t >                         TMatches;
+typedef robin_hood::unordered_map< std::string, uint16_t >                  TMatches;
 
 struct Node
 {
@@ -75,7 +76,7 @@ struct ReadBatches
     bool                                       paired = false;
     std::vector< std::string >                 ids;
     std::vector< std::vector< seqan3::dna5 > > seqs;
-    std::vector< std::vector< seqan3::dna5 > > seqs2;
+    std::vector< std::vector< seqan3::dna5 > > seqs2{};
 };
 
 struct ReadMatch
@@ -107,9 +108,9 @@ struct Rep
     uint64_t unique_reads = 0;
 };
 
-typedef std::unordered_map< std::string, Rep >  TRep;
-typedef std::unordered_map< std::string, Node > TTax;
-typedef std::map< uint32_t, std::string >       TMap;
+typedef robin_hood::unordered_map< std::string, Rep >      TRep;
+typedef robin_hood::unordered_map< std::string, Node >     TTax;
+typedef robin_hood::unordered_map< uint32_t, std::string > TMap;
 
 struct Total
 {
@@ -192,32 +193,6 @@ inline uint16_t threshold_rel( uint16_t kmers, double p )
 inline uint16_t get_errors( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
 {
     return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
-}
-
-inline void check_unique( ReadOut& read_out_lca,
-                          uint16_t read1_len,
-                          uint16_t read2_len,
-                          uint8_t  kmer_size,
-                          uint16_t max_error_unique,
-                          uint8_t  offset,
-                          TTax&    tax,
-                          TRep&    rep )
-{
-    int16_t threshold_error_unique = 0; // get_threshold_errors( read1_len, kmer_size, max_error_unique, offset );
-    if ( read2_len )
-    {
-        threshold_error_unique += 0; // get_threshold_errors( read2_len, kmer_size, max_error_unique, offset );
-    }
-    // if kmer count is lower than expected set match to parent node
-    if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
-    {
-        read_out_lca.matches[0].target = tax.at( read_out_lca.matches[0].target ).parent; // parent node
-        rep[read_out_lca.matches[0].target].lca_reads++;                                  // count as lca for parent
-    }
-    else
-    {
-        rep[read_out_lca.matches[0].target].unique_reads++; // count as unique for target
-    }
 }
 
 void select_matches( TMatches& matches,
@@ -308,9 +283,9 @@ uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
                                uint8_t                offset )
 {
     uint16_t threshold_filter = 0;
-    if ( hierarchy_config.rel_filter > 0 )
+    if ( hierarchy_config.rel_filter >= 0 )
         threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
-    else
+    else if ( hierarchy_config.abs_filter >= 0 )
     {
         // get maximum possible number of errors of best match + abs_filter
         uint16_t max_error_threshold =
@@ -324,12 +299,12 @@ uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
 uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
 {
 
-    for ( auto const& v : matches )
+    for ( auto const& [target, kmer_count] : matches )
     { // matches[target] = kmerCount
-        if ( v.second >= threshold_filter )
+        if ( kmer_count >= threshold_filter )
         { // apply strata filter
-            rep[v.first].matches++;
-            read_out.matches.push_back( ReadMatch{ v.first, v.second } );
+            rep[target].matches++;
+            read_out.matches.push_back( ReadMatch{ target, kmer_count } );
         }
     }
 
@@ -338,8 +313,9 @@ uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16
 
 void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_count_read, LCA& lca, TRep& rep )
 {
+
     std::vector< std::string > targets;
-    for ( auto& r : read_out.matches )
+    for ( auto const& r : read_out.matches )
     {
         targets.push_back( r.target );
     }
@@ -352,7 +328,6 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_co
 
 void classify( std::vector< Filter >&    filters,
                LCA&                      lca,
-               TTax&                     tax,
                TRep&                     rep,
                Total&                    total,
                SafeQueue< ReadOut >&     classified_all_queue,
@@ -400,21 +375,24 @@ void classify( std::vector< Filter >&    filters,
         {
             // read lenghts
             uint16_t read1_len = rb.seqs[readID].size();
-            uint16_t read2_len = 0;
-
-            // Best scoring kmer count
-            uint16_t              max_kmer_count_read = 0;
-            std::vector< size_t > hashes_f;
-            std::vector< size_t > hashes_r;
+            uint16_t read2_len = rb.paired ? rb.seqs2[readID].size() : 0;
 
             // Store matches for this read
             TMatches matches;
 
+            // Retrieve hashes from kmers/minimizers
+            std::vector< size_t > hashes_f;
+            std::vector< size_t > hashes_r;
+            std::vector< size_t > hashes_f2;
+            std::vector< size_t > hashes_r2;
 
-            ReadOut read_out( rb.ids[readID] );
+            // hash count
+            uint16_t kmers = 0;
+            // Best scoring kmer count
+            uint16_t max_kmer_count_read = 0;
             if ( read1_len >= wk_size )
             {
-                // Retrieve hashes from kmers/minimizers
+                // Count hashes from first pair
                 get_hashes( rb.seqs[readID],
                             hashes_f,
                             hashes_r,
@@ -422,20 +400,20 @@ void classify( std::vector< Filter >&    filters,
                             hierarchy_config.offset,
                             kmer_hash,
                             minimiser_hash );
-                // Add hashes from second pair
-                if ( rb.paired )
+                kmers = hashes_f.size();
+
+                // Count hashes from second pair if given
+                if ( read2_len >= wk_size )
                 {
-                    read2_len = rb.seqs2[readID].size();
-                    if ( read2_len >= wk_size )
-                    {
-                        get_hashes( rb.seqs2[readID],
-                                    hashes_f,
-                                    hashes_r,
-                                    hierarchy_config.window_size,
-                                    hierarchy_config.offset,
-                                    kmer_hash,
-                                    minimiser_hash );
-                    }
+                    // Send r and f reversed to calculate FR --> RF <-- reads
+                    get_hashes( rb.seqs2[readID],
+                                hashes_r2,
+                                hashes_f2,
+                                hierarchy_config.window_size,
+                                hierarchy_config.offset,
+                                kmer_hash,
+                                minimiser_hash );
+                    kmers += hashes_f2.size();
                 }
 
                 // Sum sequence to totals
@@ -445,7 +423,6 @@ void classify( std::vector< Filter >&    filters,
                     total.length_processed += read1_len + read2_len;
                 }
 
-
                 // For each filter in the hierarchy
                 for ( uint8_t i = 0; i < filters.size(); ++i )
                 {
@@ -453,80 +430,69 @@ void classify( std::vector< Filter >&    filters,
                     seqan3::counting_vector< uint16_t > counts_f = agents[i].bulk_count( hashes_f );
                     seqan3::counting_vector< uint16_t > counts_r = agents[i].bulk_count( hashes_r );
 
+                    if ( rb.paired )
+                    {
+                        counts_f += agents[i].bulk_count( hashes_f2 );
+                        counts_r += agents[i].bulk_count( hashes_r2 );
+                    }
+
                     // Calculate threshold for cutoff (keep matches above)
-                    uint16_t threshold_cutoff =
-                        ( filters[i].filter_config.rel_cutoff > 0 )
-                            ? threshold_rel( hashes_f.size(), filters[i].filter_config.rel_cutoff )
-                            : threshold_abs( hashes_f.size(),
-                                             hierarchy_config.kmer_size,
-                                             filters[i].filter_config.abs_cutoff,
-                                             hierarchy_config.offset );
+                    uint16_t threshold_cutoff = 0;
+                    if ( filters[i].filter_config.rel_cutoff >= 0 )
+                        threshold_cutoff = threshold_rel( kmers, filters[i].filter_config.rel_cutoff );
+                    else if ( filters[i].filter_config.abs_cutoff >= 0 )
+                        threshold_cutoff = threshold_abs( kmers,
+                                                          filters[i].filter_config.abs_cutoff,
+                                                          hierarchy_config.kmer_size,
+                                                          hierarchy_config.offset );
+
                     // select matches based on threshold cutoff
                     select_matches( matches, counts_f, counts_r, filters[i], threshold_cutoff, max_kmer_count_read );
                 }
             }
 
+            // store read to be printed
+            ReadOut read_out( rb.ids[readID] );
 
-            // if read got matches
+            // if read got valid matches (above cutoff)
             if ( max_kmer_count_read > 0 )
             {
+                total.reads_classified++;
+
+                // Account unique match (before filter)
+                if ( matches.size() == 1 )
+                {
+                    rep[matches.begin()->first].unique_reads++;
+                }
+
                 // Calculate threshold for filtering (keep matches above)
-                uint16_t threshold_filter = get_threshold_filter( hierarchy_config,
-                                                                  hashes_f.size(),
-                                                                  max_kmer_count_read,
-                                                                  hierarchy_config.kmer_size,
-                                                                  hierarchy_config.offset );
+                uint16_t threshold_filter = get_threshold_filter(
+                    hierarchy_config, kmers, max_kmer_count_read, hierarchy_config.kmer_size, hierarchy_config.offset );
 
                 // Filter matches
                 uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
 
-                // If there are valid matches after filtering
-                if ( count_filtered_matches > 0 )
+                if ( run_lca )
                 {
-                    total.reads_classified++;
-                    if ( run_lca )
+                    ReadOut read_out_lca( rb.ids[readID] );
+                    if ( count_filtered_matches == 1 )
                     {
-                        ReadOut read_out_lca( rb.ids[readID] );
-                        if ( count_filtered_matches == 1 )
-                        {
-                            read_out_lca = read_out; // just one match, copy read read_out
-                            if ( hierarchy_config.max_error_unique >= 0 )
-                            {
-                                // re-classify read to parent if threshold<=max_error_unique
-                                check_unique( read_out_lca,
-                                              read1_len,
-                                              read2_len,
-                                              hierarchy_config.kmer_size,
-                                              hierarchy_config.max_error_unique,
-                                              hierarchy_config.offset,
-                                              tax,
-                                              rep );
-                            }
-                            else
-                            {
-                                rep[read_out.matches[0].target].unique_reads++;
-                            }
-                        }
-                        else
-                        {
-                            lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
-                        }
-
-                        if ( config.output_lca )
-                            classified_lca_queue.push( read_out_lca );
+                        read_out_lca = read_out; // just one match, copy read read_out
                     }
-                    else if ( count_filtered_matches == 1 )
+                    else
                     {
-                        // Not running lca and unique match
-                        rep[read_out.matches[0].target].unique_reads++;
+                        lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
                     }
 
-                    if ( config.output_all )
-                        classified_all_queue.push( read_out );
-
-                    // read classified, continue to the next
-                    continue;
+                    if ( config.output_lca )
+                        classified_lca_queue.push( read_out_lca );
                 }
+
+                if ( config.output_all )
+                    classified_all_queue.push( read_out );
+
+                // read classified, continue to the next
+                continue;
             }
 
             // not classified
@@ -1041,7 +1007,6 @@ bool run( Config config )
                                             detail::classify,
                                             std::ref( filters ),
                                             std::ref( lca ),
-                                            std::ref( tax ),
                                             std::ref( reports[taskNo] ),
                                             std::ref( totals[taskNo] ),
                                             std::ref( classified_all_queue ),

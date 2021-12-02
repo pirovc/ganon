@@ -27,12 +27,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "f,offset", "Offset for skipping k-mers while counting. One per hierarchy label. Default: 1 (no offset)", cxxopts::value< std::vector< uint8_t > >() )
         
         ( "c,rel-cutoff", "Relative cutoff (i.e. percentage of k-mers). 0 for no cutoff. One per filter [muttualy exclusive --rel-cutoff]. Default: 0.25", cxxopts::value< std::vector< double > >() )
-        ( "b,abs-cutoff", "Absolute cutoff (i.e. number of errors). One per filter [muttualy exclusive --rel-cutoff].", cxxopts::value< std::vector< int16_t > >() )
-        ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). One per hierarchy label [muttualy exclusive --abs-filter].", cxxopts::value< std::vector< double > >() )
+        ( "b,abs-cutoff", "Absolute cutoff (i.e. number of errors). -1 for no cutoff. One per filter [muttualy exclusive --rel-cutoff].", cxxopts::value< std::vector< int16_t > >() )
+        ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). 1 for no filtering. One per hierarchy label [muttualy exclusive --abs-filter].", cxxopts::value< std::vector< double > >() )
         ( "e,abs-filter", "Absolute filter. Additional errors allowed (relative to the best match). -1 for no filtering. One per hierarchy label [muttualy exclusive --abs-filter]. Default: 0", cxxopts::value< std::vector< int16_t > >() )
         
-        ( "q,max-error-unique", "Maximum number of errors/mismatches allowed for unique matches after filtering. If below threshold, read is assigned to its parent. Only possible with --tax. One per hierarchy label.", cxxopts::value< std::vector< int16_t > >() )
-
         ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.lca, prefix.all, prefix.unc]). If multi-level hierarchy is provided, files are generated accordingly (prefix.hierarchy.lca and prefix.hierarchy.all). Omit to output to STDOUT (only .rep will be printed)", cxxopts::value< std::string >() )
         ( "l,output-lca", "Output file with lca classification, one for each classified read (prefix.lca)", cxxopts::value< bool >() )
         ( "a,output-all", "Output file with all matches, one or more for each classified read (prefix.all) [it can be very big]", cxxopts::value< bool >() )
@@ -98,9 +96,6 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.rel_filter = args["rel-filter"].as< std::vector< double > >();
     if ( args.count( "abs-filter" ) )
         config.abs_filter = args["abs-filter"].as< std::vector< int16_t > >();
-
-    if ( args.count( "max-error-unique" ) )
-        config.max_error_unique = args["max-error-unique"].as< std::vector< int16_t > >();
 
     if ( args.count( "output-prefix" ) )
         config.output_prefix = args["output-prefix"].as< std::string >();

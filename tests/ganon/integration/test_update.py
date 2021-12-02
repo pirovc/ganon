@@ -45,7 +45,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify simulated virus against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
             "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-            "max_error": 0,
+            "abs_cutoff": 0,
             "output_lca": True,
             "output_all": True,
             "quiet": True,
@@ -225,16 +225,15 @@ class TestUpdateOffline(unittest.TestCase):
         # Check if entries are unique (virus 10239, bacteria 2)
         self.assertEqual(res["bins_pd"].taxid.drop_duplicates().size, 2, "multiple taxids")
 
-
         # Classify to first part
         params_classify = {"db_prefix": params_build["db_prefix"],
-                            "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                            "max_error": 0,
-                            "offset": 1,
-                            "output_lca": True,
-                            "output_all": True,
-                            "quiet": True,
-                            "output_prefix": self.results_dir + "test_add_existing_bins_classify_part1"}
+                           "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
+                           "abs_cutoff": 1,
+                           "offset": 1,
+                           "output_lca": True,
+                           "output_all": True,
+                           "quiet": True,
+                           "output_prefix": self.results_dir + "test_add_existing_bins_classify_part1"}
         # Build config from params
         cfg_classify = Config("classify", **params_classify)
         # Run
@@ -243,15 +242,16 @@ class TestUpdateOffline(unittest.TestCase):
         res_classify1 = classify_sanity_check_and_parse(vars(cfg_classify))
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
         # Specific test - should contain only one superkingdom (virus 10239, bacteria 2)
-        self.assertEqual(res_classify1["tre_pd"][res_classify1["tre_pd"]["rank"]=="superkingdom"]["target"].shape[0], 1, "more than one superkingdom as target")
-        self.assertEqual(res_classify1["tre_pd"][res_classify1["tre_pd"]["rank"]=="superkingdom"]["target"].values[0], '10239', "wrong target")
+        self.assertEqual(res_classify1["tre_pd"][res_classify1["tre_pd"]["rank"] == "superkingdom"]["target"].shape[0], 1, "not one superkingdom as target")
+        self.assertEqual(res_classify1["tre_pd"][res_classify1["tre_pd"]["rank"] == "superkingdom"]["target"].values[0], '10239', "wrong target")
 
         # Classify to second part
         params_classify["db_prefix"] = params["output_db_prefix"]
         params_classify["output_prefix"] = self.results_dir + "test_add_existing_bins_classify_part2"
-        
+
         # Build config from params
         cfg_classify = Config("classify", **params_classify)
+
         # Run
         self.assertTrue(ganon.main(cfg=cfg_classify), "ganon classify exited with an error")
         # General sanity check of results
@@ -260,10 +260,11 @@ class TestUpdateOffline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
         # Specific
         # Classification to the second updated index has to have more matches than the first
-        self.assertTrue(res_classify2["all_pd"].shape[0]>res_classify1["all_pd"].shape[0], "updated index did not improve matches")
+        self.assertTrue(res_classify2["all_pd"].shape[0] > res_classify1["all_pd"].shape[0], "updated index did not improve matches")
+
         # should contain only two superkingdoms (virus 10239, bacteria 2)
-        self.assertEqual(res_classify2["tre_pd"][res_classify2["tre_pd"]["rank"]=="superkingdom"]["target"].shape[0], 2, "more than two superkingdom as target")
-        self.assertTrue(res_classify2["tre_pd"][res_classify2["tre_pd"]["rank"]=="superkingdom"]["target"].isin(['10239','2']).all(), "wrong target")
+        self.assertEqual(res_classify2["tre_pd"][res_classify2["tre_pd"]["rank"] == "superkingdom"]["target"].shape[0], 2, "not two superkingdom as target")
+        self.assertTrue(res_classify2["tre_pd"][res_classify2["tre_pd"]["rank"] == "superkingdom"]["target"].isin(['10239','2']).all(), "wrong target")
 
     def test_update_complete_add(self):
         """
@@ -291,7 +292,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify simulated virus against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                    "max_error": 0,
+                    "abs_cutoff": 0,
                     "output_lca": True,
                     "output_all": True,
                     "quiet": True,
@@ -331,7 +332,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify against reduced updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": data_dir+"bac.sim.1.fq",
-                    "max_error": 0,
+                    "abs_cutoff": 0,
                     "output_lca": True,
                     "output_all": True,
                     "quiet": True,
@@ -373,7 +374,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                    "max_error": 0,
+                    "abs_cutoff": 0,
                     "output_lca": True,
                     "output_all": True,
                     "quiet": True,
@@ -452,7 +453,7 @@ class TestUpdateOffline(unittest.TestCase):
         # At the end, should have only viruses on the index
         params_classify = {"db_prefix": params["output_db_prefix"],
                     "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                    "max_error": 0,
+                    "abs_cutoff": 0,
                     "output_lca": True,
                     "output_all": True,
                     "quiet": True,

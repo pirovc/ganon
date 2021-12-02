@@ -36,7 +36,6 @@ struct FilterConfig
 struct HierarchyConfig
 {
     std::vector< FilterConfig > filters;
-    int16_t                     max_error_unique;
     uint8_t                     kmer_size;
     uint8_t                     window_size;
     uint8_t                     offset;
@@ -67,8 +66,6 @@ public:
     std::vector< int16_t > abs_cutoff;
     std::vector< double >  rel_filter;
     std::vector< int16_t > abs_filter{ 0 };
-
-    std::vector< int16_t > max_error_unique{ -1 };
 
     std::string output_prefix       = "";
     bool        output_lca          = false;
@@ -154,7 +151,7 @@ public:
         valid_val = true;
         for ( uint16_t i = 0; i < abs_filter.size(); ++i )
         {
-            if ( abs_filter[i] < 0 )
+            if ( abs_filter[i] < -1 )
             {
                 valid_val = false;
                 break;
@@ -162,7 +159,7 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--abs-filter values should be >= 0" << std::endl;
+            std::cerr << "--abs-filter values should be >= -1" << std::endl;
             return false;
         }
 
@@ -360,19 +357,6 @@ public:
             return false;
         }
 
-        if ( max_error_unique.size() == 1 && unique_hierarchy > 1 )
-        {
-            for ( uint16_t b = 1; b < unique_hierarchy; ++b )
-            {
-                max_error_unique.push_back( max_error_unique[0] );
-            }
-        }
-        else if ( max_error_unique.size() != unique_hierarchy )
-        {
-            std::cerr << "Please provide a single or one-per-hierarchy --max-error-unique value[s]" << std::endl;
-            return false;
-        }
-
         if ( rel_filter.size() == 1 && unique_hierarchy > 1 )
         {
             for ( uint16_t b = 1; b < unique_hierarchy; ++b )
@@ -426,7 +410,6 @@ public:
                 }
 
                 parsed_hierarchy[hierarchy_labels[h]] = HierarchyConfig{ fc,
-                                                                         max_error_unique[hierarchy_count],
                                                                          kmer_size[hierarchy_count],
                                                                          window_size[hierarchy_count],
                                                                          offset[hierarchy_count],
@@ -462,8 +445,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
                 stream << " --offset:            " << unsigned( hierarchy_config.second.offset ) << newl;
             if ( hierarchy_config.second.window_size > 0 )
                 stream << " --window-size:       " << unsigned( hierarchy_config.second.window_size ) << newl;
-            if ( hierarchy_config.second.max_error_unique > -1 )
-                stream << " --max-error-unique:  " << hierarchy_config.second.max_error_unique << newl;
             if ( hierarchy_config.second.rel_filter > -1 )
                 stream << " --rel-filter:        " << hierarchy_config.second.rel_filter << newl;
             if ( hierarchy_config.second.abs_filter > -1 )

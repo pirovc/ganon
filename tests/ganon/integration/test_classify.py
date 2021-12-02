@@ -43,7 +43,7 @@ class TestClassifyOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_multiple_databases"
         params["db_prefix"] = [data_dir+"bacteria_assembly", data_dir+"bacteria_default"]
-        params["min_kmers"] = ["0.25", "0.1"]
+        params["rel_cutoff"] = ["0.25", "0.1"]
         params["hierarchy_labels"] = ["1_assembly", "2_default"]
         params["output_single"] = True
 
