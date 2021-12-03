@@ -58,7 +58,7 @@ script:
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
-  - make install
+  - sudo make install
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
