@@ -255,6 +255,7 @@ void get_hashes( std::vector< seqan3::dna5 >& seq,
     {
         // minimizers
         hashes_f = { seq | minimiser_hash | seqan3::views::to< std::vector > };
+        hashes_r = hashes_f;
     }
     else
     {

@@ -28,8 +28,8 @@ class Config:
         build_group_important.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters [Mutually exclusive --filter-size]. Default: 0.05')
         
         build_group_filter = build_parser.add_argument_group('filter arguments')
-        build_group_filter.add_argument('--kmer-size',             type=int,            metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
-        build_group_filter.add_argument('--window-size',           type=int,            metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
+        build_group_filter.add_argument('-k', '--kmer-size',             type=int,      metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
+        build_group_filter.add_argument('-w', '--window-size',           type=int,      metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
         build_group_filter.add_argument('--hash-functions',        type=int,            metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
         build_group_filter.add_argument('--filter-size',           type=float,          metavar='', default=0,         help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp]')
         build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin [Mutually exclusive --max-filter-size]')
