@@ -101,8 +101,8 @@ class Config:
         classify_group_output.add_argument('--output-single',             action='store_true',               help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
         
         classify_group_other = classify_parser.add_argument_group('other arguments')
-        classify_group_other.add_argument('-l', '--hierarchy-labels',    type=str,   nargs="*", metavar='', help='Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: 1')
-        classify_group_other.add_argument('-f', '--offset',              type=int,              metavar='', help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 2')    
+        classify_group_other.add_argument('-l', '--hierarchy-labels',    type=str,   nargs="*", metavar='', help='Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: H1')
+        classify_group_other.add_argument('-f', '--offset',              type=int,              metavar='', help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1')
         classify_group_other.add_argument('-t', '--threads',             type=int,              metavar='', help='Number of sub-processes/threads to use. Default: 3')
         classify_group_other.add_argument('-r', '--ranks',               type=str,   nargs="*", metavar='', help='Ranks to show in the report (.tre). "all" for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly. This file can be re-generated with the ganon report command.')
         classify_group_other.add_argument('--verbose',                   action='store_true',               help='Verbose output mode')

@@ -56,7 +56,7 @@ public:
     std::vector< std::string > map;
     std::vector< std::string > tax;
 
-    std::vector< std::string > hierarchy_labels{ "1_default" };
+    std::vector< std::string > hierarchy_labels{ "H1" };
 
     std::vector< uint8_t > kmer_size{ 19 };
     std::vector< uint8_t > window_size;

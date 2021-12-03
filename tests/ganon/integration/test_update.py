@@ -228,7 +228,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify to first part
         params_classify = {"db_prefix": params_build["db_prefix"],
                            "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                           "abs_cutoff": 1,
+                           "abs_cutoff": 0,
                            "offset": 1,
                            "output_lca": True,
                            "output_all": True,

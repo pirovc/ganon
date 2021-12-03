@@ -20,7 +20,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "m,map", "Optional tab-separated file mapping bins ids (--ibf) to target groups/labels (e.g. taxids, assemblies). Targets can be repeated within/among filters if multiple bins represent the same group. If no --map file is provided, targets are bin ids. If multiple filters of hiearchies are provided, targets are: hierarchy label-filter id-bin id. Fields: target <tab> bin id (e.g. -g a.map,b.map OR -g a.map -g b.map)", cxxopts::value< std::vector< std::string > >() )
         ( "x,tax", "Optional tab-separated file with a taxonomic tree for LCA calculation. Will link targets provided in the --map files. Root node should be 1 with parent 0. Fields: node/target <tab> parent node <tab> rank <tab> name (e.g. -g a.tax,b.tax OR -g a.tax -g b.tax)", cxxopts::value< std::vector< std::string > >() )
         
-        ( "y,hierarchy-labels", "Hierarchy labels to define level for database usage (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: '1_default'", cxxopts::value< std::vector< std::string > >() )
+        ( "y,hierarchy-labels", "Hierarchy labels to define level for database usage (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: 'H1'", cxxopts::value< std::vector< std::string > >() )
         
         ( "k,kmer-size", "k size to query - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint8_t > >() )
         ( "w,window-size", "define window size for minimizers - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint8_t > >() )

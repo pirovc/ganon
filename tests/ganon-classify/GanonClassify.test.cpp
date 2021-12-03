@@ -462,11 +462,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify]" )
 
             // Report targets as hiearchy label + filter id + bin id
             REQUIRE( res.all["readA"].size() == 3 );
-            REQUIRE( res.all["readA"]["1_default-0-0"] == 5 ); // A
-            REQUIRE( res.all["readA"]["1_default-0-2"] == 5 ); // T (rev.comp.)
-            REQUIRE( res.all["readA"]["1_default-1-0"] == 5 ); // A second filter
+            REQUIRE( res.all["readA"]["H1-0-0"] == 5 ); // A
+            REQUIRE( res.all["readA"]["H1-0-2"] == 5 ); // T (rev.comp.)
+            REQUIRE( res.all["readA"]["H1-1-0"] == 5 ); // A second filter
             REQUIRE( res.all["readCG"].size() == 1 );
-            REQUIRE( res.all["readCG"]["1_default-1-1"] == 5 ); // CG second filter
+            REQUIRE( res.all["readCG"]["H1-1-1"] == 5 ); // CG second filter
 
             SECTION( "with --map" )
             {

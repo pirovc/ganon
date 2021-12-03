@@ -190,7 +190,7 @@ inline uint16_t threshold_rel( uint16_t kmers, double p )
     return std::floor( kmers * p );
 }
 
-inline uint16_t get_errors( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
+inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
 {
     return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
@@ -284,12 +284,14 @@ uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
 {
     uint16_t threshold_filter = 0;
     if ( hierarchy_config.rel_filter >= 0 )
+    {
         threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
+    }
     else if ( hierarchy_config.abs_filter >= 0 )
     {
         // get maximum possible number of errors of best match + abs_filter
         uint16_t max_error_threshold =
-            get_errors( kmers, kmer_size, offset, max_kmer_count_read ) + hierarchy_config.abs_filter;
+            get_abs_error( kmers, kmer_size, offset, max_kmer_count_read ) + hierarchy_config.abs_filter;
         // get min kmer count necesary to achieve the calculated number of errors
         threshold_filter = threshold_abs( kmers, max_error_threshold, kmer_size, offset );
     }
@@ -300,9 +302,9 @@ uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16
 {
 
     for ( auto const& [target, kmer_count] : matches )
-    { // matches[target] = kmerCount
+    {
         if ( kmer_count >= threshold_filter )
-        { // apply strata filter
+        {
             rep[target].matches++;
             read_out.matches.push_back( ReadMatch{ target, kmer_count } );
         }
@@ -451,19 +453,13 @@ void classify( std::vector< Filter >&    filters,
                 }
             }
 
-            // store read to be printed
+            // store read and matches to be printed
             ReadOut read_out( rb.ids[readID] );
 
             // if read got valid matches (above cutoff)
             if ( max_kmer_count_read > 0 )
             {
                 total.reads_classified++;
-
-                // Account unique match (before filter)
-                if ( matches.size() == 1 )
-                {
-                    rep[matches.begin()->first].unique_reads++;
-                }
 
                 // Calculate threshold for filtering (keep matches above)
                 uint16_t threshold_filter = get_threshold_filter(
@@ -477,7 +473,9 @@ void classify( std::vector< Filter >&    filters,
                     ReadOut read_out_lca( rb.ids[readID] );
                     if ( count_filtered_matches == 1 )
                     {
-                        read_out_lca = read_out; // just one match, copy read read_out
+                        // just one match, copy read read_out and set as unique
+                        read_out_lca = read_out;
+                        rep[read_out.matches[0].target].unique_reads++;
                     }
                     else
                     {
@@ -486,6 +484,11 @@ void classify( std::vector< Filter >&    filters,
 
                     if ( config.output_lca )
                         classified_lca_queue.push( read_out_lca );
+                }
+                else if ( count_filtered_matches == 1 )
+                {
+                    // Not running lca and has unique match
+                    rep[read_out.matches[0].target].unique_reads++;
                 }
 
                 if ( config.output_all )
