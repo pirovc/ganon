@@ -40,12 +40,12 @@ before_install:
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - python3 setup.py install
+  - python3 setup.py install --user
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 35ffb1e1a92f6199d757dfdd2f1971db29dd4070 # v1.1.1
-  - python3 setup.py install
+  - python3 setup.py install --user
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
@@ -64,7 +64,7 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - python3 setup.py install
+  - python3 setup.py install --user
   - ganon -h # ret 0
 
 after_success:
