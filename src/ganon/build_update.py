@@ -85,7 +85,8 @@ def build(cfg):
     actual_number_of_bins = bins.get_number_of_bins()
     optimal_number_of_bins = optimal_bins(actual_number_of_bins)
     max_length_bin = bins.get_max_bin_length()
-    max_kmer_count = max_length_bin - cfg.kmer_size + 1  # aproximate number of unique k-mers by just considering that they are all unique
+    max_kmer_count = estimate_elements(max_length_bin, cfg.kmer_size, cfg.window_size)
+    #max_kmer_count = max_length_bin - cfg.kmer_size + 1
     print_log(" - " + str(actual_number_of_bins) + " bins created", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -554,6 +555,18 @@ def estimate_n_bins(bin_len, overlap_len, groups_len):
     n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
     return n_bins
 
+def estimate_elements(bin_len, kmer_size, window_size):
+    """
+    Return estimation of elements given a bin lenght
+    For minimizers, uses middle point between min. possible and max. possible minimizers
+    For kmers, use max possible number of k-mers
+    """
+    if window_size > 0:
+        # Estimate elements to be the median of min. and max. possible minimizers
+        return math.floor((((bin_len - kmer_size + 1) / (window_size - kmer_size + 1)) + (bin_len - window_size + 1)) / 2)
+    else:
+        # Estimate elements to be all k-mers
+        return bin_len - kmer_size + 1
 
 def estimate_params(cfg, simulated_bin_lens, groups_len):
     # Caculate filter sizes based on simulated bin lenghts
@@ -563,7 +576,7 @@ def estimate_params(cfg, simulated_bin_lens, groups_len):
         if n_bins <= 0:
             continue  # invalid bin_len
 
-        bf_params = derive_bf_params(bin_length - cfg.kmer_size + 1,
+        bf_params = derive_bf_params(estimate_elements(bin_length, cfg.kmer_size, cfg.window_size),
                                      cfg.max_fp,
                                      0,
                                      cfg.hash_functions)
