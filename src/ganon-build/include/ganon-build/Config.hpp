@@ -132,9 +132,10 @@ public:
             if ( !check_files( { update_filter_file } ) )
                 return false;
 
-            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0  || false_positive > 0 ) )
+            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
             {
-                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating" << std::endl;
+                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
+                          << std::endl;
             }
             filter_size_mb = 0;
             bin_size_bits  = 0;

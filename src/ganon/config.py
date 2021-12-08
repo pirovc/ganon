@@ -24,7 +24,7 @@ class Config:
         build_group_important = build_parser.add_argument_group('important arguments')
         build_group_important.add_argument('-t', '--threads',         type=int,            metavar='', default=2,         help='Number of sub-processes/threads to use. Default: 2')
         build_group_important.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. To use assembly, strain or further specializations, check --specialization. Default: species')
-        build_group_important.add_argument('-m', '--max-filter-size', type=float,          metavar='',                    help='Given an approx. upper limit in Megabytes (MB) for filter/memory. It will attempt to derive best parameters. When using minimizers, filter may be significantly smaller after build. [Mutually exclusive --bin-length]')
+        build_group_important.add_argument('-m', '--max-filter-size', type=float,          metavar='',                    help='Given an approx. upper limit in Megabytes (MB) for filter/memory usage. When using --window-size, filter may be significantly smaller after build depending on the level of similarity of your input sequences. [Mutually exclusive --bin-length]')
         build_group_important.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters [Mutually exclusive --filter-size]. Default: 0.05')
         
         build_group_filter = build_parser.add_argument_group('filter arguments')

@@ -151,7 +151,7 @@ public:
         valid_val = true;
         for ( uint16_t i = 0; i < abs_filter.size(); ++i )
         {
-            if ( abs_filter[i] < -1 )
+            if ( abs_filter[i] < 0 && abs_filter[i] != -1 )
             {
                 valid_val = false;
                 break;
@@ -159,14 +159,14 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--abs-filter values should be >= -1" << std::endl;
+            std::cerr << "--abs-filter values should be >= 0 (or -1 to disable)" << std::endl;
             return false;
         }
 
         valid_val = true;
         for ( uint16_t i = 0; i < abs_cutoff.size(); ++i )
         {
-            if ( abs_cutoff[i] < 0 )
+            if ( abs_cutoff[i] < 0 && abs_cutoff[i] != -1 )
             {
                 valid_val = false;
                 break;
@@ -174,7 +174,7 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--abs-cutoff values should be >= 0" << std::endl;
+            std::cerr << "--abs-cutoff values should be >= 0 (or -1 to disable)" << std::endl;
             return false;
         }
 

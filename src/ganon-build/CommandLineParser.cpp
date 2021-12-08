@@ -77,7 +77,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.update_filter_file = args["update-filter-file"].as< std::string >();
     if ( args.count( "update-complete" ) )
         config.update_complete = args["update-complete"].as< bool >();
-    
+
     if ( args.count( "false-positive" ) )
         config.false_positive = args["false-positive"].as< double >();
     if ( args.count( "filter-size-mb" ) )

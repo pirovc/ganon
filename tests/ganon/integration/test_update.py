@@ -8,6 +8,7 @@ sys.path.append(base_dir)
 from utils import *
 data_dir = base_dir + "data/"
 
+
 class TestUpdateOffline(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/update/"
@@ -21,11 +22,11 @@ class TestUpdateOffline(unittest.TestCase):
                       "seq_info_file": data_dir+"update/virus_seqinfo.txt",
                       "write_seq_info_file": True,
                       "quiet": True}
-    
+
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
-       
+
     def test_default(self):
         """
         Test run with default parameters
@@ -40,16 +41,16 @@ class TestUpdateOffline(unittest.TestCase):
         res = update_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon update has inconsistent results")
         # Specific - check if number of bins increased
-        self.assertTrue(res["map_pd"].binid.max()>41, "no bins were added")
+        self.assertTrue(res["map_pd"].binid.max() > 41, "no bins were added")
 
         # Classify simulated virus against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
-            "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-            "abs_cutoff": 0,
-            "output_lca": True,
-            "output_all": True,
-            "quiet": True,
-            "output_prefix": self.results_dir + "test_default"}
+                           "single_reads": [data_dir + "vir.sim.1.fq", data_dir + "bac.sim.1.fq"],
+                           "abs_cutoff": 0,
+                           "output_lca": True,
+                           "output_all": True,
+                           "quiet": True,
+                           "output_prefix": self.results_dir + "test_default"}
 
         # Build config from params
         cfg_classify = Config("classify", **params_classify)
@@ -61,6 +62,65 @@ class TestUpdateOffline(unittest.TestCase):
         # Specific tes - should return Viruses and Bacteria matches on the updated index
         self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
 
+    def test_minimizers(self):
+        """
+        ganon update with minimizers
+        """
+        params_build = {"taxdump_file": [data_dir + "mini_nodes.dmp",
+                                         data_dir + "mini_names.dmp"],
+                        "input_files": [data_dir + "build/bacteria_NC_010333.1.fasta.gz",
+                                        data_dir + "build/bacteria_NC_017164.1.fasta.gz",
+                                        data_dir + "build/bacteria_NC_017163.1.fasta.gz",
+                                        data_dir + "build/bacteria_NC_017543.1.fasta.gz"],
+                        "seq_info_file": data_dir + "build/bacteria_seqinfo.txt",
+                        "write_seq_info_file": True,
+                        "rank": "species",
+                        "window_size": 27,
+                        "quiet": True}
+        params_build["db_prefix"] = self.results_dir + "test_minimizers_build"
+
+        # Build config from params
+        cfg_build = Config("build", **params_build)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg_build), "ganon build exited with an error")
+        # General sanity check of results
+        res_build = build_sanity_check_and_parse(vars(cfg_build))
+        self.assertIsNotNone(res_build, "ganon build has inconsistent results")
+        shutil.copy(params_build["seq_info_file"], params_build["db_prefix"]+".seqinfo.txt")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = params_build["db_prefix"]
+        params["output_db_prefix"] = self.results_dir + "test_minimizers_update"
+        # Build config from params
+        cfg = Config("update", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon update exited with an error")
+        # General sanity check of results
+        res = update_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon update has inconsistent results")
+        # Specific - check if number of bins increased
+        self.assertTrue(res["map_pd"].binid.max() > 41, "no bins were added")
+
+        # Classify simulated virus against updated index
+        params_classify = {"db_prefix": params["output_db_prefix"],
+                           "single_reads": [data_dir + "vir.sim.1.fq", data_dir + "bac.sim.1.fq"],
+                           "abs_cutoff": 0,
+                           "output_lca": True,
+                           "output_all": True,
+                           "quiet": True,
+                           "output_prefix": self.results_dir + "test_default"}
+
+        # Build config from params
+        cfg_classify = Config("classify", **params_classify)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg_classify), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg_classify))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+        # Specific tes - should return Viruses and Bacteria matches on the updated index
+        self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
+
+
     def test_specialization_custom(self):
         """
         Test update with custom specialization
@@ -68,7 +128,7 @@ class TestUpdateOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = data_dir+"bacteria_custom"
         params["output_db_prefix"] = self.results_dir + "test_specialization_custom"
-        
+
         # Build config from params
         cfg = Config("update", **params)
         # Run
@@ -98,7 +158,7 @@ class TestUpdateOffline(unittest.TestCase):
         # Specific test - count assemblies on tax (3 bac + 4 vir)
         self.assertEqual(sum(res["tax_pd"]["rank"]=="custom"), 4, "error updating assemblies")
         self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 3, "error updating assemblies")
- 
+
     def test_specialization_on_default(self):
         """
         ganon update --specialization custom on previous generated index without specialiazazion
@@ -194,9 +254,10 @@ class TestUpdateOffline(unittest.TestCase):
         # Build config from params
         cfg_build = Config("build", **params_build)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg_build), "ganon update exited with an error")
+        self.assertTrue(ganon.main(cfg=cfg_build), "ganon build exited with an error")
         # General sanity check of results
         res_build = build_sanity_check_and_parse(vars(cfg_build))
+        self.assertIsNotNone(res_build, "ganon build has inconsistent results")
         # Copy seqinfo to be parsed later
         shutil.copy(params_build["seq_info_file"], params_build["db_prefix"]+".seqinfo.txt")
 
@@ -273,11 +334,11 @@ class TestUpdateOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_db_prefix"] = self.results_dir + "test_update_complete_add"
         params["update_complete"] = True
-        params["seq_info_file"] = data_dir+"update/bacteria_virus_seqinfo.txt"
-        params["input_files"].extend([data_dir+"build/bacteria_NC_010333.1.fasta.gz",
-                                      data_dir+"build/bacteria_NC_017164.1.fasta.gz", 
-                                      data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
-                                      data_dir+"build/bacteria_NC_017543.1.fasta.gz"])
+        params["seq_info_file"] = data_dir + "update/bacteria_virus_seqinfo.txt"
+        params["input_files"].extend([data_dir + "build/bacteria_NC_010333.1.fasta.gz",
+                                      data_dir + "build/bacteria_NC_017164.1.fasta.gz",
+                                      data_dir + "build/bacteria_NC_017163.1.fasta.gz",
+                                      data_dir + "build/bacteria_NC_017543.1.fasta.gz"])
 
         # Build config from params
         cfg = Config("update", **params)
@@ -291,12 +352,12 @@ class TestUpdateOffline(unittest.TestCase):
 
         # Classify simulated virus against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
-                    "single_reads": [data_dir+"vir.sim.1.fq", data_dir+"bac.sim.1.fq"],
-                    "abs_cutoff": 0,
-                    "output_lca": True,
-                    "output_all": True,
-                    "quiet": True,
-                    "output_prefix": self.results_dir + "test_update_complete_add"}
+                           "single_reads": [data_dir + "vir.sim.1.fq", data_dir + "bac.sim.1.fq"],
+                           "abs_cutoff": 0,
+                           "output_lca": True,
+                           "output_all": True,
+                           "quiet": True,
+                           "output_prefix": self.results_dir + "test_update_complete_add"}
         # Build config from params
         cfg_classify = Config("classify", **params_classify)
         # Run
@@ -391,20 +452,20 @@ class TestUpdateOffline(unittest.TestCase):
         self.assertFalse(res["all_pd"]["target"].isin(["1052684"]).any(), "ganon classify has inconsistent results")
         # should return Viruses and Bacteria matches on the updated index
         self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"]=="superkingdom"]["name"].isin(["Bacteria","Viruses"]).all(), "classification on updated index failed")
-      
+
     def test_update_multiple(self):
         """
         Test multiple update runs: 1) only remove 2) only add (reusing bins) 3) remove and add
         """
-        
+
         #Remove only (2 bacteria entries)
         params = self.default_params.copy()
         params["output_db_prefix"] = self.results_dir + "test_update_multiple_1"
         params["update_complete"] = True
-        params["seq_info_file"] = data_dir+"update/bacteria_half_seqinfo.txt"
-        params["input_files"] = [data_dir+"build/bacteria_NC_010333.1.fasta.gz",
-                              data_dir+"build/bacteria_NC_017164.1.fasta.gz"]
-       
+        params["seq_info_file"] = data_dir + "update/bacteria_half_seqinfo.txt"
+        params["input_files"] = [data_dir + "build/bacteria_NC_010333.1.fasta.gz",
+                                 data_dir + "build/bacteria_NC_017164.1.fasta.gz"]
+
         # Build config from params
         cfg = Config("update", **params)
         # Run

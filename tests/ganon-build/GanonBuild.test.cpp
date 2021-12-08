@@ -4,6 +4,7 @@
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/kmer_hash.hpp>
+#include <seqan3/search/views/minimiser_hash.hpp>
 #include <seqan3/std/ranges>
 
 #include <iostream>
@@ -31,48 +32,47 @@ const bins_type      extra_bins{ 3, 4, 5 };
 namespace config_build
 {
 
-void validate_filter( std::string      output_filter_file,
-                      uint16_t         hash_functions,
-                      uint32_t         filter_size_mb,
-                      uint64_t         bin_size_bits,
-                      const bins_type& bins )
+void validate_filter( const GanonBuild::Config cfg, const bins_type& bins )
 {
     // validate properties of the filter
 
     // check if file exists
-    REQUIRE( std::filesystem::exists( output_filter_file ) );
+    REQUIRE( std::filesystem::exists( cfg.output_filter_file ) );
     // file should not be empty
-    REQUIRE_FALSE( aux::fileIsEmpty( output_filter_file ) );
+    REQUIRE_FALSE( aux::fileIsEmpty( cfg.output_filter_file ) );
     // load filter
-    seqan3::interleaved_bloom_filter<> filter = aux::load_ibf( output_filter_file );
+    seqan3::interleaved_bloom_filter<> filter = aux::load_ibf( cfg.output_filter_file );
     // check bin count
     uint32_t last_bin = *std::max_element( std::begin( bins ), std::end( bins ) );
     REQUIRE( filter.bin_count() == last_bin + 1 );
     // check hash functions
-    REQUIRE( filter.hash_function_count() == hash_functions );
+    REQUIRE( filter.hash_function_count() == cfg.hash_functions );
 
     // check size
-    if ( filter_size_mb > 0 )
+    if ( cfg.filter_size_mb > 0 )
     {
-        REQUIRE( filter.bit_size() == filter_size_mb * 8388608u );
+        REQUIRE( filter.bit_size() == cfg.filter_size_mb * 8388608u );
     }
-    else
+    else if (cfg.bin_size_bits > 0)
     {
         uint64_t optimal_bins = ( std::floor( filter.bin_count() / 64 ) + 1 ) * 64;
-        REQUIRE( filter.bit_size() == bin_size_bits * optimal_bins );
+        REQUIRE( filter.bit_size() == cfg.bin_size_bits * optimal_bins );
+    }else{
+        // using --false-positive, auto calculate
+        REQUIRE( filter.bit_size() > 0 );
     }
 }
 
-void validate_elements( std::string           output_filter_file,
-                        const std::uint8_t    kmer_size,
-                        const sequences_type& seqs,
-                        const bins_type&      bins )
+void validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs, const bins_type& bins )
 {
     // check if elements were properly inserted in the IBF
     // expects unique k-mers among all sequences without errors
-    seqan3::interleaved_bloom_filter<> filter       = aux::load_ibf( output_filter_file );
-    auto                               hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ kmer_size } );
-    auto                               agent        = filter.counting_agent();
+    seqan3::interleaved_bloom_filter<> filter = aux::load_ibf( cfg.output_filter_file );
+    auto                               agent  = filter.counting_agent();
+
+    auto kmer_adaptor      = seqan3::views::kmer_hash( seqan3::ungapped{ cfg.kmer_size } );
+    auto minimizer_adaptor = seqan3::views::minimiser_hash(
+        seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } }, seqan3::window_size{ cfg.window_size }, seqan3::seed{ 0 } );
 
     std::vector< uint16_t >             expected_output( filter.bin_count(), 0 );
     seqan3::counting_vector< uint16_t > output( filter.bin_count(), 0 );
@@ -80,13 +80,20 @@ void validate_elements( std::string           output_filter_file,
     int i = 0;
     for ( auto& seq : seqs )
     {
-        // query IBF
-        output += agent.bulk_count( seq | hash_adaptor );
-        // Calculate expected (min) number of subsequences to be found (no errors)
-        expected_output[bins[i]] = std::ranges::size( seq ) - kmer_size + 1;
+        auto hashes = cfg.window_size ? seq | minimizer_adaptor | seqan3::views::to< std::vector >
+                                      : seq | kmer_adaptor | seqan3::views::to< std::vector >;
+        output += agent.bulk_count( hashes );
+        // Calculate expected number of subsequences to be found (no errors==all hashes)
+        expected_output[bins[i]] = hashes.size();
         i += 1;
     }
-    REQUIRE( output == expected_output );
+
+    // If filter was build with --false-positive rate, results may have FP counts
+    if (cfg.false_positive > 0)
+        for(size_t i=0; i<output.size(); ++i)
+            REQUIRE( output[i] >= expected_output[i] );
+    else
+        REQUIRE( output == expected_output ); // no FP, find exact hashes
 }
 
 
@@ -135,9 +142,8 @@ SCENARIO( "building indices", "[ganon-build]" )
     {
         auto cfg = config_build::defaultConfig( folder_prefix + "default", seqs, ids, bins );
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with multiple --reference-files" )
@@ -159,9 +165,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         cfg.seqid_bin_file  = prefix + "_seqid_bin.tsv";
 
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, merged_bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, merged_seqs, merged_bins );
+        config_build::validate_filter( cfg, merged_bins );
+        config_build::validate_elements( cfg, merged_seqs, merged_bins );
     }
 
     SECTION( "with multiple --reference-files without --seqid-bin-file" )
@@ -176,9 +181,49 @@ SCENARIO( "building indices", "[ganon-build]" )
         cfg.reference_files = { prefix + ".S1.fasta", prefix + ".S2.fasta", prefix + ".S3.fasta" };
 
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
+    }
+
+    SECTION( "with multiple --reference-files without --seqid-bin-file and --window-size 27 and --false-positive 0.1" )
+    {
+        // without --seqid-bin-file it should create one bin per sequence file
+        std::string prefix = folder_prefix + "reference_files_wo_seqid_bin_window_size_27_false_positive_0.1";
+        auto        cfg    = config_build::defaultConfig( prefix );
+        cfg.window_size = 27;
+        cfg.bin_size_bits = 0;
+        cfg.false_positive = 0.1;
+        // write one sequence per file
+        aux::write_sequences( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
+        aux::write_sequences( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
+        aux::write_sequences( prefix + ".S3.fasta", { seqs[2] }, { ids[2] } );
+        cfg.reference_files = { prefix + ".S1.fasta", prefix + ".S2.fasta", prefix + ".S3.fasta" };
+
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
+    }
+
+    SECTION( "with --window-size 23" )
+    {
+        auto cfg        = config_build::defaultConfig( folder_prefix + "window_size_23", seqs, ids, bins );
+        cfg.window_size = 32;
+        // run ganon-build
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
+    }
+
+
+    SECTION( "with --false-positive 0.05" )
+    {
+        auto cfg        = config_build::defaultConfig( folder_prefix + "false_positive_0.05", seqs, ids, bins );
+        cfg.bin_size_bits = 0;
+        cfg.false_positive = 0.5;
+        // run ganon-build
+        REQUIRE( GanonBuild::run( cfg ) );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with --kmer-size 11" )
@@ -187,9 +232,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         cfg.kmer_size = 11;
         // run ganon-build
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with --kmer-size 27" )
@@ -197,9 +241,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_27", seqs, ids, bins );
         cfg.kmer_size = 27;
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with --kmer-size 31" )
@@ -217,9 +260,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         cfg.bin_size_bits  = 0;
         cfg.filter_size_mb = 2;
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with --hash-functions 2" )
@@ -227,9 +269,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto cfg           = config_build::defaultConfig( folder_prefix + "hash_functions_2", seqs, ids, bins );
         cfg.hash_functions = 2;
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 
     SECTION( "with --directory-reference-files and --extension" )
@@ -240,9 +281,8 @@ SCENARIO( "building indices", "[ganon-build]" )
         cfg.directory_reference_files = std::filesystem::canonical( folder_prefix );
         cfg.extension                 = ".TEST.fasta";
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter(
-            cfg.output_filter_file, cfg.hash_functions, cfg.filter_size_mb, cfg.bin_size_bits, bins );
-        config_build::validate_elements( cfg.output_filter_file, cfg.kmer_size, seqs, bins );
+        config_build::validate_filter( cfg, bins );
+        config_build::validate_elements( cfg, seqs, bins );
     }
 }
 
@@ -257,12 +297,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
     // build default filter
     auto cfg_build = config_build::defaultConfig( folder_prefix + "update_base_build", seqs, ids, bins );
     REQUIRE( GanonBuild::run( cfg_build ) );
-    config_build::validate_filter( cfg_build.output_filter_file,
-                                   cfg_build.hash_functions,
-                                   cfg_build.filter_size_mb,
-                                   cfg_build.bin_size_bits,
-                                   bins );
-    config_build::validate_elements( cfg_build.output_filter_file, cfg_build.kmer_size, seqs, bins );
+    config_build::validate_filter( cfg_build, bins );
+    config_build::validate_elements( cfg_build, seqs, bins );
 
     SECTION( "with --update-filter-file creating 3 new bins" )
     {
@@ -276,13 +312,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         auto merged_seqs = aux::vconcat( seqs, extra_seqs );
         auto merged_bins = aux::vconcat( bins, extra_bins );
 
-        config_build::validate_filter( cfg_update.output_filter_file,
-                                       cfg_update.hash_functions,
-                                       cfg_update.filter_size_mb,
-                                       cfg_update.bin_size_bits,
-                                       merged_bins );
-        config_build::validate_elements(
-            cfg_update.output_filter_file, cfg_update.kmer_size, merged_seqs, merged_bins );
+        config_build::validate_filter( cfg_update, merged_bins );
+        config_build::validate_elements( cfg_update, merged_seqs, merged_bins );
 
         SECTION( "with --update-complete" )
         {
@@ -293,13 +324,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete.output_filter_file,
-                                           cfg_update_complete.hash_functions,
-                                           cfg_update_complete.filter_size_mb,
-                                           cfg_update_complete.bin_size_bits,
-                                           merged_bins );
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, merged_seqs, merged_bins );
+            config_build::validate_filter( cfg_update_complete, merged_bins );
+            config_build::validate_elements( cfg_update_complete, merged_seqs, merged_bins );
 
             // should be the same as not complete
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
@@ -324,13 +350,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         auto merged_seqs = aux::vconcat( seqs, extra_seqs );
         auto merged_bins = aux::vconcat( bins, extra_bins );
 
-        config_build::validate_filter( cfg_update.output_filter_file,
-                                       cfg_update.hash_functions,
-                                       cfg_update.filter_size_mb,
-                                       cfg_update.bin_size_bits,
-                                       merged_bins );
-        config_build::validate_elements(
-            cfg_update.output_filter_file, cfg_update.kmer_size, merged_seqs, merged_bins );
+        config_build::validate_filter( cfg_update, merged_bins );
+        config_build::validate_elements( cfg_update, merged_seqs, merged_bins );
     }
 
 
@@ -348,13 +369,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
         auto merged_seqs = aux::vconcat( seqs, extra_seqs );
         auto merged_bins = aux::vconcat( bins, new_bins );
 
-        config_build::validate_filter( cfg_update.output_filter_file,
-                                       cfg_update.hash_functions,
-                                       cfg_update.filter_size_mb,
-                                       cfg_update.bin_size_bits,
-                                       merged_bins );
-        config_build::validate_elements(
-            cfg_update.output_filter_file, cfg_update.kmer_size, merged_seqs, merged_bins );
+        config_build::validate_filter( cfg_update, merged_bins );
+        config_build::validate_elements( cfg_update, merged_seqs, merged_bins );
 
         // new file should be bigger (double bits + overhead)
         REQUIRE( aux::fileSizeBytes( cfg_update.output_filter_file )
@@ -369,13 +385,8 @@ SCENARIO( "updating indices", "[ganon-build]" )
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete.output_filter_file,
-                                           cfg_update_complete.hash_functions,
-                                           cfg_update_complete.filter_size_mb,
-                                           cfg_update_complete.bin_size_bits,
-                                           merged_bins );
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, merged_seqs, merged_bins );
+            config_build::validate_filter( cfg_update_complete, merged_bins );
+            config_build::validate_elements( cfg_update_complete, merged_seqs, merged_bins );
 
             // should be the same as not complete
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
@@ -390,15 +401,11 @@ SCENARIO( "updating indices", "[ganon-build]" )
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
-        config_build::validate_filter( cfg_update.output_filter_file,
-                                       cfg_update.hash_functions,
-                                       cfg_update.filter_size_mb,
-                                       cfg_update.bin_size_bits,
-                                       bins );
+        config_build::validate_filter( cfg_update, bins );
         // validate seqs
-        config_build::validate_elements( cfg_update.output_filter_file, cfg_update.kmer_size, seqs, bins );
+        config_build::validate_elements( cfg_update, seqs, bins );
         // validate extra_seqs
-        config_build::validate_elements( cfg_update.output_filter_file, cfg_update.kmer_size, extra_seqs, bins );
+        config_build::validate_elements( cfg_update, extra_seqs, bins );
 
         SECTION( "with --update-complete" )
         {
@@ -411,18 +418,12 @@ SCENARIO( "updating indices", "[ganon-build]" )
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete.output_filter_file,
-                                           cfg_update_complete.hash_functions,
-                                           cfg_update_complete.filter_size_mb,
-                                           cfg_update_complete.bin_size_bits,
-                                           bins );
+            config_build::validate_filter( cfg_update_complete, bins );
 
             // validate seqs
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, seqs, bins );
+            config_build::validate_elements( cfg_update_complete, seqs, bins );
             // validate extra_seqs
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, extra_seqs, bins );
+            config_build::validate_elements( cfg_update_complete, extra_seqs, bins );
 
             // should be the same as not complete
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
@@ -446,18 +447,12 @@ SCENARIO( "updating indices", "[ganon-build]" )
             cfg_update_complete.update_complete    = true;
 
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete.output_filter_file,
-                                           cfg_update_complete.hash_functions,
-                                           cfg_update_complete.filter_size_mb,
-                                           cfg_update_complete.bin_size_bits,
-                                           merged_bins );
+            config_build::validate_filter( cfg_update_complete, merged_bins );
 
             // validate seqs (without first)
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, rem_seqs, rem_bins );
+            config_build::validate_elements( cfg_update_complete, rem_seqs, rem_bins );
             // validate extra_seqs (all should be there)
-            config_build::validate_elements(
-                cfg_update_complete.output_filter_file, cfg_update_complete.kmer_size, extra_seqs, bins );
+            config_build::validate_elements( cfg_update_complete, extra_seqs, bins );
 
             // should be different as before
             REQUIRE_FALSE(

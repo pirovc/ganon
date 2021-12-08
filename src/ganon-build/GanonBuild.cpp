@@ -412,45 +412,46 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& has
     }
 }
 
-void print_time( const GanonBuild::Config& config,
-                 const StopClock&          timeGanon,
-                 const StopClock&          timeLoadFiles,
-                 const StopClock&          timeLoadSeq,
-                 const StopClock&          timeBuild,
-                 const StopClock&          timeLoadFilter,
-                 const StopClock&          timeSaveFilter )
+void print_time( const StopClock& timeGanon,
+                 const StopClock& timeLoadFiles,
+                 const StopClock& timeCountHashes,
+                 const StopClock& timeLoadSeq,
+                 const StopClock& timeBuild,
+                 const StopClock& timeLoadFilter,
+                 const StopClock& timeSaveFilter )
 {
     using ::operator<<;
-
-    std::cerr << "ganon-build       start time: " << timeGanon.begin() << std::endl;
-    std::cerr << "Loading files     start time: " << timeLoadFiles.begin() << std::endl;
-    std::cerr << "Loading files       end time: " << timeLoadFiles.end() << std::endl;
-    std::cerr << "Loading sequences start time: " << timeLoadSeq.begin() << std::endl;
-    std::cerr << "Loading filter    start time: " << timeLoadFilter.begin() << std::endl;
-    std::cerr << "Loading filter      end time: " << timeLoadFilter.end() << std::endl;
-    std::cerr << "Building filter   start time: " << timeBuild.begin() << std::endl;
-    std::cerr << "Loading sequences   end time: " << timeLoadSeq.end() << std::endl;
-    std::cerr << "Building filter     end time: " << timeBuild.end() << std::endl;
-    std::cerr << "Saving filter     start time: " << timeSaveFilter.begin() << std::endl;
-    std::cerr << "Saving filter       end time: " << timeSaveFilter.end() << std::endl;
-    std::cerr << "ganon-build         end time: " << timeGanon.end() << std::endl;
-    std::cerr << std::endl;
-    std::cerr << " - loading files: " << timeLoadFiles.elapsed() << std::endl;
-    std::cerr << " - loading filter: " << timeLoadFilter.elapsed() << std::endl;
-    std::cerr << " - loading sequences (1t): " << timeLoadSeq.elapsed() << std::endl;
-    std::cerr << " - building filter (" << config.threads_build << "t): " << timeBuild.elapsed() << std::endl;
-    std::cerr << " - saving filter: " << timeSaveFilter.elapsed() << std::endl;
-    std::cerr << " - total: " << timeGanon.elapsed() << std::endl;
+    std::cerr << "Loading files     start: " << timeLoadFiles.begin() << std::endl;
+    std::cerr << "                    end: " << timeLoadFiles.end() << std::endl;
+    std::cerr << "                elapsed: " << timeLoadFiles.elapsed() << std::endl;
+    std::cerr << "Counting hashes   start: " << timeCountHashes.begin() << std::endl;
+    std::cerr << "                    end: " << timeCountHashes.end() << std::endl;
+    std::cerr << "                elapsed: " << timeCountHashes.elapsed() << std::endl;
+    std::cerr << "Loading sequences start: " << timeLoadSeq.begin() << std::endl;
+    std::cerr << "                    end: " << timeLoadSeq.end() << std::endl;
+    std::cerr << "                elapsed: " << timeLoadSeq.elapsed() << std::endl;
+    std::cerr << "Loading filter    start: " << timeLoadFilter.begin() << std::endl;
+    std::cerr << "                    end: " << timeLoadFilter.end() << std::endl;
+    std::cerr << "                elapsed: " << timeLoadFilter.elapsed() << std::endl;
+    std::cerr << "Building filter   start: " << timeBuild.begin() << std::endl;
+    std::cerr << "                    end: " << timeBuild.end() << std::endl;
+    std::cerr << "                elapsed: " << timeBuild.elapsed() << std::endl;
+    std::cerr << "Saving filer      start: " << timeSaveFilter.begin() << std::endl;
+    std::cerr << "                    end: " << timeSaveFilter.end() << std::endl;
+    std::cerr << "                elapsed: " << timeSaveFilter.elapsed() << std::endl;
+    std::cerr << "ganon-build       start: " << timeGanon.begin() << std::endl;
+    std::cerr << "                    end: " << timeGanon.end() << std::endl;
+    std::cerr << "                elapsed: " << timeGanon.elapsed() << std::endl;
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const StopClock& timeBuild )
+void print_stats( Stats& stats, const StopClock& timeGanon )
 {
-    double   elapsed_build = timeBuild.elapsed();
-    uint64_t validSeqs     = stats.totalSeqsFile - stats.invalidSeqs;
+    double   elapsed   = timeGanon.elapsed();
+    uint64_t validSeqs = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
-              << elapsed_build << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed_build / 60.0 ) << " Kseq/m, "
-              << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed_build / 60.0 ) << " Mbp/m)" << std::endl;
+              << elapsed << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed / 60.0 ) << " Kseq/m, "
+              << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed / 60.0 ) << " Mbp/m)" << std::endl;
 
     if ( stats.newBins > 0 )
         std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
@@ -459,7 +460,7 @@ void print_stats( Stats& stats, const StopClock& timeBuild )
 
     std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins written to the IBF ("
               << std::setprecision( 2 ) << std::fixed << stats.filterSizeMB << "MB)" << std::endl;
-    std::cerr << " - " << std::setprecision( 5 ) << std::fixed << stats.filterFalsePositive
+    std::cerr << " - " << std::setprecision( 3 ) << std::fixed << stats.filterFalsePositive
               << " max. false positive (only added sequences)" << std::endl;
 }
 
@@ -482,6 +483,7 @@ bool run( Config config )
 
     // Initialize variables
     StopClock       timeLoadFiles;
+    StopClock       timeCountHashes;
     StopClock       timeLoadFilter;
     StopClock       timeLoadSeq;
     StopClock       timeBuild;
@@ -519,10 +521,12 @@ bool run( Config config )
     }
     timeLoadFiles.stop();
 
+    timeCountHashes.start();
     // last key, last bin (std::map)
     uint64_t last_bin = bin_len.rbegin()->first + 1;
     //  based on counted hashes or length of the largest bin
     uint64_t max_hashes = get_max_hashes( config, seq_bin, bin_len );
+    timeCountHashes.end();
 
     // If updating: extend and clear filter
     timeLoadFilter.start();
@@ -603,9 +607,9 @@ bool run( Config config )
         if ( config.verbose )
         {
             detail::print_time(
-                config, timeGanon, timeLoadFiles, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
+                timeGanon, timeLoadFiles, timeCountHashes, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
         }
-        detail::print_stats( stats, timeBuild );
+        detail::print_stats( stats, timeGanon );
     }
     return true;
 }
