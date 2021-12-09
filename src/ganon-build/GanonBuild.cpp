@@ -119,6 +119,8 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                  GanonBuild::Config&        config )
 {
 
+    uint16_t wk_size = config.window_size > 0 ? config.window_size : config.kmer_size;
+
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
@@ -131,12 +133,12 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
             {
                 const auto seqid = get_seqid( header );
                 stats.totalSeqsFile += 1;
-                if ( seq.size() < config.kmer_size )
+                if ( seq.size() < wk_size )
                 {
                     if ( config.verbose )
                     {
                         std::scoped_lock lock( mtx );
-                        std::cerr << "WARNING: skipping sequence smaller than k-mer size"
+                        std::cerr << "WARNING: skipping sequence smaller than k-mer/window size"
                                   << " [" << seqid << "]" << std::endl;
                     }
                     stats.invalidSeqs += 1;

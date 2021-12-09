@@ -353,7 +353,7 @@ void classify( std::vector< Filter >&    filters,
                                                               : hierarchy_config.kmer_size },
         seqan3::seed{ 0 } );
 
-    int wk_size = hierarchy_config.window_size > 0 ? hierarchy_config.window_size : hierarchy_config.kmer_size;
+    uint16_t wk_size = hierarchy_config.window_size > 0 ? hierarchy_config.window_size : hierarchy_config.kmer_size;
 
     // one agent per thread per filter
     std::vector< TAgent > agents;

@@ -62,12 +62,14 @@ public:
         {
             if ( !std::filesystem::exists( file ) )
             {
-                std::cerr << "file not found: " << file << std::endl;
+                if ( !quiet )
+                    std::cerr << "file not found: " << file << std::endl;
                 return false;
             }
             else if ( std::filesystem::file_size( file ) == 0 )
             {
-                std::cerr << "file is empty: " << file << std::endl;
+                if ( !quiet )
+                    std::cerr << "file is empty: " << file << std::endl;
                 return false;
             }
         }
@@ -82,7 +84,8 @@ public:
 
         if ( output_filter_file.empty() )
         {
-            std::cerr << "--output-filter-file is mandatory" << std::endl;
+            if ( !quiet )
+                std::cerr << "--output-filter-file is mandatory" << std::endl;
             return false;
         }
 
@@ -105,9 +108,11 @@ public:
 
         if ( reference_files.empty() )
         {
-            std::cerr << "Please provide reference sequence files with the parameters --reference-files or/and with "
-                         "--directory-reference-files and --extension"
-                      << std::endl;
+            if ( !quiet )
+                std::cerr
+                    << "Please provide reference sequence files with the parameters --reference-files or/and with "
+                       "--directory-reference-files and --extension"
+                    << std::endl;
             return false;
         }
 
@@ -134,8 +139,9 @@ public:
 
             if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
             {
-                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
-                          << std::endl;
+                if ( !quiet )
+                    std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
+                              << std::endl;
             }
             filter_size_mb = 0;
             bin_size_bits  = 0;
@@ -144,7 +150,9 @@ public:
         {
             if ( bin_size_bits == 0 && filter_size_mb == 0 && false_positive == 0 )
             {
-                std::cerr << "--false-positive, --filter-size-mb or --bin-size-bits should be provided" << std::endl;
+                if ( !quiet )
+                    std::cerr << "--false-positive, --filter-size-mb or --bin-size-bits should be provided"
+                              << std::endl;
                 return false;
             }
         }
@@ -152,15 +160,17 @@ public:
         {
             if ( update_filter_file.empty() || seqid_bin_file.empty() )
             {
-                std::cerr << "--update-filter-file and --seqid-bin-file are required to perform --update-complete"
-                          << std::endl;
+                if ( !quiet )
+                    std::cerr << "--update-filter-file and --seqid-bin-file are required to perform --update-complete"
+                              << std::endl;
                 return false;
             }
         }
 
-        if ( window_size > 0 && window_size <= kmer_size )
+        if ( window_size > 0 && window_size < kmer_size )
         {
-            std::cerr << "--window-size has to be bigger than --kmer-size" << std::endl;
+            if ( !quiet )
+                std::cerr << "--window-size has to be >= --kmer-size" << std::endl;
             return false;
         }
 
