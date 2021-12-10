@@ -64,11 +64,11 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 
 # warning flags:
 
-add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wnon-virtual-dtor
-    -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic
-    -Wno-conversion -Wno-sign-conversion -Wnull-dereference -Wdouble-promotion
-    -Wformat=2 -Wstrict-aliasing -Wno-long-long -Wno-variadic-macros -Wno-shadow 
-    -Wno-old-style-cast )
+add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wcast-align -Wunused 
+    -Woverloaded-virtual -Wpedantic -Wnull-dereference -Wdouble-promotion 
+    -Wformat=2 -Wstrict-aliasing -Wunused-variable )
+
+add_compile_options( -Wno-shadow -Wno-old-style-cast )
 
 if( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
     add_compile_options( -Wmisleading-indentation -Wduplicated-cond
@@ -105,7 +105,7 @@ find_package( ZLIB )
 # 4. SeqAn3:
 
 set( SEQAN3_INCLUDE_PATH libs/seqan3/include )
-find_package (SeqAn3 3.0.3 REQUIRED HINTS libs/seqan3/build_system)
+find_package (SeqAn3 3.1.0 REQUIRED HINTS libs/seqan3/build_system)
 
 add_library( seqan3 INTERFACE )
 target_include_directories( seqan3 SYSTEM INTERFACE ${SEQAN3_INCLUDE_DIRS} )
