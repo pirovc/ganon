@@ -78,9 +78,9 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
     seqan3::counting_vector< uint16_t > output( filter.bin_count(), 0 );
 
     int i = 0;
+    std::vector<uint64_t> hashes;
     for ( auto& seq : seqs )
     {
-        std::vector<uint64_t> hashes;
         if (cfg.window_size > 0)
             hashes = seq | minimizer_adaptor | seqan3::views::to< std::vector<uint64_t> >;
         else
