@@ -68,7 +68,7 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
     // check if elements were properly inserted in the IBF
     // expects unique k-mers among all sequences without errors
     seqan3::interleaved_bloom_filter<> filter = aux::load_ibf( cfg.output_filter_file );
-    auto                               agent  = filter.counting_agent();
+    auto                               agent  = filter.counting_agent< uint16_t >();
 
     auto kmer_adaptor      = seqan3::views::kmer_hash( seqan3::ungapped{ cfg.kmer_size } );
     auto minimizer_adaptor = seqan3::views::minimiser_hash(
