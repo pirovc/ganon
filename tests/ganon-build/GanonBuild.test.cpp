@@ -89,8 +89,8 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
     }
 
 
-    //seqan3::debug_stream << output << std::endl;
-    //seqan3::debug_stream << expected_output << std::endl;
+    seqan3::debug_stream << output << std::endl;
+    seqan3::debug_stream << expected_output << std::endl;
 
     // If filter was build with --false-positive rate, results may have FP counts
     if (cfg.false_positive > 0){
