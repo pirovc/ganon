@@ -500,7 +500,7 @@ bool run( Config config )
     // config.n_batches*config.n_refs = max. amount of references in memory
     SafeQueue< detail::Seqs > queue_refs( config.n_batches );
 
-    // load filter if provided (do it early to get number of bins)
+    // load filter if provided
     timeLoadFilter.start();
     if ( !config.update_filter_file.empty() )
     {
@@ -546,7 +546,7 @@ bool run( Config config )
         }
     }
     stats.totalBinsFile  = filter.bin_count();
-    stats.totalBinsBinId = last_bin; // last key, last bin (std::map)
+    stats.totalBinsBinId = last_bin;
     timeLoadFilter.stop();
 
     // Start thread for reading the input reference files

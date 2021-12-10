@@ -84,9 +84,13 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
                                       : seq | kmer_adaptor | seqan3::views::to< std::vector<uint64_t> >;
         output += agent.bulk_count( hashes );
         // Calculate expected number of subsequences to be found (no errors==all hashes)
-        expected_output[bins[i]] = hashes.size();
+        expected_output[bins[i]] += hashes.size();
         i += 1;
     }
+
+
+    //seqan3::debug_stream << output << std::endl;
+    //seqan3::debug_stream << expected_output << std::endl;
 
     // If filter was build with --false-positive rate, results may have FP counts
     if (cfg.false_positive > 0){
@@ -154,14 +158,32 @@ Testing scheme:
 
 (update) with --update-filter-file 
 
-* --count-hashes
-    * --window-size
-* adding bins
-    * --update-complete
 * using existing bins
     * --update-complete
-* removing bins
-* adding and removing bins
+    * without --seqid-bin-file
+
+* adding new bins 
+    * --update-complete
+    * without --seqid-bin-file
+
+* adding many new bins (increase filter size)
+    * --update-complete
+    * without --seqid-bin-file
+
+* using existing bins and adding many new bins (increase filter size)
+    * --update-complete
+
+* removing sequences from existing bins (need to add dummy entry)
+
+* using existing bins, adding new bins and removing sequences from existing bins
+
+TODO
+    * --count-hashes
+        * --window-size
+
+    * multiple --reference-files
+        * without --seqid-bin-file (iterate over files to get seq. lens)
+            * with --count-hashes (iterate over files to count hashes)
 
 */
 
@@ -422,17 +444,18 @@ SCENARIO( "updating indices", "[ganon-build]" )
     std::string folder_prefix{ "ganon-build-update/" };
     std::filesystem::create_directory( folder_prefix );
 
-    // build default filter
+    // base filter to be updated
     auto cfg_build = config_build::defaultConfig( folder_prefix + "update_base_build", seqs, ids, bins );
     REQUIRE( GanonBuild::run( cfg_build ) );
     config_build::validate_filter( cfg_build, bins );
     REQUIRE(config_build::validate_elements( cfg_build, seqs, bins ));
 
-    SECTION( "creating 3 new bins" )
+
+    SECTION( "adding new bins" )
     {
         // update it
         auto cfg_update =
-            config_build::defaultConfig( folder_prefix + "3new_update", extra_seqs, extra_ids, extra_bins );
+            config_build::defaultConfig( folder_prefix + "adding", extra_seqs, extra_ids, extra_bins );
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
@@ -448,7 +471,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
             auto merged_ids = aux::vconcat( ids, extra_ids );
             // update complete, send all sequences
             auto cfg_update_complete = config_build::defaultConfig(
-                folder_prefix + "3new_update_complete", merged_seqs, merged_ids, merged_bins );
+                folder_prefix + "adding_update_complete", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
@@ -459,37 +482,35 @@ SCENARIO( "updating indices", "[ganon-build]" )
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
         }
     
-
         SECTION( "without --seqid-bin-file" )
         {
             // without --seqid-bin-file it should create one bin per sequence file
-            std::string prefix            = folder_prefix + "3new_update_wo_seqid_bin";
-            auto        cfg_update        = config_build::defaultConfig( prefix );
-            cfg_update.update_filter_file = cfg_build.output_filter_file;
+            std::string prefix            = folder_prefix + "adding_without_seqid_bin_file";
+            auto        cfg_update_auto        = config_build::defaultConfig( prefix );
+            cfg_update_auto.update_filter_file = cfg_build.output_filter_file;
 
             // write one sequence per file
             aux::write_sequences( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
             aux::write_sequences( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
             aux::write_sequences( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
-            cfg_update.reference_files = { prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
+            cfg_update_auto.reference_files = { prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
 
-            REQUIRE( GanonBuild::run( cfg_update ) );
+            REQUIRE( GanonBuild::run( cfg_update_auto ) );
 
             auto merged_seqs = aux::vconcat( seqs, extra_seqs );
             auto merged_bins = aux::vconcat( bins, extra_bins );
 
-            config_build::validate_filter( cfg_update, merged_bins );
-            REQUIRE(config_build::validate_elements( cfg_update, merged_seqs, merged_bins ));
+            config_build::validate_filter( cfg_update_auto, merged_bins );
+            REQUIRE(config_build::validate_elements( cfg_update_auto, merged_seqs, merged_bins ));
         }
     }
 
-    SECTION( "with --update-filter-file creating 80 new bins" )
+    SECTION( "adding many new bins" )
     {
-        // set sequences to new bins
+        // set sequences to new bins crossing the 64 optimal to double filter size
         const bins_type new_bins{ 12, 64, 82 };
-        // update it
         auto cfg_update =
-            config_build::defaultConfig( folder_prefix + "80new_update", extra_seqs, extra_ids, new_bins );
+            config_build::defaultConfig( folder_prefix + "adding_many", extra_seqs, extra_ids, new_bins );
         // set filter to update
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
@@ -509,7 +530,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
             auto merged_ids = aux::vconcat( ids, extra_ids );
             // update complete, send all sequences
             auto cfg_update_complete = config_build::defaultConfig(
-                folder_prefix + "80new_update_complete", merged_seqs, merged_ids, merged_bins );
+                folder_prefix + "adding_many_update_complete", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
             REQUIRE( GanonBuild::run( cfg_update_complete ) );
@@ -519,72 +540,113 @@ SCENARIO( "updating indices", "[ganon-build]" )
             // should be the same as not complete
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
         }
+
+        SECTION( "without --seqid-bin-file" )
+        {
+            // without --seqid-bin-file it should create one bin per sequence file
+            std::string prefix            = folder_prefix + "adding_many_without_seqid_bin_file";
+            auto        cfg_update_auto        = config_build::defaultConfig( prefix );
+            cfg_update_auto.update_filter_file = cfg_build.output_filter_file;
+            
+            sequences_type many_seqs;
+            bins_type many_bins;
+            for(int i=1; i<=100; ++i){
+                auto file =  prefix + ".S" + std::to_string(i) + ".fasta";
+                // add dummy sequences
+                aux::write_sequences( file, { "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"_dna5 }, { std::to_string(i) } );
+                cfg_update_auto.reference_files.push_back(file);
+                // add empty sequences to validate_filter account for 0
+                many_seqs.push_back( ""_dna5 );
+                // start bins at the last one from the build
+                many_bins.push_back(i + bins.back());
+            }
+            REQUIRE( GanonBuild::run( cfg_update_auto ) );
+            auto merged_seqs = aux::vconcat( seqs, many_seqs );
+            auto merged_bins = aux::vconcat( bins, many_bins );
+            config_build::validate_filter( cfg_update_auto, merged_bins );
+            REQUIRE(config_build::validate_elements( cfg_update_auto, merged_seqs, merged_bins ));
+
+            // new file should be bigger (double bits + overhead)
+            REQUIRE( aux::fileSizeBytes( cfg_update_auto.output_filter_file )
+                 > aux::fileSizeBytes( cfg_build.output_filter_file ) );
+        }
     }
 
-    SECTION( "with --update-filter-file without adding new bins (updating current bins)" )
+
+    SECTION( "using existing bins and adding many new bins" )
     {
-        // update it
-        // use bins instead of extra_bins
-        auto cfg_update = config_build::defaultConfig( folder_prefix + "0new_update", extra_seqs, extra_ids, bins );
-        // set filter to update
+        // set sequences to existing and new bins crossing the 64 optimal to double filter size
+        const bins_type new_bins{ 0, 1, 82 };
+        auto cfg_update =
+            config_build::defaultConfig( folder_prefix + "using_adding_many", extra_seqs, extra_ids, new_bins );
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
-        config_build::validate_filter( cfg_update, bins );
-        // validate seqs
-        REQUIRE(config_build::validate_elements( cfg_update, seqs, bins ));
-        // validate extra_seqs
-        REQUIRE(config_build::validate_elements( cfg_update, extra_seqs, bins ));
+        auto merged_seqs = aux::vconcat( seqs, extra_seqs );    
+        auto merged_bins = aux::vconcat( bins, new_bins );
+        // only last bin is added
+        auto merged_unique_bins = aux::vconcat( bins, {new_bins.back()} );
+        config_build::validate_filter( cfg_update, merged_unique_bins );
+        REQUIRE(config_build::validate_elements( cfg_update, merged_seqs, merged_bins ));
+
+        // new file should be bigger (double bits + overhead)
+        REQUIRE( aux::fileSizeBytes( cfg_update.output_filter_file )
+                 > aux::fileSizeBytes( cfg_build.output_filter_file ) );
 
         SECTION( "with --update-complete" )
         {
-            auto merged_seqs   = aux::vconcat( seqs, extra_seqs );
-            auto merged_ids    = aux::vconcat( ids, extra_ids );
-            auto repeated_bins = aux::vconcat( bins, bins );
-            // update complete, send all sequences
+            auto merged_ids = aux::vconcat( ids, extra_ids );
+            // update complete, send all sequences and bins
             auto cfg_update_complete = config_build::defaultConfig(
-                folder_prefix + "0new_update_complete", merged_seqs, merged_ids, repeated_bins );
+                folder_prefix + "using_adding_many_update_complete", merged_seqs, merged_ids, merged_bins );
             cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
             cfg_update_complete.update_complete    = true;
-            REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete, bins );
 
-            // validate seqs
-            REQUIRE(config_build::validate_elements( cfg_update_complete, seqs, bins ));
-            // validate extra_seqs
-            REQUIRE(config_build::validate_elements( cfg_update_complete, extra_seqs, bins ));
+            REQUIRE( GanonBuild::run( cfg_update_complete ) );
+            config_build::validate_filter( cfg_update_complete, merged_unique_bins );
+            REQUIRE(config_build::validate_elements( cfg_update_complete, merged_seqs, merged_bins ));
 
             // should be the same as not complete
             REQUIRE( aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
         }
 
-        SECTION( "with --update-complete removing sequences" )
-        {
-            // create update file without first sequences
+    }
 
-            ids_type       rem_ids{ ids[1], ids[2] };
-            sequences_type rem_seqs{ seqs[1], seqs[2] };
-            bins_type      rem_bins{ bins[1], bins[2] };
+    SECTION( "removing sequences from existing bins" )
+    {
+        // instead of first sequence, add dummy entry to be deleted
+        ids_type       rem_ids{ "0", ids[1], ids[2],  };
+        sequences_type rem_seqs{ "N"_dna5, seqs[1], seqs[2]};
+        bins_type      rem_bins{ 0, bins[1], bins[2]};
 
-            auto merged_ids  = aux::vconcat( rem_ids, extra_ids );
-            auto merged_seqs = aux::vconcat( rem_seqs, extra_seqs );
-            auto merged_bins = aux::vconcat( rem_bins, bins );
+        auto cfg_update = config_build::defaultConfig(folder_prefix + "removing_seqs", rem_seqs, rem_ids, rem_bins );
+        cfg_update.update_filter_file = cfg_build.output_filter_file;
+        cfg_update.update_complete    = true;
 
-            auto cfg_update_complete = config_build::defaultConfig(
-                folder_prefix + "0new_update_complete_remove", merged_seqs, merged_ids, merged_bins );
-            cfg_update_complete.update_filter_file = cfg_build.output_filter_file;
-            cfg_update_complete.update_complete    = true;
+        REQUIRE( GanonBuild::run( cfg_update ) );
+        config_build::validate_filter( cfg_update, rem_bins );
+        REQUIRE(config_build::validate_elements( cfg_update, rem_seqs, rem_bins ));
 
-            REQUIRE( GanonBuild::run( cfg_update_complete ) );
-            config_build::validate_filter( cfg_update_complete, merged_bins );
+        // should not find sequence removed
+        REQUIRE_FALSE(config_build::validate_elements( cfg_update, seqs, bins ));
 
-            // validate seqs (without first)
-            REQUIRE(config_build::validate_elements( cfg_update_complete, rem_seqs, rem_bins ));
-            // validate extra_seqs (all should be there)
-            REQUIRE(config_build::validate_elements( cfg_update_complete, extra_seqs, bins ));
+    }
 
-            // should be different as before
-            REQUIRE_FALSE(
-                aux::filesAreEqual( cfg_update_complete.output_filter_file, cfg_update.output_filter_file ) );
-        }
+    SECTION( "using existing bins, adding many new bins and removing sequences from existing bins" )
+    {
+        // first 2 entries are dummy (to be removed)
+        // new sequence added to removed 
+        ids_type       new_ids{ "0", "0", ids[2], extra_ids[0], extra_ids[1], extra_ids[2] };
+        sequences_type new_seqs{ "N"_dna5, "N"_dna5, seqs[2], extra_seqs[0], extra_seqs[1], extra_seqs[2] };
+        bins_type      new_bins{ 0, 1, 2, 0, 2, 82};
+
+        auto cfg_update = config_build::defaultConfig( folder_prefix + "using_adding_removing", new_seqs, new_ids, new_bins );
+        cfg_update.update_filter_file = cfg_build.output_filter_file;
+        cfg_update.update_complete    = true;
+
+        REQUIRE( GanonBuild::run( cfg_update ) );
+        config_build::validate_filter( cfg_update, new_bins );
+        // validate seqs
+        REQUIRE(config_build::validate_elements( cfg_update, new_seqs, new_bins ));
+
     }
 }
