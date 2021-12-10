@@ -119,7 +119,7 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                  GanonBuild::Config&        config )
 {
 
-    uint16_t wk_size = config.window_size > 0 ? config.window_size : config.kmer_size;
+    uint16_t wk_size = (config.window_size > 0) ? config.window_size : config.kmer_size;
 
     for ( auto const& reference_file : config.reference_files )
     {

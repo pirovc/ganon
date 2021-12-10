@@ -110,8 +110,8 @@ GanonBuild::Config defaultConfig( const std::string prefix )
 {
     GanonBuild::Config cfg;
     cfg.bin_size_bits      = 5000;
-    cfg.verbose            = false;
-    cfg.quiet              = true;
+    cfg.verbose            = true;
+    cfg.quiet              = false;
     cfg.kmer_size          = 19;
     cfg.hash_functions     = 3;
     cfg.output_filter_file = prefix + ".ibf";
