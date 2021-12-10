@@ -3,12 +3,12 @@ dist: focal
 
 matrix:
   include:
-    - name: "linux gcc-7"
-      os: linux
-      addons:
-        apt: { packages: [g++-7],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
+    # - name: "linux gcc-7"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-7],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
@@ -17,19 +17,19 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
-    - name: "linux gcc-8"
-      os: linux
-      addons:
-        apt: { packages: [g++-8],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "linux gcc-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-8],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
-      os: linux
-      addons:
-        apt: { packages: [g++-9],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    # - name: "linux gcc-9"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9],
+    #            sources:  [ubuntu-toolchain-r-test] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
 before_install:
   - eval "${MATRIX_EVAL}"
@@ -54,7 +54,7 @@ before_install:
 
 script:
   - mkdir build && cd build 
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=ON ..
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
   - ctest -VV .
