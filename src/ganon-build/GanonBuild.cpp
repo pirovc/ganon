@@ -389,7 +389,7 @@ void save_filter( TFilter const& filter, std::string const& output_filter_file )
 }
 
 template < class Thashes >
-void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& hashes_view )
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, const Thashes& hashes_view )
 {
 
     while ( true )
@@ -402,18 +402,12 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& has
                 // Fragment sequences
                 auto [fragstart, fragend, binid] = val.fragbin[i];
                 
-                seqan3::debug_stream << val.seqid << ":" << val.seq << std::endl;
-                seqan3::debug_stream << i << ":" << fragstart << ", " << fragend << ", " << binid << std::endl;
-                seqan3::debug_stream << (val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view) << std::endl;
-
-                std::vector< seqan3::dna5 > slice = val.seq | seqan3::views::slice( fragstart - 1, fragend ) | seqan3::views::to< std::vector<seqan3::dna5> >;
-                seqan3::debug_stream << (slice | hashes_view) << std::endl;
-
-                for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
+                std::vector<seqan3::dna5> slice = val.seq | seqan3::views::slice( fragstart - 1, fragend ) | seqan3::views::to< std::vector<seqan3::dna5> >;
+                //for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
+                for ( auto&& hash : slice | hashes_view )
                 {
                     filter.emplace( hash, seqan3::bin_index{ binid } );
                 }
-                seqan3::debug_stream << '\n';
             }
         }
         else
@@ -575,9 +569,8 @@ bool run( Config config )
     {
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
-            auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size }
-                                                                 ); //, seqan3::seed{ 0 } );
+            const auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                                                 seqan3::window_size{ config.window_size }); //, seqan3::seed{ 0 } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );
@@ -587,7 +580,7 @@ bool run( Config config )
     {
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
-            auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
+            const auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &kmer_hash]() {
                 detail::build( filter, queue_refs, kmer_hash );
             } ) );
