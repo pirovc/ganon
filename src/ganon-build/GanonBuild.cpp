@@ -569,8 +569,8 @@ bool run( Config config )
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
             auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size },
-                                                                 seqan3::seed{ 0 } );
+                                                                 seqan3::window_size{ config.window_size }
+                                                                 ); //, seqan3::seed{ 0 } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );

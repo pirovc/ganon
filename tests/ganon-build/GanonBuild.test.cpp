@@ -71,8 +71,8 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
     auto                               agent  = filter.counting_agent< uint16_t >();
 
     auto kmer_adaptor      = seqan3::views::kmer_hash( seqan3::ungapped{ cfg.kmer_size } );
-    auto minimizer_adaptor = seqan3::views::minimiser_hash(
-        seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } }, seqan3::window_size{ cfg.window_size }, seqan3::seed{ 0 } );
+    //auto minimizer_adaptor = seqan3::views::minimiser_hash(seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } }, seqan3::window_size{ cfg.window_size }, seqan3::seed{ 0 } );
+    auto minimizer_adaptor = seqan3::views::minimiser_hash(seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } }, seqan3::window_size{ cfg.window_size });
 
     std::vector< uint16_t >             expected_output( filter.bin_count(), 0 );
     seqan3::counting_vector< uint16_t > output( filter.bin_count(), 0 );
