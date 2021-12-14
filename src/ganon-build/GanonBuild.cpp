@@ -403,8 +403,10 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& has
                 auto [fragstart, fragend, binid] = val.fragbin[i];
                 for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
                 {
+                    seqan3::debug_stream << hash << ",";
                     filter.emplace( hash, seqan3::bin_index{ binid } );
                 }
+                seqan3::debug_stream << '\n';
             }
         }
         else
@@ -528,7 +530,7 @@ bool run( Config config )
     uint64_t last_bin = bin_len.rbegin()->first + 1;
     //  based on counted hashes or length of the largest bin
     uint64_t max_hashes = get_max_hashes( config, seq_bin, bin_len );
-    timeCountHashes.end();
+    timeCountHashes.stop();
 
     // If updating: extend and clear filter
     timeLoadFilter.start();
