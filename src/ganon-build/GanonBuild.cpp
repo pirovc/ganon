@@ -119,7 +119,7 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
                  GanonBuild::Config&        config )
 {
 
-    uint16_t wk_size = (config.window_size > 0) ? config.window_size : config.kmer_size;
+    uint16_t wk_size = ( config.window_size > 0 ) ? config.window_size : config.kmer_size;
 
     for ( auto const& reference_file : config.reference_files )
     {
@@ -401,10 +401,7 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, const Thashe
             {
                 // Fragment sequences
                 auto [fragstart, fragend, binid] = val.fragbin[i];
-                
-                std::vector<seqan3::dna5> slice = val.seq | seqan3::views::slice( fragstart - 1, fragend ) | seqan3::views::to< std::vector<seqan3::dna5> >;
-                //for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
-                for ( auto&& hash : slice | hashes_view )
+                for ( auto&& hash : val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view )
                 {
                     filter.emplace( hash, seqan3::bin_index{ binid } );
                 }
@@ -569,8 +566,9 @@ bool run( Config config )
     {
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
-            const auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size }); //, seqan3::seed{ 0 } );
+            const auto minimiser_hash =
+                seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                               seqan3::window_size{ config.window_size } ); //, seqan3::seed{ 0 } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );

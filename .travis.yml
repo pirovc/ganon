@@ -3,19 +3,12 @@ dist: focal
 
 matrix:
   include:
-    # - name: "linux gcc-7"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-7],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
-
-    - name: "linux gcc-8 (coverage)"
+    - name: "linux gcc-7"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov],
+        apt: { packages: [g++-7],
                sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8"
       os: linux
@@ -24,12 +17,26 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-9"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-9],
-    #            sources:  [ubuntu-toolchain-r-test] }
-    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    - name: "linux gcc-9"
+      os: linux
+      addons:
+        apt: { packages: [g++-9],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+
+    - name: "linux gcc-10"
+      os: linux
+      addons:
+        apt: { packages: [g++-10],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
+
+    - name: "linux gcc-10 (coverage)"
+      os: linux
+      addons:
+        apt: { packages: [g++-10, lcov],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Coverage && GCOV=gcov-10"
 
 before_install:
   - eval "${MATRIX_EVAL}"
