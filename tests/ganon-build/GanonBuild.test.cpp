@@ -82,17 +82,11 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
     {
         std::vector<uint64_t> hashes = (cfg.window_size > 0 ) ? seq | minimizer_adaptor | seqan3::views::to< std::vector<uint64_t> >
                                       : seq | kmer_adaptor | seqan3::views::to< std::vector<uint64_t> >;
-        
-        seqan3::debug_stream << hashes << std::endl;
         output += agent.bulk_count( hashes );
         // Calculate expected number of subsequences to be found (no errors==all hashes)
         expected_output[bins[i]] += hashes.size();
         i += 1;
     }
-
-
-    seqan3::debug_stream << output << std::endl;
-    seqan3::debug_stream << expected_output << std::endl;
 
     // If filter was build with --false-positive rate, results may have FP counts
     if (cfg.false_positive > 0){
