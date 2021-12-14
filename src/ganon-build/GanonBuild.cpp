@@ -401,7 +401,9 @@ void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& has
             {
                 // Fragment sequences
                 auto [fragstart, fragend, binid] = val.fragbin[i];
-
+                
+                seqan3::debug_stream << val.seqid << ":" << val.seq << std::endl;
+                seqan3::debug_stream << i << ":" << fragstart << ", " << fragend << ", " << binid << std::endl;
                 seqan3::debug_stream << (val.seq | seqan3::views::slice( fragstart - 1, fragend ) | hashes_view) << std::endl;
 
                 std::vector< seqan3::dna5 > slice = val.seq | seqan3::views::slice( fragstart - 1, fragend ) | seqan3::views::to< std::vector<seqan3::dna5> >;
