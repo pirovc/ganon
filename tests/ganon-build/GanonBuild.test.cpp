@@ -16,19 +16,6 @@
 
 using namespace seqan3::literals;
 
-// Sequences to build the ibf
-const ids_type       ids{ "S1", "S2", "S3" };
-const sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna5,
-                           "TTGGGGCTAAACAGCACTATACAGGCGGCTAGCATGTATTAGGGGAGCTC"_dna5,
-                           "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna5 };
-const bins_type      bins{ 0, 1, 2 };
-
-const ids_type       extra_ids{ "S4", "S5", "S6" };
-const sequences_type extra_seqs{ "ATGAATTCAAGCCAATGTCGTTTGAAACAGAAGATGGTATTGCTACTGGC"_dna5,
-                                 "TGCTGCCATCAACTTGCAGAAGATGTCCTTTTCTGCGGTCTACGCTCAAG"_dna5,
-                                 "ATGCTGGTTAGACAGGACCTGTTAAGAAAAAGGAAACTCTCAATTGCACC"_dna5 };
-const bins_type      extra_bins{ 3, 4, 5 };
-
 namespace config_build
 {
 
@@ -106,8 +93,8 @@ GanonBuild::Config defaultConfig( const std::string prefix )
 {
     GanonBuild::Config cfg;
     cfg.bin_size_bits      = 5000;
-    cfg.verbose            = true;
-    cfg.quiet              = false;
+    cfg.verbose            = false;
+    cfg.quiet              = true;
     cfg.kmer_size          = 19;
     cfg.hash_functions     = 3;
     cfg.output_filter_file = prefix + ".ibf";
@@ -157,31 +144,30 @@ Testing scheme:
 * using existing bins
     * --update-complete
     * without --seqid-bin-file
-
 * adding new bins 
     * --update-complete
     * without --seqid-bin-file
-
 * adding many new bins (increase filter size)
     * --update-complete
     * without --seqid-bin-file
-
 * using existing bins and adding many new bins (increase filter size)
     * --update-complete
-
 * removing sequences from existing bins (need to add dummy entry)
-
 * using existing bins, adding new bins and removing sequences from existing bins
-
-TODO
-    * --count-hashes
-        * --window-size
-
-    * multiple --reference-files
-        * without --seqid-bin-file (iterate over files to get seq. lens)
-            * with --count-hashes (iterate over files to count hashes)
+* --count-hashes
+    * --window-size
+* multiple --reference-files
+    * without --seqid-bin-file (iterate over files to get seq. lens)
+        * with --count-hashes (iterate over files to count hashes)
 
 */
+
+// Default sequences to build
+const ids_type       ids{ "S1", "S2", "S3" };
+const sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna5,
+                           "TTGGGGCTAAACAGCACTATACAGGCGGCTAGCATGTATTAGGGGAGCTC"_dna5,
+                           "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna5 };
+const bins_type      bins{ 0, 1, 2 };
 
 SCENARIO( "building indices", "[ganon-build]" )
 {
@@ -352,7 +338,7 @@ SCENARIO( "building indices", "[ganon-build]" )
                  > aux::fileSizeBytes( cfg_on.output_filter_file ) );
 
         SECTION( "--window-size 32" ){
-            auto cfg_off      = config_build::defaultConfig( folder_prefix + "count_hashes_window_size_32_off", seqs, ids, bins );
+            auto cfg_off      = config_build::defaultConfig( folder_prefix + "count_hashes_off_window_size_32", seqs, ids, bins );
             cfg_off.count_hashes = false;
             cfg_off.bin_size_bits = 0;
             cfg_off.false_positive = 0.05;
@@ -361,7 +347,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             config_build::validate_filter( cfg_off, bins );
             REQUIRE(config_build::validate_elements( cfg_off, seqs, bins ));
 
-            auto cfg_on      = config_build::defaultConfig( folder_prefix + "count_hashes_window_size_32_on", seqs, ids, bins );
+            auto cfg_on      = config_build::defaultConfig( folder_prefix + "count_hashes_on_window_size_32", seqs, ids, bins );
             cfg_on.count_hashes = true;
             cfg_on.bin_size_bits = 0;
             cfg_on.false_positive = 0.05;
@@ -382,21 +368,13 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg    = config_build::defaultConfig( prefix );
 
         // write files separetly
-        aux::write_sequences( prefix + ".A.fasta", seqs, ids );
-        aux::write_sequences( prefix + ".B.fasta", extra_seqs, extra_ids );
-
-        // merge entries
-        auto merged_ids  = aux::vconcat( ids, extra_ids );
-        auto merged_seqs = aux::vconcat( seqs, extra_seqs );
-        auto merged_bins = aux::vconcat( bins, extra_bins );
-        aux::write_seqid_bin( prefix + "_seqid_bin.tsv", merged_seqs, merged_ids, merged_bins );
-
-        cfg.reference_files = { prefix + ".A.fasta", prefix + ".B.fasta" };
+        cfg.reference_files = aux::write_sequences_files(prefix, "fasta", seqs, ids);
+        aux::write_seqid_bin( prefix + "_seqid_bin.tsv", seqs, ids, bins );
         cfg.seqid_bin_file  = prefix + "_seqid_bin.tsv";
 
         REQUIRE( GanonBuild::run( cfg ) );
-        config_build::validate_filter( cfg, merged_bins );
-        REQUIRE(config_build::validate_elements( cfg, merged_seqs, merged_bins ));
+        config_build::validate_filter( cfg, bins );
+        REQUIRE(config_build::validate_elements( cfg, seqs, bins ));
 
 
         SECTION( "without --seqid-bin-file" )
@@ -404,18 +382,11 @@ SCENARIO( "building indices", "[ganon-build]" )
             // without --seqid-bin-file set - should create one bin per sequence file
             auto cfg_wo    = config_build::defaultConfig( prefix + "_without_seqid_bin_file" );
             // write one sequence per file
-            aux::write_sequences( prefix + ".S1.fasta", { seqs[0] }, { ids[0] } );
-            aux::write_sequences( prefix + ".S2.fasta", { seqs[1] }, { ids[1] } );
-            aux::write_sequences( prefix + ".S3.fasta", { seqs[2] }, { ids[2] } );
-            aux::write_sequences( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
-            aux::write_sequences( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
-            aux::write_sequences( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
-            cfg_wo.reference_files = { prefix + ".S1.fasta", prefix + ".S2.fasta", prefix + ".S3.fasta",
-            prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
+            cfg_wo.reference_files = aux::write_sequences_files(prefix, "fasta", seqs, ids);
 
             REQUIRE( GanonBuild::run( cfg_wo ) );
-            config_build::validate_filter( cfg_wo, merged_bins );
-            REQUIRE(config_build::validate_elements( cfg_wo, merged_seqs, merged_bins ));
+            config_build::validate_filter( cfg_wo, bins );
+            REQUIRE(config_build::validate_elements( cfg_wo, seqs, bins ));
 
             // check if files are equal with and without --seqid-bin-file
             REQUIRE( aux::filesAreEqual( cfg.output_filter_file, cfg_wo.output_filter_file ) );
@@ -427,9 +398,9 @@ SCENARIO( "building indices", "[ganon-build]" )
                 auto cfg_wo_ch    = config_build::defaultConfig( prefix + "_without_seqid_bin_file_count_hashes" );
                 cfg_wo_ch.reference_files = cfg_wo.reference_files;
                 cfg_wo_ch.count_hashes = true;
-                REQUIRE( GanonBuild::run( cfg_wo ) );
-                config_build::validate_filter( cfg_wo, merged_bins );
-                REQUIRE(config_build::validate_elements( cfg_wo, merged_seqs, merged_bins ));
+                REQUIRE( GanonBuild::run( cfg_wo_ch ) );
+                config_build::validate_filter( cfg_wo_ch, bins );
+                REQUIRE(config_build::validate_elements( cfg_wo_ch, seqs, bins ));
             }
         }
     }
@@ -437,6 +408,14 @@ SCENARIO( "building indices", "[ganon-build]" )
 
 SCENARIO( "updating indices", "[ganon-build]" )
 {
+
+    // extra sequences to update
+    const ids_type       extra_ids{ "S4", "S5", "S6" };
+    const sequences_type extra_seqs{ "ATGAATTCAAGCCAATGTCGTTTGAAACAGAAGATGGTATTGCTACTGGC"_dna5,
+                                     "TGCTGCCATCAACTTGCAGAAGATGTCCTTTTCTGCGGTCTACGCTCAAG"_dna5,
+                                     "ATGCTGGTTAGACAGGACCTGTTAAGAAAAAGGAAACTCTCAATTGCACC"_dna5 };
+    const bins_type      extra_bins{ 3, 4, 5 };
+
     std::string folder_prefix{ "ganon-build-update/" };
     std::filesystem::create_directory( folder_prefix );
 
@@ -446,13 +425,9 @@ SCENARIO( "updating indices", "[ganon-build]" )
     config_build::validate_filter( cfg_build, bins );
     REQUIRE(config_build::validate_elements( cfg_build, seqs, bins ));
 
-
     SECTION( "adding new bins" )
     {
-        // update it
-        auto cfg_update =
-            config_build::defaultConfig( folder_prefix + "adding", extra_seqs, extra_ids, extra_bins );
-        // set filter to update
+        auto cfg_update = config_build::defaultConfig( folder_prefix + "adding", extra_seqs, extra_ids, extra_bins );
         cfg_update.update_filter_file = cfg_build.output_filter_file;
         REQUIRE( GanonBuild::run( cfg_update ) );
 
@@ -486,10 +461,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
             cfg_update_auto.update_filter_file = cfg_build.output_filter_file;
 
             // write one sequence per file
-            aux::write_sequences( prefix + ".S4.fasta", { extra_seqs[0] }, { extra_ids[0] } );
-            aux::write_sequences( prefix + ".S5.fasta", { extra_seqs[1] }, { extra_ids[1] } );
-            aux::write_sequences( prefix + ".S6.fasta", { extra_seqs[2] }, { extra_ids[2] } );
-            cfg_update_auto.reference_files = { prefix + ".S4.fasta", prefix + ".S5.fasta", prefix + ".S6.fasta" };
+            cfg_update_auto.reference_files = aux::write_sequences_files(prefix, "fasta", extra_seqs, extra_ids);
 
             REQUIRE( GanonBuild::run( cfg_update_auto ) );
 
@@ -644,5 +616,95 @@ SCENARIO( "updating indices", "[ganon-build]" )
         // validate seqs
         REQUIRE(config_build::validate_elements( cfg_update, new_seqs, new_bins ));
 
+    }
+
+    SECTION( "--count-hashes" )
+    {
+
+        auto cfg_update = config_build::defaultConfig( folder_prefix + "count_hashes", extra_seqs, extra_ids, extra_bins );
+        cfg_update.update_filter_file = cfg_build.output_filter_file;
+        cfg_update.count_hashes = true;
+        REQUIRE( GanonBuild::run( cfg_update ) );
+
+        auto merged_seqs = aux::vconcat( seqs, extra_seqs );
+        auto merged_bins = aux::vconcat( bins, extra_bins );
+
+        config_build::validate_filter( cfg_update, merged_bins );
+        
+        SECTION( "--window_size 23" )
+        {
+            // base filter with window size
+            auto cfg_build = config_build::defaultConfig( folder_prefix + "update_base_build_window_size_23", seqs, ids, bins );
+            cfg_build.window_size = 23 ;
+            REQUIRE( GanonBuild::run( cfg_build ) );
+            config_build::validate_filter( cfg_build, bins );
+            REQUIRE(config_build::validate_elements( cfg_build, seqs, bins ));
+
+            auto cfg_update = config_build::defaultConfig( folder_prefix + "count_hashes_on_window_size_23", extra_seqs, extra_ids, extra_bins );
+            cfg_update.update_filter_file = cfg_build.output_filter_file;
+            cfg_update.count_hashes = true;
+            cfg_update.window_size = 23;
+
+            REQUIRE( GanonBuild::run( cfg_update ) );
+
+            auto merged_seqs = aux::vconcat( seqs, extra_seqs );
+            auto merged_bins = aux::vconcat( bins, extra_bins );
+
+            config_build::validate_filter( cfg_update, merged_bins );
+
+        }
+    }
+
+    SECTION( "multiple --reference-files" )
+    {
+        std::string prefix = folder_prefix + "reference_files";
+        auto        cfg_update    = config_build::defaultConfig( prefix );
+        cfg_update.update_filter_file = cfg_build.output_filter_file;
+
+        // write files separetly
+        cfg_update.reference_files = aux::write_sequences_files(prefix,"fasta", extra_seqs, extra_ids);
+
+        // write seqid_bin
+        aux::write_seqid_bin( prefix + "_seqid_bin.tsv", extra_seqs, extra_ids, extra_bins );        
+        cfg_update.seqid_bin_file  = prefix + "_seqid_bin.tsv";
+
+        REQUIRE( GanonBuild::run( cfg_update ) );
+        config_build::validate_filter( cfg_update, extra_bins );
+        REQUIRE(config_build::validate_elements( cfg_update, extra_seqs, extra_bins ));
+
+
+        SECTION( "without --seqid-bin-file" )
+        {
+
+            prefix = prefix + "_without_seqid_bin_file";
+            auto        cfg_wo    = config_build::defaultConfig( prefix );
+            cfg_wo.update_filter_file = cfg_build.output_filter_file;
+
+            // write files separetly
+            cfg_wo.reference_files = aux::write_sequences_files(prefix,"fasta", extra_seqs, extra_ids);
+
+            REQUIRE( GanonBuild::run( cfg_wo ) );
+            config_build::validate_filter( cfg_wo, extra_bins );
+            REQUIRE(config_build::validate_elements( cfg_wo, extra_seqs, extra_bins ));
+
+            // check if files are equal with and without --seqid-bin-file
+            REQUIRE( aux::filesAreEqual( cfg_update.output_filter_file, cfg_wo.output_filter_file ) );
+
+
+            SECTION( "with --count-hashes" )
+            {
+                // without --seqid-bin-file set - iterate once to get seq.lens
+                // with --count-hashes - should iterate once more to count hashes
+                prefix = prefix + "_without_seqid_bin_file_count_hashes";
+                auto        cfg_wo_ch    = config_build::defaultConfig( prefix );
+                cfg_wo_ch.update_filter_file = cfg_build.output_filter_file;
+                cfg_wo_ch.reference_files = cfg_wo.reference_files;
+                cfg_wo_ch.count_hashes = true;
+
+                REQUIRE( GanonBuild::run( cfg_wo_ch ) );
+                config_build::validate_filter( cfg_wo_ch, extra_bins );
+                REQUIRE(config_build::validate_elements( cfg_wo_ch, extra_seqs, extra_bins ));
+            }
+        }
     }
 }
