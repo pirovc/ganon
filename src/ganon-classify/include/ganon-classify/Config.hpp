@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <ostream>
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
@@ -59,7 +60,7 @@ public:
     std::vector< std::string > hierarchy_labels{ "H1" };
 
     std::vector< uint8_t > kmer_size{ 19 };
-    std::vector< uint8_t > window_size;
+    std::vector< uint8_t > window_size{ 0 };
     std::vector< uint8_t > offset{ 1 };
 
     std::vector< double >  rel_cutoff{ 0.25 };
@@ -144,7 +145,7 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--rel-cutoff values should be between 0 and 1" << std::endl;
+            std::cerr << "--rel-cutoff values should be set between 0 and 1 (0 to disable)" << std::endl;
             return false;
         }
 
@@ -159,7 +160,7 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--abs-filter values should be >= 0 (or -1 to disable)" << std::endl;
+            std::cerr << "--abs-filter values should be >= 0 (-1 to disable)" << std::endl;
             return false;
         }
 
@@ -174,7 +175,7 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--abs-cutoff values should be >= 0 (or -1 to disable)" << std::endl;
+            std::cerr << "--abs-cutoff values should be >= 0 (-1 to disable)" << std::endl;
             return false;
         }
 
@@ -189,27 +190,9 @@ public:
         }
         if ( !valid_val )
         {
-            std::cerr << "--rel-cutoff values should be between 0 and 1" << std::endl;
+            std::cerr << "--rel-filter values should be set between 0 and 1 (1 to disable)" << std::endl;
             return false;
         }
-
-
-        if ( window_size.size() > 0 )
-        {
-            if ( rel_filter.size() == 0 && rel_cutoff.size() == 0 )
-            {
-                std::cerr << "minimizers (--window-size) can only be used with --rel-cutoff and --rel-filter"
-                          << std::endl;
-                return false;
-            }
-            // reset offset
-            offset[0] = 1;
-        }
-        else
-        {
-            window_size.push_back( 0 );
-        }
-
 
         // default is rel_cutoff
         if ( abs_cutoff.size() > 0 )
@@ -325,9 +308,9 @@ public:
 
         for ( uint16_t w = 0; w < window_size.size(); ++w )
         {
-            if ( window_size[w] > 0 && window_size[w] <= kmer_size[w] )
+            if ( window_size[w] > 0 && window_size[w] < kmer_size[w] )
             {
-                std::cerr << "--window-size has to be bigger than --kmer-size" << std::endl;
+                std::cerr << "--window-size has to be >= --kmer-size (or 0 to disable windows)" << std::endl;
                 return false;
             }
         }
@@ -386,6 +369,7 @@ public:
         uint16_t hierarchy_count = 0;
         for ( uint16_t h = 0; h < hierarchy_labels.size(); ++h )
         {
+
             auto filter_cfg = FilterConfig{ ibf[h], abs_cutoff[h], rel_cutoff[h] };
             if ( map.size() > 0 )
                 filter_cfg.map_file = map[h];
@@ -394,6 +378,24 @@ public:
 
             if ( parsed_hierarchy.find( hierarchy_labels[h] ) == parsed_hierarchy.end() )
             { // not found
+                // validate by hiearchy
+                // if window size is used in this level
+                if ( window_size[hierarchy_count] > 0 )
+                {
+                    if ( abs_filter[hierarchy_count] != -1 || abs_cutoff[h] != -1 )
+                    {
+                        std::cerr << "minimizers (--window-size) can only be used with --rel-cutoff and --rel-filter"
+                                  << std::endl;
+                        return false;
+                    }
+
+                    if ( offset[hierarchy_count] > 1 )
+                    {
+                        std::cerr << "minimizers (--window-size) can not be used with --offset" << std::endl;
+                        return false;
+                    }
+                }
+
                 std::vector< FilterConfig > fc;
                 fc.push_back( filter_cfg );
                 std::string output_file_lca = "";

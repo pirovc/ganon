@@ -126,8 +126,8 @@ struct Stats
     Total total;
     // number of reads in the input files
     uint64_t input_reads = 0;
-    // Total for each hiearchy
-    std::map< std::string, Total > hiearchy_total;
+    // Total for each hierarchy
+    std::map< std::string, Total > hierarchy_total;
 
     void add_totals( std::string hierarchy_label, std::vector< Total > const& totals )
     {
@@ -137,9 +137,9 @@ struct Stats
             total.reads_processed += t.reads_processed;
             total.length_processed += t.length_processed;
             total.reads_classified += t.reads_classified;
-            hiearchy_total[hierarchy_label].reads_processed += t.reads_processed;
-            hiearchy_total[hierarchy_label].reads_classified += t.reads_classified;
-            hiearchy_total[hierarchy_label].length_processed += t.reads_classified;
+            hierarchy_total[hierarchy_label].reads_processed += t.reads_processed;
+            hierarchy_total[hierarchy_label].reads_classified += t.reads_classified;
+            hierarchy_total[hierarchy_label].length_processed += t.reads_classified;
         }
     }
 
@@ -150,8 +150,8 @@ struct Stats
         {
             total.matches += rep.matches;
             total.unique_matches += rep.unique_reads;
-            hiearchy_total[hierarchy_label].matches += rep.matches;
-            hiearchy_total[hierarchy_label].unique_matches += rep.unique_reads;
+            hierarchy_total[hierarchy_label].matches += rep.matches;
+            hierarchy_total[hierarchy_label].unique_matches += rep.unique_reads;
         }
     }
 };
@@ -350,8 +350,7 @@ void classify( std::vector< Filter >&    filters,
     auto minimiser_hash = seqan3::views::minimiser_hash(
         seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
         seqan3::window_size{ hierarchy_config.window_size > 0 ? hierarchy_config.window_size
-                                                              : hierarchy_config.kmer_size },
-        seqan3::seed{ 0 } );
+                                                              : hierarchy_config.kmer_size } );
 
     uint16_t wk_size = hierarchy_config.window_size > 0 ? hierarchy_config.window_size : hierarchy_config.kmer_size;
 
@@ -693,28 +692,28 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         for ( auto const& h : config.parsed_hierarchy )
         {
             std::string hierarchy_label = h.first;
-            avg_matches                 = stats.hiearchy_total[hierarchy_label].reads_classified
-                              ? ( stats.hiearchy_total[hierarchy_label].matches
-                                  / static_cast< double >( stats.hiearchy_total[hierarchy_label].reads_classified ) )
+            avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
+                              ? ( stats.hierarchy_total[hierarchy_label].matches
+                                  / static_cast< double >( stats.hierarchy_total[hierarchy_label].reads_classified ) )
                               : 0;
-            std::cerr << " - " << hierarchy_label << ": " << stats.hiearchy_total[hierarchy_label].reads_classified
+            std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
-                      << ( stats.hiearchy_total[hierarchy_label].reads_classified
+                      << ( stats.hierarchy_total[hierarchy_label].reads_classified
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.hiearchy_total[hierarchy_label].unique_matches << " unique ("
-                      << ( stats.hiearchy_total[hierarchy_label].unique_matches
+                      << "%) " << stats.hierarchy_total[hierarchy_label].unique_matches << " unique ("
+                      << ( stats.hierarchy_total[hierarchy_label].unique_matches
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
                       << "%) "
-                      << stats.hiearchy_total[hierarchy_label].reads_classified
-                             - stats.hiearchy_total[hierarchy_label].unique_matches
+                      << stats.hierarchy_total[hierarchy_label].reads_classified
+                             - stats.hierarchy_total[hierarchy_label].unique_matches
                       << " multiple ("
-                      << ( ( stats.hiearchy_total[hierarchy_label].reads_classified
-                             - stats.hiearchy_total[hierarchy_label].unique_matches )
+                      << ( ( stats.hierarchy_total[hierarchy_label].reads_classified
+                             - stats.hierarchy_total[hierarchy_label].unique_matches )
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.hiearchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
+                      << "%) " << stats.hierarchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
                       << ")" << std::endl;
         }
     }
@@ -819,7 +818,7 @@ TTax merge_tax( std::vector< detail::Filter > const& filters )
     }
 }
 
-void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax )
+void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax, bool quiet )
 {
     for ( auto const& filter : filters )
     {
@@ -828,8 +827,9 @@ void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& t
             if ( tax.count( target ) == 0 )
             {
                 tax[target] = Node{ "1", "no rank", target };
-                std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
-                          << std::endl;
+                if ( !quiet )
+                    std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
+                              << std::endl;
             }
         }
     }
@@ -854,7 +854,7 @@ bool run( Config config )
         return false;
 
     // Print config
-    if ( !config.quiet && config.verbose )
+    if ( config.verbose )
         std::cerr << config;
 
     // Start time count
@@ -937,7 +937,7 @@ bool run( Config config )
             // merge repeated elements from multiple filters
             tax = detail::merge_tax( filters );
             // if target not found in tax, add node target with parent = "1" (root)
-            detail::validate_targets_tax( filters, tax );
+            detail::validate_targets_tax( filters, tax, config.quiet );
             // pre-processing of nodes to generate LCA
             detail::pre_process_lca( lca, tax );
         }

@@ -170,7 +170,7 @@ public:
         if ( window_size > 0 && window_size < kmer_size )
         {
             if ( !quiet )
-                std::cerr << "--window-size has to be >= --kmer-size" << std::endl;
+                std::cerr << "--window-size has to be >= --kmer-size (or 0 to disable windows)" << std::endl;
             return false;
         }
 
