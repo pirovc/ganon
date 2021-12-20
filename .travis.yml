@@ -31,12 +31,12 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-10 (coverage)"
+    - name: "linux gcc-8 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-10, lcov],
+        apt: { packages: [g++-8, lcov],
                sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Coverage && GCOV=gcov-10"
+      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
 before_install:
   - eval "${MATRIX_EVAL}"

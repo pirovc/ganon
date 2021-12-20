@@ -187,7 +187,7 @@ inline uint16_t threshold_abs( uint16_t kmers, uint16_t e, uint8_t k, uint8_t o 
 
 inline uint16_t threshold_rel( uint16_t kmers, double p )
 {
-    return std::floor( kmers * p );
+    return std::ceil( kmers * p );
 }
 
 inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )

@@ -272,8 +272,7 @@ uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, T
         if ( config.window_size > 0 )
         {
             auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size },
-                                                                 seqan3::seed{ 0 } );
+                                                                 seqan3::window_size{ config.window_size } );
             max_hashes          = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash );
         }
         else
@@ -566,9 +565,8 @@ bool run( Config config )
     {
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
-            const auto minimiser_hash =
-                seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                               seqan3::window_size{ config.window_size } ); //, seqan3::seed{ 0 } );
+            const auto minimiser_hash = seqan3::views::minimiser_hash(
+                seqan3::shape{ seqan3::ungapped{ config.kmer_size } }, seqan3::window_size{ config.window_size } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );
