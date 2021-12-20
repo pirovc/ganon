@@ -345,14 +345,13 @@ void classify( std::vector< Filter >&    filters,
                bool                      run_lca )
 {
 
+    // get max from kmer/window size
+    uint16_t wk_size = ( hierarchy_config.window_size > 0 ) ? hierarchy_config.window_size : hierarchy_config.kmer_size;
+
     // oner hash adaptor per thread
     auto kmer_hash      = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
     auto minimiser_hash = seqan3::views::minimiser_hash(
-        seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
-        seqan3::window_size{ hierarchy_config.window_size > 0 ? hierarchy_config.window_size
-                                                              : hierarchy_config.kmer_size } );
-
-    uint16_t wk_size = hierarchy_config.window_size > 0 ? hierarchy_config.window_size : hierarchy_config.kmer_size;
+        seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } }, seqan3::window_size{ wk_size } );
 
     // one agent per thread per filter
     std::vector< TAgent > agents;

@@ -104,7 +104,8 @@ class TestUpdateOffline(unittest.TestCase):
         # Classify simulated virus against updated index
         params_classify = {"db_prefix": params["output_db_prefix"],
                            "single_reads": [data_dir + "vir.sim.1.fq", data_dir + "bac.sim.1.fq"],
-                           "abs_cutoff": 0,
+                           "rel_cutoff": 0,
+                           "rel_filter": 1,
                            "output_lca": True,
                            "output_all": True,
                            "quiet": True,
