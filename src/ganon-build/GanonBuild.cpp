@@ -388,7 +388,7 @@ void save_filter( TFilter const& filter, std::string const& output_filter_file )
 }
 
 template < class Thashes >
-void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes& hashes_view )
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes&& hashes_view )
 {
 
     while ( true )
