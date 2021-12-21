@@ -388,7 +388,7 @@ void save_filter( TFilter const& filter, std::string const& output_filter_file )
 }
 
 template < class Thashes >
-void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes&& hashes_view )
+void build( TFilter& filter, SafeQueue< detail::Seqs >& queue_refs, Thashes hashes_view )
 {
 
     while ( true )
@@ -567,7 +567,7 @@ bool run( Config config )
         {
             auto minimiser_hash = seqan3::views::minimiser_hash(
                 seqan3::shape{ seqan3::ungapped{ config.kmer_size } }, seqan3::window_size{ config.window_size } );
-            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &minimiser_hash]() {
+            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );
         }
@@ -577,7 +577,7 @@ bool run( Config config )
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
             auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
-            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, &kmer_hash]() {
+            tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, kmer_hash]() {
                 detail::build( filter, queue_refs, kmer_hash );
             } ) );
         }
