@@ -38,7 +38,7 @@ struct HierarchyConfig
 {
     std::vector< FilterConfig > filters;
     uint8_t                     kmer_size;
-    uint8_t                     window_size;
+    uint32_t                    window_size;
     uint8_t                     offset;
     double                      rel_filter;
     int16_t                     abs_filter;
@@ -59,9 +59,9 @@ public:
 
     std::vector< std::string > hierarchy_labels{ "H1" };
 
-    std::vector< uint8_t > kmer_size{ 19 };
-    std::vector< uint8_t > window_size{ 0 };
-    std::vector< uint8_t > offset{ 1 };
+    std::vector< uint8_t >  kmer_size{ 19 };
+    std::vector< uint32_t > window_size{ 0 };
+    std::vector< uint8_t >  offset{ 1 };
 
     std::vector< double >  rel_cutoff{ 0.25 };
     std::vector< int16_t > abs_cutoff;
@@ -446,7 +446,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
             if ( hierarchy_config.second.offset > 1 )
                 stream << " --offset:            " << unsigned( hierarchy_config.second.offset ) << newl;
             if ( hierarchy_config.second.window_size > 0 )
-                stream << " --window-size:       " << unsigned( hierarchy_config.second.window_size ) << newl;
+                stream << " --window-size:       " << hierarchy_config.second.window_size << newl;
             if ( hierarchy_config.second.rel_filter > -1 )
                 stream << " --rel-filter:        " << hierarchy_config.second.rel_filter << newl;
             if ( hierarchy_config.second.abs_filter > -1 )

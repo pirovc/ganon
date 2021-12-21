@@ -23,7 +23,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "y,hierarchy-labels", "Hierarchy labels to define level for database usage (hierarchy follows the order of the sorted labels) (e.g. 1_host,2_target,1_host,3). Default: 'H1'", cxxopts::value< std::vector< std::string > >() )
         
         ( "k,kmer-size", "k size to query - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint8_t > >() )
-        ( "w,window-size", "define window size for minimizers - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint8_t > >() )
+        ( "w,window-size", "define window size for minimizers - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint32_t > >() )
         ( "f,offset", "Offset for skipping k-mers while counting. One per hierarchy label. Default: 1 (no offset)", cxxopts::value< std::vector< uint8_t > >() )
         
         ( "c,rel-cutoff", "Relative cutoff (i.e. percentage of k-mers). 0 for no cutoff. One per filter [muttualy exclusive --rel-cutoff]. Default: 0.25", cxxopts::value< std::vector< double > >() )
@@ -84,7 +84,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "kmer-size" ) )
         config.kmer_size = args["kmer-size"].as< std::vector< uint8_t > >();
     if ( args.count( "window-size" ) )
-        config.window_size = args["window-size"].as< std::vector< uint8_t > >();
+        config.window_size = args["window-size"].as< std::vector< uint32_t > >();
     if ( args.count( "offset" ) )
         config.offset = args["offset"].as< std::vector< uint8_t > >();
 
