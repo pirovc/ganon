@@ -11,9 +11,9 @@ a k-mer based DNA classification tool using Interleaved Bloom Filters for short 
 ganon is a tool designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. Reads are classified and filtered based on shared k-mers or minimizers with a defined absolute error rate using the k-mer counting lemma (q-gram lemma) or a relative cutoff. The tool was mainly developed, but not limited, to the metagenomic classification problem: assign short fragments to their closest reference among thousands of references.
 
 ganon can further:
- - [update indices](#updating-the-index) incrementaly in a fraction of time used to built them
- - use [minimizers](#minimizers-or-offset) to build small indicies and fast classification 
- - perform [hiearchical classification](#hierarchical-classification)
+ - [update indices](#updating-the-index) incrementally in a fraction of time used to built them
+ - use [minimizers](#minimizers-or-offset) to build small indices and fast classification 
+ - perform [hierarchical classification](#hierarchical-classification)
  - classify at strain or taxonomic level but also at a custom [specialization](#--specialization)
  - integrated NCBI taxonomy to build and classify
  - report the lowest common ancestor (LCA) and/or multiple matches
@@ -220,8 +220,8 @@ Obs:
 ### classify
  
  - {prefix}**.rep**: plain report of the run with only targets that received a match *(fields: 1) hierarchy_label, 2) target, 3) total matches, 4) unique reads, 5) lca reads, 6) rank, 7) name)*. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
- - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.lca *(fields: read identifier, target, (max) k-mer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierachy}.all *(fields: 1) read identifier, 2) target, 3) k-mer count)*
+ - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer count)*
+ - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer count)*
   - {prefix}**.tre**: report file (see below)
 
 ### report
@@ -361,7 +361,7 @@ ganon accepts single-end or paired-end reads. In paired-end mode, reads are alwa
 
 #### cutoff and filter (--abs-cutoff, --rel-cutoff, --abs-filter, --rel-filter)
 
-ganon has two parameters to control a match between reads and references: `cutoff` and `filter`. Both can be used with absolute values (`--abs-cutoff` and `--abs-filter`) or relative values (`--rel-cutoff` and `--rel-filter`) interchangebly. They can also be disabled.
+ganon has two parameters to control a match between reads and references: `cutoff` and `filter`. Both can be used with absolute values (`--abs-cutoff` and `--abs-filter`) or relative values (`--rel-cutoff` and `--rel-filter`) interchangeably. They can also be disabled.
 
 Every read can be classified against none, one or more references. What will be reported is the remaining matches after `cutoff` and `filter` thresholds are applied, based on the number of shared k-mers (or minimizers) between sequences.
 
@@ -404,7 +404,7 @@ since best match is 82 (0 errors), the filter parameter is allowing +1 error (th
 
 Currently, databases built with `--window-size` will only work with relative values. In this case, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of minimizers extracted from the read.
 
-Using absolute values for `cutoff` and `filter` is advised, since they will incorporate stricter limits defined by the q-gram lemma into your results. However, if your input consists of reads of different lenghts, the use of `--rel-cutoff` is advised, since the absolute number of error in sequences of different sizes have different meanings. Note that in this case the use of `--abs-filter` is still possible and advised to better select matches based on the q-gram lemma.
+Using absolute values for `cutoff` and `filter` is advised, since they will incorporate stricter limits defined by the q-gram lemma into your results. However, if your input consists of reads of different lengths, the use of `--rel-cutoff` is advised, since the absolute number of error in sequences of different sizes have different meanings. Note that in this case the use of `--abs-filter` is still possible and advised to better select matches based on the q-gram lemma.
 
 A different `cutoff` can be set for every database in a multi or hierarchical database classification. A different `filter` can be set for every level of a hierarchical database classification.
 
@@ -414,21 +414,26 @@ Note that reads that remain with only one reference match (before or after `cuto
 
 `--window-size` or `--offset` can be used to speed-up analysis and reduce memory usage at the cost of sensitivity/precision on classification.
 
-`--window-size` can be set with `ganon build` to activate the use of minimizers. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. We experience a 6x descrease in memory usage and 6x speed-up on classification (`--window-size 32 --kmer-size 19`). Sensitivity and precision were reduced by small margins. `--window-size` has to be greater or equal `--kmer-size`.
+`--window-size` can be set with `ganon build` to activate the use of minimizers. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. We experience a 6x decrease in memory usage and 6x speed-up on classification (`--window-size 32 --kmer-size 19`). Sensitivity and precision were reduced by small margins. `--window-size` has to be greater or equal `--kmer-size`.
 
 `--offset` can be set on (>1) and off (1) with `ganon classify` (for databases build without `--window-size`) . `--offset n` will only evaluate every nth k-mer of the input sequences. In our experiments, lower `--offset` values (e.g. 2,3,4) will drastically reduce running times on classification with very low impact on the sensitivity and precision of the results. `--offset` has to be smaller or equal `--kmer-size`.
 
 ### ganon build 
 
-#### --max-bloom-size and --bin-length 
+#### --max-filter-size and --bin-length 
 
-The most useful variable to define the IBF size (.ibf file) is the `--max-bloom-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it. However, there is a minimum size necessary to generate the filter given a set of references and chosen parameters. Ganon will tell you if your value is too low.
+The most useful variable to define the IBF size (.ibf file) is the `--max-filter-size`. It will set an approximate upper limit size for the file and estimate the `--bin-length` size based on it. However, there is a minimum size necessary to generate the filter given a set of references and chosen parameters. When using `--window-size`, the final filter size may be significantly smaller than calculated, depending on how similar are reference sequences in your dataset.
 
-The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`, `--kmer-size` and `--hash-functions`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--fixed-bloom-size` (ganon will tell you what's the resulting max. false positive).
+<details>
+  <summary>More details</summary>
+
+The IBF size is defined mainly on the amount of the input reference sequences (`-i`) but also can also be adjusted by a combination of parameters. Ganon will try to find the best `--bin-length` given `--max-fp`. Increasing `--max-fp` will generate smaller filters, but will generate more false positives in the classification step. If you know what you are doing, you can also directly set the size of the IBF with `--filter-size`.
 
 `--bin-length` is the size in base pairs of each group for the taxonomic clustering (with TaxSBP). By default, `--fragment-length` will be the size of `--bin-length` - `--overlap-length`, meaning that sequences will be split with overlap to fit into the bins. For example: species X has 2 sequences of 120bp each. Considering `--bin-length 50` and `--overlap-length 10` (`--fragment-length 40` consequently) each of the sequences will be split into 50bp and put into a bin with overlap of 10bp, resulting in 3 bins for each sequence (6 in total for species X).
 
 Such adjustment is necessary to equalize the size of each bin, since the IBF requires the individual bloom filters to be of the same size by definition. Building the IBF based on the biggest sequence group in your references will generate the lowest number of bins but a very sparse and gigantic IBF. Building the IBF based on the smallest sequence group in your references will generate the smallest IBF but with too many bins. A balance between those two is necessary to achieve small and fast filters.
+
+</details>
 
 #### --specialization
 
@@ -455,7 +460,6 @@ By default, `ganon classify` and  `ganon report` generate a read-based report (`
 When using multiple databases in different hierarchical levels to classify reads, it is possible to report them separately using `--split-hierarchy`. Once activated, one report will be generated for each hierarchical label. It is also possible to select or ignore specific hierarchical labels (e.g. for a label use for host removal) using `--keep-hierarchy` or `--skip-hierarchy`.
 
 ## Install without conda
-
 
 <details>
   <summary>Instructions</summary>
