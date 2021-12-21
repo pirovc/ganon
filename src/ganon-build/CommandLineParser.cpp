@@ -27,7 +27,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "b,bin-size-bits", "Bin size (bits) [mutually exclusive --filter-size-mb, --false-positive]", cxxopts::value< uint64_t >() )
 
         ( "k,kmer-size", "k-mer size to build filter (only forward strand). Default: 19", cxxopts::value< uint8_t >() )
-        ( "w,window-size", "Window size. If set, filter is built with minimizers. ", cxxopts::value< uint8_t >() )
+        ( "w,window-size", "Window size. If set, filter is built with minimizers. ", cxxopts::value< uint32_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter. Default: 3", cxxopts::value< uint16_t >() )
         ( "a,count-hashes", "Iterate over input to count the exact number of elements to insert into the filter", cxxopts::value<bool>())
         
@@ -88,7 +88,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "kmer-size" ) )
         config.kmer_size = args["kmer-size"].as< uint8_t >();
     if ( args.count( "window-size" ) )
-        config.window_size = args["window-size"].as< uint8_t >();
+        config.window_size = args["window-size"].as< uint32_t >();
     if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
     if ( args.count( "count-hashes" ) )
