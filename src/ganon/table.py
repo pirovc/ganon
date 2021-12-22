@@ -1,6 +1,6 @@
-import time
 from ganon.tax import Tax
 from ganon.util import *
+
 
 def table(cfg):
     #validate input input files
@@ -8,39 +8,74 @@ def table(cfg):
 
     print_log("Generating table", cfg.quiet)
 
+    # Reports are parsed with cumulative counts
     reports, total_taxa = parse_reports(tre_files, cfg.rank)
     print_log(" - " + str(len(reports)) + " files parsed", cfg.quiet)
-    print_log(" - " + str(total_taxa) + " total taxa selected", cfg.quiet)
+    print_log(" - " + str(total_taxa) + " taxa parsed", cfg.quiet)
 
     # filter reports
     filtered_total_taxa = filter_reports(reports, cfg)
     if total_taxa - filtered_total_taxa:
-        print_log(" - " + str(total_taxa - filtered_total_taxa) + " taxa filtered out", cfg.quiet)
+        print_log(" - Skipped " + str(total_taxa - filtered_total_taxa) + " taxa with filters", cfg.quiet)
 
     # top_sample and top_all are mutually exclusive
     if cfg.top_sample:
         top_sample_total_taxa = select_top_sample(reports, cfg.top_sample)
-        print_log(" - keeping " + str(top_sample_total_taxa) + "/" + str(filtered_total_taxa) + " (--top-sample "+ str(cfg.top_sample)+")", cfg.quiet)
+        print_log(" - Skipped " + str(filtered_total_taxa - top_sample_total_taxa) + " taxa (--top-sample "+ str(cfg.top_sample)+")", cfg.quiet)
         filtered_total_taxa = top_sample_total_taxa
     elif cfg.top_all:
         top_all_total_taxa = select_top_all(reports, cfg.top_all)
-        print_log(" - keeping " + str(top_all_total_taxa) + "/" + str(filtered_total_taxa) + " (--top-all "+ str(cfg.top_all)+")", cfg.quiet)
+        print_log(" - Skipped " + str(filtered_total_taxa - top_all_total_taxa) + " taxa (--top-all "+ str(cfg.top_all)+")", cfg.quiet)
         filtered_total_taxa = top_all_total_taxa
 
-    if cfg.min_occurrence or cfg.min_occurrence_percentage:
-        if cfg.min_occurrence_percentage:
-            cfg.min_occurrence = int(len(reports)*cfg.min_occurrence_percentage)
-        min_occurrence_total_taxa = select_occurrence(reports, cfg.min_occurrence)
-        print_log(" - keeping " + str(min_occurrence_total_taxa) + "/" + str(filtered_total_taxa) + " (--min-occurrence "+ str(cfg.min_occurrence)+")", cfg.quiet)
-        filtered_total_taxa = min_occurrence_total_taxa
+    if cfg.min_frequency:
+        if cfg.min_frequency < 1:
+            mf = int(len(reports)*cfg.min_frequency)
+        else:
+            mf = cfg.min_frequency
+        min_frequency_total_taxa = select_frequency(reports, mf)
+        print_log(" - Skipped " + str(filtered_total_taxa - min_frequency_total_taxa) + " taxa (--min-frequency " + str(cfg.min_frequency) + ")", cfg.quiet)
+        filtered_total_taxa = min_frequency_total_taxa
 
-    if not filtered_total_taxa: 
+    if not cfg.rank:
+        # remove cumulative values from multiple ranks
+        # step should be at the end after filters were applied on the cumulative counts
+        # if requested, counts directed to root are remove to unclassified
+        adjust_counts_ranks(reports, cfg.no_root)
+
+    # remove root from lineages
+    if cfg.no_root:
+        for file, rep in reports.items():
+            for t in rep["count"]:
+                del rep["lineage"][t][0]
+
+    if not filtered_total_taxa:
         print_log(" - No taxa left to report", cfg.quiet)
     else:
-        lines, cols = write_tsv(reports, cfg)
+        # build table in a list of lists
+        out_table = build_table(reports, cfg)
+
+        # "--skip-zeros" trim table on lines and cols
+        if cfg.skip_zeros:
+            l = len(out_table)
+            # trim rows and cols
+            out_table = trim_table(out_table)
+            if len(out_table) < l:
+                print_log(" - Skipped " + str(l-len(out_table)) + " files with only zero counts", cfg.quiet)
+            c = len(out_table[0])
+            out_table = transpose(trim_table(transpose(out_table)))
+            if len(out_table[0]) < c:
+                print_log(" - Skipped " + str(c-len(out_table[0])) + " taxa with only zero counts", cfg.quiet)
+
+        # "--transpose" table (by default is already transposed)
+        if not cfg.transpose:
+            out_table = transpose(out_table)
+
+        lines, cols = write_tsv(out_table, cfg.output_file, cfg.output_format)
         print_log(" - " + str(lines) + "x" + str(cols) + " table saved to " + cfg.output_file, cfg.quiet)
 
     return True
+
 
 def parse_reports(tre_files, rank):
     reports = {}
@@ -69,26 +104,20 @@ def parse_tre_rank(tre_file, selected_rank):
 
     with open(tre_file, "r") as file:
         for line in file:
-            rank, taxid, lin, taxa_name, _, all_assign, cum_assign, _ = line.rstrip().split("\t")
+            rank, taxid, lin, taxa_name, unique_assign, shared_assign, children_assign, cum_assign, cum_perc = line.rstrip().split("\t")
             if rank == "unclassified":
                 unclassified = int(cum_assign)
                 continue
             elif rank == "root":
                 classified = int(cum_assign)
-                continue
+                if selected_rank:
+                    continue  # do not include root to the report when using single rank
             elif selected_rank and rank != selected_rank:
                 continue
 
-            # Reporting single rank selected by user
-            if selected_rank:
-                # Use cumulative counts to the taxa up-to this rank
-                count[taxid] = int(cum_assign)
-            else:
-                # Use all direct assignements to the taxa
-                count[taxid] = int(all_assign)
-
             lineage[taxid] = lin.split("|")
             name[taxid] = taxa_name
+            count[taxid] = int(cum_assign)
 
     total = unclassified + classified
     return count, lineage, name, total, unclassified
@@ -100,17 +129,28 @@ def filter_reports(reports, cfg):
         for taxid in list(rep["count"]):
             count = rep["count"][taxid]
             filtered = False
-            if count < cfg.min_count or count/rep["total"] < cfg.min_percentage:
-                filtered = True
-            elif cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]): 
+            if cfg.min_count:
+                if cfg.min_count > 1 and count < cfg.min_count:
+                    filtered = True
+                elif cfg.min_count < 1 and (count/rep["total"]) < cfg.min_count:
+                    filtered = True
+
+            if cfg.max_count:
+                if cfg.max_count > 1 and count > cfg.max_count:
+                    filtered = True
+                elif cfg.max_count < 1 and (count/rep["total"]) > cfg.max_count:
+                    filtered = True
+
+            if cfg.taxids and not any(t in cfg.taxids for t in rep["lineage"][taxid]):
                 filtered = True
             elif cfg.names and not rep["name"][taxid] in cfg.names:
                 filtered = True
             elif cfg.names_with and not any(n in rep["name"][taxid] for n in cfg.names_with):
                 filtered = True
 
-            if filtered: 
-                rep["filtered"]+=count
+            # do not filter root
+            if filtered and taxid!="1":
+                rep["filtered"] += count
                 del rep["count"][taxid]
                 del rep["lineage"][taxid]
                 del rep["name"][taxid]
@@ -119,12 +159,17 @@ def filter_reports(reports, cfg):
 
     return len(filtered_total_taxa)
 
+
 def select_top_sample(reports, top_sample):
-    top_sample_total_taxa = set()
+    top_sample_total_taxa = set("1") # always keep root
     for file, rep in reports.items():
-        for i, (taxid, count) in enumerate(sorted(rep["count"].items(), key=lambda x: x[1], reverse=True)): # sorted by count
+        i = 0
+        for taxid, count in sorted(rep["count"].items(), key=lambda x: x[1], reverse=True): # sorted by count
+            if taxid == "1":  # do not count root as an top entry
+                continue
             if i < top_sample:
                 top_sample_total_taxa.add(taxid)
+                i += 1
                 continue
             rep["filtered"] += count
             del rep["count"][taxid]
@@ -133,13 +178,18 @@ def select_top_sample(reports, top_sample):
 
     return len(top_sample_total_taxa)
 
+
 def select_top_all(reports, top_all):
     total_taxa = set()
     total_counts = get_total_counts(reports)
-    top_taxids = []
-    for i, taxid in enumerate(sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True)):
-        if i < top_all:
-            top_taxids.append(taxid)
+    top_taxids = set("1")  # always keep root
+    i = 0
+    for taxid in sorted(total_counts, key=lambda kv: total_counts[kv]["sum_percentage"], reverse=True):
+        if taxid == "1":  # do not count root as an top entry
+            continue
+        elif i < top_all:
+            top_taxids.add(taxid)
+            i += 1
 
     for file, rep in reports.items():
         for taxid in list(rep["count"]):
@@ -154,24 +204,24 @@ def select_top_all(reports, top_all):
     return len(total_taxa)
 
 
-def select_occurrence(reports, min_occurrence):
+def select_frequency(reports, min_frequency):
     min_occ_taxids = []
     for taxid, val in get_total_counts(reports).items():
-        if val["occurrence"] >= min_occurrence:
+        if val["frequency"] >= min_frequency:
             min_occ_taxids.append(taxid)
 
-    min_occurrence_total_taxa = set()
+    min_frequency_total_taxa = set()
     for file, rep in reports.items():
         for taxid in list(rep["count"]):
             if taxid in min_occ_taxids:
-                min_occurrence_total_taxa.add(taxid)
+                min_frequency_total_taxa.add(taxid)
                 continue
             rep["filtered"] += rep["count"][taxid]
             del rep["count"][taxid]
             del rep["lineage"][taxid]
             del rep["name"][taxid]
 
-    return len(min_occurrence_total_taxa)
+    return len(min_frequency_total_taxa)
 
 
 def get_total_counts(reports):
@@ -180,21 +230,41 @@ def get_total_counts(reports):
     for d in reports.values():
         for taxid, count in d["count"].items():
             if taxid not in total_counts:
-                total_counts[taxid] = {"sum_percentage": 0, "occurrence": 0}
+                total_counts[taxid] = {"sum_percentage": 0, "frequency": 0}
             total_counts[taxid]["sum_percentage"] += count/d["total"]
-            total_counts[taxid]["occurrence"] += 1
+            total_counts[taxid]["frequency"] += 1
     return total_counts
 
 
-def write_tsv(reports, cfg):
+def adjust_counts_ranks(reports, no_root):
+    # If reporting multiple ranks, cumulative counts have to be adjusted
+    # On the .tre report, every ranks sums up to the total with repeated counts
+    # but in the table output, only single counts should be reported
+    # In addition, cumulative counts include children assignments that may not be in the report (e.g. assignment to a rank not listed)
+    # Going from leaf to root, all reported counts removed from parent ranks counts, and left over are unique matches for the target + unaccounted
+    for file, rep in reports.items():
+        # Start from higher ranks
+        for t in sorted(rep["lineage"], key=lambda k: len(rep["lineage"][k]), reverse=True):
+            # Remove already reported count from all parents in its lineage
+            for parent in rep["lineage"][t][:-1]:
+                if parent in rep["count"]:
+                    rep["count"][parent] -= rep["count"][t]
+
+        # Move left over counts at root to unclassified
+        if no_root:
+            rep["unclassified"] += rep["count"]["1"]
+            del rep["count"]["1"]
+            del rep["lineage"]["1"]
+            del rep["name"]["1"]
+
+
+def build_table(reports, cfg):
     total_counts = get_total_counts(reports)
 
     # Sort by taxid
     sorted_taxids = sorted(total_counts.keys())
 
-    # generate output as a list of lists with each file in one line
-    out_table = []
-
+    # Generate headers
     if cfg.header == "taxid":
         header = [""] + list(sorted_taxids)
     elif cfg.header == "name":
@@ -209,15 +279,13 @@ def write_tsv(reports, cfg):
         for file in reports:
             lineages.update(reports[file]["lineage"])
         header = [""] + ["|".join(lineages[taxid]) for taxid in sorted_taxids]
+    if cfg.unclassified_label:
+        header.append(cfg.unclassified_label)
+    if cfg.filtered_label and cfg.filtered_label!=cfg.unclassified_label:
+        header.append(cfg.filtered_label)
 
-    if cfg.add_unclassified:
-        header.append("unclassified")
-    if cfg.add_filtered:
-        header.append("filtered")
-
-    cols = len(header)-1
-
-    lines = 0
+    # generate output as a list of lists with each file in one line
+    out_table = []
     out_table.append(header)
     for file in sorted(reports):
         res = reports[file]
@@ -231,24 +299,43 @@ def write_tsv(reports, cfg):
                 v = 0
             out_line.append(v)
 
-        if cfg.skip_zeros and (len(out_line) > 1 and max(out_line[1:]) == 0):
-            print_log(" - Skipping line (" + res["label"] + ") with only zeros", cfg.quiet)
-        else:
-            if cfg.add_unclassified:
-                out_line.append(res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"])
-            if cfg.add_filtered:
-                out_line.append(res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"])
-            out_table.append(out_line)
-            lines+=1
+        # Add unclassified/filtered at the end in the according labels
+        if cfg.unclassified_label:
+            unc = res["unclassified"]/res["total"] if cfg.output_value=="percentage" else res["unclassified"]
+            if cfg.unclassified_label != cfg.filtered_label:
+                out_line.append(unc)
+        if cfg.filtered_label:
+            fil = res["filtered"]/res["total"] if cfg.output_value=="percentage" else res["filtered"]
+            if cfg.filtered_label == cfg.unclassified_label:
+                out_line.append(unc+fil)
+            else:
+                out_line.append(fil)
 
-    # "--transpose" is actually the order the lists were built the lists
-    if not cfg.transpose:
-        out_table = map(list, zip(*out_table))
+        out_table.append(out_line)
+    return out_table
 
+
+def write_tsv(out_table, output_file, output_format):
     # Write file
-    out_file = open(cfg.output_file, "w")
+    out_file = open(output_file, "w")
+    lines = 0
     for line in out_table:
-        print(*line, sep="\t" if cfg.output_format=="tsv" else ",", file=out_file)
+        print(*line, sep="\t" if output_format == "tsv" else ",", file=out_file)
+        lines += 1
+    cols = len(line)
     out_file.close()
 
-    return lines, cols
+    return lines-1, cols-1
+
+
+def trim_table(table):
+    trimmed_table = [table[0]]  # get header
+    for line in table[1:]:
+        values = line[1:]  # skip header on each line
+        if max(values) > 0:
+            trimmed_table.append(line)  # keep non-zero line
+    return trimmed_table
+
+
+def transpose(table):
+    return list(map(list, zip(*table)))

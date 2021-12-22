@@ -58,8 +58,6 @@ class TestBuildOnline(unittest.TestCase):
         self.assertIsNotNone(res, "ganon build has inconsistent results") 
         # Specific test - count assemblies on tax (3 bac)
         self.assertEqual(sum(res["tax_pd"]["rank"]=="assembly"), 3, "error retrieving assembly accessions")
-        # Check if all targets starts with "GCF_"
-        self.assertTrue((res["map_pd"]["target"].map(lambda x: x.startswith("GCF_"))).all(), "failed to retrieve assembly accession")
 
     def test_specialization_sequence(self):
         """

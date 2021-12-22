@@ -5,7 +5,7 @@ class SeqInfo:
     seq_info_colums=['seqid','length','taxid','specialization']
     # Preset order without specialation
     seqinfo = pd.DataFrame(columns=seq_info_colums[:-1])
-            
+
     def __repr__(self):
         args = ['{}={}'.format(k, repr(v)) for (k,v) in vars(self).items()]
         return 'SeqInfo({})'.format(', '.join(args))
