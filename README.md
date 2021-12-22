@@ -11,21 +11,20 @@ a k-mer based DNA classification tool using Interleaved Bloom Filters for short 
 ganon is a tool designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. Reads are classified and filtered based on shared k-mers or minimizers with a defined absolute error rate using the k-mer counting lemma (q-gram lemma) or a relative cutoff. The tool was mainly developed, but not limited, to the metagenomic classification problem: assign short fragments to their closest reference among thousands of references.
 
 ganon can further:
+ - use [minimizers](#minimizers-or-offset) to build small indices, use less memory and have faster classification 
  - [update indices](#updating-the-index) incrementally in a fraction of time used to built them
- - use [minimizers](#minimizers-or-offset) to build small indices and fast classification 
- - perform [hierarchical classification](#hierarchical-classification)
+ - perform [hierarchical classification](#multiple-and-hierarchical-classification)
  - classify at strain or taxonomic level but also at a custom [specialization](#--specialization)
  - integrated NCBI taxonomy to build and classify
- - report the lowest common ancestor (LCA) and/or multiple matches
- - report unique matches between reads and references
- - generate reports and tables for multi-sample studies
+ - report the lowest common ancestor (LCA), multiple and unique matches 
+ - generate reports and tables for multi-sample studies with many filtering options
 
-ganon relies mainly on 3 external tools/libraries
+ganon relies 3 external tools/libraries
  - [SeqAn3](https://github.com/seqan/seqan3) and the Interleaved Bloom Filter implementation
  - [TaxSBP](https://github.com/pirovc/taxsbp) to cluster sequences into taxonomic related groups
  - [genome_updater](https://github.com/pirovc/genome_updater) (optional) to download reference sequences 
 
-ganon achieved very good results in [our evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi.ezlab.org/) and [CAMI2](https://www.biorxiv.org/content/10.1101/2021.07.12.451567v1)
+ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi.ezlab.org/) and [CAMI2](https://www.biorxiv.org/content/10.1101/2021.07.12.451567v1)
 
 ## Installation
 
@@ -303,9 +302,13 @@ genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Pa
 species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  0  0   57  57.57576
 ```
 
-## Hierarchical classification
+## Multiple and Hierarchical classification
 
-Ganon classification can be performed in one or more databases at the same time. The databases can be provided in a hierarchical order. Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. `--abs-cutoff/--rel-cutoff` can be provided for each database. `--abs-filter/--rel-filter` can be provided for each hierarchy level. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels).
+Ganon classification can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. 
+
+Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. Multiple databases are considerer as if they were one (built together) and redundancy in content (same reference in two or more databases) is allowed.
+
+To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. `--abs-cutoff`) while others are set for each hierarchical level (e.g. `--abs-filter`)
 
 For example: 
 
@@ -317,9 +320,9 @@ ganon classify --db-prefix db1 db2 db3 \
                -r reads.fq.gz
 ```
 
-Classification against 3 database (as if they were one) using the same error rate.
+Classification against 3 database (as if they were one) using the same cutoff.
 
-### Classifying reads against multiple databases with different error rates:
+### Classifying reads against multiple databases with different cutoffs:
 
 ```bash
 ganon classify --db-prefix db1 db2 db3 \
@@ -332,24 +335,24 @@ Classification against 3 database (as if they were one) using different error ra
 ### Classifying reads against multiple databases hierarchically:
 
 ```bash
-ganon classify --db-prefix            db1     db2      db3 \ 
+ganon classify --db-prefix            db1     db2      db3 \
                --hierarchy-labels 1_first 1_first 2_second \
                -r reads.fq.gz
 ```
 
 In this example, reads are going to be classified first against db1 and db2. Reads without a valid match will be further classified against db3. `--hierarchy-labels` are strings and are going to be sorted to define the hierarchy order, disregarding input order.
 
-### Classifying reads against multiple databases hierarchically with different error rates:
+### Classifying reads against multiple databases hierarchically with different cutoffs:
 
 ```bash
 ganon classify --db-prefix            db1     db2      db3 \
                --hierarchy-labels 1_first 1_first 2_second \
-               --rel-cutoff              1     0.5     0.25 \
-               --abs-filter              0       1 \
+               --rel-cutoff             1     0.5     0.25 \
+               --abs-filter             0                1 \
                -r reads.fq.gz
 ```
 
-In this example, classification will be performed with different error rates for each database. For each hierarchy (`1_first` and `2_second`) a different `--abs-filter` will be used.
+In this example, classification will be performed with different `--rel-cutoff` for each database. For each hierarchy levels (`1_first` and `2_second`) a different `--abs-filter` will be used.
 
 ## Choosing/explaining parameters
 
@@ -357,7 +360,7 @@ In this example, classification will be performed with different error rates for
 
 #### --single-reads and/or --paired-reads
 
-ganon accepts single-end or paired-end reads. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535.
+ganon accepts single-end and paired-end reads. Both types can be use at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535 (accounting both reads in paired mode).
 
 #### cutoff and filter (--abs-cutoff, --rel-cutoff, --abs-filter, --rel-filter)
 
@@ -365,7 +368,7 @@ ganon has two parameters to control a match between reads and references: `cutof
 
 Every read can be classified against none, one or more references. What will be reported is the remaining matches after `cutoff` and `filter` thresholds are applied, based on the number of shared k-mers (or minimizers) between sequences.
 
-The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match. Here one can control how far from the best match we want to allow further matches. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to what to keep.
+The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match. Here one can control how far from the best match we want to allow further matches. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
 
 For example:
 
@@ -402,13 +405,13 @@ since the `--rel-cutoff` threhsold is `82 * 0.25 = 21` (ceiling is applied). Fur
 
 since best match is 82 (0 errors), the filter parameter is allowing +1 error (the represents 63 to 81 shared k-mers). The error numbers are calculated using the q-gram lemma.
 
-Currently, databases built with `--window-size` will only work with relative values. In this case, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of minimizers extracted from the read.
+Currently, databases built with `--window-size` will only work with relative values. In this case, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of unique minimizers extracted from the read.
 
-Using absolute values for `cutoff` and `filter` is advised, since they will incorporate stricter limits defined by the q-gram lemma into your results. However, if your input consists of reads of different lengths, the use of `--rel-cutoff` is advised, since the absolute number of error in sequences of different sizes have different meanings. Note that in this case the use of `--abs-filter` is still possible and advised to better select matches based on the q-gram lemma.
+Using absolute values for `cutoff` and `filter` is advised, since they will incorporate stricter boundaries defined by the q-gram lemma into your results. However, if your input consists of reads of different lengths, the use of `--rel-cutoff` is advised, since the absolute number of error in sequences of different sizes have different meanings. Note that in this case the use of `--abs-filter` is still possible and advised to better select matches based on the q-gram lemma.
 
-A different `cutoff` can be set for every database in a multi or hierarchical database classification. A different `filter` can be set for every level of a hierarchical database classification.
+A different `cutoff` can be set for every database in a multiple or hierarchical database classification. A different `filter` can be set for every level of a hierarchical database classification.
 
-Note that reads that remain with only one reference match (before or after `cutoff` and `filter` are applied) is considered an unique match.
+Note that reads that remain with only one reference match (before or after `cutoff` and `filter` are applied) are considered a unique match.
 
 #### minimizers or offset
 
@@ -416,7 +419,7 @@ Note that reads that remain with only one reference match (before or after `cuto
 
 `--window-size` can be set with `ganon build` to activate the use of minimizers. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. We experience a 6x decrease in memory usage and 6x speed-up on classification (`--window-size 32 --kmer-size 19`). Sensitivity and precision were reduced by small margins. `--window-size` has to be greater or equal `--kmer-size`.
 
-`--offset` can be set on (>1) and off (1) with `ganon classify` (for databases build without `--window-size`) . `--offset n` will only evaluate every nth k-mer of the input sequences. In our experiments, lower `--offset` values (e.g. 2,3,4) will drastically reduce running times on classification with very low impact on the sensitivity and precision of the results. `--offset` has to be smaller or equal `--kmer-size`.
+`--offset` can be set on (>1) and off (1) with `ganon classify` (for databases built without `--window-size`) . `--offset n` will only evaluate every nth k-mer of the input sequences. In our experiments, lower `--offset` values (e.g. 2,3,4) will drastically reduce running times on classification with very low impact on the sensitivity and precision of the results. `--offset` has to be smaller or equal `--kmer-size`.
 
 ### ganon build 
 
@@ -510,7 +513,7 @@ taxsbp -h
 ### Downloading and building ganon
 
 ```bash
-git clone --recurse-submodules https://github.com/pirovc/ganon.git # ganon, catch2, cxxopts, seqan3
+git clone --recurse-submodules https://github.com/pirovc/ganon.git
 ```
   
 ```bash
