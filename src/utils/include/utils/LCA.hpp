@@ -1,10 +1,11 @@
 #pragma once
 
+#include <robin_hood.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 // required: root node == "1" and father == "0"
@@ -25,14 +26,14 @@ private:
 
     static constexpr int first_appearance_init = -1;
 
-    std::unordered_map< std::string, std::vector< std::string > > m_parents;
-    std::vector< int >                                            m_euler;
-    std::vector< int >                                            m_depth;
-    std::vector< int >                                            m_firstAppearance;
-    int                                                           m_vertices = 0;
-    std::unordered_map< std::string, unsigned int >               m_encode;
-    std::vector< std::string >                                    m_decode;
-    std::vector< std::vector< int > >                             m_M;
+    robin_hood::unordered_map< std::string, std::vector< std::string > > m_parents;
+    std::vector< int >                                                   m_euler;
+    std::vector< int >                                                   m_depth;
+    std::vector< int >                                                   m_firstAppearance;
+    int                                                                  m_vertices = 0;
+    robin_hood::unordered_map< std::string, unsigned int >               m_encode;
+    std::vector< std::string >                                           m_decode;
+    std::vector< std::vector< int > >                                    m_M;
 };
 
 inline void LCA::addEdge( const std::string& father, const std::string& son )

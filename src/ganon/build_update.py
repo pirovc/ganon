@@ -9,6 +9,7 @@ from ganon.seqinfo import SeqInfo
 from ganon.tax import Tax
 from ganon.util import *
 
+
 def build(cfg):
     # validate input files
     input_files = validate_input_files(cfg.input_files, cfg.input_directory, cfg.input_extension, cfg.quiet)
@@ -17,15 +18,15 @@ def build(cfg):
         return False
 
     # Set db prefixes
-    db_prefix = {prefix:cfg.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
-    
+    db_prefix = {prefix: cfg.db_prefix + "." + prefix for prefix in  ["ibf", "map", "tax", "gnn"]}
+
     # Set temporary working folder 
     tmp_output_folder = cfg.db_prefix + "_tmp/"
     if not set_tmp_folder(tmp_output_folder): return False
 
     # Set up taxonomy
     ncbi_nodes_file, ncbi_merged_file, ncbi_names_file = set_taxdump_files(cfg.taxdump_file, tmp_output_folder, cfg.quiet)
-    
+
     # Parse .tax    
     tx = time.time()
     print_log("Parsing taxonomy", cfg.quiet)
@@ -36,9 +37,9 @@ def build(cfg):
     seqinfo = load_seqinfo(cfg, input_files)
 
     # Retrieve sequence information
-    if not cfg.seq_info_file:    
+    if not cfg.seq_info_file:
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
-    
+
     # Check for valid specialization
     if cfg.specialization:
         replaced_spec = seqinfo.validate_specialization()
@@ -46,8 +47,8 @@ def build(cfg):
             print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
 
     # Write seq-info-file
-    if not cfg.seq_info_file and cfg.write_seq_info_file: 
-        seqinfo.write(cfg.db_prefix+".seqinfo.txt")
+    if not cfg.seq_info_file and cfg.write_seq_info_file:
+        seqinfo.write(cfg.db_prefix + ".seqinfo.txt")
 
     # check sequences compared to bins
     added_seqids, _, _ = check_updated_seqids(set(seqinfo.get_seqids()), set())
@@ -60,27 +61,22 @@ def build(cfg):
         rm_tmp_folder(tmp_output_folder)
         return False
 
-    # Set bin length
-    if cfg.bin_length: # user defined
+    # Set or calculate best --bin-length
+    if cfg.bin_length:
         bin_length = cfg.bin_length
     else:
         tx = time.time()
-        print_log("Calculating best bin length", cfg.quiet)
-        bin_length, approx_size, n_bins = estimate_bin_len_size(cfg, seqinfo, tax)
-        if bin_length<=0: 
-            bin_length=1000000
-            print_log("WARNING: could not estimate bin length, using default of " + str(bin_length) + "bp", cfg.quiet)
-        else:
-            print_log(" - bin length: " + str(bin_length) + "bp (approx: " + str(n_bins) + " bins / " + str("{0:.2f}".format(approx_size)) + "MB)", cfg.quiet)
+        print_log("Simulating parameters", cfg.quiet)
+        bin_length = estimate_bin_length(cfg, seqinfo, tax)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     # Set fragment length
-    if cfg.fragment_length==-1: # if ==-1 set default
+    if cfg.fragment_length == -1:  # if ==-1 set default
         fragment_length = bin_length - cfg.overlap_length
-    elif cfg.fragment_length==0: # if ==0 deactivate
+    elif cfg.fragment_length == 0:  # if ==0 deactivate
         fragment_length = 0
-    else: # user input
-        fragment_length = cfg.fragment_length - cfg.overlap_length 
+    else:   # user input
+        fragment_length = cfg.fragment_length - cfg.overlap_length
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
@@ -89,13 +85,39 @@ def build(cfg):
     actual_number_of_bins = bins.get_number_of_bins()
     optimal_number_of_bins = optimal_bins(actual_number_of_bins)
     max_length_bin = bins.get_max_bin_length()
-    max_kmer_count = max_length_bin-cfg.kmer_size+1 # aproximate number of unique k-mers by just considering that they are all unique
+    max_kmer_count = estimate_elements(max_length_bin, cfg.kmer_size, cfg.window_size)
+    #max_kmer_count = max_length_bin - cfg.kmer_size + 1
     print_log(" - " + str(actual_number_of_bins) + " bins created", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+    # Get optimal parameters from user input and taxsbp result
+    if cfg.filter_size:
+        optimal_params = derive_bf_params(max_kmer_count, 0, math.ceil(mb2bits(cfg.filter_size) / optimal_number_of_bins), cfg.hash_functions)
+    else:
+        optimal_params = derive_bf_params(max_kmer_count, cfg.max_fp, 0, cfg.hash_functions)
+
+    # When fixed size is too small
+    if optimal_params["hash_functions"] == 0:
+        optimal_params["hash_functions"] = 3
+
+    print_log("Optimal bins: " + str(optimal_number_of_bins), cfg.quiet)
+    print_log("Max. false positive: " + str("{0:.5f}".format(optimal_params["false_positive"])), cfg.quiet)
+    print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
+    if cfg.window_size:
+        # Check lower bound for minimizers with estimated bin-length
+        min_mini = math.floor(((max_length_bin - cfg.kmer_size + 1) / (cfg.window_size - cfg.kmer_size + 1)))
+        min_size_mini = derive_bf_params(min_mini, optimal_params["false_positive"], 0, optimal_params["hash_functions"])
+        print_log("Possible elements per bin: " + str(min_mini) + ".." + str(max_kmer_count), cfg.quiet)
+        print_log("Possible filter sizes: " + str("{0:.2f}".format(bits2mb(min_size_mini["size_bits"] * optimal_number_of_bins))) + "MB.." + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB", cfg.quiet)
+    else:
+        print_log("Elements per bin: " + str(max_kmer_count), cfg.quiet)
+        print_log("Filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB", cfg.quiet)
+
+    print_log("")
+
+    # Build database files (map, tax, gnn)
     tx = time.time()
     print_log("Building database files", cfg.quiet)
-    
     # Write .map file
     print_log(" - " + db_prefix["map"], cfg.quiet)
     bins.write_map_file(db_prefix["map"], use_specialization=True if cfg.specialization else False)
@@ -103,40 +125,32 @@ def build(cfg):
     # Write .tax file
     print_log(" - " + db_prefix["tax"], cfg.quiet)
     # filter only used taxids
-    tax.filter(bins.get_taxids()) 
+    tax.filter(bins.get_taxids())
     # add specialization nodes
-    if cfg.specialization: tax.add_nodes(bins.get_specialization_taxid(), cfg.specialization) 
+    if cfg.specialization:
+        tax.add_nodes(bins.get_specialization_taxid(), cfg.specialization)
     tax.write(db_prefix["tax"])
 
-    if cfg.specialization and cfg.rank!="leaves":
+    if cfg.specialization and cfg.rank != "leaves":
         print_log(" - --rank is set to leaves when using specialization values", cfg.quiet)
-        cfg.rank="leaves"
+        cfg.rank = "leaves"
+
     # Write .gnn file
     print_log(" - " + db_prefix["gnn"], cfg.quiet)
-    gnn = Gnn(kmer_size=cfg.kmer_size, 
-            hash_functions=cfg.hash_functions, 
-            number_of_bins=actual_number_of_bins, 
-            rank=cfg.rank,
-            specialization=cfg.specialization,
-            bin_length=bin_length,
-            fragment_length=fragment_length,
-            overlap_length=cfg.overlap_length,
-            bins=bins.get_list())
+    gnn = Gnn(kmer_size=cfg.kmer_size,
+              window_size=cfg.window_size,
+              hash_functions=optimal_params["hash_functions"],
+              number_of_bins=actual_number_of_bins,
+              rank=cfg.rank,
+              specialization=cfg.specialization,
+              bin_length=bin_length,
+              fragment_length=fragment_length,
+              overlap_length=cfg.overlap_length,
+              bins=bins.get_list())
     gnn.write(db_prefix["gnn"])
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     print_log("Building index (ganon-build)", cfg.quiet)
-    # define bloom filter size based on given false positive
-    MBinBits = 8388608
-    print_log(" - max unique " + str(cfg.kmer_size) +  "-mers: " + str(max_kmer_count), cfg.quiet)
-    if not cfg.fixed_bloom_size:
-        bin_size_bits = math.ceil(-(1/((1-cfg.max_fp**(1/float(cfg.hash_functions)))**(1/float(cfg.hash_functions*max_kmer_count))-1)))   
-        print_log(" - IBF calculated size with fp<=" + str(cfg.max_fp) + ": " + str("{0:.2f}".format((bin_size_bits*optimal_number_of_bins)/MBinBits)) + "MB (" + str(bin_size_bits) + " bits/bin * " + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])", cfg.quiet)
-    else:
-        bin_size_bits = math.ceil((cfg.fixed_bloom_size * MBinBits)/optimal_number_of_bins);
-        estimated_max_fp = (1-((1-(1/float(bin_size_bits)))**(cfg.hash_functions*max_kmer_count)))**cfg.hash_functions
-        print_log(" - IBF calculated max. fp with size=" + str(cfg.fixed_bloom_size) + "MB: " + str("{0:.2f}".format(estimated_max_fp) + " ("  + str(optimal_number_of_bins) + " optimal bins [" + str(actual_number_of_bins) + " real bins])"), cfg.quiet)
-
     # Write aux. file for ganon
     acc_bin_file = tmp_output_folder + "acc_bin.txt"
     bins.write_acc_bin_file(acc_bin_file)
@@ -149,9 +163,11 @@ def build(cfg):
 
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--seqid-bin-file " + acc_bin_file,
-                                    "--bin-size-bits " + str(bin_size_bits) if cfg.max_fp else "--filter-size-mb " + str(cfg.fixed_bloom_size),
+                                    "--bin-size-bits " + str(optimal_params["size_bits"]) if cfg.filter_size else "--false-positive " + str(cfg.max_fp),
                                     "--kmer-size " + str(cfg.kmer_size),
-                                    "--hash-functions " + str(cfg.hash_functions),
+                                    "--window-size " + str(cfg.window_size) if cfg.window_size else "",
+                                    "--count-hashes " if cfg.window_size else "",
+                                    "--hash-functions " + str(optimal_params["hash_functions"]),
                                     "--threads " + str(cfg.threads),
                                     "--output-filter-file " + db_prefix["ibf"],
                                     "--verbose" if cfg.verbose else "",
@@ -168,6 +184,7 @@ def build(cfg):
 
     return True
 
+
 def update(cfg):
     tx = time.time()
 
@@ -179,7 +196,7 @@ def update(cfg):
 
     # Set db prefixes
     db_prefix = {prefix:cfg.db_prefix + "." + prefix for prefix in  ["ibf","map","tax","gnn"]}  
-    
+
     # Set temporary working folder (current or new output)
     tmp_output_folder = cfg.output_db_prefix + "_tmp/" if cfg.output_db_prefix else cfg.db_prefix + "_tmp/"
     if not set_tmp_folder(tmp_output_folder): return False
@@ -210,7 +227,7 @@ def update(cfg):
     if cfg.update_complete: 
         print_log("Update: adding " + str(len(added_seqids)) + " sequences, removing " + str(len(removed_seqids)) + " sequences, keeping " + str(len(kept_seqids)) + " sequences", cfg.quiet)
     else:
-        removed_seqids=[]
+        removed_seqids = []
         print_log("Update: adding " + str(len(added_seqids)) + " sequences, ignoring " + str(len(kept_seqids)) + " repeated sequences", cfg.quiet)
     print_log("", cfg.quiet)
 
@@ -219,7 +236,7 @@ def update(cfg):
         rm_tmp_folder(tmp_output_folder)
         return False
 
-    if cfg.update_complete:           
+    if cfg.update_complete:
         # Remove already included seqids to just retrieve information for added sequences
         seqinfo.remove_seqids(kept_seqids | removed_seqids)
     else:
@@ -227,7 +244,7 @@ def update(cfg):
         seqinfo.remove_seqids(kept_seqids)
 
     # retrive sequence information (after removing invalid seqids)
-    if not cfg.seq_info_file: 
+    if not cfg.seq_info_file:
         retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg)
 
     # Convert cols data types
@@ -236,7 +253,7 @@ def update(cfg):
         if replaced_spec:
             print_log(str(replaced_spec) + " invalid specialization entries (sequence accession used instead)\n", cfg.quiet)
 
-    if not cfg.seq_info_file and cfg.write_seq_info_file: 
+    if not cfg.seq_info_file and cfg.write_seq_info_file:
         seqinfo.write(cfg.output_db_prefix+".seqinfo.txt")
 
     # save set of current binids
@@ -252,8 +269,6 @@ def update(cfg):
 
     tx = time.time()
     print_log("Running taxonomic clustering (TaxSBP)", cfg.quiet)
-    # Compability to nomenclature before 0.3.5
-    if gnn.rank=="taxid" or gnn.rank=="assembly": gnn.rank="leaves"  
     updated_bins = run_taxsbp(seqinfo, gnn.bin_length, gnn.fragment_length, gnn.overlap_length, gnn.rank, cfg.specialization, ncbi_nodes_file, ncbi_merged_file, cfg.verbose, bins=bins)
     # bin statistics
     taxsbp_binids = set(updated_bins.get_binids())
@@ -272,8 +287,9 @@ def update(cfg):
     # filter only used taxids
     tax.filter(updated_bins.get_taxids())
     # add specialization nodes
-    if cfg.specialization: tax.add_nodes(updated_bins.get_specialization_taxid(), cfg.specialization) 
-    
+    if cfg.specialization:
+        tax.add_nodes(updated_bins.get_specialization_taxid(), cfg.specialization)
+
     # Load old .tax file into new taxonomy
     tax.merge(Tax([db_prefix["tax"]]))
     # Write .tax file
@@ -282,11 +298,11 @@ def update(cfg):
 
     # merge updated and old bins together
     bins.merge(updated_bins)
-    
+
     # Write .gnn file
     print_log(" - " + cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"], cfg.quiet)
-    gnn.bins = bins.get_list() # save updated bins
-    gnn.number_of_bins=bins.get_number_of_bins() # add new bins count
+    gnn.bins = bins.get_list()  # save updated bins
+    gnn.number_of_bins = bins.get_number_of_bins()  # add new bins count
     # set new specialization to gnn
     gnn.specialization = cfg.specialization
     gnn.write(cfg.output_db_prefix + ".gnn" if cfg.output_db_prefix else db_prefix["gnn"])
@@ -301,26 +317,27 @@ def update(cfg):
 
     # Write aux. file for ganon
     # This file has to contain all new sequences
-    # in case of update_complete, 
+    # in case of update_complete
     acc_bin_file = tmp_output_folder + "acc_bin.txt"
-    
+
     if cfg.update_complete:
         # all sequences from the bins with added/removed sequences should be written
         bins.write_acc_bin_file(acc_bin_file, new_binids | updated_binids)
         # If all sequences of a bin were removed and no new sequence added
         # insert a dummy entry for ganon-build to clear the bin
-        if removed_binids: 
-            with open(acc_bin_file,"a") as abf:
+        if removed_binids:
+            with open(acc_bin_file, "a") as abf:
                 for b in removed_binids:
-                    print(0,0,0,b,sep="\t",file=abf)
-
+                    print(0, 0, 0, b, sep="\t", file=abf)
     else:
         # Only new sequences (updated_bins) either on old or new binids
         updated_bins.write_acc_bin_file(acc_bin_file)
 
     # Update with same values used for build
     kmer_size = gnn.kmer_size
+    window_size = gnn.window_size
     hash_functions = gnn.hash_functions
+
     # Free memory for build
     del seqinfo
     del bins
@@ -333,10 +350,12 @@ def update(cfg):
     run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                     "--update-filter-file " + db_prefix["ibf"],
                                     "--kmer-size " + str(kmer_size),
+                                    "--window-size " + str(window_size) if window_size else "",
+                                    "--count-hashes " if window_size else "",
                                     "--hash-functions " + str(hash_functions),
                                     "--seqid-bin-file " + acc_bin_file,
                                     "--output-filter-file " + tmp_db_prefix_ibf,
-                                    "--threads " + str(cfg.threads),                                
+                                    "--threads " + str(cfg.threads),
                                     "--verbose" if cfg.verbose else "",
                                     "--quiet" if cfg.quiet else "",
                                     "--n-refs " + str(cfg.n_refs) if cfg.n_refs is not None else "",
@@ -400,11 +419,7 @@ def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, quiet, skip
 
     # always return all entries in the same order (-k)
     # report sequence accession if specialization not found (-r)
-    run_get_seq_info_cmd = '{0} -k -r -i {1} {2} {3}'.format(
-                                path_exec_get_seq_info,
-                                seqid_file,
-                                "-a" if get_assembly else "",
-                                "-s" if skip_len_taxid else "")
+    run_get_seq_info_cmd = '{0} -k -r -i {1} {2} {3}'.format(path_exec_get_seq_info, seqid_file, "-a" if get_assembly else "", "-s" if skip_len_taxid else "")
     stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not quiet else False, exit_on_error=False)
 
     # set "na" as NaN with na_values="na"
@@ -426,21 +441,24 @@ def parse_eutils(seqinfo, tmp_output_folder, path_exec_get_seq_info, quiet, skip
     if seqinfo.size() < parsed_size: 
         print_log(" - " + str(parsed_size-seqinfo.size()) + " entries could not be retrieved from eutils and were skipped", quiet)
 
+
 def load_seqinfo(cfg, input_files):
     seqinfo = SeqInfo()
     if cfg.seq_info_file:
         tx = time.time()
         print_log("Parsing --seq-info-file", cfg.quiet)
         seqinfo.parse_seq_info_file(cfg.seq_info_file, use_specialization=True if cfg.specialization=="custom" else False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
+        print_log(" - " + str(seqinfo.size()) + " unique sequence entries in the --seq-info-file " + cfg.seq_info_file, cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     else:
         tx = time.time()
         print_log("Extracting sequence identifiers", cfg.quiet)
         parse_seqids(seqinfo, input_files, cfg.specialization, cfg.quiet, get_length=False)
-        print_log(" - "  + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
+        print_log(" - " + str(seqinfo.size()) + " unique sequence headers successfully retrieved from " + str(len(input_files)) + " input file(s)" , cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
     return seqinfo
+
 
 def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
     # Max. # of sequences to use eutils as auto mode
@@ -450,7 +468,7 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
 
     # Define method to use
     if "auto" in cfg.seq_info_mode:
-        if seqid_total_count>max_seqs_eutils: 
+        if seqid_total_count > max_seqs_eutils: 
             seq_info_mode = ["nucl_gb", "nucl_wgs"]
         else:
             seq_info_mode = ["eutils"]
@@ -481,7 +499,7 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
         dowloaded_acc2txid_files = []
         for acc2txid in seq_info_mode:
             dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder, cfg.quiet))
-        
+
         print_log("Parsing accession2taxid files", cfg.quiet)     
         count_acc2txid = parse_acc2txid(seqinfo, dowloaded_acc2txid_files)
         for acc2txid_file, cnt in count_acc2txid.items():
@@ -526,27 +544,76 @@ def parse_acc2txid(seqinfo, acc2txid_files):
 
     return count_acc2txid
 
-def ibf_size_mb(bin_len, n_bins, max_fp, hash_functions, kmer_size):
-    return (math.ceil(-(1/((1-max_fp**(1/float(hash_functions)))**(1/float(hash_functions*(bin_len-kmer_size+1)))-1)))*optimal_bins(n_bins))/8388608
 
-def approx_n_bins(bin_len, overlap_len, groups_len): 
-    frag_len=bin_len-overlap_len
+def bits2mb(v):
+    return v / 8388608
+
+
+def mb2bits(v):
+    return v * 8388608
+
+
+def optimal_bins(n):
+    #return optimal number of bins for the IBF (multiples of 64)
+    return math.ceil(n / float(64)) * 64
+
+
+def estimate_n_bins(bin_len, overlap_len, groups_len): 
+    # Estimate an approximate number of bins give the parameters
+    frag_len = bin_len - overlap_len
     n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
     return n_bins
 
-def optimal_bins(n): 
-    #return optimal number of bins for the IBF (multiples of 64)
-    return (math.floor(n/64)+1)*64 
 
-def estimate_bin_len_size(cfg, seqinfo, tax):
-    # Simulate bins that will be created by taxsbp with many bin lenghts
-    # Select the best trade-off on size and n. of bins
+def estimate_elements(bin_len, kmer_size, window_size):
+    """
+    Return estimation of elements given a bin lenght
 
-    # Generate dict with groups:total_length
+    """
+    if window_size > 0:
+        # Estimate elements to be the median of min. and max. possible minimizers
+        return bin_len - window_size + 1
+    else:
+        # Estimate elements to be all k-mers
+        return bin_len - kmer_size + 1
+
+
+def estimate_params(cfg, simulated_bin_lens, groups_len):
+    # Caculate filter sizes based on simulated bin lenghts
+    params = {}
+    for bin_length in simulated_bin_lens:
+
+        # Estimate number of bins based on ranks and sequence sizes
+        n_bins = optimal_bins(estimate_n_bins(bin_length, cfg.overlap_length, groups_len))
+        if n_bins <= 0:
+            continue  # invalid bin_len
+
+        bf_params = derive_bf_params(estimate_elements(bin_length, cfg.kmer_size, cfg.window_size),
+                                     cfg.max_fp,
+                                     0,
+                                     cfg.hash_functions)
+
+        if bf_params["hash_functions"] == 0 or bf_params["false_positive"] == 1:
+            continue  # filter too small
+
+        params[bin_length] = bf_params
+        params[bin_length]["n_bins"] = n_bins
+        params[bin_length]["filter_size_bits"] = bf_params["size_bits"] * n_bins
+
+    return params
+
+
+def estimate_bin_length(cfg, seqinfo, tax):
+    # default bin len if simulation fails
+    default_bin_len = 1000000
+    # number of simulations
+    nsim = 300
+
+    # Generate dict with target groups and their total length to estimate params
     groups_len = {}
     if cfg.specialization:
         groups_len = seqinfo.seqinfo.groupby('specialization').sum().to_dict()['length']
-    elif cfg.rank=="leaves":
+    elif cfg.rank == "leaves":
         groups_len = seqinfo.seqinfo.groupby('taxid').sum().to_dict()['length']
     else:
         groups_len = pd.concat([seqinfo.seqinfo['taxid'].apply(lambda x: tax.get_rank(x, cfg.rank)), seqinfo.seqinfo['length']], axis=1).groupby('taxid').sum().to_dict()['length']
@@ -556,70 +623,117 @@ def estimate_bin_len_size(cfg, seqinfo, tax):
     min_bin_len = 500
     # Biggest group as max
     max_bin_len = max(groups_len.values())
-    # Try to find min. size by simulating points in geometric space 
+    # Try to find min. size by simulating points in geometric space
     # between min. and max. bin length. Use geometric to have more simulations on smaller sizes
-    # Necessary to calculate instead of getting first lowest
-    # since it may be a local minimum
-    bin_lens = np.geomspace(min_bin_len, max_bin_len, num=300)
+    # Necessary to calculate instead of getting first lowest since it may be a local minimum
+    simulated_bin_lens = map(round, np.geomspace(min_bin_len, max_bin_len, num=nsim))
 
-    # Caculate filter sizes based on bin_lens
-    filter_sizes = np.array([ibf_size_mb(b, approx_n_bins(b, cfg.overlap_length, groups_len), cfg.max_fp, cfg.hash_functions, cfg.kmer_size) for b in bin_lens])
-    # keep only valid positive entries to define min. filter size
-    idx_above_min = filter_sizes>0
-    filter_sizes = filter_sizes[idx_above_min]
-    bin_lens = bin_lens[idx_above_min]
-    min_filter_size=filter_sizes.min()
+    # simulated parameters
+    params = estimate_params(cfg, simulated_bin_lens, groups_len)
 
-    print_log(" - Approx. min. size possible: " + str("{0:.2f}".format(min_filter_size)) + "MB", cfg.quiet)
-    # Define max size
-    # if none defined or too small, Define the max as 1.5 time size of the min
-    if cfg.max_bloom_size is None:
-        max_filter_size = min_filter_size*1.5
-    elif cfg.max_bloom_size<min_filter_size:
-        max_filter_size = min_filter_size*1.5
-        print_log(" - --max-bloom-size " + str(cfg.max_bloom_size) + "MB is too small, using max. default (1.5x min.): " + str("{0:.2f}".format(max_filter_size)) + "MB", cfg.quiet)
+    if not params:
+        print_log(" - could not estimate --bin-length, using default value (" + str(default_bin_len) + ")", cfg.quiet)
+        return default_bin_len
+
+    # Select smallest possible bin_len based on generated filter sizes
+    selected_min_bin_len = min(params, key=lambda k: params[k]["filter_size_bits"])
+    min_filter_size = params[selected_min_bin_len]["filter_size_bits"]
+    print_log(" - Approx. minimal size with --max-fp " + str(cfg.max_fp) + ": " + str("{0:.2f}".format(bits2mb(min_filter_size))) + "MB", cfg.quiet)
+
+    # try to find best bin_length considering max given size
+    if cfg.max_filter_size is None:
+        max_filter_size = min_filter_size * 1.5
+        print_log(" - --max-bloom-size not set, using default (1.5x min. size): " + str("{0:.2f}".format(bits2mb(max_filter_size))) + "MB", cfg.quiet)
+    elif cfg.max_filter_size < bits2mb(min_filter_size):
+        max_filter_size = min_filter_size * 1.5
+        print_log(" - --max-bloom-size " + str(cfg.max_filter_size) + "MB is too small, using default (1.5x min. size): " + str("{0:.2f}".format(bits2mb(max_filter_size))) + "MB", cfg.quiet)
     else:
-        max_filter_size = cfg.max_bloom_size
-    
-    # keep only valid points below max_filter_size
-    idx_below_max = filter_sizes<=max_filter_size
+        max_filter_size = mb2bits(cfg.max_filter_size)
 
-    # If more than one valid point
-    if sum(idx_below_max)>1: 
-        # reduce space in between min. and max. filter size to get better
-        bin_lens = np.linspace(bin_lens[idx_below_max].min(), bin_lens[idx_below_max].max(), num=300)
-        # Estimate n_bins
-        n_bins = [approx_n_bins(b, cfg.overlap_length, groups_len) for b in bin_lens]
-        filter_sizes = [ibf_size_mb(b, n_bins[i], cfg.max_fp, cfg.hash_functions, cfg.kmer_size) for i,b in enumerate(bin_lens)]
-        # Get value with min. number of bins from this distribution
-        idx_min = np.where(n_bins == np.amin(n_bins))[0][0]
-        return int(bin_lens[idx_min]), filter_sizes[idx_min], n_bins[idx_min]    
+    # Keep only valid params below max_filter_size
+    filtered_params = dict(filter(lambda v: v[1]["filter_size_bits"] <= max_filter_size, params.items()))
+
+    # if there are valids params after filtering
+    if len(filtered_params):
+        # reduce space in between min. and max. bin lens to get better estimation
+        simulated_bin_lens2 = map(round, np.linspace(min(filtered_params.keys()), max(filtered_params.keys()), num=nsim))
+        # simulated parameters (second time)
+        params2 = estimate_params(cfg, simulated_bin_lens2, groups_len)
+        # select top param with least number of bins (and smallest generated filter as second filter)
+        selected_best_bin_len = sorted(params2, key=lambda k: (params2[k]["n_bins"], params2[k]["filter_size_bits"]))[0]
+        print_log(" - estimated --bin-length: " + str(selected_best_bin_len) + "bp", cfg.quiet)
+        if cfg.verbose:
+            print_log(" - Further estimated parameters: " + str(params2[selected_best_bin_len]), cfg.quiet)
+        return selected_best_bin_len
     else:
-        return 0,0,0
+        print_log(" - could not estimate --bin-length, using default value (" + str(default_bin_len) + ")", cfg.quiet)
+        return default_bin_len
+
 
 def run_taxsbp(seqinfo, bin_length, fragment_length, overlap_length, rank, specialization, ncbi_nodes_file, ncbi_merged_file, verbose, bins: Bins=None):
-    taxsbp_params={}
+    taxsbp_params = {}
 
     taxsbp_params["input_table"] = seqinfo.seqinfo
     if bins is not None:
         taxsbp_params["update_table"] = bins.bins
 
     taxsbp_params["nodes_file"] = ncbi_nodes_file
-    if ncbi_merged_file: 
+    if ncbi_merged_file:
         taxsbp_params["merged_file"] = ncbi_merged_file
-    
+
     taxsbp_params["bin_len"] = bin_length
-    if fragment_length: 
+    if fragment_length:
         taxsbp_params["fragment_len"] = fragment_length
         taxsbp_params["overlap_len"] = overlap_length
 
     if specialization:
         taxsbp_params["specialization"] = specialization
         taxsbp_params["bin_exclusive"] = specialization
-    else: # either species,genus ... or "leaves"
-        taxsbp_params["bin_exclusive"] =  rank
+    else:  # either species,genus ... or "leaves"
+        taxsbp_params["bin_exclusive"] = rank
 
     #if verbose:
     taxsbp_params["silent"] = False
 
     return Bins(taxsbp_ret=taxsbp.taxsbp.pack(**taxsbp_params), use_specialization=True if specialization else False)
+
+
+def derive_bf_params(elements, false_positive, size_bits, hash_functions):
+    """
+    given a number of elements and (false_positive or size_bits) derive minimal values
+    returns a dict with  {"size_bits", "false_positive", "hash_functions"}
+    """
+    max_hash_functions = 5
+
+    def ratio_from_size_elements(size, elements):
+        return size / elements
+
+    def ratio_from_hashf_fp(hashf, fp):
+        return -hashf / math.log(1 - math.exp(math.log(fp) / hashf))
+
+    def hashf_from_ratio(ratio):
+        n = round(math.log(2) * ratio)
+        return n if n <= max_hash_functions else max_hash_functions
+
+    def hashf_from_fp(fp):
+        n = -round(math.log2(fp))
+        return n if n <= max_hash_functions else max_hash_functions
+
+    if size_bits:
+        final_size_bits = size_bits
+        r = ratio_from_size_elements(final_size_bits, elements)
+        final_hash_functions = hashf_from_ratio(r) if not hash_functions else hash_functions
+        final_false_positive = 1 if not final_hash_functions else math.pow(1 - math.exp(-final_hash_functions / r), final_hash_functions)
+    elif false_positive:
+        final_false_positive = false_positive
+        final_hash_functions = hashf_from_fp(final_false_positive) if not hash_functions else hash_functions
+        r = 0 if not final_hash_functions else ratio_from_hashf_fp(final_hash_functions, final_false_positive)
+        final_size_bits = math.ceil(elements * r)
+    else:
+        final_size_bits = size_bits
+        final_false_positive = false_positive
+        final_hash_functions = hash_functions
+
+    return {"size_bits": final_size_bits,
+            "false_positive": final_false_positive,
+            "hash_functions": final_hash_functions}

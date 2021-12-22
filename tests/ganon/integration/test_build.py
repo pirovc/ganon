@@ -1,4 +1,4 @@
-import unittest, sys
+import unittest, sys, os
 sys.path.append('src')
 from ganon import ganon
 from ganon.config import Config
@@ -40,6 +40,38 @@ class TestBuildOffline(unittest.TestCase):
         # General sanity check of results
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
+
+
+    def test_minimizers(self):
+        """
+        ganon build with window size (minimizers)
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_minimizers"
+        params["window_size"] = 23
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        ibf_with_minimizers = params["db_prefix"] + ".ibf"
+
+        # without minimizers comparison
+        params["window_size"] = 0
+        params["db_prefix"] = self.results_dir + "test_without_minimizers"
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        ibf_without_minimizers = params["db_prefix"] + ".ibf"
+
+        # Filter with minimizers should be smaller
+        self.assertTrue(os.path.getsize(ibf_with_minimizers) < os.path.getsize(ibf_without_minimizers), "Filter with minimizers should be smaller")
 
     def test_rank_genus(self):
         """

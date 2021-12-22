@@ -1,14 +1,18 @@
 #include "GanonClassify.hpp"
 
+#include <robin_hood.h>
+
 #include <utils/LCA.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <seqan3/alphabet/views/complement.hpp>
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/kmer_hash.hpp>
+#include <seqan3/search/views/minimiser_hash.hpp>
 #include <seqan3/utility/views/chunk.hpp>
 
 #include <cinttypes>
@@ -16,7 +20,6 @@
 #include <fstream>
 #include <future>
 #include <iostream>
-#include <map>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -30,7 +33,7 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter<>                                  TFilter;
 typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > TAgent;
-typedef std::unordered_map< std::string, uint16_t >                         TMatches;
+typedef robin_hood::unordered_map< std::string, uint16_t >                  TMatches;
 
 struct Node
 {
@@ -73,7 +76,7 @@ struct ReadBatches
     bool                                       paired = false;
     std::vector< std::string >                 ids;
     std::vector< std::vector< seqan3::dna5 > > seqs;
-    std::vector< std::vector< seqan3::dna5 > > seqs2;
+    std::vector< std::vector< seqan3::dna5 > > seqs2{};
 };
 
 struct ReadMatch
@@ -105,9 +108,9 @@ struct Rep
     uint64_t unique_reads = 0;
 };
 
-typedef std::unordered_map< std::string, Rep >  TRep;
-typedef std::unordered_map< std::string, Node > TTax;
-typedef std::map< uint32_t, std::string >       TMap;
+typedef robin_hood::unordered_map< std::string, Rep >      TRep;
+typedef robin_hood::unordered_map< std::string, Node >     TTax;
+typedef robin_hood::unordered_map< uint32_t, std::string > TMap;
 
 struct Total
 {
@@ -123,8 +126,8 @@ struct Stats
     Total total;
     // number of reads in the input files
     uint64_t input_reads = 0;
-    // Total for each hiearchy
-    std::map< std::string, Total > hiearchy_total;
+    // Total for each hierarchy
+    std::map< std::string, Total > hierarchy_total;
 
     void add_totals( std::string hierarchy_label, std::vector< Total > const& totals )
     {
@@ -134,9 +137,9 @@ struct Stats
             total.reads_processed += t.reads_processed;
             total.length_processed += t.length_processed;
             total.reads_classified += t.reads_classified;
-            hiearchy_total[hierarchy_label].reads_processed += t.reads_processed;
-            hiearchy_total[hierarchy_label].reads_classified += t.reads_classified;
-            hiearchy_total[hierarchy_label].length_processed += t.reads_classified;
+            hierarchy_total[hierarchy_label].reads_processed += t.reads_processed;
+            hierarchy_total[hierarchy_label].reads_classified += t.reads_classified;
+            hierarchy_total[hierarchy_label].length_processed += t.reads_classified;
         }
     }
 
@@ -147,8 +150,8 @@ struct Stats
         {
             total.matches += rep.matches;
             total.unique_matches += rep.unique_reads;
-            hiearchy_total[hierarchy_label].matches += rep.matches;
-            hiearchy_total[hierarchy_label].unique_matches += rep.unique_reads;
+            hierarchy_total[hierarchy_label].matches += rep.matches;
+            hierarchy_total[hierarchy_label].unique_matches += rep.unique_reads;
         }
     }
 };
@@ -177,267 +180,134 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
     return report_sum;
 }
 
-
-inline uint16_t get_error(
-    uint16_t read1_len, uint16_t read2_len, uint8_t kmer_size, uint16_t kmer_count, uint8_t offset )
+inline uint16_t threshold_abs( uint16_t kmers, uint16_t e, uint8_t k, uint8_t o )
 {
-    // Return the optimal number of errors for a certain sequence based on the kmer_count
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read1_len - kmer_size ) % offset;
-
-    // If second read is present, account all possible kmers to equation
-    uint16_t read2_max_kmers = 0;
-    if ( read2_len )
-    {
-        read2_max_kmers = ( ( read2_len - kmer_size ) / offset ) + ( ( read1_len - kmer_size ) % offset ) + 1;
-    }
-
-    // - ((offset-1)/kmer_size) adjusts the value to be always below the threshold possible, considering the floor usage
-    // to calculate the kmer_count
-    return std::ceil( ( read1_len - kmer_size + offset * ( -kmer_count + read2_max_kmers + extra_pos + 1 ) )
-                          / static_cast< float >( kmer_size )
-                      - ( ( offset - 1 ) / static_cast< float >( kmer_size ) ) );
+    return ( kmers * o > e * k ) ? std::ceil( kmers - ( e * k ) / static_cast< double >( o ) ) : 0u;
 }
 
-inline int16_t get_threshold_errors( uint16_t read_len, uint8_t kmer_size, uint16_t max_error, uint8_t offset )
+inline uint16_t threshold_rel( uint16_t kmers, double p )
 {
-    // Return threshold (number of kmers) based on an optimal number of errors
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read_len - kmer_size ) % offset;
-
-    return std::floor( ( ( read_len - kmer_size - max_error * kmer_size ) / offset ) + 1 + extra_pos );
+    return std::ceil( kmers * p );
 }
 
-inline int16_t get_threshold_kmers( uint16_t read_len, uint8_t kmer_size, float min_kmers, uint8_t offset )
+inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
 {
-    // Return threshold (number of kmers) based on an percentage of kmers
-    // ceil -> round-up min # k-mers, floor -> round-down for offset
-
-    // If offset > 1, check weather an extra position is necessary to cover the whole read (last k-mer)
-    bool extra_pos = ( read_len - kmer_size ) % offset;
-
-    // min_kmers==0 return everything with at least one kmer match
-    return min_kmers > 0 ? std::floor( std::ceil( ( read_len - kmer_size ) * min_kmers ) / offset + 1 + extra_pos )
-                         : 1u;
+    return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
 
-
-inline void check_unique( ReadOut& read_out_lca,
-                          uint16_t read1_len,
-                          uint16_t read2_len,
-                          uint8_t  kmer_size,
-                          uint16_t max_error_unique,
-                          uint8_t  offset,
-                          TTax&    tax,
-                          TRep&    rep )
+void select_matches( TMatches& matches,
+                     auto&     counts_f,
+                     auto&     counts_r,
+                     Filter&   filter,
+                     uint16_t  threshold_cutoff,
+                     uint16_t& max_kmer_count_read )
 {
-    int16_t threshold_error_unique = get_threshold_errors( read1_len, kmer_size, max_error_unique, offset );
-    if ( read2_len )
-    {
-        threshold_error_unique += get_threshold_errors( read2_len, kmer_size, max_error_unique, offset );
-    }
-    // if kmer count is lower than expected set match to parent node
-    if ( read_out_lca.matches[0].kmer_count < threshold_error_unique )
-    {
-        read_out_lca.matches[0].target = tax.at( read_out_lca.matches[0].target ).parent; // parent node
-        rep[read_out_lca.matches[0].target].lca_reads++;                                  // count as lca for parent
-    }
-    else
-    {
-        rep[read_out_lca.matches[0].target].unique_reads++; // count as unique for target
-    }
-}
-
-void select_matches( TMatches&                matches,
-                     std::vector< uint16_t >& selectedBins,
-                     std::vector< uint16_t >& selectedBinsRev,
-                     Filter&                  filter,
-                     int16_t                  threshold,
-                     uint16_t&                maxKmerCountRead )
-{
-    // Threshold can be negative. If a higher number of errors are allowed the threshold here is
-    // just one kmer match (0 would match every read everywhere)
-    if ( threshold < 1 )
-        threshold = 1;
+    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
+    if ( threshold_cutoff == 0 )
+        threshold_cutoff = 1;
 
     // for each bin
-    // for ( uint32_t binNo = 0; binNo < filter.ibf.noOfBins; ++binNo )
+    // for ( uint32_t bin_n = 0; bin_n < filter.ibf.noOfBins; ++bin_n )
     // loop in map structure to avoid extra validations when map.size() < filter.ibf.noOfBins when ibf is updated and
     // sequences removed also avoid the error of spurius results from empty bins (bug reported)
-    for ( auto const& [binNo, target] : filter.map )
+    for ( auto const& [bin_n, target] : filter.map )
     {
-        // if kmer count is higher than threshold
-        if ( selectedBins[binNo] >= threshold || selectedBinsRev[binNo] >= threshold )
+        // if kmer count is higher than threshold_cutoff
+        if ( counts_f[bin_n] >= threshold_cutoff || counts_r[bin_n] >= threshold_cutoff )
         {
             // get best matching strand
-            uint16_t maxKmerCountBin = std::max( selectedBins[binNo], selectedBinsRev[binNo] );
+            uint16_t max_kmer_count_bin = std::max( counts_f[bin_n], counts_r[bin_n] );
             // keep only the best match target/read when same targets are split in several
             // bins
-            if ( matches.count( target ) == 0 || maxKmerCountBin > matches[target] )
+            if ( matches.count( target ) == 0 || max_kmer_count_bin > matches[target] )
             {
                 // store match to target
-                matches[target] = maxKmerCountBin;
-                if ( maxKmerCountBin > maxKmerCountRead )
-                    maxKmerCountRead = maxKmerCountBin;
+                matches[target] = max_kmer_count_bin;
+                if ( max_kmer_count_bin > max_kmer_count_read )
+                    max_kmer_count_read = max_kmer_count_bin;
             }
         }
     }
 }
 
+
 auto get_offset_hashes( auto& hashes, uint8_t offset )
 {
     // return offset of hashes, always keep last one to cover full read (extra_pos)
-    int  n_kmers     = hashes.size() - 1;
-    auto nth_element = [offset, n_kmers]( auto&& tuple ) {
+    uint16_t n_kmers     = hashes.size() - 1;
+    auto     nth_element = [offset, n_kmers]( auto&& tuple ) {
         return ( std::get< 0 >( tuple ) % offset == 0 || n_kmers == std::get< 0 >( tuple ) );
     };
-    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values;
+    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values
+           | seqan3::views::to< std::vector >;
 }
 
-uint16_t find_matches( TMatches&                    matches,
-                       std::vector< Filter >&       filters,
-                       std::vector< TAgent >&       agents,
-                       std::vector< seqan3::dna5 >& read_seq,
-                       uint8_t                      kmer_size,
-                       uint8_t                      offset,
-                       auto&                        hash_adaptor )
+void get_hashes( std::vector< seqan3::dna5 >& seq,
+                 std::vector< size_t >&       hashes_f,
+                 std::vector< size_t >&       hashes_r,
+                 uint8_t                      window_size,
+                 uint8_t                      offset,
+                 auto&                        kmer_hash,
+                 auto&                        minimiser_hash )
 {
 
-
-    // send it as a reference to be valid for every filter
-    uint16_t max_kmer_count_read = 0;
-
-    for ( uint8_t i = 0; i < filters.size(); ++i )
+    if ( window_size > 0 )
     {
-        seqan3::counting_vector< uint16_t > selectedBins;
-        seqan3::counting_vector< uint16_t > selectedBinsRev;
-
+        // minimizers
+        hashes_f = { seq | minimiser_hash | seqan3::views::to< std::vector > };
+        hashes_r = hashes_f;
+    }
+    else
+    {
         if ( offset > 1 )
         {
-            auto hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
-            auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
-                            | seqan3::views::to< std::vector > };
-
-            selectedBins    = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
-            selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
+            // offset
+            auto h   = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_f = get_offset_hashes( h, offset );
+            h = seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r = get_offset_hashes( h, offset );
         }
         else
         {
-            selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
-            selectedBinsRev =
-                agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
+            // kmer
+            hashes_f = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r =
+                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
         }
-
-        int16_t threshold =
-            ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
-
-        // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
     }
-    return max_kmer_count_read;
 }
 
-uint16_t find_matches_paired( TMatches&                    matches,
-                              std::vector< Filter >&       filters,
-                              std::vector< TAgent >&       agents,
-                              std::vector< seqan3::dna5 >& read_seq,
-                              std::vector< seqan3::dna5 >& read_seq2,
-                              uint8_t                      kmer_size,
-                              uint8_t                      offset,
-                              auto&                        hash_adaptor )
+uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
+                               uint16_t               kmers,
+                               uint16_t               max_kmer_count_read,
+                               uint8_t                kmer_size,
+                               uint8_t                offset )
 {
-
-    // send it as a reference to be valid for every filter
-    uint16_t max_kmer_count_read = 0;
-
-    for ( uint8_t i = 0; i < filters.size(); ++i )
+    uint16_t threshold_filter = 0;
+    if ( hierarchy_config.rel_filter >= 0 )
     {
-
-        seqan3::counting_vector< uint16_t > selectedBins;
-        seqan3::counting_vector< uint16_t > selectedBinsRev;
-
-        if ( offset > 1 )
-        {
-            auto hashes{ read_seq | hash_adaptor | seqan3::views::to< std::vector > };
-            auto hashes2{ read_seq2 | hash_adaptor | seqan3::views::to< std::vector > };
-            auto hashesRev{ read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor
-                            | seqan3::views::to< std::vector > };
-            auto hashes2Rev{ read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor
-                             | seqan3::views::to< std::vector > };
-
-            selectedBins = agents[i].bulk_count( get_offset_hashes( hashes, offset ) );
-            selectedBins += agents[i].bulk_count( get_offset_hashes( hashes2Rev, offset ) );
-
-            selectedBinsRev = agents[i].bulk_count( get_offset_hashes( hashesRev, offset ) );
-            selectedBinsRev += agents[i].bulk_count( get_offset_hashes( hashes2, offset ) );
-        }
-        else
-        {
-            // FR
-            selectedBins = agents[i].bulk_count( read_seq | hash_adaptor );
-            selectedBins +=
-                agents[i].bulk_count( read_seq2 | std::views::reverse | seqan3::views::complement | hash_adaptor );
-
-            // RF
-            selectedBinsRev =
-                agents[i].bulk_count( read_seq | std::views::reverse | seqan3::views::complement | hash_adaptor );
-            selectedBinsRev += agents[i].bulk_count( read_seq2 | hash_adaptor );
-        }
-
-        // Calculate error rate on one read
-        int16_t threshold =
-            ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers( read_seq.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors( read_seq.size(), kmer_size, filters[i].filter_config.max_error, offset );
-
-        // sum kmers of second read (if using errors, get all possible kmers)
-        threshold +=
-            ( filters[i].filter_config.min_kmers > -1 )
-                ? get_threshold_kmers( read_seq2.size(), kmer_size, filters[i].filter_config.min_kmers, offset )
-                : get_threshold_errors( read_seq2.size(), kmer_size, 0, offset );
-
-        // select matches above chosen threshold
-        select_matches( matches, selectedBins, selectedBinsRev, filters[i], threshold, max_kmer_count_read );
+        threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
     }
-    return max_kmer_count_read;
-}
-
-uint32_t filter_matches( ReadOut&  read_out,
-                         TMatches& matches,
-                         TRep&     rep,
-                         uint16_t  read1_len,
-                         uint16_t  read2_len,
-                         uint16_t  max_kmer_count_read,
-                         uint8_t   kmer_size,
-                         uint8_t   offset,
-                         int16_t   strata_filter )
-{
-
-    int16_t threshold_strata = 1; // minimum threshold (when strata_filter == -1)
-    if ( strata_filter > -1 )
+    else if ( hierarchy_config.abs_filter >= 0 )
     {
-        // get maximum possible number of errors
-        uint16_t max_error = get_error( read1_len, read2_len, kmer_size, max_kmer_count_read, offset );
-
+        // get maximum possible number of errors of best match + abs_filter
+        uint16_t max_error_threshold =
+            get_abs_error( kmers, kmer_size, offset, max_kmer_count_read ) + hierarchy_config.abs_filter;
         // get min kmer count necesary to achieve the calculated number of errors
-        threshold_strata = get_threshold_errors( read1_len, kmer_size, max_error + strata_filter, offset );
-
-        if ( read2_len )
-        {
-            threshold_strata += get_threshold_errors( read2_len, kmer_size, 0, offset );
-        }
+        threshold_filter = threshold_abs( kmers, max_error_threshold, kmer_size, offset );
     }
+    return threshold_filter;
+}
 
-    for ( auto const& v : matches )
-    { // matches[target] = kmerCount
-        if ( v.second >= threshold_strata )
-        { // apply strata filter
-            rep[v.first].matches++;
-            read_out.matches.push_back( ReadMatch{ v.first, v.second } );
+uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
+{
+
+    for ( auto const& [target, kmer_count] : matches )
+    {
+        if ( kmer_count >= threshold_filter )
+        {
+            rep[target].matches++;
+            read_out.matches.push_back( ReadMatch{ target, kmer_count } );
         }
     }
 
@@ -446,8 +316,9 @@ uint32_t filter_matches( ReadOut&  read_out,
 
 void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_count_read, LCA& lca, TRep& rep )
 {
+
     std::vector< std::string > targets;
-    for ( auto& r : read_out.matches )
+    for ( auto const& r : read_out.matches )
     {
         targets.push_back( r.target );
     }
@@ -460,7 +331,6 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_co
 
 void classify( std::vector< Filter >&    filters,
                LCA&                      lca,
-               TTax&                     tax,
                TRep&                     rep,
                Total&                    total,
                SafeQueue< ReadOut >&     classified_all_queue,
@@ -469,17 +339,19 @@ void classify( std::vector< Filter >&    filters,
                Config const&             config,
                SafeQueue< ReadBatches >* pointer_current,
                SafeQueue< ReadBatches >* pointer_helper,
+               HierarchyConfig const&    hierarchy_config,
                bool                      hierarchy_first,
                bool                      hierarchy_last,
-               uint8_t                   offset,
-               int16_t                   max_error_unique,
-               uint8_t                   kmer_size,
-               int16_t                   strata_filter,
                bool                      run_lca )
 {
 
+    // get max from kmer/window size
+    uint16_t wk_size = ( hierarchy_config.window_size > 0 ) ? hierarchy_config.window_size : hierarchy_config.kmer_size;
+
     // oner hash adaptor per thread
-    auto hash_adaptor = seqan3::views::kmer_hash( seqan3::ungapped{ kmer_size } );
+    auto kmer_hash      = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
+    auto minimiser_hash = seqan3::views::minimiser_hash(
+        seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } }, seqan3::window_size{ wk_size } );
 
     // one agent per thread per filter
     std::vector< TAgent > agents;
@@ -502,104 +374,127 @@ void classify( std::vector< Filter >&    filters,
 
         for ( uint32_t readID = 0; readID < rb.ids.size(); ++readID )
         {
+            // read lenghts
             uint16_t read1_len = rb.seqs[readID].size();
-            uint16_t read2_len = 0;
+            uint16_t read2_len = rb.paired ? rb.seqs2[readID].size() : 0;
 
+            // Store matches for this read
             TMatches matches;
-            ReadOut  read_out( rb.ids[readID] );
+
+            // Retrieve hashes from kmers/minimizers
+            std::vector< size_t > hashes_f;
+            std::vector< size_t > hashes_r;
+            std::vector< size_t > hashes_f2;
+            std::vector< size_t > hashes_r2;
+
+            // hash count
+            uint16_t kmers = 0;
+            // Best scoring kmer count
             uint16_t max_kmer_count_read = 0;
-
-            // Find matches for read
-            if ( rb.paired )
-            { // paired-end mode
-                read2_len = rb.seqs2[readID].size();
-                if ( read1_len >= kmer_size && read2_len >= kmer_size )
-                {
-                    max_kmer_count_read = find_matches_paired(
-                        matches, filters, agents, rb.seqs[readID], rb.seqs2[readID], kmer_size, offset, hash_adaptor );
-                    if ( hierarchy_first )
-                    {
-                        total.reads_processed++;
-                        total.length_processed += read1_len + read2_len;
-                    }
-                }
-            }
-            else
+            if ( read1_len >= wk_size )
             {
-                if ( read1_len >= kmer_size )
+                // Count hashes from first pair
+                get_hashes( rb.seqs[readID],
+                            hashes_f,
+                            hashes_r,
+                            hierarchy_config.window_size,
+                            hierarchy_config.offset,
+                            kmer_hash,
+                            minimiser_hash );
+                kmers = hashes_f.size();
+
+                // Count hashes from second pair if given
+                if ( read2_len >= wk_size )
                 {
-                    max_kmer_count_read =
-                        find_matches( matches, filters, agents, rb.seqs[readID], kmer_size, offset, hash_adaptor );
-                    if ( hierarchy_first )
+                    // Send r and f reversed to calculate FR --> RF <-- reads
+                    get_hashes( rb.seqs2[readID],
+                                hashes_r2,
+                                hashes_f2,
+                                hierarchy_config.window_size,
+                                hierarchy_config.offset,
+                                kmer_hash,
+                                minimiser_hash );
+                    kmers += hashes_f2.size();
+                }
+
+                // Sum sequence to totals
+                if ( hierarchy_first )
+                {
+                    total.reads_processed++;
+                    total.length_processed += read1_len + read2_len;
+                }
+
+                // For each filter in the hierarchy
+                for ( uint8_t i = 0; i < filters.size(); ++i )
+                {
+                    // count matches
+                    seqan3::counting_vector< uint16_t > counts_f = agents[i].bulk_count( hashes_f );
+                    seqan3::counting_vector< uint16_t > counts_r = agents[i].bulk_count( hashes_r );
+
+                    if ( rb.paired )
                     {
-                        total.reads_processed++;
-                        total.length_processed += read1_len;
+                        counts_f += agents[i].bulk_count( hashes_f2 );
+                        counts_r += agents[i].bulk_count( hashes_r2 );
                     }
+
+                    // Calculate threshold for cutoff (keep matches above)
+                    uint16_t threshold_cutoff = 0;
+                    if ( filters[i].filter_config.rel_cutoff >= 0 )
+                        threshold_cutoff = threshold_rel( kmers, filters[i].filter_config.rel_cutoff );
+                    else if ( filters[i].filter_config.abs_cutoff >= 0 )
+                        threshold_cutoff = threshold_abs( kmers,
+                                                          filters[i].filter_config.abs_cutoff,
+                                                          hierarchy_config.kmer_size,
+                                                          hierarchy_config.offset );
+
+                    // select matches based on threshold cutoff
+                    select_matches( matches, counts_f, counts_r, filters[i], threshold_cutoff, max_kmer_count_read );
                 }
             }
 
-            // if there were some assignments
+            // store read and matches to be printed
+            ReadOut read_out( rb.ids[readID] );
+
+            // if read got valid matches (above cutoff)
             if ( max_kmer_count_read > 0 )
             {
+                total.reads_classified++;
 
-                // filter matches
-                uint32_t count_filtered_matches = filter_matches( read_out,
-                                                                  matches,
-                                                                  rep,
-                                                                  read1_len,
-                                                                  read2_len,
-                                                                  max_kmer_count_read,
-                                                                  kmer_size,
-                                                                  config.offset,
-                                                                  strata_filter );
+                // Calculate threshold for filtering (keep matches above)
+                uint16_t threshold_filter = get_threshold_filter(
+                    hierarchy_config, kmers, max_kmer_count_read, hierarchy_config.kmer_size, hierarchy_config.offset );
 
-                // If there are valid matches after filtering
-                if ( count_filtered_matches > 0 )
+                // Filter matches
+                uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
+
+                if ( run_lca )
                 {
-                    total.reads_classified++;
-                    if ( run_lca )
+                    ReadOut read_out_lca( rb.ids[readID] );
+                    if ( count_filtered_matches == 1 )
                     {
-                        ReadOut read_out_lca( rb.ids[readID] );
-                        if ( count_filtered_matches == 1 )
-                        {
-                            read_out_lca = read_out; // just one match, copy read read_out
-                            if ( max_error_unique >= 0 )
-                            {
-                                // re-classify read to parent if threshold<=max_error_unique
-                                check_unique( read_out_lca,
-                                              read1_len,
-                                              read2_len,
-                                              kmer_size,
-                                              max_error_unique,
-                                              config.offset,
-                                              tax,
-                                              rep );
-                            }
-                            else
-                            {
-                                rep[read_out.matches[0].target].unique_reads++;
-                            }
-                        }
-                        else
-                        {
-                            lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
-                        }
-
-                        if ( config.output_lca )
-                            classified_lca_queue.push( read_out_lca );
-                    }
-                    else if ( count_filtered_matches == 1 )
-                    {
-                        // Not running lca and unique match
+                        // just one match, copy read read_out and set as unique
+                        read_out_lca = read_out;
                         rep[read_out.matches[0].target].unique_reads++;
                     }
+                    else
+                    {
+                        lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
+                    }
 
-                    if ( config.output_all )
-                        classified_all_queue.push( read_out );
-
-                    // read classified, continue to the next
-                    continue;
+                    if ( config.output_lca )
+                        classified_lca_queue.push( read_out_lca );
                 }
+                else if ( count_filtered_matches == 1 )
+                {
+                    // Not running lca and has unique match
+                    rep[read_out.matches[0].target].unique_reads++;
+                }
+
+                if ( config.output_all )
+                    classified_all_queue.push( read_out );
+
+                // read classified, continue to the next
+                continue;
             }
 
             // not classified
@@ -796,28 +691,28 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         for ( auto const& h : config.parsed_hierarchy )
         {
             std::string hierarchy_label = h.first;
-            avg_matches                 = stats.hiearchy_total[hierarchy_label].reads_classified
-                              ? ( stats.hiearchy_total[hierarchy_label].matches
-                                  / static_cast< double >( stats.hiearchy_total[hierarchy_label].reads_classified ) )
+            avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
+                              ? ( stats.hierarchy_total[hierarchy_label].matches
+                                  / static_cast< double >( stats.hierarchy_total[hierarchy_label].reads_classified ) )
                               : 0;
-            std::cerr << " - " << hierarchy_label << ": " << stats.hiearchy_total[hierarchy_label].reads_classified
+            std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
-                      << ( stats.hiearchy_total[hierarchy_label].reads_classified
+                      << ( stats.hierarchy_total[hierarchy_label].reads_classified
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.hiearchy_total[hierarchy_label].unique_matches << " unique ("
-                      << ( stats.hiearchy_total[hierarchy_label].unique_matches
+                      << "%) " << stats.hierarchy_total[hierarchy_label].unique_matches << " unique ("
+                      << ( stats.hierarchy_total[hierarchy_label].unique_matches
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
                       << "%) "
-                      << stats.hiearchy_total[hierarchy_label].reads_classified
-                             - stats.hiearchy_total[hierarchy_label].unique_matches
+                      << stats.hierarchy_total[hierarchy_label].reads_classified
+                             - stats.hierarchy_total[hierarchy_label].unique_matches
                       << " multiple ("
-                      << ( ( stats.hiearchy_total[hierarchy_label].reads_classified
-                             - stats.hiearchy_total[hierarchy_label].unique_matches )
+                      << ( ( stats.hierarchy_total[hierarchy_label].reads_classified
+                             - stats.hierarchy_total[hierarchy_label].unique_matches )
                            / static_cast< double >( stats.total.reads_processed ) )
                              * 100
-                      << "%) " << stats.hiearchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
+                      << "%) " << stats.hierarchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
                       << ")" << std::endl;
         }
     }
@@ -922,7 +817,7 @@ TTax merge_tax( std::vector< detail::Filter > const& filters )
     }
 }
 
-void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax )
+void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax, bool quiet )
 {
     for ( auto const& filter : filters )
     {
@@ -931,8 +826,9 @@ void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& t
             if ( tax.count( target ) == 0 )
             {
                 tax[target] = Node{ "1", "no rank", target };
-                std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
-                          << std::endl;
+                if ( !quiet )
+                    std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
+                              << std::endl;
             }
         }
     }
@@ -947,7 +843,6 @@ void pre_process_lca( LCA& lca, TTax& tax )
     lca.doEulerWalk();
 }
 
-
 } // namespace detail
 
 bool run( Config config )
@@ -958,7 +853,7 @@ bool run( Config config )
         return false;
 
     // Print config
-    if ( !config.quiet && config.verbose )
+    if ( config.verbose )
         std::cerr << config;
 
     // Start time count
@@ -1012,6 +907,7 @@ bool run( Config config )
                                               config.output_prefix + ".unc" );
     }
 
+
     // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = config.parsed_hierarchy.size();
@@ -1040,7 +936,7 @@ bool run( Config config )
             // merge repeated elements from multiple filters
             tax = detail::merge_tax( filters );
             // if target not found in tax, add node target with parent = "1" (root)
-            detail::validate_targets_tax( filters, tax );
+            detail::validate_targets_tax( filters, tax, config.quiet );
             // pre-processing of nodes to generate LCA
             detail::pre_process_lca( lca, tax );
         }
@@ -1114,7 +1010,6 @@ bool run( Config config )
                                             detail::classify,
                                             std::ref( filters ),
                                             std::ref( lca ),
-                                            std::ref( tax ),
                                             std::ref( reports[taskNo] ),
                                             std::ref( totals[taskNo] ),
                                             std::ref( classified_all_queue ),
@@ -1123,12 +1018,9 @@ bool run( Config config )
                                             std::ref( config ),
                                             pointer_current,
                                             pointer_helper,
+                                            hierarchy_config,
                                             hierarchy_first,
                                             hierarchy_last,
-                                            config.offset,
-                                            hierarchy_config.max_error_unique,
-                                            hierarchy_config.kmer_size,
-                                            hierarchy_config.strata_filter,
                                             run_lca ) );
         }
 

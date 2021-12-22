@@ -10,13 +10,6 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-7 (coverage)"
-      os: linux
-      addons:
-        apt: { packages: [g++-7, lcov],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
-
     - name: "linux gcc-8"
       os: linux
       addons:
@@ -31,25 +24,39 @@ matrix:
                sources:  [ubuntu-toolchain-r-test] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
+    - name: "linux gcc-10"
+      os: linux
+      addons:
+        apt: { packages: [g++-10],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
+
+    - name: "linux gcc-7 (coverage)"
+      os: linux
+      addons:
+        apt: { packages: [g++-7, lcov],
+               sources:  [ubuntu-toolchain-r-test] }
+      env: MATRIX_EVAL="CC=gcc-7 && CXX=g++-7 && BUILD_TYPE=Coverage && GCOV=gcov-7"
+
 before_install:
   - eval "${MATRIX_EVAL}"
-  - sudo python3 -m pip install --upgrade pip
-  - sudo python3 -m pip install "pandas>=0.22.0"
-  - sudo python3 -m pip install binpacking==1.4.3
+  - python3 -m pip install --upgrade pip
+  - python3 -m pip install "pandas>=0.22.0"
+  - python3 -m pip install binpacking==1.4.3
   - binpacking -h # ret 0
   - git clone https://github.com/pirovc/pylca.git
   - cd pylca
   - git checkout d1474b2ec2c028963bafce278ccb69cc21c061fa #v1.0.0
-  - sudo python3 setup.py install
+  - python3 setup.py install --user
   - cd ..
   - git clone https://github.com/pirovc/taxsbp.git
   - cd taxsbp
   - git checkout 35ffb1e1a92f6199d757dfdd2f1971db29dd4070 # v1.1.1
-  - sudo python3 setup.py install
+  - python3 setup.py install --user
   - taxsbp -h # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      sudo python3 -m pip install coverage;
+      python3 -m pip install coverage;
     fi
 
 script:
@@ -64,7 +71,7 @@ script:
   - cd ..
   - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - sudo python3 setup.py install
+  - python3 setup.py install --user
   - ganon -h # ret 0
 
 after_success:

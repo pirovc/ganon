@@ -177,7 +177,7 @@ def print_final_report(reports, counts, tax, output_file, cfg):
 
     # Reporting reads, first line prints unclassified entries
     if cfg.report_type=="reads":
-        unclassified_line = ["unclassified","","","unclassified","0","0","0",str(counts["total"]["unclassified"]),str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
+        unclassified_line = ["unclassified","-","-","unclassified","0","0","0",str(counts["total"]["unclassified"]),str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
         if cfg.output_format in ["tsv","csv"]:
             print(*unclassified_line, file=tre_file, sep="\t" if cfg.output_format=="tsv" else ",")
         else:
