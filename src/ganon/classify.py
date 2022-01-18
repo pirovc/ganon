@@ -7,18 +7,32 @@ from ganon.gnn import Gnn
 def classify(cfg):
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
 
-    kmer_size = []
-    window_size = []
-    for db_prefix in cfg.db_prefix:
+    kmer_size = set()
+    window_size = set()
+    for i, db_prefix in enumerate(cfg.db_prefix):
         gnn = Gnn(file=db_prefix+".gnn")
-        kmer_size.append(gnn.kmer_size)
-        window_size.append(gnn.window_size)
+        if cfg.hierarchy_labels:
+            # one per hierarchical label
+            kmer_size.add((cfg.hierarchy_labels[i], gnn.kmer_size))
+            window_size.add((cfg.hierarchy_labels[i], gnn.window_size))
+        else:
+            kmer_size.add(gnn.kmer_size)
+            window_size.add(gnn.window_size)
+
+    if cfg.hierarchy_labels:
+        # Sort by hierarchical label and get value
+        kmer_size = [value for _, value in sorted(kmer_size, key=lambda tup: tup[0])]
+        window_size = [value for _, value in sorted(window_size, key=lambda tup: tup[0])]
+
+    if len(kmer_size) != len(window_size):
+        print_log("Incompatible databases", cfg.quiet)
+        return False
 
     run_ganon_classify = " ".join([cfg.path_exec['classify'],
-                                   "--single-reads " +  ",".join(cfg.single_reads) if cfg.single_reads else "",
-                                   "--paired-reads " +  ",".join(cfg.paired_reads) if cfg.paired_reads else "",
+                                   "--single-reads " + ",".join(cfg.single_reads) if cfg.single_reads else "",
+                                   "--paired-reads " + ",".join(cfg.paired_reads) if cfg.paired_reads else "",
                                    "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in cfg.db_prefix]),
-                                   "--map " + ",".join([db_prefix+".map" for db_prefix in cfg.db_prefix]), 
+                                   "--map " + ",".join([db_prefix+".map" for db_prefix in cfg.db_prefix]),
                                    "--tax " + ",".join([db_prefix+".tax" for db_prefix in cfg.db_prefix]),
                                    "--kmer-size " + ",".join(map(str, kmer_size)),
                                    "--window-size " + ",".join(map(str, window_size)),

@@ -72,10 +72,28 @@ class TestClassifyOffline(unittest.TestCase):
 
     def test_multiple_databases(self):
         """
-        Test run with default parameters
+        Test run with multiple databases 
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_multiple_databases"
+        params["db_prefix"] = [data_dir+"bacteria_assembly", data_dir+"bacteria_default"]
+        params["rel_cutoff"] = ["0.25", "0.1"]
+        params["output_single"] = True
+
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+
+    def test_multiple_hierarchy(self):
+        """
+        Test run with multiple databases and hierarchy
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_multiple_hierarchy"
         params["db_prefix"] = [data_dir+"bacteria_assembly", data_dir+"bacteria_default"]
         params["rel_cutoff"] = ["0.25", "0.1"]
         params["hierarchy_labels"] = ["1_assembly", "2_default"]
@@ -88,7 +106,6 @@ class TestClassifyOffline(unittest.TestCase):
         # General sanity check of results
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
-
 
 def classify_classify_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
