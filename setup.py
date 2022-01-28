@@ -13,11 +13,10 @@ def read(filename):
 
 setup(
     name="ganon",
-    version="1.1.1",
+    version="1.1.2",
     url="https://www.github.com/pirovc/ganon",
     license='MIT',
     author="Vitor C. Piro",
-    author_email="pirovc@posteo.net",
     description="ganon is a k-mer based read classification tool which uses Interleaved Bloom Filters in conjunction with a taxonomic clustering and a k-mer counting-filtering scheme.",
     long_description=read("README.md"),
     package_dir={'': 'src'},

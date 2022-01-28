@@ -4,7 +4,7 @@ from ganon.util import *
 
 class Config:
 
-    version = '1.1.1'
+    version = '1.1.2'
     path_exec = {'build': "", 'classify': "", 'get_seq_info': ""}
     empty = False
 
@@ -26,7 +26,7 @@ class Config:
         build_group_important.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. To use assembly, strain or further specializations, check --specialization. Default: species')
         build_group_important.add_argument('-m', '--max-filter-size', type=float,          metavar='',                    help='Given an approx. upper limit in Megabytes (MB) for filter/memory usage. When using --window-size, filter may be significantly smaller after build depending on the level of similarity of your input sequences. [Mutually exclusive --bin-length]')
         build_group_important.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters [Mutually exclusive --filter-size]. Default: 0.05')
-        
+
         build_group_filter = build_parser.add_argument_group('filter arguments')
         build_group_filter.add_argument('-k', '--kmer-size',             type=int,      metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
         build_group_filter.add_argument('-w', '--window-size',           type=int,      metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
