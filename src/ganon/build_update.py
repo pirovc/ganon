@@ -500,10 +500,14 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
         for acc2txid in seq_info_mode:
             dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder, cfg.quiet))
 
-        print_log("Parsing accession2taxid files", cfg.quiet)     
+        print_log("Parsing accession2taxid files", cfg.quiet)
         count_acc2txid = parse_acc2txid(seqinfo, dowloaded_acc2txid_files)
         for acc2txid_file, cnt in count_acc2txid.items():
             print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file", cfg.quiet)
+
+        # filter out taxids not found
+        seqinfo.dropna(subset=['taxid'])
+
         # Check if retrieved taxids are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
             print_log(" - could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions", cfg.quiet)
@@ -538,10 +542,12 @@ def parse_acc2txid(seqinfo, acc2txid_files):
                                        skiprows=1,
                                        usecols=[1, 2],
                                        names=['seqid', 'taxid'],
-                                       converters={'seqid': lambda x: x if x in unique_seqids else ""},
+                                       index_col='seqid',
+                                       converters={'seqid': lambda x: x if x in unique_seqids else None},
                                        dtype={'taxid': 'str'})
-        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['seqid'] != ""]  # keep only seqids used
+        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids.index.notnull()] # keep only seqids used
         tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['taxid'] != "0"]  # filter out taxid==0
+
         # save count to return
         count_acc2txid[acc2txid] = tmp_seqid_taxids.shape[0]
         # merge taxid retrieved based on seqid (if any)

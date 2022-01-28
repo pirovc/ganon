@@ -41,7 +41,7 @@ class SeqInfo:
         self.seqinfo.dropna(subset=subset, inplace=True)
 
     def join(self, df, field):
-        self.seqinfo[field] = self.seqinfo.join(df.set_index('seqid'), on="seqid", how="left", rsuffix="_tojoin")[field+"_tojoin"]        
+        self.seqinfo[field] = self.seqinfo.join(df, on="seqid", how="left", rsuffix="_tojoin")[field+"_tojoin"]
 
     def parse_seq_info_file(self, seq_info_file, use_specialization: bool=False):
         self.seqinfo = pd.read_csv(seq_info_file, 
