@@ -500,10 +500,14 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
         for acc2txid in seq_info_mode:
             dowloaded_acc2txid_files.append(get_accession2taxid(acc2txid, tmp_output_folder, cfg.quiet))
 
-        print_log("Parsing accession2taxid files", cfg.quiet)     
+        print_log("Parsing accession2taxid files", cfg.quiet)
         count_acc2txid = parse_acc2txid(seqinfo, dowloaded_acc2txid_files)
         for acc2txid_file, cnt in count_acc2txid.items():
             print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file", cfg.quiet)
+
+        # filter out taxids not found
+        seqinfo.dropna(subset=['taxid'])
+
         # Check if retrieved taxids are the same as number of inputs, reset counter
         if seqinfo.size() < seqid_total_count:
             print_log(" - could not retrieve taxid for " + str(seqid_total_count - seqinfo.size()) + " accessions", cfg.quiet)
@@ -516,6 +520,7 @@ def retrieve_seqinfo(seqinfo, tmp_output_folder, input_files, cfg):
             parse_eutils(seqinfo, tmp_output_folder, cfg.path_exec['get_seq_info'], cfg.quiet, skip_len_taxid=True, get_assembly=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+
 def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     tx = time.time()
     acc2txid_file = acc2txid + ".accession2taxid.gz"
@@ -526,21 +531,32 @@ def get_accession2taxid(acc2txid, tmp_output_folder, quiet):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return acc2txid_file
 
+
 def parse_acc2txid(seqinfo, acc2txid_files):
     count_acc2txid = {}
     unique_seqids = set(seqinfo.get_seqids())
     for acc2txid in acc2txid_files:
-        tmp_seqid_taxids = pd.read_csv(acc2txid, sep='\t', header=None, skiprows=1, usecols=[1,2], names=['seqid','taxid'], converters={'seqid':lambda x: x if x in unique_seqids else ""}, dtype={'taxid': 'str'})
-        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['seqid']!=""] #keep only seqids used
-        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['taxid']!="0"] # filter out taxid==0
+        tmp_seqid_taxids = pd.read_csv(acc2txid,
+                                       sep='\t',
+                                       header=None,
+                                       skiprows=1,
+                                       usecols=[1, 2],
+                                       names=['seqid', 'taxid'],
+                                       index_col='seqid',
+                                       converters={'seqid': lambda x: x if x in unique_seqids else None},
+                                       dtype={'taxid': 'str'})
+        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids.index.notnull()] # keep only seqids used
+        tmp_seqid_taxids = tmp_seqid_taxids[tmp_seqid_taxids['taxid'] != "0"]  # filter out taxid==0
+
         # save count to return
-        count_acc2txid[acc2txid] = tmp_seqid_taxids.shape[0]    
-        # merge taxid retrieved based on seqid
-        seqinfo.join(tmp_seqid_taxids, "taxid")
+        count_acc2txid[acc2txid] = tmp_seqid_taxids.shape[0]
+        # merge taxid retrieved based on seqid (if any)
+        if count_acc2txid[acc2txid]:
+            seqinfo.join(tmp_seqid_taxids, "taxid")
         del tmp_seqid_taxids
         #if already found all seqids no need to parse all files till the end)
-        if sum(count_acc2txid.values()) == len(unique_seqids): 
-            break 
+        if sum(count_acc2txid.values()) == len(unique_seqids):
+            break
 
     return count_acc2txid
 
