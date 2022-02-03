@@ -574,11 +574,13 @@ def optimal_bins(n):
     return math.ceil(n / float(64)) * 64
 
 
-def estimate_n_bins(bin_len, overlap_len, groups_len): 
+def estimate_n_bins(bin_len, overlap_len, groups_len):
     # Estimate an approximate number of bins give the parameters
     frag_len = bin_len - overlap_len
-    n_bins = sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
-    return n_bins
+    if frag_len > overlap_len:
+        return sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
+    else:
+        return 0
 
 
 def estimate_elements(bin_len, kmer_size, window_size):
@@ -636,7 +638,10 @@ def estimate_bin_length(cfg, seqinfo, tax):
 
     # Set limits
     # fixed start size (too low generates few possible cases for analysis)
-    min_bin_len = 500
+    if cfg.overlap_length > 0:
+        min_bin_len = cfg.overlap_length * 2
+    else:
+        min_bin_len = 500
     # Biggest group as max
     max_bin_len = max(groups_len.values())
     # Try to find min. size by simulating points in geometric space
