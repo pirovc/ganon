@@ -80,7 +80,7 @@ Generate readable reports, with filter options
 
 ```bash
 ganon report --db-prefix sample_bacteria --rep-file sample_results.rep \
-             --min-percentage 0.5 --ranks all \
+             --min-count 0.5 --ranks all \
              --output-prefix new_report -f tsv
 ```
 
