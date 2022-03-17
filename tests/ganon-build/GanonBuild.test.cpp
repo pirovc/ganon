@@ -174,9 +174,9 @@ Testing scheme:
 
 // Default sequences to build
 const ids_type       ids{ "S1", "S2", "S3" };
-const sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna5,
-                           "TTGGGGCTAAACAGCACTATACAGGCGGCTAGCATGTATTAGGGGAGCTC"_dna5,
-                           "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna5 };
+const sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna4,
+                           "TTGGGGCTAAACAGCACTATACAGGCGGCTAGCATGTATTAGGGGAGCTC"_dna4,
+                           "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna4 };
 const bins_type      bins{ 0, 1, 2 };
 
 SCENARIO( "building indices", "[ganon-build]" )
@@ -237,12 +237,21 @@ SCENARIO( "building indices", "[ganon-build]" )
         }
         SECTION( "31" )
         {
-            // Should failed due to size limitation with dna5 (max 27, otherwise 32 with dna4)
-            // https://docs.seqan.de/seqan/3-master-user/group__search__views.html#ga6e598d6a021868f704d39df73252974f
             auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_31", seqs, ids, bins );
             cfg.kmer_size = 31;
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg, bins );
+            REQUIRE( config_build::validate_elements( cfg, seqs, bins ) );
+        }
+        SECTION( "33" )
+        {
+            // Should failed due to size limitation with dna4 (max 27, otherwise 32 with dna4)
+            // https://docs.seqan.de/seqan/3-master-user/group__search__views.html#ga6e598d6a021868f704d39df73252974f
+            auto cfg      = config_build::defaultConfig( folder_prefix + "kmer_size_33", seqs, ids, bins );
+            cfg.kmer_size = 33;
             REQUIRE_THROWS( GanonBuild::run( cfg ) );
         }
+
     }
 
     SECTION( "--hash-functions" )
@@ -323,8 +332,8 @@ SCENARIO( "building indices", "[ganon-build]" )
     {
         // Sequences with repeated patterns
         const ids_type       ids{ "S1", "S2" };
-        const sequences_type seqs{ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"_dna5,
-                                   "GGGGGGGGGGGGGGGGGGGGGGGGGGCCCCCCCCCCCCCCCCCCCCCCCC"_dna5 };
+        const sequences_type seqs{ "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"_dna4,
+                                   "GGGGGGGGGGGGGGGGGGGGGGGGGGCCCCCCCCCCCCCCCCCCCCCCCC"_dna4 };
         const bins_type      bins{ 0, 1 };
 
         auto cfg_off           = config_build::defaultConfig( folder_prefix + "count_hashes_off", seqs, ids, bins );
@@ -423,9 +432,9 @@ SCENARIO( "updating indices", "[ganon-build]" )
 
     // extra sequences to update
     const ids_type       extra_ids{ "S4", "S5", "S6" };
-    const sequences_type extra_seqs{ "ATGAATTCAAGCCAATGTCGTTTGAAACAGAAGATGGTATTGCTACTGGC"_dna5,
-                                     "TGCTGCCATCAACTTGCAGAAGATGTCCTTTTCTGCGGTCTACGCTCAAG"_dna5,
-                                     "ATGCTGGTTAGACAGGACCTGTTAAGAAAAAGGAAACTCTCAATTGCACC"_dna5 };
+    const sequences_type extra_seqs{ "ATGAATTCAAGCCAATGTCGTTTGAAACAGAAGATGGTATTGCTACTGGC"_dna4,
+                                     "TGCTGCCATCAACTTGCAGAAGATGTCCTTTTCTGCGGTCTACGCTCAAG"_dna4,
+                                     "ATGCTGGTTAGACAGGACCTGTTAAGAAAAAGGAAACTCTCAATTGCACC"_dna4 };
     const bins_type      extra_bins{ 3, 4, 5 };
 
     std::string folder_prefix{ "ganon-build-update/" };
@@ -533,10 +542,10 @@ SCENARIO( "updating indices", "[ganon-build]" )
             {
                 auto file = prefix + ".S" + std::to_string( i ) + ".fasta";
                 // add dummy sequences
-                aux::write_sequences( file, { "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"_dna5 }, { std::to_string( i ) } );
+                aux::write_sequences( file, { "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"_dna4 }, { std::to_string( i ) } );
                 cfg_update_auto.reference_files.push_back( file );
                 // add empty sequences to validate_filter account for 0
-                many_seqs.push_back( ""_dna5 );
+                many_seqs.push_back( ""_dna4 );
                 // start bins at the last one from the build
                 many_bins.push_back( i + bins.back() );
             }
@@ -598,7 +607,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
             ids[1],
             ids[2],
         };
-        sequences_type rem_seqs{ "N"_dna5, seqs[1], seqs[2] };
+        sequences_type rem_seqs{ "N"_dna4, seqs[1], seqs[2] };
         bins_type      rem_bins{ 0, bins[1], bins[2] };
 
         auto cfg_update = config_build::defaultConfig( folder_prefix + "removing_seqs", rem_seqs, rem_ids, rem_bins );
@@ -618,7 +627,7 @@ SCENARIO( "updating indices", "[ganon-build]" )
         // first 2 entries are dummy (to be removed)
         // new sequence added to removed
         ids_type       new_ids{ "0", "0", ids[2], extra_ids[0], extra_ids[1], extra_ids[2] };
-        sequences_type new_seqs{ "N"_dna5, "N"_dna5, seqs[2], extra_seqs[0], extra_seqs[1], extra_seqs[2] };
+        sequences_type new_seqs{ "N"_dna4, "N"_dna4, seqs[2], extra_seqs[0], extra_seqs[1], extra_seqs[2] };
         bins_type      new_bins{ 0, 1, 2, 0, 2, 82 };
 
         auto cfg_update =
