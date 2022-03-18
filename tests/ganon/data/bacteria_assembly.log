@@ -7,14 +7,6 @@ Parsing taxonomy
  - done in 0.00s.
 
 Extracting sequence identifiers
-/home/pirov/code/ganon/src/ganon/seqinfo.py:32: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.seqinfo = self.seqinfo.append(df, ignore_index=True, sort=False)
-/home/pirov/code/ganon/src/ganon/seqinfo.py:32: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.seqinfo = self.seqinfo.append(df, ignore_index=True, sort=False)
-/home/pirov/code/ganon/src/ganon/seqinfo.py:32: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.seqinfo = self.seqinfo.append(df, ignore_index=True, sort=False)
-/home/pirov/code/ganon/src/ganon/seqinfo.py:32: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.seqinfo = self.seqinfo.append(df, ignore_index=True, sort=False)
  - 4 unique sequence headers successfully retrieved from 4 input file(s)
  - done in 0.03s.
 
@@ -22,8 +14,6 @@ Retrieving sequence information from NCBI E-utils
 Failed to get assembly accession/name for:
 NC_010333.1
 
-/home/pirov/code/ganon/src/ganon/seqinfo.py:32: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.seqinfo = self.seqinfo.append(df, ignore_index=True, sort=False)
  - 4 sequences successfully retrieved
  - done in 3.05s.
 
