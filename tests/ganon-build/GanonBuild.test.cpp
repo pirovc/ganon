@@ -251,7 +251,6 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.kmer_size = 33;
             REQUIRE_THROWS( GanonBuild::run( cfg ) );
         }
-
     }
 
     SECTION( "--hash-functions" )

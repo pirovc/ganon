@@ -100,7 +100,9 @@ void parse_sequences( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len,
     uint64_t binid = parse_sequences;
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
         for ( auto& [header, seq] : fin )
         {
@@ -125,7 +127,9 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
-        seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
         // read in chuncks of config.n_refs
         for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
@@ -188,7 +192,9 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
     uint64_t bin_count  = bin_len.size();
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
         for ( auto& [header, seq] : fin )
         {

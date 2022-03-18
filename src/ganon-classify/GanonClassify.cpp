@@ -694,9 +694,9 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         {
             std::string hierarchy_label = h.first;
             avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
-                              ? ( stats.hierarchy_total[hierarchy_label].matches
+                                              ? ( stats.hierarchy_total[hierarchy_label].matches
                                   / static_cast< double >( stats.hierarchy_total[hierarchy_label].reads_classified ) )
-                              : 0;
+                                              : 0;
             std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
                       << ( stats.hierarchy_total[hierarchy_label].reads_classified
@@ -724,7 +724,9 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
 {
     for ( auto const& reads_file : config.single_reads )
     {
-        seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin1{ reads_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
+            reads_file
+        };
         for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
         {
             detail::ReadBatches rb{ false };
@@ -741,8 +743,12 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
-            seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin1{ config.paired_reads[pair_cnt] };
-            seqan3::sequence_file_input<dna4_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> fin2{ config.paired_reads[pair_cnt + 1] };
+            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
+                config.paired_reads[pair_cnt]
+            };
+            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin2{
+                config.paired_reads[pair_cnt + 1]
+            };
             for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
                 detail::ReadBatches rb{ true };
