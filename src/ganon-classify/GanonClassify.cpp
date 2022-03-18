@@ -5,6 +5,7 @@
 #include <utils/LCA.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
+#include <utils/dna4_traits.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <seqan3/alphabet/views/complement.hpp>
@@ -35,6 +36,7 @@ typedef seqan3::interleaved_bloom_filter<>                                  TFil
 typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > TAgent;
 typedef robin_hood::unordered_map< std::string, uint16_t >                  TMatches;
 
+
 struct Node
 {
     std::string parent;
@@ -55,7 +57,7 @@ struct ReadBatches
         paired = _paired;
     }
 
-    ReadBatches( bool _paired, std::vector< std::string > _ids, std::vector< std::vector< seqan3::dna5 > > _seqs )
+    ReadBatches( bool _paired, std::vector< std::string > _ids, std::vector< std::vector< seqan3::dna4 > > _seqs )
     {
         paired = _paired;
         ids    = _ids;
@@ -64,8 +66,8 @@ struct ReadBatches
 
     ReadBatches( bool                                       _paired,
                  std::vector< std::string >                 _ids,
-                 std::vector< std::vector< seqan3::dna5 > > _seqs,
-                 std::vector< std::vector< seqan3::dna5 > > _seqs2 )
+                 std::vector< std::vector< seqan3::dna4 > > _seqs,
+                 std::vector< std::vector< seqan3::dna4 > > _seqs2 )
     {
         paired = _paired;
         ids    = _ids;
@@ -75,8 +77,8 @@ struct ReadBatches
 
     bool                                       paired = false;
     std::vector< std::string >                 ids;
-    std::vector< std::vector< seqan3::dna5 > > seqs;
-    std::vector< std::vector< seqan3::dna5 > > seqs2{};
+    std::vector< std::vector< seqan3::dna4 > > seqs;
+    std::vector< std::vector< seqan3::dna4 > > seqs2{};
 };
 
 struct ReadMatch
@@ -242,7 +244,7 @@ auto get_offset_hashes( auto& hashes, uint8_t offset )
            | seqan3::views::to< std::vector >;
 }
 
-void get_hashes( std::vector< seqan3::dna5 >& seq,
+void get_hashes( std::vector< seqan3::dna4 >& seq,
                  std::vector< size_t >&       hashes_f,
                  std::vector< size_t >&       hashes_r,
                  uint8_t                      window_size,
@@ -692,9 +694,9 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         {
             std::string hierarchy_label = h.first;
             avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
-                              ? ( stats.hierarchy_total[hierarchy_label].matches
+                                              ? ( stats.hierarchy_total[hierarchy_label].matches
                                   / static_cast< double >( stats.hierarchy_total[hierarchy_label].reads_classified ) )
-                              : 0;
+                                              : 0;
             std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
                       << ( stats.hierarchy_total[hierarchy_label].reads_classified
@@ -722,11 +724,13 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
 {
     for ( auto const& reads_file : config.single_reads )
     {
-        seqan3::sequence_file_input fin1{ reads_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
+            reads_file
+        };
         for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
         {
             detail::ReadBatches rb{ false };
-            for ( auto& [seq, id, qual] : rec )
+            for ( auto& [id, seq] : rec )
             {
                 rb.ids.push_back( std::move( id ) );
                 rb.seqs.push_back( std::move( seq ) );
@@ -739,18 +743,22 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
-            seqan3::sequence_file_input fin1{ config.paired_reads[pair_cnt] };
-            seqan3::sequence_file_input fin2{ config.paired_reads[pair_cnt + 1] };
+            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
+                config.paired_reads[pair_cnt]
+            };
+            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin2{
+                config.paired_reads[pair_cnt + 1]
+            };
             for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
                 detail::ReadBatches rb{ true };
-                for ( auto& [seq, id, qual] : rec )
+                for ( auto& [id, seq] : rec )
                 {
                     rb.ids.push_back( std::move( id ) );
                     rb.seqs.push_back( std::move( seq ) );
                 }
                 // loop in the second file and get same amount of reads
-                for ( auto& [seq, id, qual] : fin2 | std::views::take( config.n_reads ) )
+                for ( auto& [id, seq] : fin2 | std::views::take( config.n_reads ) )
                 {
                     rb.seqs2.push_back( std::move( seq ) );
                 }

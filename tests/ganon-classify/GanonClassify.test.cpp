@@ -201,17 +201,17 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
     std::filesystem::create_directory( folder_prefix );
 
     // Reads (14bp)
-    aux::write_sequences( folder_prefix + "rA.fasta", { "AAAAAAAAAAAAAA"_dna5 }, { "readA" } );
-    aux::write_sequences( folder_prefix + "rC.fasta", { "CCCCCCCCCCCCCC"_dna5 }, { "readC" } );
-    aux::write_sequences( folder_prefix + "rT.fasta", { "TTTTTTTTTTTTTT"_dna5 }, { "readT" } );
-    aux::write_sequences( folder_prefix + "rG.fasta", { "GGGGGGGGGGGGGG"_dna5 }, { "readG" } );
+    aux::write_sequences( folder_prefix + "rA.fasta", { "AAAAAAAAAAAAAA"_dna4 }, { "readA" } );
+    aux::write_sequences( folder_prefix + "rC.fasta", { "CCCCCCCCCCCCCC"_dna4 }, { "readC" } );
+    aux::write_sequences( folder_prefix + "rT.fasta", { "TTTTTTTTTTTTTT"_dna4 }, { "readT" } );
+    aux::write_sequences( folder_prefix + "rG.fasta", { "GGGGGGGGGGGGGG"_dna4 }, { "readG" } );
 
     // Sequences (20bp)
     const ids_type       ids{ "seqA", "seqC", "seqT", "seqG" };
-    const sequences_type seqs{ "AAAAAAAAAAAAAAAAAAAA"_dna5,
-                               "CCCCCCCCCCCCCCCCCCCC"_dna5,
-                               "TTTTTTTTTTTTTTTTTTTT"_dna5,
-                               "GGGGGGGGGGGGGGGGGGGG"_dna5 };
+    const sequences_type seqs{ "AAAAAAAAAAAAAAAAAAAA"_dna4,
+                               "CCCCCCCCCCCCCCCCCCCC"_dna4,
+                               "TTTTTTTTTTTTTTTTTTTT"_dna4,
+                               "GGGGGGGGGGGGGGGGGGGG"_dna4 };
 
 
     std::string        base_prefix{ folder_prefix + "base_build1" };
@@ -527,11 +527,11 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         // Additional filter with repeated sequences (As) and new sequence (CG)
 
         // Reads (14bp)
-        aux::write_sequences( folder_prefix + "rCG.fasta", { "CGCGCGCGCGCGCG"_dna5 }, { "readCG" } );
+        aux::write_sequences( folder_prefix + "rCG.fasta", { "CGCGCGCGCGCGCG"_dna4 }, { "readCG" } );
 
         // Sequences (20bp)
         const ids_type       ids2{ "seqA", "seqCG" };
-        const sequences_type seqs2{ "AAAAAAAAAAAAAAAAAAAA"_dna5, "CGCGCGCGCGCGCGCGCGCG"_dna5 };
+        const sequences_type seqs2{ "AAAAAAAAAAAAAAAAAAAA"_dna4, "CGCGCGCGCGCGCGCGCGCG"_dna4 };
 
         // Write additional IBF
         std::string        base_prefix2{ folder_prefix + "base_build2" };
@@ -717,31 +717,21 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
     std::filesystem::create_directory( folder_prefix );
 
     // Reads (12bp)
-    aux::write_sequences( folder_prefix + "rF.fasta", { "AAACCCTTTAAA"_dna5 }, { "readF" } );
-    // RevCom from CTCTGGGGAGAG
-    aux::write_sequences( folder_prefix + "rR.fasta", { "CTCTCCCCAGAG"_dna5 }, { "readR" } );
+    aux::write_sequences( folder_prefix + "rF.fasta", { "CTCGTGTTTCCT"_dna4 }, { "readF" } );
+    // RevCom from GGGCCTCTTGGT
+    aux::write_sequences( folder_prefix + "rR.fasta", { "ACCAAGAGGCCC"_dna4 }, { "readR" } );
 
     /*
-    AAACCCTTTAAA----CTCTGGGGAGAG  e0
-    AAA-CCTTTAAA----CTCTGGGGAGAG  e1F
-    AAA-CCTTTAAA----CTC-GGGGAGAG  e1F_e1R
-    AAA-CCTT-AAA----CTC-GGGGAGAG  e2F_e1R
-    AAA-CCTTTAAA----CTC-GGGG-GAG  e1F_e2R
-    AAA-CCTT-AAA----CTC-GGGG-GAG  e2F_e2R
-    AAA-C-TT-AAA----CTC-G-GG-GAG  e3F_e3R
-    AAAC            CTCT          k=4
-     AACC            TCTG
-      ACCC            CTGG
-       CCCT            TGGG
-        CCTT            GGGG
-         CTTT            GGGA
-          TTTA            GGAG
-           TTAA            GAGA
-            TAAA            AGAG
+    all unknow chars (not ACTG) are replace by A, causing some unexpected assignments
 
-          k=4
+    CTCGTGTTTCCT----GGGCCTCTTGGT  e0
+    CTC-TGTTTCCT----GGGCCTCTTGGT  e1F
+    CTC-TGTTTCCT----GGG-CTCTTGGT  e1F_e1R
+    CTC-TGTTTCCT----GGG-CTCT-GGT  e1F_e2R
+    CTC-TGTT-CCT----GGG-CTCTTGGT  e2F_e1R
+    CTC-TGTT-CCT----GGG-CTCT-GGT  e2F_e2R
 
-          max k-mer count
+          max 4-mer count
     F  e0 9
     F  e1 5
     F  e2 1
@@ -754,10 +744,9 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
     */
     // Sequences (28bp), error rates on references based on k = 4
     const ids_type       ids{ "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" };
-    const sequences_type seqs{ "AAACCCTTTAAA----CTCTGGGGAGAG"_dna5, "AAA-CCTTTAAA----CTCTGGGGAGAG"_dna5,
-                               "AAA-CCTTTAAA----CTC-GGGGAGAG"_dna5, "AAA-CCTTTAAA----CTC-GGGG-GAG"_dna5,
-                               "AAA-CCTT-AAA----CTC-GGGGAGAG"_dna5, "AAA-CCTT-AAA----CTC-GGGG-GAG"_dna5,
-                               "AAA-C-TT-AAA----CTC-G-GG-GAG"_dna5 };
+    const sequences_type seqs{ "CTCGTGTTTCCT----GGGCCTCTTGGT"_dna4, "CTC-TGTTTCCT----GGGCCTCTTGGT"_dna4,
+                               "CTC-TGTTTCCT----GGG-CTCTTGGT"_dna4, "CTC-TGTTTCCT----GGG-CTCT-GGT"_dna4,
+                               "CTC-TGTT-CCT----GGG-CTCTTGGT"_dna4, "CTC-TGTT-CCT----GGG-CTCT-GGT"_dna4 };
 
     std::string        base_prefix{ folder_prefix + "base_build3" };
     GanonBuild::Config cfg_build;
@@ -775,8 +764,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
                                   { "2", "e1F_e1R" },
                                   { "3", "e1F_e2R" },
                                   { "4", "e2F_e1R" },
-                                  { "5", "e2F_e2R" },
-                                  { "6", "e3F_e3R" } } );
+                                  { "5", "e2F_e2R" } } );
 
 
     SECTION( "--abs-cutoff 0 --abs-filter 0" )
@@ -1797,7 +1785,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
 
             // Should match only e0
             REQUIRE( res.all["readF"].size() == 1 );
-            REQUIRE( res.all["readF"]["e0"] == 5 );
+            REQUIRE( res.all["readF"]["e0"] == 4 );
 
             SECTION( "--paired-reads" )
             {
@@ -1811,7 +1799,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
 
                 // Should match only e0
                 REQUIRE( res.all["readF"].size() == 1 );
-                REQUIRE( res.all["readF"]["e0"] == 9 );
+                REQUIRE( res.all["readF"]["e0"] == 7 );
             }
         }
 
@@ -1831,11 +1819,13 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
 
-            REQUIRE( res.all["readF"].size() == 4 );
-            REQUIRE( res.all["readF"]["e0"] == 5 );
+            REQUIRE( res.all["readF"].size() == 6 );
+            REQUIRE( res.all["readF"]["e0"] == 4 );
             REQUIRE( res.all["readF"]["e1F"] == 3 );
             REQUIRE( res.all["readF"]["e1F_e1R"] == 3 );
             REQUIRE( res.all["readF"]["e1F_e2R"] == 3 );
+            REQUIRE( res.all["readF"]["e2F_e1R"] == 1 );
+            REQUIRE( res.all["readF"]["e2F_e2R"] == 1 );
 
             SECTION( "--paired-reads" )
             {
@@ -1847,22 +1837,25 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
                 config_classify::Res res{ cfg };
                 config_classify::sanity_check( cfg, res );
 
-                REQUIRE( res.all["readF"].size() == 5 );
-                REQUIRE( res.all["readF"]["e0"] == 9 );
-                REQUIRE( res.all["readF"]["e1F"] == 7 );
+                REQUIRE( res.all["readF"].size() == 6 );
+                REQUIRE( res.all["readF"]["e0"] == 7 );
+                REQUIRE( res.all["readF"]["e1F"] == 6 );
                 REQUIRE( res.all["readF"]["e1F_e1R"] == 5 );
                 REQUIRE( res.all["readF"]["e1F_e2R"] == 3 );
-                REQUIRE( res.all["readF"]["e2F_e1R"] == 2 );
+                REQUIRE( res.all["readF"]["e2F_e1R"] == 3 );
+                REQUIRE( res.all["readF"]["e2F_e2R"] == 1 );
             }
         }
     }
 
     SECTION( "reads with errors and --abs-cutoff 1 --abs-filter 0" )
     {
+
+
         // using same filter twice
         // reads with 1 error at beginning
-        aux::write_sequences( folder_prefix + "rFe1.fasta", { "-AACCCTTTAAA"_dna5 }, { "readFe1" } );
-        aux::write_sequences( folder_prefix + "rRe1.fasta", { "-TCTCCCCAGAG"_dna5 }, { "readRe1" } );
+        aux::write_sequences( folder_prefix + "rFe1.fasta", { "CTCGTGTTTCC-"_dna4 }, { "readFe1" } );
+        aux::write_sequences( folder_prefix + "rRe1.fasta", { "ACCAAGAGGCC-"_dna4 }, { "readRe1" } );
 
         std::string prefix{ folder_prefix + "reads_with_error_abs_cutoff_1" };
         auto        cfg  = config_classify::defaultConfig( prefix );
@@ -1876,11 +1869,9 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
 
-        REQUIRE( res.all["readFe1"].size() == 4 );
+        REQUIRE( res.all["readFe1"].size() == 1 );
         REQUIRE( res.all["readFe1"]["e0"] == 8 );
-        REQUIRE( res.all["readFe1"]["e1F"] == 5 );
-        REQUIRE( res.all["readFe1"]["e1F_e1R"] == 5 );
-        REQUIRE( res.all["readFe1"]["e1F_e2R"] == 5 );
+
 
         SECTION( "--paired-reads" )
         {

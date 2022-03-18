@@ -4,6 +4,7 @@
 
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
+#include <utils/dna4_traits.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -40,7 +41,7 @@ struct FragmentBin
 struct Seqs
 {
     std::string                 seqid;
-    std::vector< seqan3::dna5 > seq;
+    std::vector< seqan3::dna4 > seq;
     std::vector< FragmentBin >  fragbin;
 };
 
@@ -99,9 +100,11 @@ void parse_sequences( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len,
     uint64_t binid = parse_sequences;
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
-        for ( auto& [seq, header, qual] : fin )
+        for ( auto& [header, seq] : fin )
         {
             // Header id goes up-to first empty space
             const auto seqid = get_seqid( header );
@@ -124,12 +127,14 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
-        seqan3::sequence_file_input fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
         // read in chuncks of config.n_refs
         for ( auto&& records : fin | ranges::views::chunk( config.n_refs ) )
         {
-            for ( auto& [seq, header, qual] : records )
+            for ( auto& [header, seq] : records )
             {
                 const auto seqid = get_seqid( header );
                 stats.totalSeqsFile += 1;
@@ -187,9 +192,11 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
     uint64_t bin_count  = bin_len.size();
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input fin{ reference_file };
+        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            reference_file
+        };
 
-        for ( auto& [seq, header, qual] : fin )
+        for ( auto& [header, seq] : fin )
         {
             const auto seqid = get_seqid( header );
             if ( seq_bin.count( seqid ) > 0 )

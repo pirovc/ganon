@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cereal/archives/binary.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/io/sequence_file/output.hpp>
 #include <seqan3/io/sequence_file/record.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
@@ -16,9 +16,9 @@
 #include <vector>
 
 using bins_type            = std::vector< uint16_t >;
-using sequences_type       = std::vector< seqan3::dna5_vector >;
+using sequences_type       = std::vector< seqan3::dna4_vector >;
 using ids_type             = std::vector< std::string >;
-using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna5 >, std::string >,
+using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna4 >, std::string >,
                                                       seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
 
 namespace aux
