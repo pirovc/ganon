@@ -1,4 +1,5 @@
 #include "GanonClassify.hpp"
+#include "hierarchical_interleaved_bloom_filter.hpp"
 
 #include <robin_hood.h>
 
@@ -32,9 +33,10 @@ namespace GanonClassify
 namespace detail
 {
 
-typedef seqan3::interleaved_bloom_filter<>                                  TFilter;
-typedef seqan3::interleaved_bloom_filter<>::counting_agent_type< uint16_t > TAgent;
-typedef robin_hood::unordered_map< std::string, uint16_t >                  TMatches;
+typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
+typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
+
+typedef robin_hood::unordered_map< std::string, uint16_t > TMatches;
 
 
 struct Node
@@ -158,6 +160,7 @@ struct Stats
     }
 };
 
+template < typename TFilter >
 struct Filter
 {
     TFilter      ibf;
@@ -197,12 +200,13 @@ inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t cou
     return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
 
-void select_matches( TMatches& matches,
-                     auto&     counts_f,
-                     auto&     counts_r,
-                     Filter&   filter,
-                     uint16_t  threshold_cutoff,
-                     uint16_t& max_kmer_count_read )
+template < typename TFilter >
+void select_matches( TMatches&          matches,
+                     auto&              counts_f,
+                     auto&              counts_r,
+                     Filter< TFilter >& filter,
+                     uint16_t           threshold_cutoff,
+                     uint16_t&          max_kmer_count_read )
 {
     // reset low threshold_cutoff to just one kmer (0 would match everywhere)
     if ( threshold_cutoff == 0 )
@@ -331,20 +335,21 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_co
 }
 
 
-void classify( std::vector< Filter >&    filters,
-               LCA&                      lca,
-               TRep&                     rep,
-               Total&                    total,
-               SafeQueue< ReadOut >&     classified_all_queue,
-               SafeQueue< ReadOut >&     classified_lca_queue,
-               SafeQueue< ReadOut >&     unclassified_queue,
-               Config const&             config,
-               SafeQueue< ReadBatches >* pointer_current,
-               SafeQueue< ReadBatches >* pointer_helper,
-               HierarchyConfig const&    hierarchy_config,
-               bool                      hierarchy_first,
-               bool                      hierarchy_last,
-               bool                      run_lca )
+template < typename TFilter >
+void classify( std::vector< Filter< TFilter > >& filters,
+               LCA&                              lca,
+               TRep&                             rep,
+               Total&                            total,
+               SafeQueue< ReadOut >&             classified_all_queue,
+               SafeQueue< ReadOut >&             classified_lca_queue,
+               SafeQueue< ReadOut >&             unclassified_queue,
+               Config const&                     config,
+               SafeQueue< ReadBatches >*         pointer_current,
+               SafeQueue< ReadBatches >*         pointer_helper,
+               HierarchyConfig const&            hierarchy_config,
+               bool                              hierarchy_first,
+               bool                              hierarchy_last,
+               bool                              run_lca )
 {
 
     // get max from kmer/window size
@@ -356,10 +361,13 @@ void classify( std::vector< Filter >&    filters,
         seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } }, seqan3::window_size{ wk_size } );
 
     // one agent per thread per filter
+    using TAgent = std::conditional_t< std::same_as< TFilter, THIBF >,
+                                       THIBF::counting_agent_type< uint16_t >,
+                                       TIBF::counting_agent_type< uint16_t > >;
     std::vector< TAgent > agents;
-    for ( Filter& filter : filters )
+    for ( Filter< TFilter >& filter : filters )
     {
-        agents.push_back( filter.ibf.counting_agent< uint16_t >() );
+        agents.push_back( filter.ibf.counting_agent() );
     }
 
     while ( true )
@@ -448,6 +456,7 @@ void classify( std::vector< Filter >&    filters,
                                                           filters[i].filter_config.abs_cutoff,
                                                           hierarchy_config.kmer_size,
                                                           hierarchy_config.offset );
+
 
                     // select matches based on threshold cutoff
                     select_matches( matches, counts_f, counts_r, filters[i], threshold_cutoff, max_kmer_count_read );
@@ -544,14 +553,36 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
     }
 }
 
-TFilter load_filter( std::string const& input_filter_file )
+size_t load_filter( THIBF& filter, std::string const& input_filter_file )
 {
+    std::ifstream              is( input_filter_file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
 
-    TFilter                    filter;
+    uint32_t                                  parsed_version;
+    uint64_t                                  window_size;
+    seqan3::shape                             shape{};
+    uint8_t                                   parts;
+    bool                                      compressed;
+    std::vector< std::vector< std::string > > bin_path{};
+
+    archive( parsed_version );
+    archive( window_size );
+    archive( shape );
+    archive( parts );
+    archive( compressed );
+    archive( bin_path );
+    archive( filter );
+
+    return filter.user_bins.num_user_bins();
+}
+
+size_t load_filter( TIBF& filter, std::string const& input_filter_file )
+{
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
     archive( filter );
-    return filter;
+
+    return filter.bin_count();
 }
 
 TMap load_map( std::string map_file )
@@ -593,14 +624,16 @@ TTax load_tax( std::string tax_file )
     return tax;
 }
 
-bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Config& config, bool run_lca )
+template < typename TFilter >
+bool load_files( std::vector< Filter< TFilter > >& filters, std::string hierarchy_label, Config& config, bool run_lca )
 {
     uint16_t filter_cnt = 0;
     for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
     {
         TMap    map;
         TTax    tax;
-        TFilter filter = load_filter( filter_config.ibf_file );
+        TFilter filter;
+        auto    bin_count = load_filter( filter, filter_config.ibf_file );
 
         if ( !filter_config.map_file.empty() )
         {
@@ -615,7 +648,7 @@ bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Co
                 binid_prefix = hierarchy_label + "-" + std::to_string( filter_cnt ) + "-";
             }
             // fill map with binids as targets
-            for ( uint32_t binid = 0; binid < filter.bin_count(); ++binid )
+            for ( uint32_t binid = 0; binid < bin_count; ++binid )
             {
                 map[binid] = binid_prefix + std::to_string( binid );
             }
@@ -623,7 +656,7 @@ bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Co
 
         // Check consistency of map file and ibf file
         // map.size can be smaller than bins set on IBF if sequences were removed
-        if ( map.size() > filter.bin_count() )
+        if ( map.size() > bin_count )
         {
             std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
             return false;
@@ -632,7 +665,8 @@ bool load_files( std::vector< Filter >& filters, std::string hierarchy_label, Co
         if ( run_lca )
             tax = load_tax( filter_config.tax_file );
 
-        filters.push_back( Filter{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
+        filters.push_back(
+            Filter< TFilter >{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
         filter_cnt++;
     }
 
@@ -720,7 +754,7 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
     }
 }
 
-void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config const& config )
+void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& config )
 {
     for ( auto const& reads_file : config.single_reads )
     {
@@ -729,7 +763,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
         };
         for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
         {
-            detail::ReadBatches rb{ false };
+            ReadBatches rb{ false };
             for ( auto& [id, seq] : rec )
             {
                 rb.ids.push_back( std::move( id ) );
@@ -751,7 +785,7 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
             };
             for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
-                detail::ReadBatches rb{ true };
+                ReadBatches rb{ true };
                 for ( auto& [id, seq] : rec )
                 {
                     rb.ids.push_back( std::move( id ) );
@@ -770,11 +804,11 @@ void parse_reads( SafeQueue< detail::ReadBatches >& queue1, Stats& stats, Config
     queue1.notify_push_over();
 }
 
-void write_classified( SafeQueue< detail::ReadOut >& classified_queue, std::ofstream& out )
+void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& out )
 {
     while ( true )
     {
-        detail::ReadOut ro = classified_queue.pop();
+        ReadOut ro = classified_queue.pop();
         if ( ro.readID != "" )
         {
             for ( uint32_t i = 0; i < ro.matches.size(); ++i )
@@ -789,12 +823,12 @@ void write_classified( SafeQueue< detail::ReadOut >& classified_queue, std::ofst
     }
 }
 
-void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_queue, std::string out_unclassified_file )
+void write_unclassified( SafeQueue< ReadOut >& unclassified_queue, std::string out_unclassified_file )
 {
     std::ofstream out_unclassified( out_unclassified_file );
     while ( true )
     {
-        detail::ReadOut rou = unclassified_queue.pop();
+        ReadOut rou = unclassified_queue.pop();
         if ( rou.readID != "" )
         {
             out_unclassified << rou.readID << '\n';
@@ -807,7 +841,8 @@ void write_unclassified( SafeQueue< detail::ReadOut >& unclassified_queue, std::
     }
 }
 
-TTax merge_tax( std::vector< detail::Filter > const& filters )
+template < typename TFilter >
+TTax merge_tax( std::vector< Filter< TFilter > > const& filters )
 {
     if ( filters.size() == 1 )
     {
@@ -825,7 +860,8 @@ TTax merge_tax( std::vector< detail::Filter > const& filters )
     }
 }
 
-void validate_targets_tax( std::vector< detail::Filter > const& filters, TTax& tax, bool quiet )
+template < typename TFilter >
+void validate_targets_tax( std::vector< Filter< TFilter > > const& filters, TTax& tax, bool quiet )
 {
     for ( auto const& filter : filters )
     {
@@ -853,16 +889,9 @@ void pre_process_lca( LCA& lca, TTax& tax )
 
 } // namespace detail
 
-bool run( Config config )
+template < typename TFilter >
+bool ganon_classify( Config config )
 {
-
-    // Validate configuration input
-    if ( !config.validate() )
-        return false;
-
-    // Print config
-    if ( config.verbose )
-        std::cerr << config;
 
     // Start time count
     StopClock timeGanon;
@@ -924,11 +953,11 @@ bool run( Config config )
     for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
     {
         ++hierarchy_id;
-        bool                          hierarchy_first = ( hierarchy_id == 1 );
-        bool                          hierarchy_last  = ( hierarchy_id == hierarchy_size );
-        std::vector< detail::Filter > filters;
-        detail::TTax                  tax;
-        LCA                           lca;
+        bool                                     hierarchy_first = ( hierarchy_id == 1 );
+        bool                                     hierarchy_last  = ( hierarchy_id == hierarchy_size );
+        std::vector< detail::Filter< TFilter > > filters;
+        detail::TTax                             tax;
+        LCA                                      lca;
 
         timeLoadFilters.start();
         bool loaded = detail::load_files( filters, hierarchy_label, config, run_lca );
@@ -1015,7 +1044,7 @@ bool run( Config config )
         {
 
             tasks.emplace_back( std::async( std::launch::async,
-                                            detail::classify,
+                                            detail::classify< TFilter >,
                                             std::ref( filters ),
                                             std::ref( lca ),
                                             std::ref( reports[taskNo] ),
@@ -1102,7 +1131,25 @@ bool run( Config config )
         }
         detail::print_stats( stats, config, timeClassPrint );
     }
+
     return true;
+}
+
+bool run( Config config )
+{
+
+    // Validate configuration input
+    if ( !config.validate() )
+        return false;
+
+    // Print config
+    if ( config.verbose )
+        std::cerr << config;
+
+    if ( config.hibf )
+        return ganon_classify< detail::THIBF >( config );
+    else
+        return ganon_classify< detail::TIBF >( config );
 }
 
 } // namespace GanonClassify

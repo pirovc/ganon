@@ -74,6 +74,7 @@ public:
     bool        output_unclassified = false;
     bool        output_single       = false;
 
+    bool     hibf      = false;
     uint16_t threads   = 3;
     uint32_t n_batches = 1000;
     uint32_t n_reads   = 400;
@@ -496,6 +497,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-all          " << config.output_all << newl;
     stream << "--output-unclassified " << config.output_unclassified << newl;
     stream << "--output-single       " << config.output_single << newl;
+    stream << "--hibf                " << config.hibf << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-batches           " << config.n_batches << newl;
     stream << "--n-reads             " << config.n_reads << newl;
