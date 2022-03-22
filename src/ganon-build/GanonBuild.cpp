@@ -4,6 +4,7 @@
 
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
+#include <utils/adjust_seed.hpp>
 #include <utils/dna4_traits.hpp>
 
 #include <cereal/archives/binary.hpp>
@@ -100,7 +101,7 @@ void parse_sequences( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len,
     uint64_t binid = parse_sequences;
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
             reference_file
         };
 
@@ -127,7 +128,7 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
     for ( auto const& reference_file : config.reference_files )
     {
         // Open file (type define by extension)
-        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
             reference_file
         };
 
@@ -192,7 +193,7 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
     uint64_t bin_count  = bin_len.size();
     for ( auto const& reference_file : reference_files )
     {
-        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
             reference_file
         };
 
@@ -278,9 +279,12 @@ uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, T
         // count hashes for minimizers or kmers
         if ( config.window_size > 0 )
         {
-            auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size } );
-            max_hashes          = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash );
+
+            auto minimiser_hash =
+                seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                               seqan3::window_size{ config.window_size },
+                                               seqan3::seed{ raptor::adjust_seed( config.kmer_size ) } );
+            max_hashes = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash );
         }
         else
         {
@@ -572,8 +576,10 @@ bool run( Config config )
     {
         for ( uint16_t taskNo = 0; taskNo < config.threads_build; ++taskNo )
         {
-            auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
-                                                                 seqan3::window_size{ config.window_size } );
+            auto minimiser_hash =
+                seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
+                                               seqan3::window_size{ config.window_size },
+                                               seqan3::seed{ raptor::adjust_seed( config.kmer_size ) } );
             tasks.emplace_back( std::async( std::launch::async, [&filter, &queue_refs, minimiser_hash]() {
                 detail::build( filter, queue_refs, minimiser_hash );
             } ) );

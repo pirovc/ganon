@@ -6,6 +6,7 @@
 #include <utils/LCA.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
+#include <utils/adjust_seed.hpp>
 #include <utils/dna4_traits.hpp>
 
 #include <cereal/archives/binary.hpp>
@@ -35,9 +36,7 @@ namespace detail
 
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
-
-typedef robin_hood::unordered_map< std::string, uint16_t > TMatches;
-
+typedef robin_hood::unordered_map< std::string, uint16_t >                                 TMatches;
 
 struct Node
 {
@@ -166,6 +165,7 @@ struct Filter
     TFilter      ibf;
     TMap         map;
     TTax         tax;
+    size_t       bin_count = 0;
     FilterConfig filter_config;
 };
 
@@ -200,17 +200,30 @@ inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t cou
     return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
 
-template < typename TFilter >
-void select_matches( TMatches&          matches,
-                     auto&              counts_f,
-                     auto&              counts_r,
-                     Filter< TFilter >& filter,
-                     uint16_t           threshold_cutoff,
-                     uint16_t&          max_kmer_count_read )
+template < typename TAgent >
+void select_matches( TMatches&              matches,
+                     std::vector< size_t >& hashes_f,
+                     std::vector< size_t >& hashes_r,
+                     std::vector< size_t >& hashes_f2,
+                     std::vector< size_t >& hashes_r2,
+                     bool                   paired,
+                     Filter< TIBF >&        filter,
+                     TAgent&                agent,
+                     uint16_t               threshold_cutoff,
+                     uint16_t&              max_kmer_count_read )
 {
     // reset low threshold_cutoff to just one kmer (0 would match everywhere)
     if ( threshold_cutoff == 0 )
         threshold_cutoff = 1;
+
+    // count matches
+    seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f );
+    seqan3::counting_vector< uint16_t > counts_r = agent.bulk_count( hashes_r );
+    if ( paired )
+    {
+        counts_f += agent.bulk_count( hashes_f2 );
+        counts_r += agent.bulk_count( hashes_r2 );
+    }
 
     // for each bin
     // for ( uint32_t bin_n = 0; bin_n < filter.ibf.noOfBins; ++bin_n )
@@ -236,6 +249,46 @@ void select_matches( TMatches&          matches,
     }
 }
 
+template < typename TAgent >
+void select_matches( TMatches&              matches,
+                     std::vector< size_t >& hashes_f,
+                     std::vector< size_t >& hashes_r,
+                     std::vector< size_t >& hashes_f2,
+                     std::vector< size_t >& hashes_r2,
+                     bool                   paired,
+                     Filter< THIBF >&       filter,
+                     TAgent&                agent,
+                     uint16_t               threshold_cutoff,
+                     uint16_t&              max_kmer_count_read )
+{
+
+
+    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
+    if ( threshold_cutoff == 0 )
+        threshold_cutoff = 1;
+
+    // count matches
+    seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f, threshold_cutoff );
+    seqan3::counting_vector< uint16_t > counts_r = agent.bulk_count( hashes_r, threshold_cutoff );
+    if ( paired )
+    {
+        counts_f += agent.bulk_count( hashes_f2, threshold_cutoff );
+        counts_r += agent.bulk_count( hashes_r2, threshold_cutoff );
+    }
+
+
+    for ( auto const& [bin_n, target] : filter.map )
+    {
+        if ( counts_f[bin_n] > 0 )
+        {
+            matches[target] = counts_f[bin_n];
+            if ( counts_f[bin_n] > max_kmer_count_read )
+            {
+                max_kmer_count_read = counts_f[bin_n];
+            }
+        }
+    }
+}
 
 auto get_offset_hashes( auto& hashes, uint8_t offset )
 {
@@ -356,9 +409,11 @@ void classify( std::vector< Filter< TFilter > >& filters,
     uint16_t wk_size = ( hierarchy_config.window_size > 0 ) ? hierarchy_config.window_size : hierarchy_config.kmer_size;
 
     // oner hash adaptor per thread
-    auto kmer_hash      = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
-    auto minimiser_hash = seqan3::views::minimiser_hash(
-        seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } }, seqan3::window_size{ wk_size } );
+    auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
+    auto minimiser_hash =
+        seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
+                                       seqan3::window_size{ wk_size },
+                                       seqan3::seed{ raptor::adjust_seed( hierarchy_config.kmer_size ) } );
 
     // one agent per thread per filter
     using TAgent = std::conditional_t< std::same_as< TFilter, THIBF >,
@@ -437,15 +492,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 // For each filter in the hierarchy
                 for ( uint8_t i = 0; i < filters.size(); ++i )
                 {
-                    // count matches
-                    seqan3::counting_vector< uint16_t > counts_f = agents[i].bulk_count( hashes_f );
-                    seqan3::counting_vector< uint16_t > counts_r = agents[i].bulk_count( hashes_r );
 
-                    if ( rb.paired )
-                    {
-                        counts_f += agents[i].bulk_count( hashes_f2 );
-                        counts_r += agents[i].bulk_count( hashes_r2 );
-                    }
 
                     // Calculate threshold for cutoff (keep matches above)
                     uint16_t threshold_cutoff = 0;
@@ -457,9 +504,17 @@ void classify( std::vector< Filter< TFilter > >& filters,
                                                           hierarchy_config.kmer_size,
                                                           hierarchy_config.offset );
 
-
-                    // select matches based on threshold cutoff
-                    select_matches( matches, counts_f, counts_r, filters[i], threshold_cutoff, max_kmer_count_read );
+                    // count and select matches
+                    select_matches( matches,
+                                    hashes_f,
+                                    hashes_r,
+                                    hashes_f2,
+                                    hashes_r2,
+                                    rb.paired,
+                                    filters[i],
+                                    agents[i],
+                                    threshold_cutoff,
+                                    max_kmer_count_read );
                 }
             }
 
@@ -666,7 +721,7 @@ bool load_files( std::vector< Filter< TFilter > >& filters, std::string hierarch
             tax = load_tax( filter_config.tax_file );
 
         filters.push_back(
-            Filter< TFilter >{ std::move( filter ), std::move( map ), std::move( tax ), filter_config } );
+            Filter< TFilter >{ std::move( filter ), std::move( map ), std::move( tax ), bin_count, filter_config } );
         filter_cnt++;
     }
 
@@ -758,7 +813,7 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
 {
     for ( auto const& reads_file : config.single_reads )
     {
-        seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
+        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
             reads_file
         };
         for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
@@ -777,12 +832,10 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
-            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
-                config.paired_reads[pair_cnt]
-            };
-            seqan3::sequence_file_input< dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin2{
-                config.paired_reads[pair_cnt + 1]
-            };
+            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                fin1{ config.paired_reads[pair_cnt] };
+            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                fin2{ config.paired_reads[pair_cnt + 1] };
             for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
                 ReadBatches rb{ true };
