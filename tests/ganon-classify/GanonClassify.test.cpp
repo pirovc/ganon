@@ -1799,7 +1799,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
 
                 // Should match only e0
                 REQUIRE( res.all["readF"].size() == 1 );
-                REQUIRE( res.all["readF"]["e0"] == 7 );
+                REQUIRE( res.all["readF"]["e0"] == 8 );
             }
         }
 
@@ -1819,13 +1819,11 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
 
-            REQUIRE( res.all["readF"].size() == 6 );
+            REQUIRE( res.all["readF"].size() == 4 );
             REQUIRE( res.all["readF"]["e0"] == 4 );
-            REQUIRE( res.all["readF"]["e1F"] == 3 );
-            REQUIRE( res.all["readF"]["e1F_e1R"] == 3 );
-            REQUIRE( res.all["readF"]["e1F_e2R"] == 3 );
-            REQUIRE( res.all["readF"]["e2F_e1R"] == 1 );
-            REQUIRE( res.all["readF"]["e2F_e2R"] == 1 );
+            REQUIRE( res.all["readF"]["e1F"] == 2 );
+            REQUIRE( res.all["readF"]["e1F_e1R"] == 2 );
+            REQUIRE( res.all["readF"]["e1F_e2R"] == 2 );
 
             SECTION( "--paired-reads" )
             {
@@ -1837,13 +1835,12 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
                 config_classify::Res res{ cfg };
                 config_classify::sanity_check( cfg, res );
 
-                REQUIRE( res.all["readF"].size() == 6 );
-                REQUIRE( res.all["readF"]["e0"] == 7 );
+                REQUIRE( res.all["readF"].size() == 5 );
+                REQUIRE( res.all["readF"]["e0"] == 8 );
                 REQUIRE( res.all["readF"]["e1F"] == 6 );
-                REQUIRE( res.all["readF"]["e1F_e1R"] == 5 );
-                REQUIRE( res.all["readF"]["e1F_e2R"] == 3 );
-                REQUIRE( res.all["readF"]["e2F_e1R"] == 3 );
-                REQUIRE( res.all["readF"]["e2F_e2R"] == 1 );
+                REQUIRE( res.all["readF"]["e1F_e1R"] == 4 );
+                REQUIRE( res.all["readF"]["e1F_e2R"] == 2 );
+                REQUIRE( res.all["readF"]["e2F_e1R"] == 2 );
             }
         }
     }

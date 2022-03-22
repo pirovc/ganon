@@ -200,22 +200,17 @@ inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t cou
     return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
 }
 
-template < typename TAgent >
-void select_matches( TMatches&              matches,
+void select_matches( Filter< TIBF >&        filter,
+                     TMatches&              matches,
                      std::vector< size_t >& hashes_f,
                      std::vector< size_t >& hashes_r,
                      std::vector< size_t >& hashes_f2,
                      std::vector< size_t >& hashes_r2,
                      bool                   paired,
-                     Filter< TIBF >&        filter,
-                     TAgent&                agent,
+                     auto&                  agent,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
-    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
-    if ( threshold_cutoff == 0 )
-        threshold_cutoff = 1;
-
     // count matches
     seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f );
     seqan3::counting_vector< uint16_t > counts_r = agent.bulk_count( hashes_r );
@@ -249,42 +244,36 @@ void select_matches( TMatches&              matches,
     }
 }
 
-template < typename TAgent >
-void select_matches( TMatches&              matches,
+void select_matches( Filter< THIBF >&       filter,
+                     TMatches&              matches,
                      std::vector< size_t >& hashes_f,
                      std::vector< size_t >& hashes_r,
                      std::vector< size_t >& hashes_f2,
                      std::vector< size_t >& hashes_r2,
                      bool                   paired,
-                     Filter< THIBF >&       filter,
-                     TAgent&                agent,
+                     auto&                  agent,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
-
-
-    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
-    if ( threshold_cutoff == 0 )
-        threshold_cutoff = 1;
-
-    // count matches
+    // count matches, return only above threhsold
     seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f, threshold_cutoff );
-    seqan3::counting_vector< uint16_t > counts_r = agent.bulk_count( hashes_r, threshold_cutoff );
     if ( paired )
     {
         counts_f += agent.bulk_count( hashes_f2, threshold_cutoff );
-        counts_r += agent.bulk_count( hashes_r2, threshold_cutoff );
     }
 
-
+    // on HIBF, returns user bins
     for ( auto const& [bin_n, target] : filter.map )
     {
         if ( counts_f[bin_n] > 0 )
         {
-            matches[target] = counts_f[bin_n];
-            if ( counts_f[bin_n] > max_kmer_count_read )
+            // keep check on target in case of multiple filters with same target
+            if ( matches.count( target ) == 0 || counts_f[bin_n] > matches[target] )
             {
-                max_kmer_count_read = counts_f[bin_n];
+                // store match to target
+                matches[target] = counts_f[bin_n];
+                if ( counts_f[bin_n] > max_kmer_count_read )
+                    max_kmer_count_read = counts_f[bin_n];
             }
         }
     }
@@ -504,14 +493,18 @@ void classify( std::vector< Filter< TFilter > >& filters,
                                                           hierarchy_config.kmer_size,
                                                           hierarchy_config.offset );
 
+                    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
+                    if ( threshold_cutoff == 0 )
+                        threshold_cutoff = 1;
+
                     // count and select matches
-                    select_matches( matches,
+                    select_matches( filters[i],
+                                    matches,
                                     hashes_f,
                                     hashes_r,
                                     hashes_f2,
                                     hashes_r2,
                                     rb.paired,
-                                    filters[i],
                                     agents[i],
                                     threshold_cutoff,
                                     max_kmer_count_read );
