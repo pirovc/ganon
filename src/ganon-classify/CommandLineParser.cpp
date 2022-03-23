@@ -37,6 +37,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,output-unclassified", "Output unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
         ( "s,output-single", "Do not split output files (lca and all) with multiple hierarchy levels", cxxopts::value< bool >() )
         
+        ( "hibf", "Input is an Hierarchical IBF (.hibf) generated from raptor https://github.com/seqan/raptor. Experimental.", cxxopts::value< bool >())
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
         ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
@@ -108,6 +109,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     if ( args.count( "output-single" ) )
         config.output_single = args["output-single"].as< bool >();
 
+    if ( args.count( "hibf" ) )
+        config.hibf = args["hibf"].as< bool >();
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "n-reads" ) )
