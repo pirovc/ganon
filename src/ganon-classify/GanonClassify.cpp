@@ -287,25 +287,24 @@ void get_hashes( std::vector< seqan3::dna4 >& seq,
     if ( window_size > 0 )
     {
         // minimizers - no need to calculate reverse hashes
-        hashes_f = { seq | minimiser_hash | seqan3::views::to< std::vector > };
+        hashes_f = seq | minimiser_hash | seqan3::views::to< std::vector >;
     }
     else
     {
         if ( offset > 1 )
         {
             // offset
-            auto hf  = seq | kmer_hash | seqan3::views::to< std::vector >;
+            auto hf  = seq | kmer_hash;
             hashes_f = get_offset_hashes( hf, offset );
-            auto hr =
-                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            auto hr  = seq | std::views::reverse | seqan3::views::complement | kmer_hash;
             hashes_r = get_offset_hashes( hr, offset );
         }
         else
         {
             // kmer
-            hashes_f = { seq | kmer_hash | seqan3::views::to< std::vector > };
-            hashes_r = { seq | std::views::reverse | seqan3::views::complement | kmer_hash
-                         | seqan3::views::to< std::vector > };
+            hashes_f = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r =
+                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
         }
     }
 }
@@ -323,7 +322,7 @@ void get_hashes( std::vector< seqan3::dna4 >& seq,
     // first pair
     get_hashes( seq, hashes_f, hashes_r, window_size, offset, kmer_hash, minimiser_hash );
 
-    // hashes are inserted in the same vector for the second pair
+    // hashes are inserted in the same vector for the second pair in the rev.comp.
     if ( window_size > 0 )
     {
         // minimizers - no need to calculate reverse hashes
@@ -335,11 +334,10 @@ void get_hashes( std::vector< seqan3::dna4 >& seq,
         if ( offset > 1 )
         {
             // offset
-            auto hf =
-                seq2 | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            auto hf        = seq2 | std::views::reverse | seqan3::views::complement | kmer_hash;
             auto hashes_f2 = get_offset_hashes( hf, offset );
             hashes_f.insert( hashes_f.end(), hashes_f2.begin(), hashes_f2.end() );
-            auto hr        = seq2 | kmer_hash | seqan3::views::to< std::vector >;
+            auto hr        = seq2 | kmer_hash;
             auto hashes_r2 = get_offset_hashes( hr, offset );
             hashes_r.insert( hashes_r.end(), hashes_r2.begin(), hashes_r2.end() );
         }
