@@ -204,9 +204,6 @@ void select_matches( Filter< TIBF >&        filter,
                      TMatches&              matches,
                      std::vector< size_t >& hashes_f,
                      std::vector< size_t >& hashes_r,
-                     std::vector< size_t >& hashes_f2,
-                     std::vector< size_t >& hashes_r2,
-                     bool                   paired,
                      auto&                  agent,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
@@ -214,11 +211,6 @@ void select_matches( Filter< TIBF >&        filter,
     // count matches
     seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f );
     seqan3::counting_vector< uint16_t > counts_r = agent.bulk_count( hashes_r );
-    if ( paired )
-    {
-        counts_f += agent.bulk_count( hashes_f2 );
-        counts_r += agent.bulk_count( hashes_r2 );
-    }
 
     // for each bin
     // for ( uint32_t bin_n = 0; bin_n < filter.ibf.noOfBins; ++bin_n )
@@ -248,19 +240,12 @@ void select_matches( Filter< THIBF >&       filter,
                      TMatches&              matches,
                      std::vector< size_t >& hashes_f,
                      std::vector< size_t >& hashes_r,
-                     std::vector< size_t >& hashes_f2,
-                     std::vector< size_t >& hashes_r2,
-                     bool                   paired,
                      auto&                  agent,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
     // count matches, return only above threhsold
     seqan3::counting_vector< uint16_t > counts_f = agent.bulk_count( hashes_f, threshold_cutoff );
-    if ( paired )
-    {
-        counts_f += agent.bulk_count( hashes_f2, threshold_cutoff );
-    }
 
     // on HIBF, returns user bins
     for ( auto const& [bin_n, target] : filter.map )
@@ -301,26 +286,70 @@ void get_hashes( std::vector< seqan3::dna4 >& seq,
 
     if ( window_size > 0 )
     {
-        // minimizers
+        // minimizers - no need to calculate reverse hashes
         hashes_f = { seq | minimiser_hash | seqan3::views::to< std::vector > };
-        hashes_r = hashes_f;
     }
     else
     {
         if ( offset > 1 )
         {
             // offset
-            auto h   = seq | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_f = get_offset_hashes( h, offset );
-            h = seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_r = get_offset_hashes( h, offset );
+            auto hf  = seq | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_f = get_offset_hashes( hf, offset );
+            auto hr =
+                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r = get_offset_hashes( hr, offset );
         }
         else
         {
             // kmer
-            hashes_f = seq | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_r =
-                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_f = { seq | kmer_hash | seqan3::views::to< std::vector > };
+            hashes_r = { seq | std::views::reverse | seqan3::views::complement | kmer_hash
+                         | seqan3::views::to< std::vector > };
+        }
+    }
+}
+
+void get_hashes( std::vector< seqan3::dna4 >& seq,
+                 std::vector< seqan3::dna4 >& seq2,
+                 std::vector< size_t >&       hashes_f,
+                 std::vector< size_t >&       hashes_r,
+                 uint8_t                      window_size,
+                 uint8_t                      offset,
+                 auto&                        kmer_hash,
+                 auto&                        minimiser_hash )
+{
+
+    // first pair
+    get_hashes( seq, hashes_f, hashes_r, window_size, offset, kmer_hash, minimiser_hash );
+
+    // hashes are inserted in the same vector for the second pair
+    if ( window_size > 0 )
+    {
+        // minimizers - no need to calculate reverse hashes
+        auto hf = seq2 | minimiser_hash | std::views::common;
+        hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
+    }
+    else
+    {
+        if ( offset > 1 )
+        {
+            // offset
+            auto hf =
+                seq2 | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_f = get_offset_hashes( hf, offset );
+            hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
+            auto hr  = seq2 | kmer_hash | seqan3::views::to< std::vector >;
+            hashes_r = get_offset_hashes( hr, offset );
+            hashes_r.insert( hashes_r.end(), hr.begin(), hr.end() );
+        }
+        else
+        {
+            // kmer
+            auto hf = seq2 | std::views::reverse | seqan3::views::complement | kmer_hash | std::views::common;
+            hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
+            auto hr = seq2 | kmer_hash | std::views::common;
+            hashes_r.insert( hashes_r.end(), hr.begin(), hr.end() );
         }
     }
 }
@@ -438,8 +467,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
             // Retrieve hashes from kmers/minimizers
             std::vector< size_t > hashes_f;
             std::vector< size_t > hashes_r;
-            std::vector< size_t > hashes_f2;
-            std::vector< size_t > hashes_r2;
 
             // hash count
             uint16_t kmers = 0;
@@ -447,29 +474,34 @@ void classify( std::vector< Filter< TFilter > >& filters,
             uint16_t max_kmer_count_read = 0;
             if ( read1_len >= wk_size )
             {
-                // Count hashes from first pair
-                get_hashes( rb.seqs[readID],
-                            hashes_f,
-                            hashes_r,
-                            hierarchy_config.window_size,
-                            hierarchy_config.offset,
-                            kmer_hash,
-                            minimiser_hash );
-                kmers = hashes_f.size();
-
-                // Count hashes from second pair if given
+                // Count hashes from both pairs if second is given
                 if ( read2_len >= wk_size )
                 {
-                    // Send r and f reversed to calculate FR --> RF <-- reads
-                    get_hashes( rb.seqs2[readID],
-                                hashes_r2,
-                                hashes_f2,
+                    // FR --> RF <-- reads
+                    // Get hashes of the first pair (forward and reverse strand)
+                    // get hashed of the seconf pair in the opposite direction
+                    get_hashes( rb.seqs[readID],
+                                rb.seqs2[readID],
+                                hashes_f,
+                                hashes_r,
                                 hierarchy_config.window_size,
                                 hierarchy_config.offset,
                                 kmer_hash,
                                 minimiser_hash );
-                    kmers += hashes_f2.size();
                 }
+                else
+                {
+                    // single read
+                    get_hashes( rb.seqs[readID],
+                                hashes_f,
+                                hashes_r,
+                                hierarchy_config.window_size,
+                                hierarchy_config.offset,
+                                kmer_hash,
+                                minimiser_hash );
+                }
+                kmers = hashes_f.size();
+
 
                 // Sum sequence to totals
                 if ( hierarchy_first )
@@ -498,16 +530,8 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         threshold_cutoff = 1;
 
                     // count and select matches
-                    select_matches( filters[i],
-                                    matches,
-                                    hashes_f,
-                                    hashes_r,
-                                    hashes_f2,
-                                    hashes_r2,
-                                    rb.paired,
-                                    agents[i],
-                                    threshold_cutoff,
-                                    max_kmer_count_read );
+                    select_matches(
+                        filters[i], matches, hashes_f, hashes_r, agents[i], threshold_cutoff, max_kmer_count_read );
                 }
             }
 
