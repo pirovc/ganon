@@ -337,11 +337,11 @@ void get_hashes( std::vector< seqan3::dna4 >& seq,
             // offset
             auto hf =
                 seq2 | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_f = get_offset_hashes( hf, offset );
-            hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
-            auto hr  = seq2 | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_r = get_offset_hashes( hr, offset );
-            hashes_r.insert( hashes_r.end(), hr.begin(), hr.end() );
+            auto hashes_f2 = get_offset_hashes( hf, offset );
+            hashes_f.insert( hashes_f.end(), hashes_f2.begin(), hashes_f2.end() );
+            auto hr        = seq2 | kmer_hash | seqan3::views::to< std::vector >;
+            auto hashes_r2 = get_offset_hashes( hr, offset );
+            hashes_r.insert( hashes_r.end(), hashes_r2.begin(), hashes_r2.end() );
         }
         else
         {
