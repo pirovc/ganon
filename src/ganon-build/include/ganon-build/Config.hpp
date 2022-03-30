@@ -23,6 +23,7 @@ public:
     std::string                extension                 = "";
 
     std::string seqid_bin_file     = "";
+    std::string map                = "";
     std::string output_filter_file = "";
     std::string update_filter_file = "";
     bool        update_complete    = false;
@@ -31,10 +32,11 @@ public:
     double   filter_size_mb = 0;
     uint64_t bin_size_bits  = 0;
 
-    uint8_t  kmer_size      = 19;
-    uint32_t window_size    = 0;
-    uint16_t hash_functions = 3;
-    bool     count_hashes   = false;
+    uint8_t  kmer_size        = 19;
+    uint32_t window_size      = 0;
+    uint16_t hash_functions   = 3;
+    double   correction_ratio = 1.0;
+    bool     count_hashes     = false;
 
     uint16_t threads   = 2;
     uint32_t n_refs    = 400;
@@ -137,11 +139,10 @@ public:
             if ( !check_files( { update_filter_file } ) )
                 return false;
 
-            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
+            if ( verbose && !quiet && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
             {
-                if ( !quiet )
-                    std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
-                              << std::endl;
+                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
+                          << std::endl;
             }
             filter_size_mb = 0;
             bin_size_bits  = 0;
@@ -184,12 +185,15 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     constexpr auto separator{ "----------------------------------------------------------------------" };
 
     stream << separator << newl;
-    stream << "--reference-files     " << newl;
-    for ( const auto& file : config.reference_files )
+    stream << "--reference-files     " << config.reference_files.size() << " file(s)" << newl;
+    stream << "                      " << config.reference_files[0] << newl;
+    if ( config.reference_files.size() > 1 )
     {
-        stream << "                      " << file << newl;
+        stream << "                      ..." << newl;
+        stream << "                      " << config.reference_files.back() << newl;
     }
     stream << "--seqid-bin-file      " << config.seqid_bin_file << newl;
+    stream << "--map                 " << config.map << newl;
     stream << "--output-filter-file  " << config.output_filter_file << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;
@@ -200,9 +204,10 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     if ( config.filter_size_mb > 0 )
         stream << "--filter-size-mb      " << config.filter_size_mb << newl;
     stream << "--kmer-size           " << unsigned( config.kmer_size ) << newl;
-    stream << "--window-size         " << unsigned( config.window_size ) << newl;
+    stream << "--window-size         " << config.window_size << newl;
+    stream << "--hash-functions      " << config.hash_functions << newl;
+    stream << "--correction-ratio    " << config.correction_ratio << newl;
     stream << "--count-hashes        " << config.count_hashes << newl;
-    stream << "--verbose             " << config.verbose << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;
     stream << "--n-batches           " << config.n_batches << newl;

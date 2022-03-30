@@ -86,7 +86,7 @@ def build(cfg):
     optimal_number_of_bins = optimal_bins(actual_number_of_bins)
     max_length_bin = bins.get_max_bin_length()
     max_kmer_count = estimate_elements(max_length_bin, cfg.kmer_size, cfg.window_size)
-    #max_kmer_count = max_length_bin - cfg.kmer_size + 1
+    max_split_bins = bins.get_max_split_bins(use_specialization=True if cfg.specialization else False)
     print_log(" - " + str(actual_number_of_bins) + " bins created", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -100,20 +100,22 @@ def build(cfg):
     if optimal_params["hash_functions"] == 0:
         optimal_params["hash_functions"] = 3
 
-    print_log("Optimal bins: " + str(optimal_number_of_bins), cfg.quiet)
-    print_log("Max. false positive: " + str("{0:.5f}".format(optimal_params["false_positive"])), cfg.quiet)
-    print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
-    if cfg.window_size:
-        # Check lower bound for minimizers with estimated bin-length
-        min_mini = math.floor(((max_length_bin - cfg.kmer_size + 1) / (cfg.window_size - cfg.kmer_size + 1)))
-        min_size_mini = derive_bf_params(min_mini, optimal_params["false_positive"], 0, optimal_params["hash_functions"])
-        print_log("Possible elements per bin: " + str(min_mini) + ".." + str(max_kmer_count), cfg.quiet)
-        print_log("Possible filter sizes: " + str("{0:.2f}".format(bits2mb(min_size_mini["size_bits"] * optimal_number_of_bins))) + "MB.." + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB", cfg.quiet)
-    else:
-        print_log("Elements per bin: " + str(max_kmer_count), cfg.quiet)
-        print_log("Filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins))) + "MB", cfg.quiet)
+    if cfg.verbose:
+        try:
+            correction_ratio = split_correction_ratio(optimal_params["false_positive"], optimal_params["hash_functions"], max_split_bins)
+        except:
+            correction_ratio = 1
 
-    print_log("")
+        print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
+        print_log("Targets: " + str(len(bins.get_specialization() if cfg.specialization else bins.get_taxids())), cfg.quiet)
+        print_log("Optimal bins: " + str(optimal_number_of_bins), cfg.quiet)
+        print_log("Max. split bin: " + str(max_split_bins), cfg.quiet)
+        print_log("Max. correction ratio: " + str("{0:.5f}".format(correction_ratio)) , cfg.quiet)
+        print_log("Max. hashes/bin: " + str(max_kmer_count), cfg.quiet)
+        print_log("Max. filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins * correction_ratio))) + "MB", cfg.quiet)
+        print_log("Max. false positive: " + str("{0:.5f}".format(optimal_params["false_positive"])), cfg.quiet)
+
+        print_log("")
 
     # Build database files (map, tax, gnn)
     tx = time.time()
@@ -167,6 +169,7 @@ def build(cfg):
                                     "--kmer-size " + str(cfg.kmer_size),
                                     "--window-size " + str(cfg.window_size) if cfg.window_size else "",
                                     "--count-hashes " if cfg.window_size else "",
+                                    "--map " + db_prefix["map"],
                                     "--hash-functions " + str(optimal_params["hash_functions"]),
                                     "--threads " + str(cfg.threads),
                                     "--output-filter-file " + db_prefix["ibf"],
@@ -578,15 +581,15 @@ def estimate_n_bins(bin_len, overlap_len, groups_len):
     # Estimate an approximate number of bins give the parameters
     frag_len = bin_len - overlap_len
     if frag_len > overlap_len:
-        return sum([math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()])
+        bins = [math.ceil(math.ceil(l/(frag_len-overlap_len))/(bin_len/(frag_len+overlap_len))) for l in groups_len.values()]
+        return sum(bins), max(bins)
     else:
-        return 0
+        return 0, 0
 
 
 def estimate_elements(bin_len, kmer_size, window_size):
     """
     Return estimation of elements given a bin lenght
-
     """
     if window_size > 0:
         # Estimate elements to be the median of min. and max. possible minimizers
@@ -596,13 +599,24 @@ def estimate_elements(bin_len, kmer_size, window_size):
         return bin_len - kmer_size + 1
 
 
+def split_correction_ratio(false_positive, hash_functions, max_split_bins):
+    """
+    Return the correction factor for element split in multiple bins
+    This ratio is how many time the bins have to grow to achieve the desired fpr
+    """
+    return math.log(1-(1-(1-false_positive)**max_split_bins)**(1/hash_functions))/math.log(1-false_positive**(1/hash_functions))
+
+
 def estimate_params(cfg, simulated_bin_lens, groups_len):
     # Caculate filter sizes based on simulated bin lenghts
     params = {}
     for bin_length in simulated_bin_lens:
 
         # Estimate number of bins based on ranks and sequence sizes
-        n_bins = optimal_bins(estimate_n_bins(bin_length, cfg.overlap_length, groups_len))
+        n_bins, max_split_bins = estimate_n_bins(bin_length, cfg.overlap_length, groups_len)
+        
+        n_bins = optimal_bins(n_bins)
+        
         if n_bins <= 0:
             continue  # invalid bin_len
 
@@ -614,9 +628,18 @@ def estimate_params(cfg, simulated_bin_lens, groups_len):
         if bf_params["hash_functions"] == 0 or bf_params["false_positive"] == 1:
             continue  # filter too small
 
+        try:
+            ratio = split_correction_ratio(bf_params["false_positive"], bf_params["hash_functions"], max_split_bins)
+        except:
+            # too many splits, ratio too high
+            continue
+
         params[bin_length] = bf_params
         params[bin_length]["n_bins"] = n_bins
         params[bin_length]["filter_size_bits"] = bf_params["size_bits"] * n_bins
+        params[bin_length]["max_split_bins"] = max_split_bins
+        params[bin_length]["corr_ratio"] = ratio
+        params[bin_length]["corr_filter_size_bits"] = bf_params["size_bits"] * n_bins * ratio
 
     return params
 
@@ -625,7 +648,7 @@ def estimate_bin_length(cfg, seqinfo, tax):
     # default bin len if simulation fails
     default_bin_len = 1000000
     # number of simulations
-    nsim = 300
+    nsim = 1000
 
     # Generate dict with target groups and their total length to estimate params
     groups_len = {}
@@ -643,7 +666,7 @@ def estimate_bin_length(cfg, seqinfo, tax):
     else:
         min_bin_len = 500
     # Biggest group as max
-    max_bin_len = max(groups_len.values())
+    max_bin_len = max(groups_len.values()) + min_bin_len
     # Try to find min. size by simulating points in geometric space
     # between min. and max. bin length. Use geometric to have more simulations on smaller sizes
     # Necessary to calculate instead of getting first lowest since it may be a local minimum
@@ -652,13 +675,18 @@ def estimate_bin_length(cfg, seqinfo, tax):
     # simulated parameters
     params = estimate_params(cfg, simulated_bin_lens, groups_len)
 
+    # print("params")
+    # for p, v in params.items():
+    #     print(p, v, sep="\t")
+    # print("")
+
     if not params:
         print_log(" - could not estimate --bin-length, using default value (" + str(default_bin_len) + ")", cfg.quiet)
         return default_bin_len
 
-    # Select smallest possible bin_len based on generated filter sizes
-    selected_min_bin_len = min(params, key=lambda k: params[k]["filter_size_bits"])
-    min_filter_size = params[selected_min_bin_len]["filter_size_bits"]
+    # Select smallest possible bin_len based on generated corrected filter sizes
+    selected_min_bin_len = min(params, key=lambda k: params[k]["corr_filter_size_bits"])
+    min_filter_size = params[selected_min_bin_len]["corr_filter_size_bits"]
     print_log(" - Approx. minimal size with --max-fp " + str(cfg.max_fp) + ": " + str("{0:.2f}".format(bits2mb(min_filter_size))) + "MB", cfg.quiet)
 
     # try to find best bin_length considering max given size
@@ -672,7 +700,12 @@ def estimate_bin_length(cfg, seqinfo, tax):
         max_filter_size = mb2bits(cfg.max_filter_size)
 
     # Keep only valid params below max_filter_size
-    filtered_params = dict(filter(lambda v: v[1]["filter_size_bits"] <= max_filter_size, params.items()))
+    filtered_params = dict(filter(lambda v: v[1]["corr_filter_size_bits"] <= max_filter_size, params.items()))
+
+    # print("filtered_params")
+    # for p, v in filtered_params.items():
+    #     print(p, v, sep="\t")
+    # print("")
 
     # if there are valids params after filtering
     if len(filtered_params):
@@ -680,12 +713,21 @@ def estimate_bin_length(cfg, seqinfo, tax):
         simulated_bin_lens2 = map(round, np.linspace(min(filtered_params.keys()), max(filtered_params.keys()), num=nsim))
         # simulated parameters (second time)
         params2 = estimate_params(cfg, simulated_bin_lens2, groups_len)
+
+        # print("params2")
+        # for p, v in params2.items():
+        #     print(p, v, sep="\t")
+        # print("")
+
         # select top param with least number of bins (and smallest generated filter as second filter)
-        selected_best_bin_len = sorted(params2, key=lambda k: (params2[k]["n_bins"], params2[k]["filter_size_bits"]))[0]
-        print_log(" - estimated --bin-length: " + str(selected_best_bin_len) + "bp", cfg.quiet)
+        #selected_best_bin_len = sorted(params2, key=lambda k: (params2[k]["n_bins"], params2[k]["corr_filter_size_bits"]))[0]
+        # select top param with smallest filter size, since correction will avoid extreme fragmentation of bins
+        selected_min_bin_len2 = sorted(params2, key=lambda k: params2[k]["corr_filter_size_bits"])[0]
+
+        print_log(" - estimated --bin-length: " + str(selected_min_bin_len2) + "bp", cfg.quiet)
         if cfg.verbose:
-            print_log(" - Further estimated parameters: " + str(params2[selected_best_bin_len]), cfg.quiet)
-        return selected_best_bin_len
+            print_log(" - Further estimated parameters: " + str(params2[selected_min_bin_len2]), cfg.quiet)
+        return selected_min_bin_len2
     else:
         print_log(" - could not estimate --bin-length, using default value (" + str(default_bin_len) + ")", cfg.quiet)
         return default_bin_len

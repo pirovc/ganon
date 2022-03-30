@@ -8,6 +8,7 @@
 #include <utils/StopClock.hpp>
 #include <utils/adjust_seed.hpp>
 #include <utils/dna4_traits.hpp>
+#include <utils/load_map.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <seqan3/alphabet/views/complement.hpp>
@@ -111,9 +112,8 @@ struct Rep
     uint64_t unique_reads = 0;
 };
 
-typedef robin_hood::unordered_map< std::string, Rep >      TRep;
-typedef robin_hood::unordered_map< std::string, Node >     TTax;
-typedef robin_hood::unordered_map< uint32_t, std::string > TMap;
+typedef robin_hood::unordered_map< std::string, Rep >  TRep;
+typedef robin_hood::unordered_map< std::string, Node > TTax;
 
 struct Total
 {
@@ -653,26 +653,6 @@ size_t load_filter( TIBF& filter, std::string const& input_filter_file )
     archive( filter );
 
     return filter.bin_count();
-}
-
-TMap load_map( std::string map_file )
-{
-    TMap          map;
-    std::string   line;
-    std::ifstream infile;
-    infile.open( map_file );
-    while ( std::getline( infile, line, '\n' ) )
-    {
-        std::istringstream         stream_line( line );
-        std::vector< std::string > fields;
-        std::string                field;
-        while ( std::getline( stream_line, field, '\t' ) )
-            fields.push_back( field );
-        // target <tab> binid
-        map[std::stoul( fields[1] )] = fields[0];
-    }
-    infile.close();
-    return map;
 }
 
 TTax load_tax( std::string tax_file )
