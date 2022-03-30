@@ -6,6 +6,7 @@
 #include <utils/StopClock.hpp>
 #include <utils/adjust_seed.hpp>
 #include <utils/dna4_traits.hpp>
+#include <utils/load_map.hpp>
 
 #include <cereal/archives/binary.hpp>
 #include <seqan3/core/debug_stream.hpp>
@@ -180,7 +181,11 @@ void parse_refs( SafeQueue< detail::Seqs >& queue_refs,
 }
 
 template < class Thashes >
-uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len, Thashes& hashes_view )
+uint64_t count_hashes( auto&                                            reference_files,
+                       TSeqBin&                                         seq_bin,
+                       TBinLen&                                         bin_len,
+                       Thashes&                                         hashes_view,
+                       robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count )
 {
     // map instead of vector to easily erase
     robin_hood::unordered_map< uint64_t, robin_hood::unordered_set< uint64_t > > hashes;
@@ -193,6 +198,7 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
     uint64_t bin_count  = bin_len.size();
     for ( auto const& reference_file : reference_files )
     {
+
         seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
             reference_file
         };
@@ -214,6 +220,7 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
 
                     if ( bin_parsed_length[binid] == bin_len[binid] )
                     {
+                        hashes_count[binid] = hashes[binid].size();
                         // if has more hashes than max, keep number
                         if ( hashes[binid].size() > max_hashes )
                             max_hashes = hashes[binid].size();
@@ -231,6 +238,7 @@ uint64_t count_hashes( auto& reference_files, TSeqBin& seq_bin, TBinLen& bin_len
     // count parsed existing hashes
     for ( const auto& [binid, h] : hashes )
     {
+        hashes_count[binid] = h.size();
         if ( h.size() > max_hashes )
             max_hashes = h.size();
     }
@@ -245,14 +253,12 @@ inline uint64_t get_optimal_bins( uint64_t nbins )
 
 inline uint64_t get_bin_size( double false_positive, uint16_t hash_functions, uint64_t max_hashes )
 {
-    return std::ceil( max_hashes
-                      * ( -hash_functions / std::log( 1 - std::exp( std::log( false_positive ) / hash_functions ) ) ) );
+    return std::ceil( -static_cast< double >( max_hashes * hash_functions )
+                      / std::log( 1 - std::exp( std::log( false_positive ) / hash_functions ) ) );
 }
 
 inline double get_fp( uint64_t bin_size, uint16_t hash_functions, uint64_t max_hashes )
 {
-    // std::pow( ( 1 - ( std::pow( ( 1 - ( 1 / static_cast< double >( bin_size ) ) ), ( hash_functions * max_hashes ) )
-    // ) ), hash_functions );
     return std::pow( 1 - std::exp( -hash_functions / ( bin_size / static_cast< double >( max_hashes ) ) ),
                      hash_functions );
 }
@@ -270,7 +276,10 @@ void print_ibf_stats(
     std::cerr << std::endl;
 }
 
-uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, TBinLen& bin_len )
+uint64_t get_hashes( GanonBuild::Config&                              config,
+                     detail::TSeqBin&                                 seq_bin,
+                     TBinLen&                                         bin_len,
+                     robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count )
 {
 
     uint64_t max_hashes = 0;
@@ -284,39 +293,95 @@ uint64_t get_max_hashes( GanonBuild::Config& config, detail::TSeqBin& seq_bin, T
                 seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
                                                seqan3::window_size{ config.window_size },
                                                seqan3::seed{ raptor::adjust_seed( config.kmer_size ) } );
-            max_hashes = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash );
+            max_hashes = count_hashes( config.reference_files, seq_bin, bin_len, minimiser_hash, hashes_count );
         }
         else
         {
             auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ config.kmer_size } );
-            max_hashes     = count_hashes( config.reference_files, seq_bin, bin_len, kmer_hash );
+            max_hashes     = count_hashes( config.reference_files, seq_bin, bin_len, kmer_hash, hashes_count );
         }
     }
     else
     {
-        // calculate max hashes based on biggest bin lenght
-        auto max_bin_len =
-            std::max_element( bin_len.begin(),
-                              bin_len.end(),
-                              []( const std::pair< uint64_t, uint64_t >& p1,
-                                  const std::pair< uint64_t, uint64_t >& p2 ) { return p1.second < p2.second; } );
-        max_hashes = max_bin_len->second - config.kmer_size + 1;
+        // calculate hashes based on bin lenght
+        for ( auto const [binid, binlen] : bin_len )
+        {
+            hashes_count[binid] = binlen - config.kmer_size + 1;
+            if ( hashes_count[binid] > max_hashes )
+                max_hashes = hashes_count[binid];
+        }
     }
 
     return max_hashes;
 }
 
-TFilter create_filter( GanonBuild::Config& config, Stats& stats, uint64_t bin_count, uint64_t max_hashes )
+double cal_correction_ratio( double prod_fpr, double false_positive, uint16_t hash_functions )
 {
-    // calculate size/false positive
+    return std::log( 1 - std::exp( std::log( 1.0 - prod_fpr ) / hash_functions ) )
+           / std::log( 1 - std::exp( std::log( false_positive ) / hash_functions ) );
+}
+
+
+double correction_map( std::string                                      map_file,
+                       robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count,
+                       uint64_t                                         bin_size,
+                       double                                           false_positive,
+                       uint16_t                                         hash_functions )
+{
+
+    TMap map = load_map( map_file );
+
+    // Calculate product of FPR for each target (instead of naive (1-fp)**max_split)
+    std::map< std::string, double > prod_fpr_target;
+    for ( auto const& [binid, target] : map )
+    {
+        if ( prod_fpr_target.count( target ) == 0 )
+        {
+            prod_fpr_target[target] = 1.0;
+        }
+        prod_fpr_target[target] =
+            prod_fpr_target[target] * ( 1.0 - detail::get_fp( bin_size, hash_functions, hashes_count[binid] ) );
+    }
+
+    // get lowest fpr produce (= highest fpr (1-prod_fpr))
+    double lowest_prod = 1 - false_positive;
+    for ( auto const& [target, prod_fpr] : prod_fpr_target )
+    {
+        if ( prod_fpr_target[target] < lowest_prod )
+        {
+            lowest_prod = prod_fpr_target[target];
+        }
+    }
+
+    return cal_correction_ratio( lowest_prod, false_positive, hash_functions );
+}
+
+TFilter create_filter( GanonBuild::Config&                              config,
+                       Stats&                                           stats,
+                       uint64_t                                         bin_count,
+                       uint64_t                                         max_hashes,
+                       robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count )
+{
+
     double   false_positive    = 0;
     uint64_t bin_size          = 0;
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
-    // Calculate bin size based on filter size (1MB = 8388608bits)
+
+    // filter size is either given or calculated based on elements and fpr
     if ( config.false_positive )
     {
         false_positive = config.false_positive;
         bin_size       = get_bin_size( false_positive, config.hash_functions, max_hashes );
+
+        // Adjust filter size to achieve requested false positive rate
+        // this is necessary due to split of targets in several bins (multiple testing)
+        // Parameter can be manually given or optimally calculated from the map with target information and the
+        // hashes_count
+        double correction_ratio{ config.correction_ratio };
+        if ( !config.map.empty() )
+            correction_ratio =
+                correction_map( config.map, hashes_count, bin_size, false_positive, config.hash_functions );
+        bin_size = bin_size * correction_ratio;
     }
     else
     {
@@ -536,8 +601,9 @@ bool run( Config config )
     timeCountHashes.start();
     // last key, last bin (std::map)
     uint64_t last_bin = bin_len.rbegin()->first + 1;
-    //  based on counted hashes or length of the largest bin
-    uint64_t max_hashes = get_max_hashes( config, seq_bin, bin_len );
+    // count hashes for each bin
+    robin_hood::unordered_map< uint64_t, uint64_t > hashes_count;
+    uint64_t                                        max_hashes = get_hashes( config, seq_bin, bin_len, hashes_count );
     timeCountHashes.stop();
 
     // If updating: extend and clear filter
@@ -545,7 +611,7 @@ bool run( Config config )
     if ( config.update_filter_file.empty() )
     {
         // create new filter:
-        filter = detail::create_filter( config, stats, last_bin, max_hashes );
+        filter = detail::create_filter( config, stats, last_bin, max_hashes, hashes_count );
     }
     else
     {

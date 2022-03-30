@@ -17,6 +17,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "d,directory-reference-files", "Directory with reference files. Do not provide wildcards, just path (e.g. /path/to/folder/)", cxxopts::value< std::string >() )
         ( "x,extension", "Extension of the files to search in the --directory-reference-files (e.g. '.fna')", cxxopts::value< std::string >() )
         ( "e,seqid-bin-file", "Tab-separated file linking sequences identifiers, start pos., end pos. and bin number. If not provided, iterate over input reference files and assumes one file=one bin. Sequence identifier is anything between the header start '>' and an empty space ' '. The file should contain the following fields: Seq. Identifier <tab> Pos. Seq. Start <tab> Pos. Seq. End <tab> Bin number", cxxopts::value< std::string >() )
+        ( "m,map", "Optional tab-separated file mapping bins ids to target groups/labels. Used to calculate correct filter size base on --false-positive", cxxopts::value< std::string >() )
         
         ( "o,output-filter-file", "Output file for filter (e.g. filter.ibf)", cxxopts::value< std::string >() )
         ( "u,update-filter-file", "Previously generated filter file to be updated", cxxopts::value< std::string >() )
@@ -29,6 +30,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "k,kmer-size", "k-mer size to build filter (only forward strand). Default: 19", cxxopts::value< uint8_t >() )
         ( "w,window-size", "Window size. If set, filter is built with minimizers. ", cxxopts::value< uint32_t >() )
         ( "n,hash-functions", "Number of hash functions to build filter. Default: 3", cxxopts::value< uint16_t >() )
+        ( "i,correction-ratio", "Correction ratio for split bins. Used to calculate correct filter size base on --false-positive. Default: 1.0", cxxopts::value< double >() )
         ( "a,count-hashes", "Iterate over input to count the exact number of elements to insert into the filter", cxxopts::value<bool>())
         
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
@@ -71,6 +73,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     if ( args.count( "seqid-bin-file" ) )
         config.seqid_bin_file = args["seqid-bin-file"].as< std::string >();
+    if ( args.count( "map" ) )
+        config.map = args["map"].as< std::string >();
     if ( args.count( "output-filter-file" ) )
         config.output_filter_file = args["output-filter-file"].as< std::string >();
     if ( args.count( "update-filter-file" ) )
@@ -91,6 +95,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.window_size = args["window-size"].as< uint32_t >();
     if ( args.count( "hash-functions" ) )
         config.hash_functions = args["hash-functions"].as< uint16_t >();
+    if ( args.count( "correction-ratio" ) )
+        config.correction_ratio = args["correction-ratio"].as< double >();
     if ( args.count( "count-hashes" ) )
         config.count_hashes = args["count-hashes"].as< bool >();
 

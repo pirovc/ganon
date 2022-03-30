@@ -57,6 +57,12 @@ class Bins:
     def get_max_bin_length(self):
         return self.get_binid_length_sum().max()
 
+    def get_max_split_bins(self, use_specialization: bool=False):
+        if use_specialization:
+            return self.bins[['specialization','binid']].drop_duplicates().value_counts('specialization').max()
+        else:
+            return self.bins[['taxid','binid']].drop_duplicates().value_counts('taxid').max()
+
     def get_specialization_taxid(self):
         return self.bins[['specialization','taxid']].drop_duplicates().set_index('specialization')
 
