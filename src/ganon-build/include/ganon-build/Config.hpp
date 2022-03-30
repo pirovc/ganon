@@ -192,6 +192,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         stream << "                      " << file << newl;
     }
     stream << "--seqid-bin-file      " << config.seqid_bin_file << newl;
+    stream << "--map                 " << config.map << newl;
     stream << "--output-filter-file  " << config.output_filter_file << newl;
     stream << "--update-filter-file  " << config.update_filter_file << newl;
     stream << "--update-complete     " << config.update_complete << newl;
