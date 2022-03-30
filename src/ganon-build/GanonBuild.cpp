@@ -384,16 +384,22 @@ TFilter create_filter( GanonBuild::Config&                              config,
         // Parameter can be manually given or optimally calculated from the map with target information and the
         // hashes_count
         if ( !config.map.empty() )
+        {
             correction_ratio =
                 correction_map( config.map, hashes_count, bin_size, false_positive, config.hash_functions );
+        }
         bin_size = bin_size * correction_ratio;
     }
     else
     {
         if ( config.filter_size_mb > 0 )
+        {
             bin_size = ( config.filter_size_mb / static_cast< double >( optimal_bin_count ) ) * 8388608u;
+        }
         else
+        {
             bin_size = config.bin_size_bits;
+        }
         false_positive = get_fp( bin_size, config.hash_functions, max_hashes );
     }
 

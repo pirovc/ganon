@@ -648,7 +648,7 @@ def estimate_bin_length(cfg, seqinfo, tax):
     # default bin len if simulation fails
     default_bin_len = 1000000
     # number of simulations
-    nsim = 300
+    nsim = 1000
 
     # Generate dict with target groups and their total length to estimate params
     groups_len = {}
@@ -666,7 +666,7 @@ def estimate_bin_length(cfg, seqinfo, tax):
     else:
         min_bin_len = 500
     # Biggest group as max
-    max_bin_len = max(groups_len.values())
+    max_bin_len = max(groups_len.values()) + min_bin_len
     # Try to find min. size by simulating points in geometric space
     # between min. and max. bin length. Use geometric to have more simulations on smaller sizes
     # Necessary to calculate instead of getting first lowest since it may be a local minimum
@@ -674,6 +674,11 @@ def estimate_bin_length(cfg, seqinfo, tax):
 
     # simulated parameters
     params = estimate_params(cfg, simulated_bin_lens, groups_len)
+
+    # print("params")
+    # for p, v in params.items():
+    #     print(p, v, sep="\t")
+    # print("")
 
     if not params:
         print_log(" - could not estimate --bin-length, using default value (" + str(default_bin_len) + ")", cfg.quiet)
@@ -697,6 +702,10 @@ def estimate_bin_length(cfg, seqinfo, tax):
     # Keep only valid params below max_filter_size
     filtered_params = dict(filter(lambda v: v[1]["corr_filter_size_bits"] <= max_filter_size, params.items()))
 
+    # print("filtered_params")
+    # for p, v in filtered_params.items():
+    #     print(p, v, sep="\t")
+    # print("")
 
     # if there are valids params after filtering
     if len(filtered_params):
@@ -704,6 +713,11 @@ def estimate_bin_length(cfg, seqinfo, tax):
         simulated_bin_lens2 = map(round, np.linspace(min(filtered_params.keys()), max(filtered_params.keys()), num=nsim))
         # simulated parameters (second time)
         params2 = estimate_params(cfg, simulated_bin_lens2, groups_len)
+
+        # print("params2")
+        # for p, v in params2.items():
+        #     print(p, v, sep="\t")
+        # print("")
 
         # select top param with least number of bins (and smallest generated filter as second filter)
         #selected_best_bin_len = sorted(params2, key=lambda k: (params2[k]["n_bins"], params2[k]["corr_filter_size_bits"]))[0]
