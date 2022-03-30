@@ -263,16 +263,21 @@ inline double get_fp( uint64_t bin_size, uint16_t hash_functions, uint64_t max_h
                      hash_functions );
 }
 
-void print_ibf_stats(
-    Stats& stats, uint64_t max_hashes, uint64_t bin_size, uint64_t bin_count, uint64_t optimal_bin_count )
+void print_ibf_stats( Stats&   stats,
+                      uint64_t max_hashes,
+                      uint64_t bin_size,
+                      uint64_t bin_count,
+                      uint64_t optimal_bin_count,
+                      double   correction_ratio )
 {
-    std::cerr << "IBF stats: " << std::endl;
+    std::cerr << "IBF: " << std::endl;
     std::cerr << "max hashes: " << max_hashes << std::endl;
     std::cerr << "bin count/optimal: " << bin_count << "/" << optimal_bin_count << std::endl;
     std::cerr << "bin size bits: " << bin_size << std::endl;
-    std::cerr << "filter size bits/MB: " << ( optimal_bin_count * bin_size ) << "/" << ( stats.filterSizeMB )
-              << std::endl;
+    std::cerr << "filter size bits: " << ( optimal_bin_count * bin_size ) << std::endl;
+    std::cerr << "filter size MB: " << std::fixed << stats.filterSizeMB << std::endl;
     std::cerr << "filter max false positive: " << stats.filterFalsePositive << std::endl;
+    std::cerr << "correction ratio: " << correction_ratio << std::endl;
     std::cerr << std::endl;
 }
 
@@ -288,7 +293,6 @@ uint64_t get_hashes( GanonBuild::Config&                              config,
         // count hashes for minimizers or kmers
         if ( config.window_size > 0 )
         {
-
             auto minimiser_hash =
                 seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
                                                seqan3::window_size{ config.window_size },
@@ -303,10 +307,11 @@ uint64_t get_hashes( GanonBuild::Config&                              config,
     }
     else
     {
+        auto wk_size = ( config.window_size > 0 ) ? config.window_size : config.kmer_size;
         // calculate hashes based on bin lenght
         for ( auto const [binid, binlen] : bin_len )
         {
-            hashes_count[binid] = binlen - config.kmer_size + 1;
+            hashes_count[binid] = binlen - wk_size + 1;
             if ( hashes_count[binid] > max_hashes )
                 max_hashes = hashes_count[binid];
         }
@@ -368,6 +373,7 @@ TFilter create_filter( GanonBuild::Config&                              config,
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
 
     // filter size is either given or calculated based on elements and fpr
+    double correction_ratio{ config.correction_ratio };
     if ( config.false_positive )
     {
         false_positive = config.false_positive;
@@ -377,7 +383,6 @@ TFilter create_filter( GanonBuild::Config&                              config,
         // this is necessary due to split of targets in several bins (multiple testing)
         // Parameter can be manually given or optimally calculated from the map with target information and the
         // hashes_count
-        double correction_ratio{ config.correction_ratio };
         if ( !config.map.empty() )
             correction_ratio =
                 correction_map( config.map, hashes_count, bin_size, false_positive, config.hash_functions );
@@ -396,7 +401,7 @@ TFilter create_filter( GanonBuild::Config&                              config,
     stats.filterFalsePositive = false_positive;
 
     if ( config.verbose )
-        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count );
+        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count, correction_ratio );
 
     return TFilter{ seqan3::bin_count{ bin_count },
                     seqan3::bin_size{ bin_size },
@@ -441,7 +446,7 @@ void increase_filter( Config& config, Stats& stats, TFilter& filter, uint64_t bi
     stats.filterFalsePositive = false_positive;
 
     if ( config.verbose )
-        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count );
+        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count, config.correction_ratio );
 
     // If new bins were added
     uint64_t old_total_bins = filter.bin_count();
@@ -531,9 +536,9 @@ void print_stats( Stats& stats, const StopClock& timeGanon )
               << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed / 60.0 ) << " Mbp/m)" << std::endl;
 
     if ( stats.newBins > 0 )
-        std::cerr << " - " << stats.newBins << " bins were added to the IBF" << std::endl;
+        std::cerr << " - " << stats.newBins << " bins added to the IBF" << std::endl;
     if ( stats.invalidSeqs > 0 )
-        std::cerr << " - " << stats.invalidSeqs << " invalid sequences were skipped" << std::endl;
+        std::cerr << " - " << stats.invalidSeqs << " invalid sequence(s) skipped" << std::endl;
 
     std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins written to the IBF ("
               << std::setprecision( 2 ) << std::fixed << stats.filterSizeMB << "MB)" << std::endl;

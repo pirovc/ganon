@@ -139,11 +139,10 @@ public:
             if ( !check_files( { update_filter_file } ) )
                 return false;
 
-            if ( verbose && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
+            if ( verbose && !quiet && ( filter_size_mb > 0 || bin_size_bits > 0 || false_positive > 0 ) )
             {
-                if ( !quiet )
-                    std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
-                              << std::endl;
+                std::cerr << "WARNING: --false-positive, --filter-size-mb and --bin-size-bits ignored when updating"
+                          << std::endl;
             }
             filter_size_mb = 0;
             bin_size_bits  = 0;
@@ -186,10 +185,12 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     constexpr auto separator{ "----------------------------------------------------------------------" };
 
     stream << separator << newl;
-    stream << "--reference-files     " << newl;
-    for ( const auto& file : config.reference_files )
+    stream << "--reference-files     " << config.reference_files.size() << " file(s)" << newl;
+    stream << "                      " << config.reference_files[0] << newl;
+    if ( config.reference_files.size() > 1 )
     {
-        stream << "                      " << file << newl;
+        stream << "                      ..." << newl;
+        stream << "                      " << config.reference_files.back() << newl;
     }
     stream << "--seqid-bin-file      " << config.seqid_bin_file << newl;
     stream << "--map                 " << config.map << newl;
@@ -207,7 +208,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--hash-functions      " << config.hash_functions << newl;
     stream << "--correction-ratio    " << config.correction_ratio << newl;
     stream << "--count-hashes        " << config.count_hashes << newl;
-    stream << "--verbose             " << config.verbose << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;
     stream << "--n-batches           " << config.n_batches << newl;

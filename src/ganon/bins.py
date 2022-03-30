@@ -45,6 +45,9 @@ class Bins:
     def get_taxids(self):
         return self.bins.taxid.unique()
 
+    def get_specialization(self):
+        return self.bins.specialization.unique()
+        
     def get_binids(self):
         return self.bins.binid.unique()
 
