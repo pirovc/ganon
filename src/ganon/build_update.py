@@ -101,19 +101,24 @@ def build(cfg):
         optimal_params["hash_functions"] = 3
 
     if cfg.verbose:
+        print_log("IBF params:", cfg.quiet)
         try:
             correction_ratio = split_correction_ratio(optimal_params["false_positive"], optimal_params["hash_functions"], max_split_bins)
         except:
             correction_ratio = 1
 
-        print_log("Hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
-        print_log("Targets: " + str(len(bins.get_specialization() if cfg.specialization else bins.get_taxids())), cfg.quiet)
-        print_log("Optimal bins: " + str(optimal_number_of_bins), cfg.quiet)
-        print_log("Max. split bin: " + str(max_split_bins), cfg.quiet)
-        print_log("Max. correction ratio: " + str("{0:.5f}".format(correction_ratio)) , cfg.quiet)
-        print_log("Max. hashes/bin: " + str(max_kmer_count), cfg.quiet)
-        print_log("Max. filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins * correction_ratio))) + "MB", cfg.quiet)
-        print_log("Max. false positive: " + str("{0:.5f}".format(optimal_params["false_positive"])), cfg.quiet)
+        print_log(" - # hash functions: " + str(optimal_params["hash_functions"]), cfg.quiet)
+        print_log(" - # targets: " + str(len(bins.get_specialization() if cfg.specialization else bins.get_taxids())), cfg.quiet)
+        print_log(" - # bins/optimal bins: " + str(actual_number_of_bins) + "/" + str(optimal_number_of_bins), cfg.quiet)
+        print_log(" - target with most splits/bin: " + str(max_split_bins), cfg.quiet)
+        print_log(" - max. correction ratio: " + str("{0:.5f}".format(correction_ratio)) , cfg.quiet)
+        if cfg.filter_size:
+            print_log(" - fixed filter size: " + str("{0:.2f}".format(cfg.filter_size)) + "MB" , cfg.quiet)
+        else:
+            print_log(" - max. false positive: " + str("{0:.5f}".format(cfg.max_fp)), cfg.quiet)
+            print_log(" - upper limit filter size: " + str("{0:.2f}".format(bits2mb(optimal_params["size_bits"] * optimal_number_of_bins * correction_ratio))) + "MB", cfg.quiet)
+            if(cfg.window_size>0):
+                print_log(" ** real filter size should be considerably smaller", cfg.quiet)
         print_log("")
 
     # Build database files (map, tax, gnn)
@@ -133,9 +138,10 @@ def build(cfg):
     tax.write(db_prefix["tax"])
 
     if cfg.specialization and cfg.rank != "leaves":
-        print_log(" - --rank is set to leaves when using specialization values", cfg.quiet)
         cfg.rank = "leaves"
-
+        if cfg.verbose:
+            print_log(" - --rank is set to leaves when using specialization values", cfg.quiet)
+        
     # Write .gnn file
     print_log(" - " + db_prefix["gnn"], cfg.quiet)
     gnn = Gnn(kmer_size=cfg.kmer_size,
