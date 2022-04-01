@@ -215,8 +215,10 @@ def update(cfg):
     # If specialization was set on database
     if gnn.specialization:
         # if not provided by user, use defition of database
-        if not cfg.specialization: cfg.specialization=gnn.specialization
+        if not cfg.specialization:
+            cfg.specialization=gnn.specialization
         print_log("Using --specialization " + cfg.specialization, cfg.quiet)
+        print_log("")
     else:
         if cfg.specialization: 
             # If user defined specialization on update but database has none
@@ -283,7 +285,8 @@ def update(cfg):
     removed_binids = previous_binids.difference(kept_binids | taxsbp_binids)
     new_binids = taxsbp_binids.difference(previous_binids)
     updated_binids = taxsbp_binids.intersection(previous_binids)
-    print_log(" - " + str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed", cfg.quiet)
+    if cfg.verbose:
+        print_log(" - " + str(len(new_binids)) + " bins added, " + str(len(updated_binids)) + " bins updated, " + str(len(removed_binids)) + " bins removed", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     tx = time.time()
@@ -360,6 +363,7 @@ def update(cfg):
                                     "--kmer-size " + str(kmer_size),
                                     "--window-size " + str(window_size) if window_size else "",
                                     "--count-hashes " if window_size else "",
+                                    "--map " + cfg.output_db_prefix + ".map" if cfg.output_db_prefix else db_prefix["map"],
                                     "--hash-functions " + str(hash_functions),
                                     "--seqid-bin-file " + acc_bin_file,
                                     "--output-filter-file " + tmp_db_prefix_ibf,
