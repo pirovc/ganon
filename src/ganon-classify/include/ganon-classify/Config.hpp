@@ -60,13 +60,13 @@ public:
     std::vector< std::string > hierarchy_labels{ "H1" };
 
     std::vector< uint8_t >  kmer_size{ 19 };
-    std::vector< uint32_t > window_size{ 0 };
+    std::vector< uint32_t > window_size{ 32 };
     std::vector< uint8_t >  offset{ 1 };
 
-    std::vector< double >  rel_cutoff{ 0.25 };
+    std::vector< double >  rel_cutoff{ 0.5 };
     std::vector< int16_t > abs_cutoff;
-    std::vector< double >  rel_filter;
-    std::vector< int16_t > abs_filter{ 0 };
+    std::vector< double >  rel_filter{ 0.1 };
+    std::vector< int16_t > abs_filter;
 
     std::string output_prefix       = "";
     bool        output_lca          = false;
@@ -201,11 +201,11 @@ public:
         else
             abs_cutoff.push_back( -1 ); // reset abs_cutoff
 
-        // default is abs_filter
-        if ( rel_filter.size() > 0 )
-            abs_filter[0] = -1; // reset abs_filter
+        // default is rel_filter
+        if ( abs_filter.size() > 0 )
+            rel_filter[0] = -1; // reset rel_filter
         else
-            rel_filter.push_back( -1 ); // reset rel_filter
+            abs_filter.push_back( -1 ); // reset abs_filter
 
         if ( threads <= 3 )
         {

@@ -26,10 +26,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "w,window-size", "define window size for minimizers - should be the same used to build filter. One per hierarchy label.", cxxopts::value< std::vector< uint32_t > >() )
         ( "f,offset", "Offset for skipping k-mers while counting. One per hierarchy label. Default: 1 (no offset)", cxxopts::value< std::vector< uint8_t > >() )
         
-        ( "c,rel-cutoff", "Relative cutoff (i.e. percentage of k-mers). 0 for no cutoff. One per filter [muttualy exclusive --rel-cutoff]. Default: 0.25", cxxopts::value< std::vector< double > >() )
+        ( "c,rel-cutoff", "Relative cutoff (i.e. percentage of k-mers). 0 for no cutoff. One per filter [muttualy exclusive --abs-cutoff]. Default: 0.5", cxxopts::value< std::vector< double > >() )
+        ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). 1 for no filtering. One per hierarchy label [muttualy exclusive --abs-filter]. Default: 0.1", cxxopts::value< std::vector< double > >() )
         ( "b,abs-cutoff", "Absolute cutoff (i.e. number of errors). -1 for no cutoff. One per filter [muttualy exclusive --rel-cutoff].", cxxopts::value< std::vector< int16_t > >() )
-        ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). 1 for no filtering. One per hierarchy label [muttualy exclusive --abs-filter].", cxxopts::value< std::vector< double > >() )
-        ( "e,abs-filter", "Absolute filter. Additional errors allowed (relative to the best match). -1 for no filtering. One per hierarchy label [muttualy exclusive --abs-filter]. Default: 0", cxxopts::value< std::vector< int16_t > >() )
+        ( "e,abs-filter", "Absolute filter. Additional errors allowed (relative to the best match). -1 for no filtering. One per hierarchy label [muttualy exclusive --rel-filter]", cxxopts::value< std::vector< int16_t > >() )
         
         ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.lca, prefix.all, prefix.unc]). If multi-level hierarchy is provided, files are generated accordingly (prefix.hierarchy.lca and prefix.hierarchy.all). Omit to output to STDOUT (only .rep will be printed)", cxxopts::value< std::string >() )
         ( "l,output-lca", "Output file with lca classification, one for each classified read (prefix.lca)", cxxopts::value< bool >() )

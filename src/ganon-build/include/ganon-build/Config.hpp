@@ -33,7 +33,7 @@ public:
     uint64_t bin_size_bits  = 0;
 
     uint8_t  kmer_size      = 19;
-    uint32_t window_size    = 0;
+    uint32_t window_size    = 32;
     uint16_t hash_functions = 3;
     bool     count_hashes   = false;
 
