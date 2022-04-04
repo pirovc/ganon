@@ -20,24 +20,23 @@ class Config:
         build_group_required.add_argument('-d', '--db-prefix',   type=str,            required=True,  help='Database output prefix (.ibf, .map, .tax, .gnn will be created)')
         build_group_required.add_argument('-i', '--input-files', type=str, nargs="*", required=False, help='Input reference sequence fasta files [.gz]')
 
-        # Defaults
         build_group_important = build_parser.add_argument_group('important arguments')
-        build_group_important.add_argument('-t', '--threads',         type=int,            metavar='', default=2,         help='Number of sub-processes/threads to use. Default: 2')
         build_group_important.add_argument('-r', '--rank',            type=str,            metavar='', default='species', help='Target taxonomic rank for classification [species,genus,...]. use "leaves" to use the leaf taxonomic node assigned to each sequence as targets. To use assembly, strain or further specializations, check --specialization. Default: species')
-        build_group_important.add_argument('-m', '--max-filter-size', type=float,          metavar='',                    help='Given an approx. upper limit in Megabytes (MB) for filter/memory usage. When using --window-size, filter may be significantly smaller after build depending on the level of similarity of your input sequences. [Mutually exclusive --bin-length]')
-        build_group_important.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive rate for bloom filters [Mutually exclusive --filter-size]. Default: 0.05')
+        build_group_important.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Add extra specialized "rank" as target for classification after taxonomic leaves. If set, --rank is defaulted to leaves. Options: [sequence,file,assembly,custom]. "sequence" will use sequence accession as target. "file" uses the filename as target. "assembly" will use assembly info from NCBI as target. "custom" uses the 4th column of the file provided in --seq-info-file as target.')
+        build_group_important.add_argument('-f', '--max-fp',          type=float,          metavar='', default=0.05,      help='Max. false positive for classification [Mutually exclusive --filter-size]. Default: 0.05')
+        build_group_important.add_argument('-t', '--threads',         type=int,            metavar='', default=2,         help='Number of sub-processes/threads to use. Default: 2')
 
         build_group_filter = build_parser.add_argument_group('filter arguments')
         build_group_filter.add_argument('-k', '--kmer-size',             type=int,      metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
         build_group_filter.add_argument('-w', '--window-size',           type=int,      metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
-        build_group_filter.add_argument('--hash-functions',        type=int,            metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
-        build_group_filter.add_argument('--filter-size',           type=float,          metavar='', default=0,         help='Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp]')
-        build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin [Mutually exclusive --max-filter-size]')
+        build_group_filter.add_argument('-a', '--hash-functions',        type=int,      metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
+        build_group_filter.add_argument('-z', '--filter-size',           type=float,    metavar='', default=0,         help='Fixed size for the filter in Megabytes (MB). If provided, --max-fp cannot be guaranteed.')
+        build_group_filter.add_argument('--faster',                action='store_true',                                help='Attemp to build filter with best performance on classification. Filter may be significantly bigger.')
+        build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin')
         build_group_filter.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment sequences into specified length (in bp). Set to 0 to not fragment sequences. Default: bin-length - overlap-length')
         build_group_filter.add_argument('--overlap-length',        type=int,            metavar='', default=300,       help='Fragment overlap length (in bp). Should be bigger than the read length used for classification. Default: 300')
-
+        
         build_group_other = build_parser.add_argument_group('other arguments')
-        build_group_other.add_argument('-s', '--specialization',  type=str,            metavar='', default="",        help='Add extra specialized "rank" as target for classification after taxonomic leaves. If set, --rank is defaulted to leaves. Options: [sequence,file,assembly,custom]. "sequence" will use sequence accession as target. "file" uses the filename as target. "assembly" will use assembly info from NCBI as target. "custom" uses the 4th column of the file provided in --seq-info-file as target.')
         build_group_other.add_argument('--seq-info-mode',         type=str, nargs="*", metavar='', default=["auto"],  help='Automatic mode to retrieve tax. info and seq. length. [auto,eutils] or one or more accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot]. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs. Alternatively a file can be directly provided (see --seq-info-file). Default: auto')
         build_group_other.add_argument('--seq-info-file',         type=str,            metavar='',                    help='Tab-separated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> specialization]) [Mutually exclusive --seq-info-mode].')
         build_group_other.add_argument('--taxdump-file',          type=str, nargs="*", metavar='',                    help='Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded).')
@@ -254,13 +253,6 @@ class Config:
             if self.max_fp <= 0 or self.max_fp > 1:
                 print_log("--max-fp has to be set between 0 and 1")
                 return False
-
-            if self.filter_size > 0 and self.bin_length == 0:
-                print_log("--bin-length should be set with --filter-size")
-                return False
-
-            if self.filter_size > 0:
-                self.max_fp = 0
 
             if self.specialization:
                 valid_spec = self.validate_specialization()

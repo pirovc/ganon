@@ -32,11 +32,10 @@ public:
     double   filter_size_mb = 0;
     uint64_t bin_size_bits  = 0;
 
-    uint8_t  kmer_size        = 19;
-    uint32_t window_size      = 0;
-    uint16_t hash_functions   = 3;
-    double   correction_ratio = 1.0;
-    bool     count_hashes     = false;
+    uint8_t  kmer_size      = 19;
+    uint32_t window_size    = 0;
+    uint16_t hash_functions = 3;
+    bool     count_hashes   = false;
 
     uint16_t threads   = 2;
     uint32_t n_refs    = 400;
@@ -206,7 +205,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--kmer-size           " << unsigned( config.kmer_size ) << newl;
     stream << "--window-size         " << config.window_size << newl;
     stream << "--hash-functions      " << config.hash_functions << newl;
-    stream << "--correction-ratio    " << config.correction_ratio << newl;
     stream << "--count-hashes        " << config.count_hashes << newl;
     stream << "--threads             " << config.threads << newl;
     stream << "--n-refs              " << config.n_refs << newl;

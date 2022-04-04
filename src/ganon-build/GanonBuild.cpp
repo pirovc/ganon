@@ -56,6 +56,10 @@ struct Stats
     , totalBinsFile{ 0 }
     , invalidSeqs{ 0 }
     , newBins{ 0 }
+    , filterSizeMB{ 0 }
+    , filterMaxFP{ 0 }
+    , filterAvgFP{ 0 }
+    , totalTargets{ 0 }
     {
     }
 
@@ -66,7 +70,9 @@ struct Stats
     uint64_t invalidSeqs;
     uint64_t newBins;
     double   filterSizeMB;
-    double   filterFalsePositive;
+    double   filterMaxFP;
+    double   filterAvgFP;
+    uint64_t totalTargets;
 };
 
 typedef robin_hood::unordered_map< std::string, std::vector< FragmentBin > > TSeqBin;
@@ -271,13 +277,15 @@ void print_ibf_stats( Stats&   stats,
                       double   correction_ratio )
 {
     std::cerr << "IBF: " << std::endl;
-    std::cerr << "max hashes: " << max_hashes << std::endl;
-    std::cerr << "bin count/optimal: " << bin_count << "/" << optimal_bin_count << std::endl;
-    std::cerr << "bin size bits: " << bin_size << std::endl;
-    std::cerr << "filter size bits: " << ( optimal_bin_count * bin_size ) << std::endl;
-    std::cerr << "filter size MB: " << std::fixed << stats.filterSizeMB << std::endl;
-    std::cerr << "filter max false positive: " << stats.filterFalsePositive << std::endl;
+    std::cerr << "max. elements: " << max_hashes << std::endl;
+    std::cerr << "n. bins/optimal: " << bin_count << "/" << optimal_bin_count << std::endl;
+    std::cerr << "bin size (bits): " << bin_size << std::endl;
+    std::cerr << "filter size (bits): " << ( optimal_bin_count * bin_size ) << std::endl;
+    std::cerr << "filter size (MB): " << std::fixed << stats.filterSizeMB << std::endl;
     std::cerr << "correction ratio: " << correction_ratio << std::endl;
+    std::cerr << "max. fp: " << stats.filterMaxFP << std::endl;
+    std::cerr << "avg. fp: " << stats.filterAvgFP << std::endl;
+
     std::cerr << std::endl;
 }
 
@@ -322,19 +330,36 @@ uint64_t get_hashes( GanonBuild::Config&                              config,
 
 double cal_correction_ratio( double prod_fpr, double false_positive, uint16_t hash_functions )
 {
-    return std::log( 1 - std::exp( std::log( 1.0 - prod_fpr ) / hash_functions ) )
-           / std::log( 1 - std::exp( std::log( false_positive ) / hash_functions ) );
+    return std::log( 1.0 - std::exp( std::log( prod_fpr ) / hash_functions ) )
+           / std::log( 1.0 - std::exp( std::log( false_positive ) / hash_functions ) );
 }
 
 
-double correction_map( std::string                                      map_file,
-                       robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count,
-                       uint64_t                                         bin_size,
-                       double                                           false_positive,
-                       uint16_t                                         hash_functions )
+std::tuple< double, double > get_true_fp( robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count,
+                                          uint64_t                                         bin_size,
+                                          uint16_t                                         hash_functions )
 {
+    double fp         = 0;
+    double highest_fp = 0;
+    double average_fp = 0;
+    for ( auto const& [bin_n, hashes] : hashes_count )
+    {
+        fp = get_fp( bin_size, hash_functions, hashes );
+        if ( fp > highest_fp )
+        {
+            highest_fp = fp;
+        }
+        average_fp += fp;
+    }
+    average_fp = average_fp / static_cast< double >( hashes_count.size() );
+    return std::make_tuple( highest_fp, average_fp );
+}
 
-    TMap map = load_map( map_file );
+std::tuple< double, double > get_true_fp( TMap&                                            map,
+                                          robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count,
+                                          uint64_t                                         bin_size,
+                                          uint16_t                                         hash_functions )
+{
 
     // Calculate product of FPR for each target (instead of naive (1-fp)**max_split)
     std::map< std::string, double > prod_fpr_target;
@@ -345,66 +370,75 @@ double correction_map( std::string                                      map_file
             prod_fpr_target[target] = 1.0;
         }
         prod_fpr_target[target] =
-            prod_fpr_target[target] * ( 1.0 - detail::get_fp( bin_size, hash_functions, hashes_count[binid] ) );
+            prod_fpr_target[target] * ( 1.0 - get_fp( bin_size, hash_functions, hashes_count[binid] ) );
     }
 
-    // get lowest fpr produce (= highest fpr (1-prod_fpr))
-    double lowest_prod = 1 - false_positive;
+    double highest_fp = 0;
+    double average_fp = 0;
     for ( auto const& [target, prod_fpr] : prod_fpr_target )
     {
-        if ( prod_fpr_target[target] < lowest_prod )
+        if ( ( 1.0 - prod_fpr ) > highest_fp )
         {
-            lowest_prod = prod_fpr_target[target];
+            highest_fp = 1.0 - prod_fpr;
         }
+        average_fp += ( 1.0 - prod_fpr );
     }
+    average_fp = average_fp / static_cast< double >( prod_fpr_target.size() );
 
-    return cal_correction_ratio( lowest_prod, false_positive, hash_functions );
+    return std::make_tuple( highest_fp, average_fp );
 }
 
 TFilter create_filter( GanonBuild::Config&                              config,
                        Stats&                                           stats,
+                       TMap&                                            map,
                        uint64_t                                         bin_count,
                        uint64_t                                         max_hashes,
                        robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count )
 {
 
-    double   false_positive    = 0;
+    // Calculate bin size
     uint64_t bin_size          = 0;
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
-
-    // filter size is either given or calculated based on elements and fpr
-    double correction_ratio{ config.correction_ratio };
     if ( config.false_positive )
     {
-        false_positive = config.false_positive;
-        bin_size       = get_bin_size( false_positive, config.hash_functions, max_hashes );
-
-        // Adjust filter size to achieve requested false positive rate
-        // this is necessary due to split of targets in several bins (multiple testing)
-        // Parameter can be manually given or optimally calculated from the map with target information and the
-        // hashes_count
-        if ( !config.map.empty() )
-        {
-            correction_ratio =
-                correction_map( config.map, hashes_count, bin_size, false_positive, config.hash_functions );
-        }
-        bin_size = bin_size * correction_ratio;
+        bin_size = get_bin_size( config.false_positive, config.hash_functions, max_hashes );
     }
     else
     {
         if ( config.filter_size_mb > 0 )
-        {
             bin_size = ( config.filter_size_mb / static_cast< double >( optimal_bin_count ) ) * 8388608u;
-        }
         else
-        {
             bin_size = config.bin_size_bits;
-        }
-        false_positive = get_fp( bin_size, config.hash_functions, max_hashes );
     }
 
-    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
-    stats.filterFalsePositive = false_positive;
+    // Calculate max fp, avg fp and correction ratio
+    double max_fp           = 0;
+    double avg_fp           = 0;
+    double correction_ratio = 1.0;
+    if ( !map.empty() )
+    {
+        // if map is provided, calculate true fpr for each target
+        std::tie( max_fp, avg_fp ) = get_true_fp( map, hashes_count, bin_size, config.hash_functions );
+        if ( config.false_positive )
+        {
+            // Adjust filter size to achieve requested false positive rate
+            // this is necessary due to split of targets in several bins (multiple testing)
+            correction_ratio = cal_correction_ratio( max_fp, config.false_positive, config.hash_functions );
+            // Adjust bin size
+            bin_size = bin_size * correction_ratio;
+            // Recalculate max and avg fp
+            std::tie( max_fp, avg_fp ) = get_true_fp( map, hashes_count, bin_size, config.hash_functions );
+        }
+    }
+    else
+    {
+        // Calculate fpr for each bin
+        std::tie( max_fp, avg_fp ) = get_true_fp( hashes_count, bin_size, config.hash_functions );
+    }
+
+    stats.filterSizeMB = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
+    stats.filterMaxFP  = max_fp;
+    stats.filterAvgFP  = avg_fp;
 
     if ( config.verbose )
         detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count, correction_ratio );
@@ -441,18 +475,37 @@ void clear_filter( TFilter& filter, const TBinLen& bin_len )
     filter.clear( updated_bins );
 }
 
-void increase_filter( Config& config, Stats& stats, TFilter& filter, uint64_t bin_count, uint64_t max_hashes )
+void increase_filter( Config&                                          config,
+                      Stats&                                           stats,
+                      TMap&                                            map,
+                      TFilter&                                         filter,
+                      uint64_t                                         bin_count,
+                      uint64_t                                         max_hashes,
+                      robin_hood::unordered_map< uint64_t, uint64_t >& hashes_count )
 {
     // Calculate false positive
     uint64_t bin_size          = filter.bin_size();
     uint64_t optimal_bin_count = get_optimal_bins( bin_count );
-    double   false_positive    = get_fp( bin_size, config.hash_functions, max_hashes );
+    // double   false_positive    = get_fp( bin_size, config.hash_functions, max_hashes );
+    double max_fp = 0;
+    double avg_fp = 0;
+    if ( !map.empty() )
+    {
+        // if map is provided, calculate true fpr for each target
+        std::tie( max_fp, avg_fp ) = get_true_fp( map, hashes_count, bin_size, config.hash_functions );
+    }
+    else
+    {
+        // Calculate fpr for each bin
+        std::tie( max_fp, avg_fp ) = get_true_fp( hashes_count, bin_size, config.hash_functions );
+    }
 
-    stats.filterSizeMB        = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
-    stats.filterFalsePositive = false_positive;
+    stats.filterSizeMB = ( optimal_bin_count * bin_size ) / static_cast< double >( 8388608u );
+    stats.filterMaxFP  = max_fp;
+    stats.filterAvgFP  = avg_fp;
 
     if ( config.verbose )
-        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count, config.correction_ratio );
+        detail::print_ibf_stats( stats, max_hashes, bin_size, bin_count, optimal_bin_count, 1 );
 
     // If new bins were added
     uint64_t old_total_bins = filter.bin_count();
@@ -533,23 +586,31 @@ void print_time( const StopClock& timeGanon,
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const StopClock& timeGanon )
+void print_stats( Stats& stats, const StopClock& timeGanon, bool is_update )
 {
     double   elapsed   = timeGanon.elapsed();
     uint64_t validSeqs = stats.totalSeqsFile - stats.invalidSeqs;
     std::cerr << "ganon-build processed " << validSeqs << " sequences (" << stats.sumSeqLen / 1000000.0 << " Mbp) in "
               << elapsed << " seconds (" << ( validSeqs / 1000.0 ) / ( elapsed / 60.0 ) << " Kseq/m, "
               << ( stats.sumSeqLen / 1000000.0 ) / ( elapsed / 60.0 ) << " Mbp/m)" << std::endl;
-
     if ( stats.newBins > 0 )
-        std::cerr << " - " << stats.newBins << " bins added to the IBF" << std::endl;
+        std::cerr << " - " << stats.newBins << " new bins" << std::endl;
     if ( stats.invalidSeqs > 0 )
         std::cerr << " - " << stats.invalidSeqs << " invalid sequence(s) skipped" << std::endl;
-
-    std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins written to the IBF ("
-              << std::setprecision( 2 ) << std::fixed << stats.filterSizeMB << "MB)" << std::endl;
-    std::cerr << " - " << std::setprecision( 3 ) << std::fixed << stats.filterFalsePositive
-              << " max. false positive (only added sequences)" << std::endl;
+    std::cerr << " - " << validSeqs << " sequences / " << stats.totalBinsFile << " bins";
+    if ( stats.totalTargets > 0 )
+        std::cerr << " / " << stats.totalTargets << " targets";
+    std::cerr << std::endl;
+    std::cerr << " - Size: " << std::setprecision( 2 ) << std::fixed << stats.filterSizeMB << "MB" << std::endl;
+    std::cerr << " - Max. FP: " << std::setprecision( 5 ) << std::fixed << stats.filterMaxFP
+              << " / Avg. FP: " << stats.filterAvgFP;
+    if ( stats.totalTargets > 0 )
+        std::cerr << " (targets)";
+    else
+        std::cerr << " (bins)";
+    if ( is_update )
+        std::cerr << " (only added/updated sequences)";
+    std::cerr << std::endl;
 }
 
 } // namespace detail
@@ -586,9 +647,10 @@ bool run( Config config )
     // config.n_batches*config.n_refs = max. amount of references in memory
     SafeQueue< detail::Seqs > queue_refs( config.n_batches );
 
+    bool is_update = !config.update_filter_file.empty();
     // load filter if provided
     timeLoadFilter.start();
-    if ( !config.update_filter_file.empty() )
+    if ( is_update )
     {
         filter = detail::load_filter( config.update_filter_file );
     }
@@ -604,7 +666,7 @@ bool run( Config config )
     {
         // Iterate over sequences to get their bins and total bin lenghts
         // if updating, create additional bins starting from the last
-        uint64_t start_bin = !config.update_filter_file.empty() ? filter.bin_count() : 0;
+        uint64_t start_bin = is_update ? filter.bin_count() : 0;
         detail::parse_sequences( config.reference_files, seq_bin, bin_len, start_bin );
     }
     timeLoadFiles.stop();
@@ -619,14 +681,24 @@ bool run( Config config )
 
     // If updating: extend and clear filter
     timeLoadFilter.start();
-    if ( config.update_filter_file.empty() )
+    TMap map;
+    if ( !config.map.empty() )
+    {
+        map = load_map( config.map );
+        robin_hood::unordered_set< std::string > targets;
+        for ( auto const& [binid, target] : map )
+            targets.insert( target );
+        stats.totalTargets = targets.size();
+    }
+
+    if ( !is_update )
     {
         // create new filter:
-        filter = detail::create_filter( config, stats, last_bin, max_hashes, hashes_count );
+        filter = detail::create_filter( config, stats, map, last_bin, max_hashes, hashes_count );
     }
     else
     {
-        detail::increase_filter( config, stats, filter, last_bin, max_hashes );
+        detail::increase_filter( config, stats, map, filter, last_bin, max_hashes, hashes_count );
         if ( config.update_complete )
         {
             detail::clear_filter( filter, bin_len );
@@ -699,7 +771,7 @@ bool run( Config config )
             detail::print_time(
                 timeGanon, timeLoadFiles, timeCountHashes, timeLoadSeq, timeLoadFiles, timeLoadFilter, timeSaveFilter );
         }
-        detail::print_stats( stats, timeGanon );
+        detail::print_stats( stats, timeGanon, is_update );
     }
     return true;
 }
