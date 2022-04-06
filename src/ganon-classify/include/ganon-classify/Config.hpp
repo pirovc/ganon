@@ -63,7 +63,7 @@ public:
     std::vector< uint32_t > window_size{ 32 };
     std::vector< uint8_t >  offset{ 1 };
 
-    std::vector< double >  rel_cutoff{ 0.5 };
+    std::vector< double >  rel_cutoff{ 0.2 };
     std::vector< int16_t > abs_cutoff;
     std::vector< double >  rel_filter{ 0.1 };
     std::vector< int16_t > abs_filter;

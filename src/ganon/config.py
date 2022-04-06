@@ -87,7 +87,7 @@ class Config:
         classify_group_required.add_argument('-p', '--paired-reads', type=str, nargs="*", required=False, metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
 
         classify_group_cutoff_filter = classify_parser.add_argument_group('cutoff/filter arguments')
-        classify_group_cutoff_filter.add_argument('-c', '--rel-cutoff',          type=float, nargs="*", metavar='', default=[0.5],  help='Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. [Mutually exclusive --abs-cutoff] Default: 0.5')
+        classify_group_cutoff_filter.add_argument('-c', '--rel-cutoff',          type=float, nargs="*", metavar='', default=[0.2],  help='Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. [Mutually exclusive --abs-cutoff] Default: 0.5')
         classify_group_cutoff_filter.add_argument('-e', '--rel-filter',          type=float, nargs="*", metavar='', default=[0.1],  help='Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. [Mutually exclusive --abs-filter] Default: 0.1')
 
         classify_group_output = classify_parser.add_argument_group('output arguments')
@@ -109,6 +109,7 @@ class Config:
         classify_group_other.add_argument('--ganon-path',                type=str, default="",  metavar='', help=argparse.SUPPRESS) 
         classify_group_other.add_argument('--n-reads',                   type=int,              metavar='', help=argparse.SUPPRESS)
         classify_group_other.add_argument('--n-batches',                 type=int,              metavar='', help=argparse.SUPPRESS)
+        classify_group_other.add_argument('--hibf' ,                     action='store_true',               help=argparse.SUPPRESS)
 
         ####################################################################################################
 

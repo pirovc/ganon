@@ -51,6 +51,7 @@ def classify(cfg):
                                    "--n-reads " + str(cfg.n_reads) if cfg.n_reads is not None else "",
                                    "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
                                    "--verbose" if cfg.verbose else "",
+                                   "--hibf" if cfg.hibf else "",
                                    "--quiet" if cfg.quiet else ""])
     #print(run_ganon_classify)
     stdout, stderr = run(run_ganon_classify)
