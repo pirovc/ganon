@@ -251,6 +251,7 @@ class TestUpdateOffline(unittest.TestCase):
                         "write_seq_info_file": True,
                         "rank": "superkingdom",
                         "bin_length": 200000,
+                        "window_size": 0,
                         "quiet": True}
         # Build config from params
         cfg_build = Config("build", **params_build)

@@ -49,7 +49,7 @@ class TestClassifyOffline(unittest.TestCase):
                                         data_dir+"build/bacteria_NC_017543.1.fasta.gz"],
                         "seq_info_file": data_dir+"build/bacteria_seqinfo.txt",
                         "write_seq_info_file": True,
-                        "window_size": 23,
+                        "window_size": "23",
                         "rank": "species",
                         "quiet": True,
                         "db_prefix": self.results_dir+"base_build_minimizers"}
@@ -63,8 +63,8 @@ class TestClassifyOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_minimizers"
         params["db_prefix"] = self.results_dir + "base_build_minimizers"
-        params["rel_cutoff"] = 0.75
-        params["rel_filter"] = 0.1
+        params["rel_cutoff"] = "0.75"
+        params["rel_filter"] = "0.1"
         cfg = Config("classify", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon classify exited with an error")
         res = classify_sanity_check_and_parse(vars(cfg))

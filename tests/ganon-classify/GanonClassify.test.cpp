@@ -26,6 +26,7 @@ GanonClassify::Config defaultConfig( const std::string prefix )
     cfg.output_unclassified = true;
     cfg.threads             = 4;
     cfg.kmer_size           = { 10 };
+    cfg.window_size         = { 0 };
     cfg.verbose             = false;
     cfg.quiet               = true;
     return cfg;
@@ -220,6 +221,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
     cfg_build.verbose            = false;
     cfg_build.quiet              = true;
     cfg_build.kmer_size          = 10;
+    cfg_build.window_size        = 0;
     cfg_build.output_filter_file = base_prefix + ".ibf";
     cfg_build.reference_files    = aux::write_sequences_files( base_prefix, "fasta", seqs, ids );
     REQUIRE( GanonBuild::run( cfg_build ) );
@@ -230,6 +232,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rA.fasta" };
+        cfg.rel_cutoff   = { 0.25 };
+        cfg.abs_filter   = { 0 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -247,6 +251,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             cfg.output_lca   = false;
             cfg.ibf          = { base_prefix + ".ibf" };
             cfg.single_reads = { folder_prefix + "rA.fasta" };
+            cfg.rel_cutoff   = { 0.25 };
+            cfg.abs_filter   = { 0 };
+
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
@@ -259,6 +266,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             cfg.output_all   = false;
             cfg.ibf          = { base_prefix + ".ibf" };
             cfg.single_reads = { folder_prefix + "rA.fasta" };
+            cfg.rel_cutoff   = { 0.25 };
+            cfg.abs_filter   = { 0 };
+
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
@@ -272,6 +282,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.paired_reads = { folder_prefix + "rA.fasta", folder_prefix + "rT.fasta" };
+        cfg.rel_cutoff   = { 0.25 };
+        cfg.abs_filter   = { 0 };
+
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -289,6 +302,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rC.fasta", folder_prefix + "rG.fasta" };
         cfg.paired_reads = { folder_prefix + "rA.fasta", folder_prefix + "rT.fasta" };
+        cfg.rel_cutoff   = { 0.25 };
+        cfg.abs_filter   = { 0 };
+
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -313,7 +329,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.single_reads = { folder_prefix + "rA.fasta" };
         config_classify::write_map( prefix + ".map",
                                     { { "0", "AorT" }, { "1", "CorG" }, { "2", "AorT" }, { "3", "CorG" } } );
-        cfg.map = { prefix + ".map" };
+        cfg.map        = { prefix + ".map" };
+        cfg.rel_cutoff = { 0.25 };
+        cfg.abs_filter = { 0 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -331,7 +349,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rA.fasta" };
         config_classify::write_map( prefix + ".map", { { "0", "A" }, { "1", "C" }, { "2", "T" }, { "3", "G" } } );
-        cfg.map = { prefix + ".map" };
+        cfg.map        = { prefix + ".map" };
+        cfg.rel_cutoff = { 0.25 };
+        cfg.abs_filter = { 0 };
 
         //     1
         //    ATCG
@@ -369,7 +389,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.single_reads = { folder_prefix + "rA.fasta" };
         config_classify::write_map( prefix + ".map",
                                     { { "1", "C" }, { "2", "T" }, { "3", "G" } } ); // missing { "0", "A" }
-        cfg.map = { prefix + ".map" };
+        cfg.map        = { prefix + ".map" };
+        cfg.rel_cutoff = { 0.25 };
+        cfg.abs_filter = { 0 };
 
         //     1
         //    ATCG
@@ -456,6 +478,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rA.fasta" };
         cfg.offset       = { 3 };
+        cfg.rel_cutoff   = { 0.25 };
+        cfg.abs_filter   = { 0 };
 
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -473,6 +497,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             cfg.ibf          = { base_prefix + ".ibf" };
             cfg.paired_reads = { folder_prefix + "rA.fasta", folder_prefix + "rT.fasta" };
             cfg.offset       = { 3 };
+            cfg.rel_cutoff   = { 0.25 };
+            cfg.abs_filter   = { 0 };
 
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
@@ -492,6 +518,9 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "rA.fasta" };
         cfg.kmer_size    = { 19 };
+        cfg.rel_cutoff   = { 0.25 };
+        cfg.abs_filter   = { 0 };
+
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
@@ -512,6 +541,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg.ibf           = { base_prefix + ".ibf" };
         cfg.single_reads  = { folder_prefix + "rA.fasta" };
         cfg.output_prefix = "";
+
         REQUIRE( GanonClassify::run( cfg ) );
         // No files created
         REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.rep" ) );
@@ -539,6 +569,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         cfg_build.bin_size_bits      = 5000;
         cfg_build.quiet              = true;
         cfg_build.kmer_size          = 10;
+        cfg_build.window_size        = 0;
         cfg_build.output_filter_file = base_prefix2 + ".ibf";
         cfg_build.reference_files    = aux::write_sequences_files( base_prefix2, "fasta", seqs2, ids2 );
         REQUIRE( GanonBuild::run( cfg_build ) );
@@ -570,6 +601,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             auto        cfg  = config_classify::defaultConfig( prefix );
             cfg.ibf          = { base_prefix + ".ibf", base_prefix2 + ".ibf" };
             cfg.single_reads = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
+            cfg.rel_cutoff   = { 0.25 };
+            cfg.abs_filter   = { 0 };
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
@@ -587,6 +620,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
                 std::string prefix{ folder_prefix + "multiple_ibf_wo_hiearchy_map" };
                 cfg.output_prefix = prefix;
                 cfg.map           = { base_prefix + ".map", base_prefix2 + ".map" };
+                cfg.rel_cutoff    = { 0.25 };
+                cfg.abs_filter    = { 0 };
 
                 REQUIRE( GanonClassify::run( cfg ) );
                 config_classify::Res res{ cfg };
@@ -605,6 +640,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
                     std::string prefix{ folder_prefix + "multiple_ibf_wo_hiearchy_map_tax" };
                     cfg.output_prefix = prefix;
                     cfg.tax           = { base_prefix + ".tax", base_prefix2 + ".tax" };
+                    cfg.rel_cutoff    = { 0.25 };
+                    cfg.abs_filter    = { 0 };
 
                     REQUIRE( GanonClassify::run( cfg ) );
                     config_classify::Res res{ cfg };
@@ -635,6 +672,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             cfg.single_reads     = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
             cfg.hierarchy_labels = { "one", "two" };
             cfg.output_single    = true;
+            cfg.rel_cutoff       = { 0.25 };
+            cfg.abs_filter       = { 0 };
 
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
@@ -653,6 +692,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
                 std::string prefix{ folder_prefix + "multiple_ibf_w_hiearchy_map" };
                 cfg.output_prefix = prefix;
                 cfg.map           = { base_prefix + ".map", base_prefix2 + ".map" };
+                cfg.rel_cutoff    = { 0.25 };
+                cfg.abs_filter    = { 0 };
 
                 REQUIRE( GanonClassify::run( cfg ) );
                 config_classify::Res res{ cfg };
@@ -671,6 +712,8 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
                     std::string prefix{ folder_prefix + "multiple_ibf_w_hiearchy_map_tax" };
                     cfg.output_prefix = prefix;
                     cfg.tax           = { base_prefix + ".tax", base_prefix2 + ".tax" };
+                    cfg.rel_cutoff    = { 0.25 };
+                    cfg.abs_filter    = { 0 };
 
                     REQUIRE( GanonClassify::run( cfg ) );
                     config_classify::Res res{ cfg };
@@ -696,7 +739,10 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             SECTION( "without --output-single" )
             {
                 std::string prefix{ folder_prefix + "multiple_ibf_wo_output_single" };
-                auto        cfg      = config_classify::defaultConfig( prefix );
+                auto        cfg = config_classify::defaultConfig( prefix );
+                cfg.rel_cutoff  = { 0.25 };
+                cfg.abs_filter  = { 0 };
+
                 cfg.ibf              = { base_prefix + ".ibf", base_prefix2 + ".ibf" };
                 cfg.single_reads     = { folder_prefix + "rA.fasta", folder_prefix + "rCG.fasta" };
                 cfg.hierarchy_labels = { "one", "two" };
@@ -753,6 +799,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
     cfg_build.bin_size_bits      = 5000;
     cfg_build.quiet              = true;
     cfg_build.kmer_size          = 4;
+    cfg_build.window_size        = 0;
     cfg_build.output_filter_file = base_prefix + ".ibf";
     cfg_build.reference_files    = aux::write_sequences_files( base_prefix, "fasta", seqs, ids );
     REQUIRE( GanonBuild::run( cfg_build ) );

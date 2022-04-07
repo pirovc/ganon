@@ -19,6 +19,7 @@ class TestBuildOffline(unittest.TestCase):
                                       data_dir+"build/bacteria_NC_017163.1.fasta.gz", 
                                       data_dir+"build/bacteria_NC_017543.1.fasta.gz"],
                       "seq_info_file": data_dir+"build/bacteria_seqinfo.txt",
+                      "window_size": "0",
                       "write_seq_info_file": True,
                       "rank": "species",
                       "quiet": True}
@@ -46,6 +47,18 @@ class TestBuildOffline(unittest.TestCase):
         """
         ganon build with window size (minimizers)
         """
+        # without minimizers comparison
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_without_minimizers"
+        # Build config from params
+        cfg = Config("build", **params)
+        # Run
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
+        # General sanity check of results
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build has inconsistent results")
+        ibf_without_minimizers = params["db_prefix"] + ".ibf"
+
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_minimizers"
         params["window_size"] = 23
@@ -57,18 +70,6 @@ class TestBuildOffline(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build has inconsistent results")
         ibf_with_minimizers = params["db_prefix"] + ".ibf"
-
-        # without minimizers comparison
-        params["window_size"] = 0
-        params["db_prefix"] = self.results_dir + "test_without_minimizers"
-        # Build config from params
-        cfg = Config("build", **params)
-        # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon build exited with an error")
-        # General sanity check of results
-        res = build_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon build has inconsistent results")
-        ibf_without_minimizers = params["db_prefix"] + ".ibf"
 
         # Filter with minimizers should be smaller
         self.assertTrue(os.path.getsize(ibf_with_minimizers) < os.path.getsize(ibf_without_minimizers), "Filter with minimizers should be smaller")

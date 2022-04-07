@@ -28,9 +28,9 @@ class Config:
 
         build_group_filter = build_parser.add_argument_group('filter arguments')
         build_group_filter.add_argument('-k', '--kmer-size',             type=int,      metavar='', default=19,        help='The k-mer size to split sequences. Default: 19')
-        build_group_filter.add_argument('-w', '--window-size',           type=int,      metavar='', default=0,         help='The window-size to build filter with minimizers. 0 to turn it off. Default: 0')
+        build_group_filter.add_argument('-w', '--window-size',           type=int,      metavar='', default=32,        help='The window-size to build filter with minimizers. 0 to turn it off. Default: 32')
         build_group_filter.add_argument('-a', '--hash-functions',        type=int,      metavar='', default=0,         help='The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value. Default: 0')
-        build_group_filter.add_argument('-z', '--filter-size',           type=float,    metavar='', default=0,         help='Fixed size for the filter in Megabytes (MB). If provided, --max-fp cannot be guaranteed.')
+        build_group_filter.add_argument('-z', '--filter-size',           type=float,    metavar='', default=0,         help='Fixed size for the filter in Megabytes (MB). If provided, --max-fp is not guaranteed.')
         build_group_filter.add_argument('--faster',                action='store_true',                                help='Attemp to build filter with best performance on classification. Filter may be significantly bigger.')
         build_group_filter.add_argument('--bin-length',            type=int,            metavar='', default=0,         help='Maximum length (in bp) for each bin')
         build_group_filter.add_argument('--fragment-length',       type=int,            metavar='', default=-1,        help='Fragment sequences into specified length (in bp). Set to 0 to not fragment sequences. Default: bin-length - overlap-length')
@@ -87,10 +87,8 @@ class Config:
         classify_group_required.add_argument('-p', '--paired-reads', type=str, nargs="*", required=False, metavar='reads.1.fq[.gz] reads.2.fq[.gz]', help='Multi-fastq[.gz] pairs of file[s] to classify')
 
         classify_group_cutoff_filter = classify_parser.add_argument_group('cutoff/filter arguments')
-        classify_group_cutoff_filter.add_argument('-c', '--rel-cutoff',          type=float, nargs="*", metavar='', default=[0.25], help='Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. [Mutually exclusive --rel-cutoff] Default: 0.25')
-        classify_group_cutoff_filter.add_argument('-b', '--abs-cutoff',          type=int,   nargs="*", metavar='',                 help='Max. absolute number of errors allowed to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 3 3 4 0). -1 for no cutoff. [Mutually exclusive --abs-cutoff]')
-        classify_group_cutoff_filter.add_argument('-e', '--rel-filter',          type=float, nargs="*", metavar='',                 help='Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. [Mutually exclusive --abs-filter]')
-        classify_group_cutoff_filter.add_argument('-a', '--abs-filter',          type=int,   nargs="*", metavar='', default=[0],    help='Additional absolute number of errors (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0 2 1). -1 for no filter. [Mutually exclusive --rel-filter] Default: 0')
+        classify_group_cutoff_filter.add_argument('-c', '--rel-cutoff',          type=float, nargs="*", metavar='', default=[0.2],  help='Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. [Mutually exclusive --abs-cutoff] Default: 0.5')
+        classify_group_cutoff_filter.add_argument('-e', '--rel-filter',          type=float, nargs="*", metavar='', default=[0.1],  help='Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. [Mutually exclusive --abs-filter] Default: 0.1')
 
         classify_group_output = classify_parser.add_argument_group('output arguments')
         classify_group_output.add_argument('-o', '--output-prefix',       type=str,              metavar='', help='Output prefix to print report (.rep). Empty to output to STDOUT')
@@ -100,6 +98,8 @@ class Config:
         classify_group_output.add_argument('--output-single',             action='store_true',               help='When using multiple hierarchical levels, output everything in one file instead of one per hierarchy')
         
         classify_group_other = classify_parser.add_argument_group('other arguments')
+        classify_group_other.add_argument('-b', '--abs-cutoff',          type=int,   nargs="*", metavar='', help='Max. absolute number of errors allowed to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 3 3 4 0). -1 for no cutoff. [Mutually exclusive --rel-cutoff]')
+        classify_group_other.add_argument('-a', '--abs-filter',          type=int,   nargs="*", metavar='', help='Additional absolute number of errors (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0 2 1). -1 for no filter. [Mutually exclusive --rel-filter]')
         classify_group_other.add_argument('-l', '--hierarchy-labels',    type=str,   nargs="*", metavar='', help='Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: H1')
         classify_group_other.add_argument('-f', '--offset',              type=int,              metavar='', help='Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1')
         classify_group_other.add_argument('-t', '--threads',             type=int,              metavar='', help='Number of sub-processes/threads to use. Default: 3')
@@ -109,6 +109,7 @@ class Config:
         classify_group_other.add_argument('--ganon-path',                type=str, default="",  metavar='', help=argparse.SUPPRESS) 
         classify_group_other.add_argument('--n-reads',                   type=int,              metavar='', help=argparse.SUPPRESS)
         classify_group_other.add_argument('--n-batches',                 type=int,              metavar='', help=argparse.SUPPRESS)
+        classify_group_other.add_argument('--hibf' ,                     action='store_true',               help=argparse.SUPPRESS)
 
         ####################################################################################################
 
