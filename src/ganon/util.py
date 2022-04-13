@@ -35,14 +35,17 @@ def print_log(text, quiet: bool=False):
         sys.stderr.write(text+"\n")
         sys.stderr.flush()
 
-def set_tmp_folder(fld):
+def set_tmp_folder(fld, restart):
     # Create temporary working directory
     if os.path.exists(fld): 
-        print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
-        return False
-    else:
-        os.makedirs(fld)
-        return True
+        if restart:
+            rm_tmp_folder(fld)
+        else:
+            print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
+            return False
+    
+    os.makedirs(fld)
+    return True
 
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)
@@ -76,28 +79,35 @@ def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
 
-def validate_input_files(input_files, input_directory, input_extension, quiet):
-
-    valid_input_files = []
-    if input_files:
-        valid_input_files.extend(check_files(input_files))
-    elif input_directory and input_extension:
-        if not os.path.isdir(input_directory):
-            print_log(input_directory + " is not a valid directory", quiet)
-        else:
-            input_files_from_directory = []
-            for file in os.listdir(input_directory):
+def validate_input_files(input_files_folder, input_extension, quiet):
+    """
+    given a list of input files and/or folders and an file extension
+    check for valid files and return them in a set
+    """
+    valid_input_files = set()
+    for i in input_files_folder:
+        if check_file(i):
+            valid_input_files.add(i)
+        elif os.path.isdir(i):
+            if not input_extension:
+                print_log("--input-extension is required when using folders in the --input. Skipping: " + i, quiet)
+                continue
+            files_in_dir=0
+            for file in os.listdir(i):
                 if file.endswith(input_extension):
-                    input_files_from_directory.append(os.path.join(input_directory, file))
-            print_log(str(len(input_files_from_directory)) + " file(s) [" + input_extension + "] found in " + input_directory, quiet)
-            print_log("")
-            if input_files_from_directory:
-                valid_input_files.extend(check_files(input_files_from_directory))
+                    f = os.path.join(i, file)
+                    if check_file(f):
+                        files_in_dir += 1
+                        valid_input_files.add(f)
+            print_log(str(files_in_dir) + " valid file(s) [--input-extension " + input_extension + "] found in " + i, quiet)
+        else:
+            print_log("Skipping invalid file/folder: " + i, quiet)
 
+    print_log("Total valid files: " + str(len(valid_input_files)), quiet)
     return valid_input_files
 
-def check_files(files):
-    checked_files = [file for file in files if os.path.isfile(file) and os.path.getsize(file) > 0]
-    if len(checked_files)<len(files):
-        print_log(str(len(files)-len(checked_files)) + " file(s) could not be found/empty")
-    return checked_files
+def check_file(file):
+    if os.path.isfile(file) and os.path.getsize(file) > 0:
+        return True
+    else:
+        return False
