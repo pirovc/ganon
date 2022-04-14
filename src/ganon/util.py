@@ -1,4 +1,5 @@
 import sys, subprocess, shlex, shutil, os, time
+import urllib.request
 
 def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=True):
     errcode=0
@@ -111,3 +112,22 @@ def check_file(file):
         return True
     else:
         return False
+
+def download(urls: list, output_prefix: str):
+    """
+    Parameters:
+    * **urls** *[list]*: List of urls to download
+    * **output_prefix** *[str]*: Output directory to save files
+
+    Returns:
+    * list of files saved
+    """
+    files = []
+    for url in urls:
+        outfile = output_prefix + os.path.basename(url)
+        urlstream = urllib.request.urlopen(url)
+        with open(outfile, 'b+w') as f:
+            f.write(urlstream.read())
+        urlstream.close()
+        files.append(outfile)
+    return files

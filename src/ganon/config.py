@@ -8,7 +8,14 @@ class Config:
     path_exec = {"build": "", "classify": "", "get_seq_info": ""}
     empty = False
 
+    choices_taxonomy = ["ncbi", "gtdb"] # get from multitax
+    choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
+    choices_db_source = ["refseq", "genbank"]
+    choices_get_sequence_info = ["eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
+    choices_get_file_info = ["refseq","genbank"]
+
     def __init__(self, which: str=None, **kwargs):
+
 
         parser = argparse.ArgumentParser(prog="ganon", description="ganon", conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
@@ -17,13 +24,11 @@ class Config:
         
         build_default_parser = argparse.ArgumentParser(add_help=False)
 
-        choices_taxonomy = ["ncbi", "gtdb"] # get from multitax
-
         build_default_required_args = build_default_parser.add_argument_group("required arguments")
         build_default_required_args.add_argument("-d", "--db-prefix", type=str, required=True, help="Database output prefix")
 
         build_default_important_args = build_default_parser.add_argument_group("important arguments")
-        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="",            help="Enable taxonomic classification (LCA) [" + ",".join(choices_taxonomy) + "]", choices=choices_taxonomy)
+        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="",            help="Enable taxonomic classification (LCA) [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
         build_default_important_args.add_argument("-t", "--threads",  type=int, metavar="", default=2, help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
@@ -45,14 +50,11 @@ class Config:
 
         build_parser = argparse.ArgumentParser(add_help=False)
 
-        choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
-        choices_db_source = ["refseq", "genbank"]
-
         build_required_args = build_parser.add_argument_group("required arguments")
-        build_required_args.add_argument("-g", "--organims-group", type=str, nargs="*", metavar="", required=True, help="One or more organims groups [" + ",".join(choices_og) + "]", choices=choices_og)
+        build_required_args.add_argument("-g", "--organims-group", type=str, nargs="*", metavar="", required=True, help="One or more organims groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
 
         build_download_args = build_parser.add_argument_group("download arguments")
-        build_download_args.add_argument("-b", "--source",           type=str,            nargs="*", default="refseq", metavar="", help="[" + ",".join(choices_db_source) + "]", choices=choices_db_source)
+        build_download_args.add_argument("-b", "--source",           type=str,            nargs="*", default="refseq", metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                          help="Download only sub-set of complete genomes")
         build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (only --taxonomy ncbi). 0 for all.")
         build_download_args.add_argument("-u", "--genome-updater",   type=int,                                         metavar="", help="Additional genome_updater parameters for download (https://github.com/pirovc/genome_updater)")
@@ -62,15 +64,16 @@ class Config:
         build_custom_parser = argparse.ArgumentParser(add_help=False)
 
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
-        build_custom_required_args.add_argument("-i", "--input", type=str, nargs="+", required=True, metavar="", help="input files or folder")
-
+        build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s) [Mutually exclusive --input-file]")
+        build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards are not supported (e.g. *).")
+        
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
-        build_custom_args.add_argument("-a", "--input-target",         type=str,                   metavar="", help="Target to use [file, sequence]. Auto-detect: if multiple files are provided -> file. If a single file is provided -> sequence. Using sequence is recommended and will speed-up building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                   metavar="", help="By default, same level as --input-target [custom, assembly, leaves] or any taxonomic rank (e.g. species, genus, ...)")
-        build_custom_args.add_argument("-n", "--target-info",          type=file_exists,           metavar="", help="")
-        build_custom_args.add_argument("-r", "--retrieve-target-info", type=str,                   metavar="", help="")
-        build_custom_args.add_argument("-e", "--input-extension",      type=str, default="fna.gz", metavar="", help="Required if --input is a folder. Do not use wildcards (e.g. *)")
-        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",        metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                        metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
+        build_custom_args.add_argument("-a", "--input-target",         type=str,                                metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-l", "--level",                type=str,                                metavar="", help="Last level to build the database [custom, assembly-acc, assembly-name, tax-leaves] or any taxonomic rank [species, genus, ...] (requires --taxonomy). By default, same level as --input-target.")
+        build_custom_args.add_argument("-r", "--get-sequence-info",    type=str, nargs="*", default=[],         metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_get_sequence_info) + ", or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences and downloads nucl_gb nucl_wgs otherwise.")
+        build_custom_args.add_argument("-q", "--get-file-info",        type=str, nargs="*", default=["refseq"], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_get_file_info) + ", or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
+        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                     metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ####################################################################################################
 
@@ -202,31 +205,32 @@ class Config:
         filter_arguments.add_argument("--names-with",     type=str, nargs="*", metavar="", default=[], help="Show entries containing full or partial names of the provided list")
         filter_arguments.add_argument("--taxids",         type=str, nargs="*", metavar="", default=[], help="One or more taxids to report (including children taxa)")
 
+        formatter_class = lambda prog: argparse.ArgumentDefaultsHelpFormatter(prog, width=120)
         subparsers = parser.add_subparsers()
 
         build = subparsers.add_parser("build", help="Download and build ganon default databases (refseq/genbank)", parents=[build_parser, build_default_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         #build._action_groups.reverse()  # required first
         build.set_defaults(which="build")
 
-        update = subparsers.add_parser("update", help="Update ganon default databases", parents=[update_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        update = subparsers.add_parser("update", help="Update ganon default databases", parents=[update_parser], formatter_class=formatter_class)
         update._action_groups.reverse()  # required first
         update.set_defaults(which="update")
 
-        classify = subparsers.add_parser("classify", help="Classify reads", parents=[classify_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        classify = subparsers.add_parser("classify", help="Classify reads", parents=[classify_parser], formatter_class=formatter_class)
         classify.set_defaults(which="classify")
 
-        report = subparsers.add_parser("report", help="Generate reports", parents=[filter_parser,report_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        report = subparsers.add_parser("report", help="Generate reports", parents=[filter_parser,report_parser], formatter_class=formatter_class)
         report._action_groups.reverse()  # required first
         report.set_defaults(which="report")
 
-        table = subparsers.add_parser("table", help="Generate table from reports", parents=[filter_parser,table_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        table = subparsers.add_parser("table", help="Generate table from reports", parents=[filter_parser,table_parser], formatter_class=formatter_class)
         table._action_groups.reverse()  # required first
         table.set_defaults(which="table")
 
-        build_custom = subparsers.add_parser("build-custom", help="Build custom ganon databases", parents=[build_custom_parser, build_default_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        build_custom = subparsers.add_parser("build-custom", help="Build custom ganon databases", parents=[build_default_parser, build_custom_parser], formatter_class=formatter_class)
         build_custom.set_defaults(which="build-custom")
 
-        update_custom = subparsers.add_parser("update-custom", help="Update custom ganon databases", parents=[update_custom_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        update_custom = subparsers.add_parser("update-custom", help="Update custom ganon databases", parents=[update_custom_parser], formatter_class=formatter_class)
         update_custom.set_defaults(which="update-custom")
 
 
@@ -270,8 +274,7 @@ class Config:
         elif self.quiet is True:
             self.verbose = False
 
-        retrieve_info_options = ["auto","eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
-        if self.which == "build":
+        if self.which == "build" or self.which == "build-custom":
             if self.level == "custom" and not self.input_info:
                 print_log("--level custom requires --input-info")
                 return False
@@ -284,11 +287,18 @@ class Config:
                 print_log("--level assembly can only be set for --input-target sequence")
                 return False
 
-            if not all([sim in retrieve_info_options for sim in self.retrieve_info]):
-                print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
-                return False
+            for entry in self.get_sequence_info:
+                if entry not in self.choices_get_sequence_info and not check_file(entry):
+                    print_log("Invalid --get-sequence-info. Should be a valid file or: " + " ".join(self.choices_get_sequence_info))
+                    return False
 
-        elif self.which=="update":
+            for entry in self.get_file_info:
+                if entry not in self.choices_get_file_info and not check_file(entry):
+                    print_log("Invalid --get-file-info. Should be a valid file or: " + " ".join(self.choices_get_file_info))
+                    return False
+
+
+        elif self.which == "update" or self.which == "update-custom":
             if not check_file(self.db_prefix+".ibf"):
                 return False
 
@@ -351,7 +361,7 @@ class Config:
 
     def set_paths(self):
         missing_path = False
-        if self.which in ["build","update"]:
+        if self.which in ["build","build-custom","update","update-custom"]:
             self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
 
             # if path is given, look for binaries only there
