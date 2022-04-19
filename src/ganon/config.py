@@ -28,7 +28,7 @@ class Config:
         build_default_required_args.add_argument("-d", "--db-prefix", type=str, required=True, help="Database output prefix")
 
         build_default_important_args = build_default_parser.add_argument_group("important arguments")
-        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="",            help="Enable taxonomic classification (LCA) [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
+        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="",            help="Downloads and build taxonomy tree to enable taxonomic classification and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
         build_default_important_args.add_argument("-t", "--threads",  type=int, metavar="", default=2, help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
@@ -68,12 +68,12 @@ class Config:
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards are not supported (e.g. *).")
         
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
-        build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                        metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
-        build_custom_args.add_argument("-a", "--input-target",         type=str,                                metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                                metavar="", help="Last level to build the database [custom, assembly-acc, assembly-name, tax-leaves] or any taxonomic rank [species, genus, ...] (requires --taxonomy). By default, same level as --input-target.")
-        build_custom_args.add_argument("-r", "--get-sequence-info",    type=str, nargs="*", default=[],         metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_get_sequence_info) + ", or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences and downloads nucl_gb nucl_wgs otherwise.")
-        build_custom_args.add_argument("-q", "--get-file-info",        type=str, nargs="*", default=["refseq"], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_get_file_info) + ", or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
-        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                     metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
+        build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Change the target level to build the database [species, genus, ...] (requires --taxonomy). Further options [assembly, name, leaves, custom]. assembly will retrieve and use the assembly accession. name will retrieve and use the organism name. leaves will use the leaf nodes of the input. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
+        build_custom_args.add_argument("-r", "--get-sequence-info",    type=str, nargs="*", default=[],                   metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_get_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
+        build_custom_args.add_argument("-q", "--get-file-info",        type=str, nargs="*", default=["refseq","genbank"], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_get_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
+        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                               metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ####################################################################################################
 
@@ -275,16 +275,13 @@ class Config:
             self.verbose = False
 
         if self.which == "build" or self.which == "build-custom":
+            
+            if self.input_file and self.input:
+                print_log("--input-file is mutually exclusive with --input")
+                return False
+
             if self.level == "custom" and not self.input_info:
                 print_log("--level custom requires --input-info")
-                return False
-
-            if self.level == "file" and self.input_target == "sequence":
-                print_log("--level file cannot be set with --input-target sequence")
-                return False
-
-            if self.level == "assembly" and self.input_target != "sequence":
-                print_log("--level assembly can only be set for --input-target sequence")
                 return False
 
             for entry in self.get_sequence_info:

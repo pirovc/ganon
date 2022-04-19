@@ -32,6 +32,10 @@ def build_custom(cfg):
     if not cfg.input_target:
         cfg.input_target = "sequence" if len(input_files)==1 else "file"
 
+    use_specialization = False
+    if cfg.level in ["assembly", "name", "custom"]:
+        use_specialization = True
+
     # Set working folder 
     tmp_output_folder = cfg.db_prefix + "_tmp/"
     if not set_tmp_folder(tmp_output_folder, cfg.restart): return False
@@ -39,17 +43,22 @@ def build_custom(cfg):
     # Set-up taxonomy
     if cfg.taxonomy:
         tx = time.time()
-        print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+        if cfg.taxonomy_files:
+            print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+        else:
+            print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
         if cfg.taxonomy=="ncbi":
             tax = NcbiTx(files=cfg.taxonomy_files)
         elif cfg.taxonomy=="gtdb":
             tax = GtdbTx(files=cfg.taxonomy_files)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n\n", cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     else:
         tax = None
 
     # Set-up input info
     info = load_input(cfg, input_files)
+
+    print(info)
 
     # Retrieve target info (if not provided as file)
     if not cfg.input_file:
@@ -60,19 +69,13 @@ def build_custom(cfg):
 
     print(info)
 
-    # # If taxonomy is given and level is an taxonomic rank, convert nodes
-    # if tax:
-    #     # get latest tax.latest()
-    #     # validate node on given tax (if came from target_info for example and it's outdated or wrong)
-    #     if cfg.level!="leaves" and cfg.level in set(tax._ranks):
-    #         info = replace_node_rank()
+    if tax:
+        validate_taxonomy(info, tax, cfg.level, cfg.quiet)
 
-    # else:
-    #     # na on col nodes
+    if use_specialization:
+        validate_specialization(info, cfg.quiet)
 
-    # replaced_spec = validate_specialization(info)
-    # if replaced_spec:
-    #     print_log(str(replaced_spec) + " invalid specialization entries replaced by target\n", cfg.quiet)
+    print(info)
 
     # filter tax
     # write tax
@@ -106,39 +109,80 @@ def load_input(cfg, input_files):
             info = parse_file_accession(input_files, target_info_colums)
 
     # Drop cols without values
+    shape_tmp = info.shape[0]
     info.dropna(how="all", inplace=True)
+    if shape_tmp - info.shape[0] > 0:
+        print_log(" - " + str(shape_tmp - info.shape[0]) + " invalid entries skipped", cfg.quiet)
     # Drop duplicated target (seqid or fileid)
+    shape_tmp = info.shape[0]
     info.drop_duplicates(subset=['target'], inplace=True)
+    if shape_tmp - info.shape[0] > 0:
+        print_log(" - " + str(shape_tmp - info.shape[0]) + " duplicated entries skipped", cfg.quiet)
     # set target as index
     info.set_index('target', inplace=True)
     print_log(" - " + str(info.shape[0]) + " unique entries", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     return info
-        
-def validate_specialization(info):
+
+
+def validate_specialization(info, quiet):
     """
-    validate specializatio, if given
-    each specialization can have only one parent node
-    return number of replaced specializations
+    validate specialization in terms of relation to 
+    taxonomy (each specialization can have only one parent node)
+    and invalid nodes
     """
 
-    # check for invalid specialization entries
-    idx_null_spec = info.specialization.isnull()
-    # if all entries are null, no specialization was given
-    if all(idx_null_spec):
-        return 0
-    # get unique tuples node-specialization
-    node_spec = info[['node', 'specialization']].drop_duplicates()
-    # check for duplicated specialization in the tuples
-    idx_multi_parent_spec = info.specialization.isin(node_spec.specialization[node_spec.specialization.duplicated(keep=False)].unique())
-    # merge indices for invalid entries
-    idx_replace = idx_null_spec | idx_multi_parent_spec
-    if idx_replace.any():
-        # replace invalid specialization entries with target
-        info.loc[idx_replace,"specialization"] = info.index[idx_replace]
-        return sum(idx_replace)
-    return 0
+    tx = time.time()
+    print_log("Validating level specialization", quiet)
+    # if all entries are null, no specialization was retrieved
+    if all(info.specialization.isnull()):
+        print_log(" - No valid level specialization could be defined\n", quiet)
+    else:
+        # check for invalid specialization entries
+        idx_null_spec = info.specialization.isnull()
+        # get unique tuples node-specialization
+        node_spec = info[['node', 'specialization']].drop_duplicates()
+        # check for duplicated specialization in the tuples
+        idx_multi_parent_spec = info.specialization.isin(node_spec.specialization[node_spec.specialization.duplicated(keep=False)].unique())
+        # merge indices for invalid entries
+        idx_replace = idx_null_spec | idx_multi_parent_spec
+        if idx_replace.any():
+            # replace invalid specialization entries with target
+            info.loc[idx_replace,"specialization"] = info.index[idx_replace]
+            print_log(str(sum(idx_replace)) + " invalid specialization replaced by target\n", quiet)
+
+        # Skip invalid nodes (na == tax.undefined_node (None))
+        shape_tmp = info.shape[0]
+        info.dropna(subset=["specialization"], inplace=True)
+        if shape_tmp - info.shape[0] > 0:
+            print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid specialization skipped", quiet)
+
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+
+
+def validate_taxonomy(info, tax, level, quiet):
+    """
+    validate taxonomy in terms of valid nodes (tax.latest)
+    and chosen level (tax.parent_rank)
+    """
+    tx = time.time()
+    print_log("Validating taxonomy", quiet)
+
+    # Get latest and valid taxonomic nodes
+    info["node"] = info["node"].apply(tax.latest)
+
+    # If level is a taxonomic rank (leaves is an exclusive word)
+    if level!="leaves" and level in set(tax._ranks.values()):
+        info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, level))
+    
+    # Skip invalid nodes (na == tax.undefined_node (None))
+    shape_tmp = info.shape[0]
+    info.dropna(subset=["node"], inplace=True)
+    if shape_tmp - info.shape[0] > 0:
+        print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic node skipped", quiet)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
+
 
 def parse_sequence_accession(input_files, target_info_colums):
     """
@@ -212,7 +256,7 @@ def get_sequence_info(cfg, info, tmp_output_folder):
     elif "eutils" in cfg.get_sequence_info:
         mode = ["eutils"]
     else:
-        mode = cfg.get_sequence_info # custom accession2taxid prefix or files
+        mode = cfg.get_sequence_info # custom accession2taxid prefixes or files
 
     if mode[0]=="eutils":
         tx = time.time()
@@ -243,8 +287,8 @@ def get_sequence_info(cfg, info, tmp_output_folder):
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
         # If assembly name or accession are requested, get with e-utils
-        if cfg.level in ["assembly-name", "assembly-acc"]:
-            print_log("Retrieving assembly information from NCBI e-utils (--level " + cfg.level + ")", cfg.quiet)
+        if cfg.level in ["name", "assembly"]:
+            print_log("Retrieving assembly/name information from NCBI e-utils (--level " + cfg.level + ")", cfg.quiet)
             run_eutils(cfg, info, tmp_output_folder, skip_taxid=True)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -295,9 +339,9 @@ def parse_assembly_summary(info, assembly_summary_files, level):
         tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"] #  filter out taxid==0
 
         # Create specialization if requested for --level
-        if level == "assembly-name":
+        if level == "name":
             tmp_acc_node["specialization"] = tmp_acc_node["organism_name"] + " " + tmp_acc_node["infraspecific_name"]
-        elif level == "assembly-acc":
+        elif level == "assembly":
             tmp_acc_node["specialization"] = tmp_acc_node.index
 
         # save count to return
@@ -323,17 +367,17 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool = False):
     info.to_csv(accessions_file, columns=[], header=False)
 
     get_assembly = ""
-    if cfg.level == "assembly-acc":
+    if cfg.level == "assembly":
         get_assembly = "-a"
-    elif cfg.level == "assembly-name":
+    elif cfg.level == "name":
         get_assembly = "-m"
 
     # (-k) always return all entries in the same order 
-    # (-r) report sequence accession if assembly not found (-r)
-    run_get_seq_info_cmd = "{0} -i {1} -k -r {2} {3}".format(cfg.path_exec["get_seq_info"],
-                                                            accessions_file,
-                                                            "" if skip_taxid else "-e",
-                                                            get_assembly)
+    # (-e) get taxid length
+    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3}".format(cfg.path_exec["get_seq_info"],
+                                                          accessions_file,
+                                                          "" if skip_taxid else "-e",
+                                                          get_assembly)
     stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not cfg.quiet else False, exit_on_error=False)
 
     # set "na" as NaN with na_values="na"
