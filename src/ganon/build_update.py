@@ -48,28 +48,24 @@ def build_custom(cfg):
         cfg.input_target = "sequence" if len(input_files)==1 else "file"
 
     # Set-up taxonomy
-    if cfg.taxonomy:
-        if not cfg.level:
-            print_log("WARNING: --taxonomy " + cfg.taxonomy + " ignored without a specific --level\n", cfg.quiet)
+    if cfg.taxonomy != "none":
+        tx = time.time()
+        if cfg.taxonomy_files:
+            print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
         else:
-            tx = time.time()
-            if cfg.taxonomy_files:
-                print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
-            else:
-                print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
-            if cfg.taxonomy == "ncbi":
-                tax = NcbiTx(files=cfg.taxonomy_files)
-            elif cfg.taxonomy == "gtdb":
-                tax = GtdbTx(files=cfg.taxonomy_files , output_prefix=tmp_output_folder+"gtdb_")
+            print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+        if cfg.taxonomy == "ncbi":
+            tax = NcbiTx(files=cfg.taxonomy_files)
+        elif cfg.taxonomy == "gtdb":
+            tax = GtdbTx(files=cfg.taxonomy_files , output_prefix=tmp_output_folder+"gtdb_")
 
-            # If level is not in special targets or leaves and present in available ranks
-            if cfg.level not in [None, "leaves"] + cfg.choices_level:
-                if cfg.level not in set(tax._ranks.values()):
-                    print_log(" - " + cfg.level + " not found in taxonomic ranks, changing to --level 'leaves'", cfg.quiet)
-                    cfg.level = 'leaves'
+        # If level is not in special targets or leaves and present in available ranks
+        if cfg.level not in [None, "leaves"] + cfg.choices_level:
+            if cfg.level not in set(tax._ranks.values()):
+                print_log(" - " + cfg.level + " not found in taxonomic ranks, changing to --level 'leaves'", cfg.quiet)
+                cfg.level = 'leaves'
 
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     # Set-up input info
     info = load_input(cfg, input_files)
@@ -228,8 +224,8 @@ def validate_taxonomy(info, tax, cfg):
     # Get latest and valid taxonomic nodes
     info["node"] = info["node"].apply(tax.latest)
 
-    # If level is not leaves or reserved
-    if cfg.level not in ["leaves"] + cfg.choices_level:
+    # If level is set and not leaves or reserved
+    if cfg.level and cfg.level not in ["leaves"] + cfg.choices_level:
         info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, cfg.level))
     
     # Skip invalid nodes (na == tax.undefined_node (None))

@@ -103,7 +103,6 @@ def get_gtdb_target_node(tax, level):
 
 
 def get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target):
-    
     if cfg.taxonomy=="ncbi":
         # Max. sequences to use eutils in auto mode
         max_seqs_eutils = 50000

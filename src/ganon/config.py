@@ -8,7 +8,7 @@ class Config:
     path_exec = {"build": "", "classify": "", "get_seq_info": ""}
     empty = False
 
-    choices_taxonomy = ["ncbi", "gtdb"] # get from multitax
+    choices_taxonomy = ["ncbi", "gtdb", "none"] # get from multitax
     choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "name", "custom"]
@@ -29,8 +29,8 @@ class Config:
         build_default_required_args.add_argument("-d", "--db-prefix", type=str, required=True, help="Database output prefix")
 
         build_default_important_args = build_default_parser.add_argument_group("important arguments")
-        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="",            help="Downloads and build taxonomy tree to enable taxonomic classification and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
-        build_default_important_args.add_argument("-t", "--threads",  type=int, metavar="", default=2, help="")
+        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="", default="ncbi", help="Downloads and build taxonomy tree to enable taxonomic classification and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
+        build_default_important_args.add_argument("-t", "--threads",  type=int, metavar="", default=2,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
         build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(0,1), metavar="", default=0.05, help="Max. false positive rate for bloom filters [Mutually exclusive --filter-size].")
@@ -283,11 +283,11 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
-            if self.level == "custom" and not self.input_info:
-                print_log("--level custom requires --input-info")
+            if self.level == "custom" and not self.input_file:
+                print_log("--level custom requires --input-file")
                 return False
 
-            if self.level not in self.choices_level and not self.taxonomy:
+            if self.level and self.level not in self.choices_level and self.taxonomy == "none":
                 print_log("--taxonomy is required for --level " + self.level)
                 return False
 
