@@ -11,8 +11,9 @@ class Config:
     choices_taxonomy = ["ncbi", "gtdb"] # get from multitax
     choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
-    choices_get_sequence_info = ["eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
-    choices_get_file_info = ["refseq","genbank"]
+    choices_level = ["assembly", "name", "custom"]
+    choices_ncbi_sequence_info = ["eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
+    choices_ncbi_file_info = ["refseq", "genbank"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -70,10 +71,12 @@ class Config:
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
         build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Change the target level to build the database [species, genus, ...] (requires --taxonomy). Further options [assembly, name, leaves, custom]. assembly will retrieve and use the assembly accession. name will retrieve and use the organism name. leaves will use the leaf nodes of the input. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
-        build_custom_args.add_argument("-r", "--get-sequence-info",    type=str, nargs="*", default=[],                   metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_get_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
-        build_custom_args.add_argument("-q", "--get-file-info",        type=str, nargs="*", default=["refseq","genbank"], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_get_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
+        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the ncbi assembly accession. name will retrieve and use the ncbi organism name. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
         build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                               metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+
+        ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
+        ncbi_args.add_argument("-r", "--ncbi-sequence-info",    type=str, nargs="*", default=[],                          metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
+        ncbi_args.add_argument("-q", "--ncbi-file-info",        type=str, nargs="*", default=self.choices_ncbi_file_info, metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")          
 
         ####################################################################################################
 
@@ -284,15 +287,20 @@ class Config:
                 print_log("--level custom requires --input-info")
                 return False
 
-            for entry in self.get_sequence_info:
-                if entry not in self.choices_get_sequence_info and not check_file(entry):
-                    print_log("Invalid --get-sequence-info. Should be a valid file or: " + " ".join(self.choices_get_sequence_info))
-                    return False
+            if self.level not in self.choices_level and not self.taxonomy:
+                print_log("--taxonomy is required for --level " + self.level)
+                return False
 
-            for entry in self.get_file_info:
-                if entry not in self.choices_get_file_info and not check_file(entry):
-                    print_log("Invalid --get-file-info. Should be a valid file or: " + " ".join(self.choices_get_file_info))
-                    return False
+            if self.taxonomy=="ncbi":
+                for entry in self.ncbi_sequence_info:
+                    if entry not in self.choices_ncbi_sequence_info and not check_file(entry):
+                        print_log("Invalid --get-sequence-info. Should be a valid file or: " + " ".join(self.choices_ncbi_sequence_info))
+                        return False
+
+                for entry in self.ncbi_file_info:
+                    if entry not in self.choices_ncbi_file_info and not check_file(entry):
+                        print_log("Invalid --get-file-info. Should be a valid file or: " + " ".join(self.choices_ncbi_file_info))
+                        return False
 
 
         elif self.which == "update" or self.which == "update-custom":

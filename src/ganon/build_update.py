@@ -1,7 +1,5 @@
 import time
 import pandas as pd
-import re
-import os
 
 from ganon.util import validate_input_files
 from ganon.util import print_log
@@ -9,17 +7,34 @@ from ganon.util import set_tmp_folder
 from ganon.util import run
 from ganon.util import check_file
 from ganon.util import download
+from ganon.util import set_out_files
+from ganon.tax_util import *
+
 from io import StringIO
 
 from multitax import NcbiTx, GtdbTx
 
-def build(cfg):
-    return True
-
 def update(cfg):
     return True
 
+def build(cfg):
+    return True
+
+def update_custom(cfg):
+    return True
+
 def build_custom(cfg):
+
+    tax = None
+    input_files = []
+    tmp_output_folder = cfg.db_prefix + "_tmp/"
+
+    # Define if taxonomy/specialization is used as a target to build the database
+    use_spec_target = True if cfg.level in cfg.choices_level else False
+    
+    # Set working folder, check out files
+    if not set_out_files(cfg.db_prefix, ["ibf", "tax"], cfg.restart): return False
+    if not set_tmp_folder(tmp_output_folder, cfg.restart): return False
 
     # Retrieve and check input files or folders
     input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet)
@@ -32,61 +47,69 @@ def build_custom(cfg):
     if not cfg.input_target:
         cfg.input_target = "sequence" if len(input_files)==1 else "file"
 
-    use_specialization = False
-    if cfg.level in ["assembly", "name", "custom"]:
-        use_specialization = True
-
-    # Set working folder 
-    tmp_output_folder = cfg.db_prefix + "_tmp/"
-    if not set_tmp_folder(tmp_output_folder, cfg.restart): return False
-
     # Set-up taxonomy
     if cfg.taxonomy:
-        tx = time.time()
-        if cfg.taxonomy_files:
-            print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+        if not cfg.level:
+            print_log("WARNING: --taxonomy " + cfg.taxonomy + " ignored without a specific --level\n", cfg.quiet)
         else:
-            print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
-        if cfg.taxonomy=="ncbi":
-            tax = NcbiTx(files=cfg.taxonomy_files)
-        elif cfg.taxonomy=="gtdb":
-            tax = GtdbTx(files=cfg.taxonomy_files)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-    else:
-        tax = None
+            tx = time.time()
+            if cfg.taxonomy_files:
+                print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+            else:
+                print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+            if cfg.taxonomy == "ncbi":
+                tax = NcbiTx(files=cfg.taxonomy_files)
+            elif cfg.taxonomy == "gtdb":
+                tax = GtdbTx(files=cfg.taxonomy_files , output_prefix=tmp_output_folder+"gtdb_")
+
+            # If level is not in special targets or leaves and present in available ranks
+            if cfg.level not in [None, "leaves"] + cfg.choices_level:
+                if cfg.level not in set(tax._ranks.values()):
+                    print_log(" - " + cfg.level + " not found in taxonomic ranks, changing to --level 'leaves'", cfg.quiet)
+                    cfg.level = 'leaves'
+
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
 
     # Set-up input info
     info = load_input(cfg, input_files)
 
     print(info)
 
-    # Retrieve target info (if not provided as file)
-    if not cfg.input_file:
+    # Retrieve target info if taxonomy or specialization is required (and if file is not provided)
+    if (tax or use_spec_target) and not cfg.input_file:
         if cfg.input_target=="sequence":
-            get_sequence_info(cfg, info, tmp_output_folder)
+            get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target)
         else:
-            get_file_info(cfg, info, tmp_output_folder)
+            get_file_info(cfg, info, tax, tmp_output_folder)
+
+    print(info)
+
+    # Validate taxonomic node only if taxonomy is provided
+    if tax:
+        validate_taxonomy(info, tax, cfg)
+        if info.empty:
+            print_log("ERROR: Could not retrieve any taxonomic information")
+            return False
+
+    # Validate specialization (required after taxonomy)
+    if use_spec_target:
+        validate_specialization(info, cfg.quiet)
+        if info.empty:
+            print_log("ERROR: Could not retrieve any specialization information")
+            return False
 
     print(info)
 
     if tax:
-        validate_taxonomy(info, tax, cfg.level, cfg.quiet)
-
-    if use_specialization:
-        validate_specialization(info, cfg.quiet)
-
-    print(info)
-
-    # filter tax
-    # write tax
+        # filter only used tax. nodes
+        tax.filter(info["node"].unique())
+        write_tax(info, tax, cfg.db_prefix, cfg.level, use_spec_target)
 
     # write target-info file
-
+    write_target_info(info, tmp_output_folder, cfg.level, cfg.input_target, use_spec_target)
     # run ganon-build
 
-    return True
-
-def update_custom(cfg):
     return True
 
 
@@ -125,6 +148,39 @@ def load_input(cfg, input_files):
 
     return info
 
+def write_tax(info, tax, db_prefix, level, use_spec_target):
+    """
+    write tabular taxonomy file .tax
+    may include specialization as nodes
+    """
+
+    tax_file = db_prefix + ".tax" 
+    tax.write(tax_file)
+
+    # Add specilization nodes
+    if use_spec_target:
+        with open(tax_file, "a") as outf:
+            for _, row in info.iterrows():
+                print(row["specialization"], row["node"],level, row["specialization"], sep="\t", end="\n", file=outf)
+
+
+def write_target_info(info, tmp_output_folder, level, input_target, use_spec_target):
+    """
+    write tabular file to be parsed by ganon-build with info about file, target [and sequence]
+    """
+    target_info_file = tmp_output_folder + "target_info.tsv" 
+
+    fields = ["file", "", ""]
+    if use_spec_target:
+        fields[1] = "specialization"
+    elif level=="leaves":
+        fields[1] = "node"
+
+    if input_target=="sequence":
+        fields[2] = "target"
+
+    print(fields)
+
 
 def validate_specialization(info, quiet):
     """
@@ -161,231 +217,26 @@ def validate_specialization(info, quiet):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
 
 
-def validate_taxonomy(info, tax, level, quiet):
+def validate_taxonomy(info, tax, cfg):
     """
-    validate taxonomy in terms of valid nodes (tax.latest)
+    validate taxonomy: convert to latest nodes (tax.latest)
     and chosen level (tax.parent_rank)
     """
     tx = time.time()
-    print_log("Validating taxonomy", quiet)
+    print_log("Validating taxonomy", cfg.quiet)
 
     # Get latest and valid taxonomic nodes
     info["node"] = info["node"].apply(tax.latest)
 
-    # If level is a taxonomic rank (leaves is an exclusive word)
-    if level!="leaves" and level in set(tax._ranks.values()):
-        info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, level))
+    # If level is not leaves or reserved
+    if cfg.level not in ["leaves"] + cfg.choices_level:
+        info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, cfg.level))
     
     # Skip invalid nodes (na == tax.undefined_node (None))
     shape_tmp = info.shape[0]
     info.dropna(subset=["node"], inplace=True)
     if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic node skipped", quiet)
-    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
-
-
-def parse_sequence_accession(input_files, target_info_colums):
-    """
-    Look for sequence accession (anything from > to the first space) in all input files
-    """
-    info = pd.DataFrame(columns=target_info_colums)
-
-    for file in input_files:
-        # cat | zcat | gawk -> compability with osx
-        run_get = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
-        stdout, stderr = run(run_get, shell=True)
-        tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target'])
-        tmp_info["file"] = file
-        info = pd.concat([info, tmp_info])
-    return info
-
-
-def parse_file_accession(input_files, target_info_colums):
-    """
-    Look for genbank/refseq assembly accession* pattern in the filename
-    if not found, return basename of the file as target
-
-    *https://support.nlm.nih.gov/knowledgebase/article/KA-03451/en-us
-    *https://https.ncbi.nlm.nih.gov/datasets/docs/v1/reference-docs/gca-and-gcf-explained/
-    """
-    info = pd.DataFrame(columns=target_info_colums)
-    assembly_accessions = []
-    assembly_accession_pattern = re.compile("GC[A|F]_[0-9]+\.[0-9]+")
-    for file in input_files:
-        match = assembly_accession_pattern.search(file)
-        assembly_accessions.append((match.group() if match else os.path.basename(file), file))
-    info[["target","file"]] = assembly_accessions
-    return info
-
-
-def get_file_info(cfg, info, tmp_output_folder):
-    assembly_summary_urls = []
-    assembly_summary_files = []
-
-    for assembly_summary in cfg.get_file_info:
-        # Either a file or prefix for download
-        if assembly_summary in cfg.choices_get_file_info:
-            assembly_summary_urls.append("ftp://ftp.ncbi.nlm.nih.gov/genomes/" + assembly_summary + "/assembly_summary_" + assembly_summary + ".txt")
-        else:
-            assembly_summary_files.append(assembly_summary)
-        
-    if assembly_summary_urls:
-        tx = time.time()
-        print_log("Downloading assembly_summary files", cfg.quiet)
-        assembly_summary_files.extend(download(assembly_summary_urls, tmp_output_folder))
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
-    tx = time.time()
-    print_log("Parsing assembly_summary files", cfg.quiet)
-    count_assembly_summary = parse_assembly_summary(info, assembly_summary_files, cfg.level)
-    for assembly_summary_file, cnt in count_assembly_summary.items():
-        print_log(" - " + str(cnt) + " entries found in the " + assembly_summary_file.split("/")[-1] + " file", cfg.quiet)
+        print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic nodes skipped", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-
-def get_sequence_info(cfg, info, tmp_output_folder):
-    # Max. sequences to use eutils in auto mode
-    max_seqs_eutils = 50000
-
-    if not cfg.get_sequence_info:
-        # auto
-        if info.shape[0] > max_seqs_eutils: 
-            mode = ["nucl_gb", "nucl_wgs"]
-        else:
-            mode = ["eutils"]
-    elif "eutils" in cfg.get_sequence_info:
-        mode = ["eutils"]
-    else:
-        mode = cfg.get_sequence_info # custom accession2taxid prefixes or files
-
-    if mode[0]=="eutils":
-        tx = time.time()
-        print_log("Retrieving sequence information from NCBI e-utils", cfg.quiet)
-        run_eutils(cfg, info, tmp_output_folder)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-    else:
-        acc2txid_urls = []
-        acc2txid_files = []
-        for acc2txid in mode:
-            # Either a file or prefix for download
-            if acc2txid in cfg.choices_get_sequence_info:
-                acc2txid_urls.append("ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/" + acc2txid + ".accession2taxid.gz")
-            else:
-                acc2txid_files.append(acc2txid)                
-
-        if acc2txid_urls:
-            tx = time.time()
-            print_log("Downloading accession2taxid files", cfg.quiet)
-            acc2txid_files.extend(download(acc2txid_urls, tmp_output_folder))
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
-        tx = time.time()
-        print_log("Parsing accession2taxid files", cfg.quiet)
-        count_acc2txid = parse_acc2txid(info, acc2txid_files)
-        for acc2txid_file, cnt in count_acc2txid.items():
-            print_log(" - " + str(cnt) + " entries found in the " + acc2txid_file.split("/")[-1] + " file", cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
-        # If assembly name or accession are requested, get with e-utils
-        if cfg.level in ["name", "assembly"]:
-            print_log("Retrieving assembly/name information from NCBI e-utils (--level " + cfg.level + ")", cfg.quiet)
-            run_eutils(cfg, info, tmp_output_folder, skip_taxid=True)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-
-
-def parse_acc2txid(info, acc2txid_files):
-    count_acc2txid = {}
-    unique_acc = set(info.index)
-    for acc2txid in acc2txid_files:
-        tmp_acc_node = pd.read_csv(acc2txid,
-                                   sep="\t",
-                                   header=None,
-                                   skiprows=1,
-                                   usecols=[1, 2],
-                                   names=["target", "node"],
-                                   index_col="target",
-                                   converters={"target": lambda x: x if x in unique_acc else None},
-                                   dtype={"node": "str"})
-        tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()] #  keep only seqids used
-        tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"] #  filter out taxid==0
-
-        # save count to return
-        count_acc2txid[acc2txid] = tmp_acc_node.shape[0]
-        # merge node(taxid) retrieved based on target(accesion)
-        if count_acc2txid[acc2txid]:
-            info.update(tmp_acc_node)
-        del tmp_acc_node
-        #if already found all seqids no need to parse all files till the end)
-        if sum(count_acc2txid.values()) == len(unique_acc):
-            break
-
-    return count_acc2txid
-
-def parse_assembly_summary(info, assembly_summary_files, level):
-    count_assembly_summary = {}
-    unique_acc = set(info.index)
-
-    for assembly_summary in assembly_summary_files:
-        tmp_acc_node = pd.read_csv(assembly_summary,
-                                   sep="\t",
-                                   header=None,
-                                   skiprows=2,
-                                   usecols=[0, 5, 7, 8],  # 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
-                                   names=["target", "node", "organism_name", "infraspecific_name"],
-                                   index_col="target",
-                                   converters={"target": lambda x: x if x in unique_acc else None},
-                                   dtype={"node": "str"})
-        tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()] #  keep only seqids used
-        tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"] #  filter out taxid==0
-
-        # Create specialization if requested for --level
-        if level == "name":
-            tmp_acc_node["specialization"] = tmp_acc_node["organism_name"] + " " + tmp_acc_node["infraspecific_name"]
-        elif level == "assembly":
-            tmp_acc_node["specialization"] = tmp_acc_node.index
-
-        # save count to return
-        count_assembly_summary[assembly_summary] = tmp_acc_node.shape[0]
-        # merge node(taxid) and specialization retrieved based on target(accesion)
-        if count_assembly_summary[assembly_summary]:
-            info.update(tmp_acc_node)
-        del tmp_acc_node
-
-        #if already found all seqids no need to parse all files till the end)
-        if sum(count_assembly_summary.values()) == len(unique_acc):
-            break
-
-    return count_assembly_summary
-
-
-def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool = False):
-    """
-    run ganon-get-seq-info.sh script to retrieve taxonomic and assembly info from sequence accessions (ncbi)
-    """
-    # Write target (index) to a file
-    accessions_file = tmp_output_folder + "accessions.txt"
-    info.to_csv(accessions_file, columns=[], header=False)
-
-    get_assembly = ""
-    if cfg.level == "assembly":
-        get_assembly = "-a"
-    elif cfg.level == "name":
-        get_assembly = "-m"
-
-    # (-k) always return all entries in the same order 
-    # (-e) get taxid length
-    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3}".format(cfg.path_exec["get_seq_info"],
-                                                          accessions_file,
-                                                          "" if skip_taxid else "-e",
-                                                          get_assembly)
-    stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not cfg.quiet else False, exit_on_error=False)
-
-    # set "na" as NaN with na_values="na"
-    if get_assembly:
-        if skip_taxid:
-            info.update(pd.read_csv(StringIO(stdout), sep="\t", names=["target", "specialization"], index_col="target", header=None, skiprows=0, dtype="str", na_values="na"))
-        else:
-            info.update(pd.read_csv(StringIO(stdout), sep="\t", names=["target","length","node","specialization"], index_col="target", header=None, skiprows=0, usecols=["target", "node", "specialization"], dtype="str", na_values="na"))
-    else:
-        info.update(pd.read_csv(StringIO(stdout), sep="\t", names=["target","length","node"], index_col="target", header=None, skiprows=0, usecols=["target", "node"], dtype="str", na_values="na"))
 

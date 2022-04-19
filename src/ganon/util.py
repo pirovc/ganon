@@ -48,6 +48,17 @@ def set_tmp_folder(fld, restart):
     os.makedirs(fld)
     return True
 
+def set_out_files(prefix, ext, restart):
+    for e in ext:
+        file = prefix + "." + e 
+        if os.path.exists(file):
+            if restart:
+                os.remove(file)
+            else:
+                print_log("ERROR: output file already exists " + os.path.abspath(file))
+                return False
+    return True
+
 def rm_tmp_folder(fld):
     shutil.rmtree(fld)
 
