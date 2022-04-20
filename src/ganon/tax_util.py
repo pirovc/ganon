@@ -7,12 +7,23 @@ from ganon.util import download, run, print_log
 from io import StringIO
 
 
-def parse_sequence_accession(input_files, target_info_columns):
+def parse_input_file(input_file, info):
+    """
+    parse user provided --input-file with all specifications for info (in a different order)
+    """
+    return info.update(pd.read_csv(input_file,
+                       sep="\t",
+                       header=None,
+                       skiprows=0,
+                       index_col="target",
+                       dtype="str",
+                       names=["file", "target", "node", "specialization", "specialization_name"]))
+
+
+def parse_sequence_accession(input_files, info):
     """
     Look for sequence accession (anything from > to the first space) in all input files
     """
-    info = pd.DataFrame(columns=target_info_columns)
-
     for file in input_files:
         # cat | zcat | gawk -> compability with osx
         run_cat = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
@@ -23,7 +34,7 @@ def parse_sequence_accession(input_files, target_info_columns):
     return info
 
 
-def parse_file_accession(input_files, target_info_columns):
+def parse_file_accession(input_files, info):
     """
     Look for genbank/refseq assembly accession* pattern in the filename
     if not found, return basename of the file as target
@@ -31,7 +42,6 @@ def parse_file_accession(input_files, target_info_columns):
     *https://support.nlm.nih.gov/knowledgebase/article/KA-03451/en-us
     *https://https.ncbi.nlm.nih.gov/datasets/docs/v1/reference-docs/gca-and-gcf-explained/
     """
-    info = pd.DataFrame(columns=target_info_columns)
     assembly_accessions = []
     assembly_accession_pattern = re.compile("GC[A|F]_[0-9]+\.[0-9]+")
     for file in input_files:
@@ -42,8 +52,7 @@ def parse_file_accession(input_files, target_info_columns):
 
 
 def get_file_info(cfg, info, tax, tmp_output_folder):
-
-    if cfg.taxonomy == "ncbi":
+    if cfg.taxonomy == "ncbi" or (cfg.taxonomy == "none" and cfg.level == "assembly"):
         assembly_summary_urls = []
         assembly_summary_files = []
 
@@ -97,15 +106,14 @@ def get_gtdb_target_node(tax, level):
                                       ])
 
     # Create specialization if requested for --level
-    if level == "name":
-        gtdb_target_node["specialization"] = gtdb_target_node["node"].apply(tax.name) + " " + gtdb_target_node.index
-    elif level == "assembly":
+    if level == "assembly":
         gtdb_target_node["specialization"] = gtdb_target_node.index
+        gtdb_target_node["specialization_name"] = gtdb_target_node["node"].apply(tax.name)
 
     return gtdb_target_node
 
 
-def get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target):
+def get_sequence_info(cfg, info, tax, tmp_output_folder):
     if cfg.taxonomy == "ncbi":
         # Max. sequences to use eutils in auto mode
         max_seqs_eutils = 50000
@@ -124,11 +132,7 @@ def get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target):
         if mode[0] == "eutils":
             tx = time.time()
             print_log("Retrieving sequence information from NCBI e-utils", cfg.quiet)
-            info.update(run_eutils(cfg,
-                                   info,
-                                   tmp_output_folder,
-                                   skip_taxid=False if tax else True,
-                                   specialization=cfg.level))
+            info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=False, level=cfg.level))
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         else:
             if tax:
@@ -156,22 +160,29 @@ def get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target):
                               acc2txid_file.split("/")[-1] + " file", cfg.quiet)
                 print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-            # If assembly name or accession are requested, get with e-utils
-            if use_spec_target:
+            # If assembly is requested, need to use e-utils
+            if cfg.level == "assembly":
                 print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)
-                info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, specialization=cfg.level))
+                info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly"))
                 print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     elif cfg.taxonomy == "gtdb":
         tx = time.time()
         print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)
         # Get NCBI assembly accession for every sequence
-        assembly_info = run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, specialization="assembly")
+        assembly_info = run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly")
         # Get map of accessions from from gtdb taxonomy
         gtdb_target_node = get_gtdb_target_node(tax, cfg.level)
         # Update info with merged info
         info.update(assembly_info.join(on="specialization", other=gtdb_target_node, lsuffix="_acc"))
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+    elif cfg.taxonomy == "none":
+        if cfg.level == "assembly":
+            tx = time.time()
+            print_log("Retrieving sequence information from NCBI e-utils", cfg.quiet)
+            info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly"))
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
 
 def parse_acc2txid(info, acc2txid_files):
@@ -220,9 +231,13 @@ def parse_assembly_summary(info, assembly_summary_files, level):
                                    dtype={"node": "str"})
         tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
 
-        # Create specialization if requested for --level
+        # save count to return
+        count_assembly_summary[assembly_summary] = tmp_acc_node.shape[0]
+        if not count_assembly_summary[assembly_summary]:
+            continue
 
-        if level == "name":
+        # Create specialization
+        if level == "assembly":
             # infraspecific_name has a prefix: breed=, cultivar=, ecotype= or strain=
             tmp_acc_node["infraspecific_name"] = tmp_acc_node["infraspecific_name"].replace("^[a-z]+=", "", regex=True).fillna("")
 
@@ -233,14 +248,11 @@ def parse_assembly_summary(info, assembly_summary_files, level):
                     return n.organism_name + " " + n.infraspecific_name
 
             # add sufix of the infraspecific_name if not yet contained in the end of organism_name
-            tmp_acc_node["specialization"] = tmp_acc_node[["organism_name",
-                                                           "infraspecific_name"]].apply(lambda n: build_name(n), axis=1)
-
-        elif level == "assembly":
+            tmp_acc_node["specialization_name"] = tmp_acc_node[["organism_name",
+                                                                "infraspecific_name"]].apply(lambda n: build_name(n),
+                                                                                             axis=1)
             tmp_acc_node["specialization"] = tmp_acc_node.index
 
-        # save count to return
-        count_assembly_summary[assembly_summary] = tmp_acc_node.shape[0]
         # merge node(taxid) and specialization retrieved based on target(accesion)
         if count_assembly_summary[assembly_summary]:
             info.update(tmp_acc_node)
@@ -253,7 +265,7 @@ def parse_assembly_summary(info, assembly_summary_files, level):
     return count_assembly_summary
 
 
-def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, specialization: str=""):
+def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, level: str=""):
     """
     run ganon-get-seq-info.sh script to retrieve taxonomic and assembly info from sequence accessions (ncbi)
     """
@@ -263,20 +275,21 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, specializat
 
     # (-k) always return all entries in the same order
     # (-e) get taxid length
-    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3} {4}".format(cfg.path_exec["get_seq_info"],
-                                                              accessions_file,
-                                                              "" if skip_taxid else "-e",
-                                                              "-a" if specialization == "assembly" else "",
-                                                              "-m" if specialization == "name" else "")
+    # (-a) get assembly accession
+    # (-m) get assembly name
+    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3}".format(cfg.path_exec["get_seq_info"],
+                                                          accessions_file,
+                                                          "" if skip_taxid else "-e",
+                                                          "-a -m" if level == "assembly" else "")
     stdout = run(run_get_seq_info_cmd, ret_stdout=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
-    if specialization in ["assembly", "name"]:
-        # return target, [taxid,] specialization
+    if level == "assembly":
+        # return target, [taxid,] specialization, specialization_name
         if skip_taxid:
             return pd.read_csv(StringIO(stdout),
                                sep="\t",
-                               names=["target", "specialization"],
+                               names=["target", "specialization", "specialization_name"],
                                index_col="target",
                                header=None,
                                dtype="str",
@@ -284,10 +297,10 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, specializat
         else:
             return pd.read_csv(StringIO(stdout),
                                sep="\t",
-                               names=["target", "length", "node", "specialization"],
+                               names=["target", "length", "node", "specialization", "specialization_name"],
                                index_col="target",
                                header=None,
-                               usecols=["target", "node", "specialization"],
+                               usecols=["target", "node", "specialization", "specialization_name"],
                                dtype="str",
                                na_values="na")
     else:

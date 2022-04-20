@@ -11,6 +11,7 @@ from ganon.util import validate_input_files
 from ganon.util import rm_folder
 from ganon.tax_util import get_file_info
 from ganon.tax_util import get_sequence_info
+from ganon.tax_util import parse_input_file
 from ganon.tax_util import parse_sequence_accession
 from ganon.tax_util import parse_file_accession
 
@@ -52,7 +53,7 @@ def build(cfg):
     build_custom_params = {"input": input_folder,
                            "input_extension": "fna.gz",
                            "input_target": "file",
-                           "level": "name",
+                           "level": "assembly",
                            "ncbi_file_info": assembly_summary}
 
     build_default_params = {"db_prefix": cfg.db_prefix,
@@ -83,9 +84,6 @@ def build_custom(cfg):
     tax = None
     input_files = []
     tmp_output_folder = cfg.db_prefix + "_tmp/"
-
-    # Define if taxonomy/specialization is used as a target to build the database
-    use_spec_target = True if cfg.level in cfg.choices_level else False
 
     # Set working folder, check out files
     if not set_out_files(cfg.db_prefix, ["ibf", "tax"], cfg.restart):
@@ -130,9 +128,9 @@ def build_custom(cfg):
     info = load_input(cfg, input_files)
 
     # Retrieve target info if taxonomy or specialization is required (and if file is not provided)
-    if (tax or use_spec_target) and not cfg.input_file:
+    if (tax or cfg.level == "assembly") and not cfg.input_file:
         if cfg.input_target == "sequence":
-            get_sequence_info(cfg, info, tax, tmp_output_folder, use_spec_target)
+            get_sequence_info(cfg, info, tax, tmp_output_folder)
         else:
             get_file_info(cfg, info, tax, tmp_output_folder)
 
@@ -143,26 +141,23 @@ def build_custom(cfg):
             print_log("ERROR: Could not retrieve any taxonomic information")
             return False
 
-    # Validate specialization (required after taxonomy)
-    if use_spec_target:
+    # Validate specialization for assembly and custom (required to be after taxonomy)
+    if cfg.level in cfg.choices_level:
         validate_specialization(info, cfg.quiet)
         if info.empty:
             print_log("ERROR: Could not retrieve any specialization information")
             return False
 
-    print(info)
-
-    # Define target fro user bins
-    user_bins = "target"
-    if use_spec_target:
-        user_bins = "specialization"
-    elif cfg.level:  # if any level is provided
+    # Define user bins for writing taxonomy and target info file
+    user_bins = "target"  # Default as target
+    if cfg.level in cfg.choices_level:
+        user_bins = "specialization"  # if specialization was requested
+    elif cfg.level:  # if any other level is provided (leaves, species, ...)
         user_bins = "node"
 
     # Filter and write taxonomy
     if tax:
-        # filter only used tax. nodes
-        tax.filter(info["node"].unique())
+        tax.filter(info["node"].unique())  # filter only used tax. nodes
         write_tax(cfg, info, tax, user_bins)
 
     # Write aux file for ganon-build
@@ -174,29 +169,29 @@ def build_custom(cfg):
     return True
 
 
+def update_custom(cfg):
+    return True
+
+########################################################################################################################
+
+
 def load_input(cfg, input_files):
     """
     Load basic target info, either provided as --target-info
     or extracted from file/sequences
     """
-    target_info_columns = ["target", "node", "specialization", "file"]
+    info = pd.DataFrame(columns=["target", "node", "specialization", "specialization_name", "file"])
     tx = time.time()
     if cfg.input_file:
-        print_log("Parsing --target-info " + cfg.input_file, cfg.quiet)
-        info = pd.read_csv(cfg.input_file,
-                           sep="\t",
-                           header=None,
-                           skiprows=0,
-                           index_col=None,
-                           dtype="str",
-                           names=target_info_columns)
+        print_log("Parsing --input-file " + cfg.input_file, cfg.quiet)
+        info = parse_input_file(cfg.input_file, info)
     else:
         if cfg.input_target == "sequence":
             print_log("Parsing sequences from --input (" + str(len(input_files)) + " files)", cfg.quiet)
-            info = parse_sequence_accession(input_files, target_info_columns)
+            info = parse_sequence_accession(input_files, info)
         else:
             print_log("Parsing --input (" + str(len(input_files)) + " files)", cfg.quiet)
-            info = parse_file_accession(input_files, target_info_columns)
+            info = parse_file_accession(input_files, info)
 
     # Drop cols without values
     shape_tmp = info.shape[0]
@@ -237,7 +232,8 @@ def write_tax(cfg, info, tax, user_bins):
         with open(tax_file, "a") as outf:
             for target, row in info.iterrows():
                 t = row[user_bins] if user_bins != "target" else target
-                print(t, row["node"], rank, t, sep="\t", end="\n", file=outf)
+                n = row["specialization_name"] if user_bins == "specialization" else t
+                print(t, row["node"], rank, n, sep="\t", end="\n", file=outf)
 
 
 def write_target_info(info, input_target, user_bins, tmp_output_folder):
@@ -316,6 +312,3 @@ def validate_taxonomy(info, tax, cfg):
         print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic nodes skipped", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-
-def update_custom(cfg):
-    return True

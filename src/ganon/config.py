@@ -15,7 +15,7 @@ class Config:
     choices_taxonomy = ["ncbi", "gtdb", "none"] # get from multitax
     choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
-    choices_level = ["assembly", "name", "custom"]
+    choices_level = ["assembly", "custom"]
     choices_ncbi_sequence_info = ["eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank"]
 
@@ -74,7 +74,7 @@ class Config:
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
         build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the ncbi assembly accession. name will retrieve and use the organism name. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
+        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
         build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                               metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
