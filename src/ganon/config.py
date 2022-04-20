@@ -5,7 +5,7 @@ from ganon.util import *
 class Config:
 
     version = "1.2.0"
-    path_exec = {"build": "", "classify": "", "get_seq_info": ""}
+    path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater"}
     empty = False
 
     choices_taxonomy = ["ncbi", "gtdb", "none"] # get from multitax
@@ -57,8 +57,8 @@ class Config:
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",           type=str,            nargs="*", default="refseq", metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                          help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (only --taxonomy ncbi). 0 for all.")
-        build_download_args.add_argument("-u", "--genome-updater",   type=int,                                         metavar="", help="Additional genome_updater parameters for download (https://github.com/pirovc/genome_updater)")
+        build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (availabel only for --taxonomy ncbi). 0 for all.")
+        build_download_args.add_argument("-u", "--genome-updater",   type=int,                                         metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         
         ####################################################################################################
 
@@ -366,7 +366,7 @@ class Config:
 
     def set_paths(self):
         missing_path = False
-        if self.which in ["build","build-custom","update","update-custom"]:
+        if self.which in ["build", "build-custom", "update", "update-custom"]:
             self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
 
             # if path is given, look for binaries only there
@@ -384,6 +384,14 @@ class Config:
                 if self.path_exec["get_seq_info"] is not None: break
             if self.path_exec["get_seq_info"] is None:
                 print_log("ganon-get-seq-info.sh script was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
+
+            ganon_genome_updater_paths = [self.ganon_path, self.ganon_path+"libs/genome_updater/", self.ganon_path+"../libs/genome_updater/"] if self.ganon_path else [None, "libs/genome_updater/"]
+            for p in ganon_genome_updater_paths:
+                self.path_exec["genome_updater"] = shutil.which("genome_updater.sh", path=p)
+                if self.path_exec["genome_updater"] is not None: break
+            if self.path_exec["genome_updater"] is None:
+                print_log("genome_updater.sh was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
         elif self.which in ["classify"]:
