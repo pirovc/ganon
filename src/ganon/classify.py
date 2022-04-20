@@ -1,7 +1,6 @@
 from ganon.util import *
 from ganon.report import report
 from ganon.config import Config
-from ganon.gnn import Gnn
 
 
 def classify(cfg):

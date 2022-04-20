@@ -1,10 +1,14 @@
 import time
 import pandas as pd
+import os
 
+from ganon.config import Config
 from ganon.util import print_log
 from ganon.util import set_out_folder
 from ganon.util import set_out_files
+from ganon.util import run
 from ganon.util import validate_input_files
+from ganon.util import rm_folder
 from ganon.tax_util import get_file_info
 from ganon.tax_util import get_sequence_info
 from ganon.tax_util import parse_sequence_accession
@@ -13,15 +17,64 @@ from ganon.tax_util import parse_file_accession
 from multitax import NcbiTx, GtdbTx
 
 
-def update(cfg):
-    return True
-
-
 def build(cfg):
-    return True
+    gu_output_folder = cfg.db_prefix + "_files/"
+    resume_download = False
+
+    if os.path.exists(gu_output_folder) and not cfg.restart:
+        print_log("Download folder found [" + gu_output_folder + "], trying to resume\n", cfg.quiet)
+        resume_download = True
+    elif not set_out_folder(gu_output_folder, cfg.restart):
+        return False
+
+    tx = time.time()
+    print_log("Downloading files from " + cfg.source + " [" + ",".join(cfg.organism_group) + "]", cfg.quiet)
+    run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
+                                       "-d " + cfg.source,
+                                       "-g " + ",".join(cfg.organism_group),
+                                       "-A " + str(cfg.top) if cfg.taxonomy == "ncbi" else "",
+                                       "-l 'complete genome'" if cfg.complete_genomes else "",
+                                       "-f genomic.fna.gz",
+                                       "-t " + str(cfg.threads),
+                                       "-o " + gu_output_folder,
+                                       "-z " if cfg.taxonomy == "gtdb" else "",
+                                       "-m",
+                                       "-i" if resume_download else "",
+                                       "-s" if cfg.quiet else "-w",
+                                       cfg.genome_updater if cfg.genome_updater else ""])
+    run(run_genome_updater_cmd, quiet=cfg.quiet)
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+    # get current version from assembly_summary
+    assembly_summary = gu_output_folder + "assembly_summary.txt"
+    input_folder = gu_output_folder + os.path.dirname(os.readlink(assembly_summary)) + "/files/"
+
+    build_custom_params = {"input": input_folder,
+                           "input_extension": "fna.gz",
+                           "input_target": "file",
+                           "level": "name",
+                           "ncbi_file_info": assembly_summary}
+
+    build_default_params = {"db_prefix": cfg.db_prefix,
+                            "taxonomy": cfg.taxonomy,
+                            "threads": cfg.threads,
+                            "max_fp": cfg.max_fp,
+                            "filter_size": cfg.filter_size,
+                            "kmer_size": cfg.kmer_size,
+                            "window_size": cfg.window_size,
+                            "hash_functions": cfg.hash_functions,
+                            "restart": cfg.restart,
+                            "verbose": cfg.verbose,
+                            "quiet": cfg.quiet,
+                            "ganon_path": cfg.ganon_path,
+                            "n_refs": cfg.n_refs,
+                            "n_batches": cfg.n_batches}
+
+    build_custom_params.update(build_default_params)
+    return build_custom(cfg=Config("build-custom", **build_custom_params))
 
 
-def update_custom(cfg):
+def update(cfg):
     return True
 
 
@@ -117,6 +170,7 @@ def build_custom(cfg):
 
     # run ganon-build
 
+    #rm_folder(tmp_output_folder)
     return True
 
 
@@ -261,3 +315,7 @@ def validate_taxonomy(info, tax, cfg):
     if shape_tmp - info.shape[0] > 0:
         print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic nodes skipped", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+
+def update_custom(cfg):
+    return True

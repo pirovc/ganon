@@ -1,6 +1,5 @@
 import time
 import os
-from ganon.tax import Tax
 from ganon.util import *
 
 

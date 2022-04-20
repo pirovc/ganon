@@ -7,39 +7,35 @@ import time
 import urllib.request
 
 
-def run(cmd, print_stderr: bool=False, shell: bool=False, exit_on_error: bool=True):
-    errcode = 0
-    stdout = ""
-    stderr = ""
+def run(cmd, ret_stdout: bool=False, shell: bool=False, quiet: bool=False):
+    errcode = 1
+    stdout = None
+
     try:
+        # print stdout to stderr if not captured (default log ganon)
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd,
                                    shell=shell,
-                                   universal_newlines=True,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()  # wait for the process to terminate
-        errcode = process.returncode
-        if exit_on_error and errcode != 0:
-            raise Exception()
-        if print_stderr and stderr:
-            print_log(stderr)
+                                   text=True,
+                                   stdout=subprocess.PIPE if ret_stdout else sys.stderr,
+                                   stderr=None if quiet else sys.stderr)
+        if ret_stdout:
+            stdout, stderr = process.communicate()
+            if stderr and not quiet:
+                print_log(stderr)
+        else:
+            process.wait()
 
-    #except OSError as e: # The most common exception raised is OSError. This occurs,
-    #  for example, when trying to execute a non-existent file. Applications should prepare for OSError exceptions.
-    #except ValueError as e: #A ValueError will be raised if Popen is called with invalid arguments.
+        errcode = process.returncode
+        if errcode != 0:
+            raise Exception()
+
     except Exception as e:
-        print_log('The following command failed to run:\n'+cmd)
+        print_log("The following command failed to run:\n" + cmd)
         print_log(str(e))
-        print_log("Error code: "+str(errcode))
-        print_log("Out: ")
-        if stdout:
-            print_log(stdout)
-        print_log("Error: ")
-        if stderr:
-            print_log(stderr)
+        print_log("Error code: " + str(errcode))
         sys.exit(errcode)
 
-    return stdout, stderr
+    return stdout
 
 
 def print_log(text, quiet: bool=False):
@@ -52,7 +48,7 @@ def set_out_folder(fld, restart):
     # Create working directory
     if os.path.exists(fld):
         if restart:
-            rm_tmp_folder(fld)
+            rm_folder(fld)
         else:
             print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
             return False
@@ -60,9 +56,10 @@ def set_out_folder(fld, restart):
     os.makedirs(fld)
     return True
 
+
 def set_out_files(prefix, ext, restart):
     for e in ext:
-        file = prefix + "." + e 
+        file = prefix + "." + e
         if os.path.exists(file):
             if restart:
                 os.remove(file)
@@ -71,20 +68,25 @@ def set_out_files(prefix, ext, restart):
                 return False
     return True
 
-def rm_tmp_folder(fld):
+
+def rm_folder(fld):
     shutil.rmtree(fld)
+
 
 def set_taxdump_files(taxdump_file, tmp_output_folder, quiet):
     if not taxdump_file:
-        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, quiet), tmp_output_folder, quiet)
+        ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(get_taxdump(tmp_output_folder, quiet),
+                                                                            tmp_output_folder,
+                                                                            quiet)
     elif taxdump_file[0].endswith(".tar.gz"):
         ncbi_nodes_file, ncbi_names_file, ncbi_merged_file = unpack_taxdump(taxdump_file[0], tmp_output_folder, quiet)
     else:
         ncbi_nodes_file = taxdump_file[0]
         ncbi_names_file = taxdump_file[1]
-        ncbi_merged_file =  taxdump_file[2] if len(taxdump_file)==3 else ""
+        ncbi_merged_file = taxdump_file[2] if len(taxdump_file) == 3 else ""
 
     return ncbi_nodes_file, ncbi_merged_file, ncbi_names_file
+
 
 def get_taxdump(tmp_output_folder, quiet):
     tx = time.time()
@@ -95,6 +97,7 @@ def get_taxdump(tmp_output_folder, quiet):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return taxdump_file
 
+
 def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
     tx = time.time()
     print_log("Unpacking taxdump", quiet)
@@ -102,6 +105,7 @@ def unpack_taxdump(taxdump_file, tmp_output_folder, quiet):
     stdout, stderr = run(unpack_taxdump_cmd, print_stderr=True)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
     return tmp_output_folder+'nodes.dmp', tmp_output_folder+'names.dmp', tmp_output_folder+'merged.dmp'
+
 
 def validate_input_files(input_files_folder, input_extension, quiet):
     """
@@ -116,25 +120,28 @@ def validate_input_files(input_files_folder, input_extension, quiet):
             if not input_extension:
                 print_log("--input-extension is required when using folders in the --input. Skipping: " + i, quiet)
                 continue
-            files_in_dir=0
+            files_in_dir = 0
             for file in os.listdir(i):
                 if file.endswith(input_extension):
                     f = os.path.join(i, file)
                     if check_file(f):
                         files_in_dir += 1
                         valid_input_files.add(f)
-            print_log(str(files_in_dir) + " valid file(s) [--input-extension " + input_extension + "] found in " + i, quiet)
+            print_log(str(files_in_dir) + " valid file(s) [--input-extension " + input_extension +
+                      "] found in " + i, quiet)
         else:
             print_log("Skipping invalid file/folder: " + i, quiet)
 
     print_log("Total valid files: " + str(len(valid_input_files)), quiet)
     return valid_input_files
 
+
 def check_file(file):
     if os.path.isfile(file) and os.path.getsize(file) > 0:
         return True
     else:
         return False
+
 
 def download(urls: list, output_prefix: str):
     """
@@ -153,4 +160,5 @@ def download(urls: list, output_prefix: str):
             f.write(urlstream.read())
         urlstream.close()
         files.append(outfile)
+
     return files

@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-import argparse, sys, shutil
+
+import argparse
+import sys
+import shutil
 from ganon.util import *
+
 
 class Config:
 
     version = "1.2.0"
-    path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater"}
+    path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
     choices_taxonomy = ["ncbi", "gtdb", "none"] # get from multitax
@@ -17,12 +21,11 @@ class Config:
 
     def __init__(self, which: str=None, **kwargs):
 
-
         parser = argparse.ArgumentParser(prog="ganon", description="ganon", conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
 
         ####################################################################################################
-        
+
         build_default_parser = argparse.ArgumentParser(add_help=False)
 
         build_default_required_args = build_default_parser.add_argument_group("required arguments")
@@ -52,14 +55,14 @@ class Config:
         build_parser = argparse.ArgumentParser(add_help=False)
 
         build_required_args = build_parser.add_argument_group("required arguments")
-        build_required_args.add_argument("-g", "--organims-group", type=str, nargs="*", metavar="", required=True, help="One or more organims groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
+        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", required=True, help="One or more organims groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
 
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",           type=str,            nargs="*", default="refseq", metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                          help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (availabel only for --taxonomy ncbi). 0 for all.")
-        build_download_args.add_argument("-u", "--genome-updater",   type=int,                                         metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
-        
+        build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (only possible for --taxonomy ncbi). 0 for all.")
+        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                         metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
+
         ####################################################################################################
 
         build_custom_parser = argparse.ArgumentParser(add_help=False)
@@ -67,7 +70,7 @@ class Config:
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
         build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s) [Mutually exclusive --input-file]")
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards are not supported (e.g. *).")
-        
+
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
         build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
@@ -236,7 +239,6 @@ class Config:
         update_custom = subparsers.add_parser("update-custom", help="Update custom ganon databases", parents=[update_custom_parser], formatter_class=formatter_class)
         update_custom.set_defaults(which="update-custom")
 
-
         # Passing arguments internally from call main(which, **kwargs)
         if which is not None:
             # Set which as the first parameter (mandatory)
@@ -257,8 +259,8 @@ class Config:
             parser.parse_args(list_kwargs, namespace=self)
         else:
             # parse from default CLI sys.argv saving arguments to this class
-            parser.parse_args(namespace=self) 
-            if len(sys.argv)==1: 
+            parser.parse_args(namespace=self)
+            if len(sys.argv) == 1:
                 parser.print_help()
                 self.empty = True
 
@@ -277,8 +279,11 @@ class Config:
         elif self.quiet is True:
             self.verbose = False
 
-        if self.which == "build" or self.which == "build-custom":
-            
+        if self.which == "build":
+            pass
+
+        elif self.which == "build-custom":
+
             if self.input_file and self.input:
                 print_log("--input-file is mutually exclusive with --input")
                 return False

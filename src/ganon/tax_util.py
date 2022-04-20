@@ -3,7 +3,6 @@ import pandas as pd
 import re
 import os
 
-
 from ganon.util import download, run, print_log
 from io import StringIO
 
@@ -16,8 +15,8 @@ def parse_sequence_accession(input_files, target_info_columns):
 
     for file in input_files:
         # cat | zcat | gawk -> compability with osx
-        run_get = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
-        stdout, stderr = run(run_get, shell=True)
+        run_cat = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
+        stdout = run(run_cat, shell=True, ret_stdout=True)
         tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target'])
         tmp_info["file"] = file
         info = pd.concat([info, tmp_info])
@@ -212,7 +211,7 @@ def parse_assembly_summary(info, assembly_summary_files, level):
         tmp_acc_node = pd.read_csv(assembly_summary,
                                    sep="\t",
                                    header=None,
-                                   skiprows=2,
+                                   # skiprows=2, do not skiprows (no header from genome_updater)
                                    # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
                                    usecols=[0, 5, 7, 8],
                                    names=["target", "node", "organism_name", "infraspecific_name"],
@@ -220,11 +219,23 @@ def parse_assembly_summary(info, assembly_summary_files, level):
                                    converters={"target": lambda x: x if x in unique_acc else None},
                                    dtype={"node": "str"})
         tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
-        tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"]  # filter out taxid==0
 
         # Create specialization if requested for --level
+
         if level == "name":
-            tmp_acc_node["specialization"] = tmp_acc_node["organism_name"] + " " + tmp_acc_node["infraspecific_name"]
+            # infraspecific_name has a prefix: breed=, cultivar=, ecotype= or strain=
+            tmp_acc_node["infraspecific_name"] = tmp_acc_node["infraspecific_name"].replace("^[a-z]+=", "", regex=True).fillna("")
+
+            def build_name(n):
+                if n.organism_name.endswith(n.infraspecific_name):
+                    return n.organism_name
+                else:
+                    return n.organism_name + " " + n.infraspecific_name
+
+            # add sufix of the infraspecific_name if not yet contained in the end of organism_name
+            tmp_acc_node["specialization"] = tmp_acc_node[["organism_name",
+                                                           "infraspecific_name"]].apply(lambda n: build_name(n), axis=1)
+
         elif level == "assembly":
             tmp_acc_node["specialization"] = tmp_acc_node.index
 
@@ -242,7 +253,7 @@ def parse_assembly_summary(info, assembly_summary_files, level):
     return count_assembly_summary
 
 
-def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool = False, specialization: str = ""):
+def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, specialization: str=""):
     """
     run ganon-get-seq-info.sh script to retrieve taxonomic and assembly info from sequence accessions (ncbi)
     """
@@ -257,7 +268,7 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool = False, specializ
                                                               "" if skip_taxid else "-e",
                                                               "-a" if specialization == "assembly" else "",
                                                               "-m" if specialization == "name" else "")
-    stdout, stderr = run(run_get_seq_info_cmd, print_stderr=True if not cfg.quiet else False, exit_on_error=False)
+    stdout = run(run_get_seq_info_cmd, ret_stdout=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
     if specialization in ["assembly", "name"]:
