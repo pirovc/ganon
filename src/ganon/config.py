@@ -40,7 +40,7 @@ class Config:
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=int,               metavar="", default=0,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
 
         build_default_other_args = build_default_parser.add_argument_group("options")
-        build_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch even if files are found. Will delete anything inside {db_prefix}_tmp")
+        build_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch even if files are found. Will overwrite {db_prefix}.tax, {db_prefix}.ibf) and {db_prefix}_tmp/")
         build_default_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
         build_default_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
         build_default_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
@@ -71,7 +71,7 @@ class Config:
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
         build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the ncbi assembly accession. name will retrieve and use the ncbi organism name. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
+        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the ncbi assembly accession. name will retrieve and use the organism name. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
         build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                               metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
