@@ -12,7 +12,7 @@ class Config:
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
-    choices_taxonomy = ["ncbi", "gtdb", "none"] # get from multitax
+    choices_taxonomy = ["ncbi", "gtdb", "skip"] # get from multitax
     choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "custom"]
@@ -21,7 +21,10 @@ class Config:
 
     def __init__(self, which: str=None, **kwargs):
 
-        parser = argparse.ArgumentParser(prog="ganon", description="ganon", conflict_handler="resolve")
+        parser = argparse.ArgumentParser(prog="ganon",
+                                         formatter_class=argparse.RawDescriptionHelpFormatter,
+                                         description=logo(self.version),
+                                         conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
 
         ####################################################################################################
@@ -32,18 +35,18 @@ class Config:
         build_default_required_args.add_argument("-d", "--db-prefix", type=str, required=True, help="Database output prefix")
 
         build_default_important_args = build_default_parser.add_argument_group("important arguments")
-        build_default_important_args.add_argument("-x", "--taxonomy", type=str, metavar="", default="ncbi", help="Downloads and build taxonomy tree to enable taxonomic classification and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
-        build_default_important_args.add_argument("-t", "--threads",  type=int, metavar="", default=2,      help="")
+        build_default_important_args.add_argument("-x", "--taxonomy", type=str,                    metavar="", default="ncbi", help="Set taxonomy to enable taxonomic classification, lca and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
+        build_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
-        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(0,1), metavar="", default=0.05, help="Max. false positive rate for bloom filters [Mutually exclusive --filter-size].")
-        build_default_advanced_args.add_argument("-f", "--filter-size",    type=float,             metavar="", default=0,    help="Fixed size for filter in Megabytes (MB) [Mutually exclusive --max-fp]")
+        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(0,1), metavar="", default=0.05, help="Max. false positive rate for bloom filters Mutually exclusive --filter-size.")
+        build_default_advanced_args.add_argument("-f", "--filter-size",    type=float,             metavar="", default=0,    help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
         build_default_advanced_args.add_argument("-k", "--kmer-size",      type=int,               metavar="", default=19,   help="The k-mer size to split sequences.")
         build_default_advanced_args.add_argument("-w", "--window-size",    type=int,               metavar="", default=32,   help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=int,               metavar="", default=0,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
 
-        build_default_other_args = build_default_parser.add_argument_group("options")
-        build_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch even if files are found. Will overwrite {db_prefix}.tax, {db_prefix}.ibf) and {db_prefix}_tmp/")
+        build_default_other_args = build_default_parser.add_argument_group("optional arguments")
+        build_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch. Will delete {db_prefix}.tax, {db_prefix}.ibf and {db_prefix}_files/ if existing. If not set and files exist, try to resume build from last possible step.")
         build_default_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
         build_default_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
         build_default_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
@@ -55,37 +58,37 @@ class Config:
         build_parser = argparse.ArgumentParser(add_help=False)
 
         build_required_args = build_parser.add_argument_group("required arguments")
-        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", required=True, help="One or more organims groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
+        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", required=True, help="One or more organim groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
 
         build_download_args = build_parser.add_argument_group("download arguments")
-        build_download_args.add_argument("-b", "--source",           type=str,            nargs="*", default="refseq", metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
-        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                          help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-o", "--top",              type=int,                       default=0,        metavar="", help="Download top organims for each taxa (only possible for --taxonomy ncbi). 0 for all.")
-        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                         metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
+        build_download_args.add_argument("-b", "--source",           type=str, nargs="*",       default=["refseq"], metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
+        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                       help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,        metavar="", help="Download top organims for each taxa (only possible for --taxonomy ncbi). 0 for all.")
+        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                      metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
 
         ####################################################################################################
 
         build_custom_parser = argparse.ArgumentParser(add_help=False)
 
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
-        build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s) [Mutually exclusive --input-file]")
+        build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s). Mutually exclusive --input-file.")
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards are not supported (e.g. *).")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
-        build_custom_args.add_argument("-n", "--input-file",           type=file_exists,                                  metavar="", help="Tab separated file with information for each file and target: target <tab> tax.node <tab> specialization <tab> file [Mutually exclusive --input]")
-        build_custom_args.add_argument("-a", "--input-target",         type=str,                                          metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",                type=str,                                          metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
-        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*",                               metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_custom_args.add_argument("-n", "--input-file",           type=file_exists,    metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
+        build_custom_args.add_argument("-a", "--input-target",         type=str,            metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-l", "--level",                type=str,            metavar="", help="Use a specialized target to build the database. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession. custom requires and uses the specialization field in the --input-file. By default, last level is set to the --input-target")
+        build_custom_args.add_argument("-m", "--taxonomy-files",       type=str, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
-        ncbi_args.add_argument("-r", "--ncbi-sequence-info",    type=str, nargs="*", default=[],                          metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
-        ncbi_args.add_argument("-q", "--ncbi-file-info",        type=str, nargs="*", default=self.choices_ncbi_file_info, metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")          
+        ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                          metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
+        ncbi_args.add_argument("-q", "--ncbi-file-info",     type=str, nargs="*", default=self.choices_ncbi_file_info, metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
 
         ####################################################################################################
 
         update_custom_parser = argparse.ArgumentParser(add_help=False)
         update_custom_parser.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Database input prefix")
-        
+
         ####################################################################################################
 
         update_parser = argparse.ArgumentParser(add_help=False)
@@ -124,8 +127,8 @@ class Config:
         classify_group_required.add_argument("-p", "--paired-reads", type=str, nargs="*", required=False, metavar="reads.1.fq[.gz] reads.2.fq[.gz]", help="Multi-fastq[.gz] pairs of file[s] to classify")
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
-        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=float, nargs="*", metavar="", default=[0.2],  help="Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. [Mutually exclusive --abs-cutoff] Default: 0.5")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=float, nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. [Mutually exclusive --abs-filter] Default: 0.1")
+        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=float, nargs="*", metavar="", default=[0.2],  help="Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. Mutually exclusive --abs-cutoff. Default: 0.5")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=float, nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. Mutually exclusive --abs-filter. Default: 0.1")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix to print report (.rep). Empty to output to STDOUT")
@@ -133,10 +136,10 @@ class Config:
         classify_group_output.add_argument("--output-all",                action="store_true",               help="Output an additional file with all matches. File can be very large (.all)")
         classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output an additional file with unclassified read headers (.unc)")
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
-        
+
         classify_group_other = classify_parser.add_argument_group("other arguments")
-        classify_group_other.add_argument("-b", "--abs-cutoff",          type=int,   nargs="*", metavar="", help="Max. absolute number of errors allowed to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 3 3 4 0). -1 for no cutoff. [Mutually exclusive --rel-cutoff]")
-        classify_group_other.add_argument("-a", "--abs-filter",          type=int,   nargs="*", metavar="", help="Additional absolute number of errors (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0 2 1). -1 for no filter. [Mutually exclusive --rel-filter]")
+        classify_group_other.add_argument("-b", "--abs-cutoff",          type=int,   nargs="*", metavar="", help="Max. absolute number of errors allowed to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 3 3 4 0). -1 for no cutoff. Mutually exclusive --rel-cutoff")
+        classify_group_other.add_argument("-a", "--abs-filter",          type=int,   nargs="*", metavar="", help="Additional absolute number of errors (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0 2 1). -1 for no filter. Mutually exclusive --rel-filter")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,   nargs="*", metavar="", help="Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: H1")
         classify_group_other.add_argument("-f", "--offset",              type=int,              metavar="", help="Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1")
         classify_group_other.add_argument("-t", "--threads",             type=int,              metavar="", help="Number of sub-processes/threads to use. Default: 3")
@@ -184,22 +187,22 @@ class Config:
 
         # Defaults
         table_group_optional = table_parser.add_argument_group("optional arguments")
-        table_group_optional.add_argument("-l", "--output-value",             type=str,   metavar="", default="counts",     help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
-        table_group_optional.add_argument("-f", "--output-format",            type=str,   metavar="", default="tsv",        help="Output format [tsv, csv]. Default: tsv")
-        table_group_optional.add_argument("-t", "--top-sample",               type=int,   metavar="", default=0,            help="Top hits of each sample individually")
-        table_group_optional.add_argument("-a", "--top-all",                  type=int,   metavar="", default=0,            help="Top hits of all samples (ranked by percentage)")
-        table_group_optional.add_argument("-m", "--min-frequency",            type=float, metavar="", default=0,            help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
-        table_group_optional.add_argument("-r", "--rank",                     type=str,   metavar="", default=None,         help="Define specific rank to report. Empty will report all ranks.")
-        table_group_optional.add_argument("-n", "--no-root",                  action="store_true",    default=False,        help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
-        table_group_optional.add_argument("--header",                         type=str,   metavar="", default="name",       help="Header information [name, taxid, lineage]. Default: name")
-        table_group_optional.add_argument("--unclassified-label",             type=str,   metavar="", default=None,         help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
-        table_group_optional.add_argument("--filtered-label",                 type=str,   metavar="", default=None,         help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
-        table_group_optional.add_argument("--skip-zeros",                     action="store_true",    default=False,        help="Do not print lines with only zero count/percentage")
-        table_group_optional.add_argument("--transpose",                      action="store_true",    default=False,        help="Transpose output table (taxa as cols and files as rows)")
-        table_group_optional.add_argument("--input-directory",                type=str,  metavar="",  default="",           help="Directory containing input files")
-        table_group_optional.add_argument("--input-extension",                type=str,  metavar="",  default="",           help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.tre')")
-        table_group_optional.add_argument("--verbose",                        action="store_true",    default=False,        help="Verbose output mode")
-        table_group_optional.add_argument("--quiet",                          action="store_true",    default=False,        help="Quiet output mode")
+        table_group_optional.add_argument("-l", "--output-value",  type=str,   metavar="", default="counts", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
+        table_group_optional.add_argument("-f", "--output-format", type=str,   metavar="", default="tsv",    help="Output format [tsv, csv]. Default: tsv")
+        table_group_optional.add_argument("-t", "--top-sample",    type=int,   metavar="", default=0,        help="Top hits of each sample individually")
+        table_group_optional.add_argument("-a", "--top-all",       type=int,   metavar="", default=0,        help="Top hits of all samples (ranked by percentage)")
+        table_group_optional.add_argument("-m", "--min-frequency", type=float, metavar="", default=0,        help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
+        table_group_optional.add_argument("-r", "--rank",          type=str,   metavar="", default=None,     help="Define specific rank to report. Empty will report all ranks.")
+        table_group_optional.add_argument("-n", "--no-root",       action="store_true",    default=False,    help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
+        table_group_optional.add_argument("--header",              type=str,   metavar="", default="name",   help="Header information [name, taxid, lineage]. Default: name")
+        table_group_optional.add_argument("--unclassified-label",  type=str,   metavar="", default=None,     help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
+        table_group_optional.add_argument("--filtered-label",      type=str,   metavar="", default=None,     help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
+        table_group_optional.add_argument("--skip-zeros",          action="store_true",    default=False,    help="Do not print lines with only zero count/percentage")
+        table_group_optional.add_argument("--transpose",           action="store_true",    default=False,    help="Transpose output table (taxa as cols and files as rows)")
+        table_group_optional.add_argument("--input-directory",     type=str,  metavar="",  default="",       help="Directory containing input files")
+        table_group_optional.add_argument("--input-extension",     type=str,  metavar="",  default="",       help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.tre')")
+        table_group_optional.add_argument("--verbose",             action="store_true",    default=False,    help="Verbose output mode")
+        table_group_optional.add_argument("--quiet",               action="store_true",    default=False,    help="Quiet output mode")
 
         ####################################################################################################
 
@@ -214,30 +217,47 @@ class Config:
         formatter_class = lambda prog: argparse.ArgumentDefaultsHelpFormatter(prog, width=120)
         subparsers = parser.add_subparsers()
 
-        build = subparsers.add_parser("build", help="Download and build ganon default databases (refseq/genbank)", parents=[build_parser, build_default_parser], formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        #build._action_groups.reverse()  # required first
+        build = subparsers.add_parser("build",
+                                      help="Download and build ganon default databases (refseq/genbank)",
+                                      parents=[build_parser, build_default_parser],
+                                      formatter_class=formatter_class)
         build.set_defaults(which="build")
 
-        update = subparsers.add_parser("update", help="Update ganon default databases", parents=[update_parser], formatter_class=formatter_class)
-        update._action_groups.reverse()  # required first
-        update.set_defaults(which="update")
-
-        classify = subparsers.add_parser("classify", help="Classify reads", parents=[classify_parser], formatter_class=formatter_class)
-        classify.set_defaults(which="classify")
-
-        report = subparsers.add_parser("report", help="Generate reports", parents=[filter_parser,report_parser], formatter_class=formatter_class)
-        report._action_groups.reverse()  # required first
-        report.set_defaults(which="report")
-
-        table = subparsers.add_parser("table", help="Generate table from reports", parents=[filter_parser,table_parser], formatter_class=formatter_class)
-        table._action_groups.reverse()  # required first
-        table.set_defaults(which="table")
-
-        build_custom = subparsers.add_parser("build-custom", help="Build custom ganon databases", parents=[build_default_parser, build_custom_parser], formatter_class=formatter_class)
+        build_custom = subparsers.add_parser("build-custom",
+                                             help="Build custom ganon databases",
+                                             parents=[build_custom_parser, build_default_parser],
+                                             formatter_class=formatter_class)
         build_custom.set_defaults(which="build-custom")
 
-        update_custom = subparsers.add_parser("update-custom", help="Update custom ganon databases", parents=[update_custom_parser], formatter_class=formatter_class)
+        update = subparsers.add_parser("update",
+                                       help="Update ganon default databases",
+                                       parents=[update_parser],
+                                       formatter_class=formatter_class)
+        update.set_defaults(which="update")
+
+        update_custom = subparsers.add_parser("update-custom",
+                                              help="Update custom ganon databases",
+                                              parents=[update_custom_parser],
+                                              formatter_class=formatter_class)
         update_custom.set_defaults(which="update-custom")
+
+        classify = subparsers.add_parser("classify",
+                                         help="Classify reads",
+                                         parents=[classify_parser],
+                                         formatter_class=formatter_class)
+        classify.set_defaults(which="classify")
+
+        report = subparsers.add_parser("report",
+                                       help="Generate reports",
+                                       parents=[filter_parser, report_parser],
+                                       formatter_class=formatter_class)
+        report.set_defaults(which="report")
+
+        table = subparsers.add_parser("table",
+                                      help="Generate table from reports",
+                                      parents=[filter_parser, table_parser],
+                                      formatter_class=formatter_class)
+        table.set_defaults(which="table")
 
         # Passing arguments internally from call main(which, **kwargs)
         if which is not None:
@@ -296,7 +316,7 @@ class Config:
                 print_log("--taxonomy is required for --level " + self.level)
                 return False
 
-            if self.taxonomy=="ncbi":
+            if self.taxonomy == "ncbi":
                 for entry in self.ncbi_sequence_info:
                     if entry not in self.choices_ncbi_sequence_info and not check_file(entry):
                         print_log("Invalid --get-sequence-info. Should be a valid file or: " + " ".join(self.choices_ncbi_sequence_info))
@@ -306,7 +326,6 @@ class Config:
                     if entry not in self.choices_ncbi_file_info and not check_file(entry):
                         print_log("Invalid --get-file-info. Should be a valid file or: " + " ".join(self.choices_ncbi_file_info))
                         return False
-
 
         elif self.which == "update" or self.which == "update-custom":
             if not check_file(self.db_prefix+".ibf"):
@@ -337,18 +356,18 @@ class Config:
                 print_log("Invalid paired reads")
                 return False
 
-            if len_single_reads + len_paired_reads==0:
+            if len_single_reads + len_paired_reads == 0:
                 print_log("No valid input files to classify")
                 return False
 
-        elif self.which=="report":
+        elif self.which == "report":
 
             if self.skip_hierarchy and self.keep_hierarchy:
                 print_log("--skip-hierarchy and --keep-hierarchy are mutually exclusive")
                 return False
 
             if self.db_prefix:
-                dbp=[]
+                dbp = []
                 # add ".tax" if was passed as prefix
                 for prefix in self.db_prefix:
                     if prefix.endswith(".tax"):
@@ -413,6 +432,15 @@ class Config:
         return True if not missing_path else False
 
 
+def unsigned_int(minval=None):
+    def checker(val):
+        val = int(val)
+        if val is not None and val < minval:
+            raise argparse.ArgumentTypeError('%r must be >= %r' % (val, minval))
+        return val
+    return checker
+
+
 def int_or_float(minval=None, maxval=None):
     def checker(val):
         try:
@@ -425,6 +453,7 @@ def int_or_float(minval=None, maxval=None):
             raise argparse.ArgumentTypeError('%r must be <= %r' % (val, maxval))
         return val
     return checker
+
 
 def file_exists(file):
     if not os.path.exists(file):

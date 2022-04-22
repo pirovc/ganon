@@ -4,6 +4,7 @@ import shlex
 import shutil
 import os
 import urllib.request
+from pathlib import Path
 
 
 def run(cmd, ret_stdout: bool=False, shell: bool=False, quiet: bool=False):
@@ -37,39 +38,36 @@ def run(cmd, ret_stdout: bool=False, shell: bool=False, quiet: bool=False):
     return stdout
 
 
+def logo(version):
+    logo = ""
+    logo += "- - - - - - - - - -\n"
+    logo += "   _  _  _  _  _   \n"
+    logo += "  (_|(_|| |(_)| |  \n"
+    logo += "   _|   v. " + str(version) + "\n"
+    logo += "- - - - - - - - - -\n"
+    return logo
+
+
 def print_log(text, quiet: bool=False):
     if not quiet:
         sys.stderr.write(text+"\n")
         sys.stderr.flush()
 
 
-def set_out_folder(fld, restart):
-    # Create working directory
-    if os.path.exists(fld):
-        if restart:
-            rm_folder(fld)
-        else:
-            print_log("ERROR: temp folder already exists " + os.path.abspath(fld))
-            return False
-
-    os.makedirs(fld)
-    return True
+def rm_files(files):
+    if isinstance(files, str):
+        files = [files]
+    for f in files:
+        if check_file(f):
+            os.remove(f)
 
 
-def set_out_files(prefix, ext, restart):
-    for e in ext:
-        file = prefix + "." + e
-        if os.path.exists(file):
-            if restart:
-                os.remove(file)
-            else:
-                print_log("ERROR: output file already exists " + os.path.abspath(file))
-                return False
-    return True
-
-
-def rm_folder(fld):
-    shutil.rmtree(fld)
+def rm_folders(folders):
+    if isinstance(folders, str):
+        folders = [folders]
+    for f in folders:
+        if check_folder(f):
+            shutil.rmtree(f)
 
 
 def validate_input_files(input_files_folder, input_extension, quiet):
@@ -97,15 +95,36 @@ def validate_input_files(input_files_folder, input_extension, quiet):
         else:
             print_log("Skipping invalid file/folder: " + i, quiet)
 
-    print_log("Total valid files: " + str(len(valid_input_files)), quiet)
+    print_log("Total valid files: " + str(len(valid_input_files)) + "\n", quiet)
     return valid_input_files
 
 
 def check_file(file):
+    """
+    Check if file exists and it's not empty
+    """
     if os.path.isfile(file) and os.path.getsize(file) > 0:
         return True
     else:
         return False
+
+
+def check_folder(folder):
+    """
+    Check if folder exists and it's not empty
+    """
+    if os.path.isdir(folder) and len(os.listdir(folder)) > 0:
+        return True
+    else:
+        return False
+
+
+def save_state(state, folder):
+    Path(folder + state).touch()
+
+
+def load_state(state, folder):
+    return os.path.isfile(folder + state)
 
 
 def download(urls: list, output_prefix: str):

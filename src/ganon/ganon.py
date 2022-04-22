@@ -7,7 +7,7 @@ from ganon.classify import classify
 from ganon.report import report
 from ganon.table import table
 from ganon.config import Config
-from ganon.util import print_log
+from ganon.util import print_log, logo
 
 
 def main(which: str=None, cfg=None, **kwargs):
@@ -29,11 +29,7 @@ def main(which: str=None, cfg=None, **kwargs):
 
     tx_total = time.time()
 
-    print_log("- - - - - - - - - -", cfg.quiet)
-    print_log("   _  _  _  _  _   ", cfg.quiet)
-    print_log("  (_|(_|| |(_)| |  ", cfg.quiet)
-    print_log("   _|   v. " + str(cfg.version), cfg.quiet)
-    print_log("- - - - - - - - - -", cfg.quiet)
+    print_log(logo(cfg.version), cfg.quiet)
 
     if cfg.which == 'build':
         ret = build(cfg)

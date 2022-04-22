@@ -3,21 +3,8 @@ import pandas as pd
 import re
 import os
 
-from ganon.util import download, run, print_log
+from ganon.util import download, run, print_log, rm_files
 from io import StringIO
-
-
-def parse_input_file(input_file, info):
-    """
-    parse user provided --input-file with all specifications for info (in a different order)
-    """
-    return info.update(pd.read_csv(input_file,
-                       sep="\t",
-                       header=None,
-                       skiprows=0,
-                       index_col="target",
-                       dtype="str",
-                       names=["file", "target", "node", "specialization", "specialization_name"]))
 
 
 def parse_sequence_accession(input_files, info):
@@ -51,8 +38,8 @@ def parse_file_accession(input_files, info):
     return info
 
 
-def get_file_info(cfg, info, tax, tmp_output_folder):
-    if cfg.taxonomy == "ncbi" or (cfg.taxonomy == "none" and cfg.level == "assembly"):
+def get_file_info(cfg, info, tax, build_output_folder):
+    if cfg.taxonomy == "ncbi" or (cfg.taxonomy == "skip" and cfg.level == "assembly"):
         assembly_summary_urls = []
         assembly_summary_files = []
 
@@ -68,7 +55,7 @@ def get_file_info(cfg, info, tax, tmp_output_folder):
         if assembly_summary_urls:
             tx = time.time()
             print_log("Downloading assembly_summary files", cfg.quiet)
-            assembly_summary_files.extend(download(assembly_summary_urls, tmp_output_folder))
+            assembly_summary_files.extend(download(assembly_summary_urls, build_output_folder))
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
         tx = time.time()
@@ -113,7 +100,7 @@ def get_gtdb_target_node(tax, level):
     return gtdb_target_node
 
 
-def get_sequence_info(cfg, info, tax, tmp_output_folder):
+def get_sequence_info(cfg, info, tax, build_output_folder):
     if cfg.taxonomy == "ncbi":
         # Max. sequences to use eutils in auto mode
         max_seqs_eutils = 50000
@@ -132,7 +119,7 @@ def get_sequence_info(cfg, info, tax, tmp_output_folder):
         if mode[0] == "eutils":
             tx = time.time()
             print_log("Retrieving sequence information from NCBI e-utils", cfg.quiet)
-            info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=False, level=cfg.level))
+            info.update(run_eutils(cfg, info, build_output_folder, skip_taxid=False, level=cfg.level))
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         else:
             if tax:
@@ -149,7 +136,7 @@ def get_sequence_info(cfg, info, tax, tmp_output_folder):
                 if acc2txid_urls:
                     tx = time.time()
                     print_log("Downloading accession2taxid files", cfg.quiet)
-                    acc2txid_files.extend(download(acc2txid_urls, tmp_output_folder))
+                    acc2txid_files.extend(download(acc2txid_urls, build_output_folder))
                     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
                 tx = time.time()
@@ -163,25 +150,25 @@ def get_sequence_info(cfg, info, tax, tmp_output_folder):
             # If assembly is requested, need to use e-utils
             if cfg.level == "assembly":
                 print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)
-                info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly"))
+                info.update(run_eutils(cfg, info, build_output_folder, skip_taxid=True, level="assembly"))
                 print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     elif cfg.taxonomy == "gtdb":
         tx = time.time()
         print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)
         # Get NCBI assembly accession for every sequence
-        assembly_info = run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly")
+        assembly_info = run_eutils(cfg, info, build_output_folder, skip_taxid=True, level="assembly")
         # Get map of accessions from from gtdb taxonomy
         gtdb_target_node = get_gtdb_target_node(tax, cfg.level)
         # Update info with merged info
         info.update(assembly_info.join(on="specialization", other=gtdb_target_node, lsuffix="_acc"))
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    elif cfg.taxonomy == "none":
+    elif cfg.taxonomy == "skip":
         if cfg.level == "assembly":
             tx = time.time()
             print_log("Retrieving sequence information from NCBI e-utils", cfg.quiet)
-            info.update(run_eutils(cfg, info, tmp_output_folder, skip_taxid=True, level="assembly"))
+            info.update(run_eutils(cfg, info, build_output_folder, skip_taxid=True, level="assembly"))
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
 
@@ -197,7 +184,7 @@ def parse_acc2txid(info, acc2txid_files):
                                    names=["target", "node"],
                                    index_col="target",
                                    converters={"target": lambda x: x if x in unique_acc else None},
-                                   dtype={"node": "str"})
+                                   dtype=object)
         tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
         tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"]  # filter out taxid==0
 
@@ -265,12 +252,13 @@ def parse_assembly_summary(info, assembly_summary_files, level):
     return count_assembly_summary
 
 
-def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, level: str=""):
+def run_eutils(cfg, info, build_output_folder, skip_taxid: bool=False, level: str=""):
     """
     run ganon-get-seq-info.sh script to retrieve taxonomic and assembly info from sequence accessions (ncbi)
     """
     # Write target (index) to a file
-    accessions_file = tmp_output_folder + "accessions.txt"
+    accessions_file = build_output_folder + "accessions.txt"
+    rm_files(accessions_file)
     info.to_csv(accessions_file, columns=[], header=False)
 
     # (-k) always return all entries in the same order
@@ -292,7 +280,7 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, level: str=
                                names=["target", "specialization", "specialization_name"],
                                index_col="target",
                                header=None,
-                               dtype="str",
+                               dtype=object,
                                na_values="na")
         else:
             return pd.read_csv(StringIO(stdout),
@@ -301,7 +289,7 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, level: str=
                                index_col="target",
                                header=None,
                                usecols=["target", "node", "specialization", "specialization_name"],
-                               dtype="str",
+                               dtype=object,
                                na_values="na")
     else:
         # return target, taxid
@@ -311,5 +299,5 @@ def run_eutils(cfg, info, tmp_output_folder, skip_taxid: bool=False, level: str=
                            index_col="target",
                            header=None,
                            usecols=["target", "node"],
-                           dtype="str",
+                           dtype=object,
                            na_values="na")
