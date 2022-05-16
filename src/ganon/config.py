@@ -95,26 +95,20 @@ class Config:
 
         # Required
         update_group_required = update_parser.add_argument_group("required arguments")
-        update_group_required.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Database input prefix (.ibf, .map, .tax, .gnn)")
-        update_group_required.add_argument("-i", "--input-files", type=str, nargs="*", required=False, help="Input reference sequence fasta files [.gz] to be included to the database. Complete set of updated sequences should be provided when using --update-complete")
+        update_group_required.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Existing database input prefix")
 
-        # Defaults
-        update_group_optional = update_parser.add_argument_group("optional arguments")
-        update_group_optional.add_argument("-o", "--output-db-prefix", type=str,            metavar="",                   help="Output database prefix (.ibf, .map, .tax, .gnn). Default: overwrite current --db-prefix")
-        update_group_optional.add_argument("-t", "--threads",          type=int,            metavar="", default=2,        help="Number of sub-processes/threads to use. Default: 2")
-        update_group_optional.add_argument("-s", "--specialization",   type=str,            metavar="", default="",       help="Change specialization mode. Can only be used if database was built with some specialization. Options: [sequence,file,assembly,custom]. 'sequence' will use sequence accession as target. 'file' uses the filename as target. 'assembly' will use assembly info from NCBI as target. 'custom' uses the 4th column of the file provided in --seq-info-file as target.")
-        update_group_optional.add_argument("--seq-info-mode",          type=str, nargs="*", metavar="", default=["auto"], help="Automatic mode to retrieve tax. info and seq. length. [auto,eutils] or one or more accession2taxid files from NCBI [nucl_gb nucl_wgs nucl_est nucl_gss pdb prot dead_nucl dead_wgs dead_prot]. auto will either use eutils for less than 50000 input sequences or nucl_gb nucl_wgs. Alternatively a file can be directly provided (see --seq-info-file). Default: auto")
-        update_group_optional.add_argument("--seq-info-file",          type=str,            metavar="",                   help="Tab-separated file with sequence information (seqid <tab> seq.len <tab> taxid [<tab> assembly id]) [Mutually exclusive --seq-info]")
-        update_group_optional.add_argument("--taxdump-file",           type=str, nargs="*", metavar="",                   help="Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)")
-        update_group_optional.add_argument("--input-directory",        type=str,            metavar="", default="",       help="Directory containing input files")
-        update_group_optional.add_argument("--input-extension",        type=str,            metavar="", default="",       help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.fna.gz')")
-        update_group_optional.add_argument("--update-complete",        action="store_true",                               help="Update adding and removing sequences. Input files should represent the complete updated set of references, not only new sequences.")
-        update_group_optional.add_argument("--write-seq-info-file",    action="store_true",                               help="Write sequence information to DB_PREFIX.seqinfo.txt")
-        update_group_optional.add_argument("--verbose",                action="store_true",                               help="Verbose output mode")
-        update_group_optional.add_argument("--quiet",                  action="store_true",                               help="Quiet output mode")
-        update_group_optional.add_argument("--ganon-path",             type=str,            metavar="", default="",       help=argparse.SUPPRESS)
-        update_group_optional.add_argument("--n-refs",                 type=int,            metavar="",                   help=argparse.SUPPRESS)
-        update_group_optional.add_argument("--n-batches",              type=int,            metavar="",                   help=argparse.SUPPRESS)
+        update_default_important_args = update_parser.add_argument_group("important arguments")
+        update_default_important_args.add_argument("-o", "--output-db-prefix", type=str,            metavar="",                 help="Output database prefix. Default: overwrite current --db-prefix")
+        update_default_important_args.add_argument("-x", "--taxonomy", type=str,                    metavar="", default="ncbi", help="Set taxonomy to enable taxonomic classification, lca and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
+        update_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
+
+        update_default_other_args = update_parser.add_argument_group("optional arguments")
+        update_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch. Will delete {db_prefix}.tax, {db_prefix}.ibf and {db_prefix}_files/ if existing. If not set and files exist, try to resume build from last possible step.")
+        update_default_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
+        update_default_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
+        update_default_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
+        update_default_other_args.add_argument("--n-refs",     type=int,            metavar="",             help=argparse.SUPPRESS)
+        update_default_other_args.add_argument("--n-batches",  type=int,            metavar="",             help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -149,7 +143,7 @@ class Config:
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="", help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=int,              metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=int,              metavar="", help=argparse.SUPPRESS)
-        classify_group_other.add_argument("--hibf" ,                     action="store_true",               help=argparse.SUPPRESS)
+        classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -235,11 +229,11 @@ class Config:
                                        formatter_class=formatter_class)
         update.set_defaults(which="update")
 
-        update_custom = subparsers.add_parser("update-custom",
-                                              help="Update custom ganon databases",
-                                              parents=[update_custom_parser],
-                                              formatter_class=formatter_class)
-        update_custom.set_defaults(which="update-custom")
+        #update_custom = subparsers.add_parser("update-custom",
+        #                                      help="Update custom ganon databases",
+        #                                      parents=[update_custom_parser],
+        #                                      formatter_class=formatter_class)
+        #update_custom.set_defaults(which="update-custom")
 
         classify = subparsers.add_parser("classify",
                                          help="Classify reads",
