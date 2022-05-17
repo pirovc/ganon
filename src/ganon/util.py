@@ -119,7 +119,7 @@ def load_state(state, folder):
     return os.path.isfile(folder + state)
 
 
-def set_output_folder(db_prefix, restart: bool=False):
+def set_output_folder(db_prefix):
     """
     set general working directory for downloads and temporary files
     """

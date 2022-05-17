@@ -89,12 +89,13 @@ def build(cfg):
     save_config(build_custom_config, files_output_folder + "config.pkl")
 
     ret_build = build_custom(cfg=build_custom_config,
-                             files_output_folder=files_output_folder,
                              which_call="build")
 
     if ret_build:
-        # Delete save state
-        os.remove(files_output_folder + "build_download")
+        print_log("", cfg.quiet)
+        print_log(files_output_folder + " contains reference sequences and configuration files.", cfg.quiet)
+        print_log("Keep this folder if you want to update your database later. Otherwise it can be deleted.", cfg.quiet)
+        print_log("", cfg.quiet)
 
     return ret_build
 
@@ -149,28 +150,25 @@ def update(cfg):
     build_custom_config = Config("build-custom", **build_custom_params)
 
     ret_build = build_custom(cfg=build_custom_config,
-                             files_output_folder=files_output_folder,
                              which_call="update")
 
     if ret_build:
-        # Save config again (change on db_prefix, input folders)
-        save_config(build_custom_config, files_output_folder + "config.pkl")
-        # Delete save state
-        os.remove(files_output_folder + "update_download")
         if cfg.output_db_prefix:
             # Move files folder to new output_db_prefix
             os.rename(set_output_folder(cfg.db_prefix), set_output_folder(cfg.output_db_prefix))
 
+        # Save config again (change on db_prefix, input folders)
+        save_config(build_custom_config, files_output_folder + "config.pkl")
+
     return ret_build
 
 
-def build_custom(cfg, files_output_folder: str=None, which_call: str="build_custom"):
+def build_custom(cfg, which_call: str="build_custom"):
+    files_output_folder = set_output_folder(cfg.db_prefix)
 
     # calling build_custom internally, already checked folders
-    if files_output_folder is None:
-        files_output_folder = set_output_folder(cfg.db_prefix, cfg.restart)
-        if files_output_folder is None:
-            return False
+    if which_call == "build_custom" and cfg.restart:
+        restart_build(files_output_folder)
 
     build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
     # Skip if already finished target_info from previous run
@@ -193,6 +191,7 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
 
         # Set --input-target automatically if not given
         if not cfg.input_target:
+            # file is the default if more than one file is provided
             if len(input_files) > 1 or cfg.input_file:
                 cfg.input_target = "file"
             else:
@@ -208,7 +207,6 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
             print_log("ERROR: Unable to parse input files")
             return False
 
-        print(info)
         # Retrieve target info if taxonomy or specialization is required (and if file is not provided)
         if (tax or cfg.level == "assembly") and not cfg.input_file:
             if cfg.input_target == "sequence":
@@ -216,7 +214,6 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
             else:
                 get_file_info(cfg, info, tax, build_output_folder)
 
-        print(info)
         # Validate taxonomic node only if taxonomy is provided
         if tax:
             validate_taxonomy(info, tax, cfg)
@@ -231,8 +228,6 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
                 print_log("ERROR: Unable to match specialization to targets")
                 return False
 
-        print(info)
-
         # Define user bins for writing taxonomy and target info file
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
@@ -245,6 +240,8 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
             tax.filter(info["node"].unique())  # filter only used tax. nodes
             write_tax(cfg.db_prefix + ".tax", info, tax, user_bins_col, cfg.level, cfg.input_target)
 
+        print(info)
+
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
         save_state(which_call + "_parse", files_output_folder)
@@ -255,22 +252,22 @@ def build_custom(cfg, files_output_folder: str=None, which_call: str="build_cust
     else:
         # run ganon-build
         print("RUN BUILD")
+        with open(cfg.db_prefix + ".ibf", "w") as tmpfile:
+            print("dummy temp IBF for tests", file=tmpfile)
         save_state(which_call + "_run", files_output_folder)
 
     # Set output database files
     db_files_ext = ["ibf"] if cfg.taxonomy == "skip" else ["ibf", "tax"]
     print_log("Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]), cfg.quiet)
-    #if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
-    if True:
-        # remove tmp build folder
-        shutil.rmtree(build_output_folder, ignore_errors=True)
-        # remove save states
-        os.remove(files_output_folder + which_call + "_parse")
-        os.remove(files_output_folder + which_call + "_run")
-        print_log("", cfg.quiet)
-        print_log(files_output_folder + " contains downloaded reference sequences and configuration files.", cfg.quiet)
-        print_log("Keep this folder if you want to update your database later. Otherwise it can be deleted.", cfg.quiet)
-        print_log("", cfg.quiet)
+    if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
+        if which_call == "build_custom":
+            # remove temporary files folder
+            shutil.rmtree(files_output_folder)
+        else:
+            # remove tmp build folder
+            shutil.rmtree(build_output_folder, ignore_errors=True)
+            # remove save states
+            clear_states(which_call, files_output_folder)
         print_log("Build finished successfully", cfg.quiet)
         return True
     else:
@@ -482,7 +479,7 @@ def get_gu_current_version(assembly_summary):
 
 def restart_build(fld):
     """
-    delete temporary folder and start build from scratch
+    delete temporary folder to start build from scratch
     """
     shutil.rmtree(fld)
     os.makedirs(fld)
@@ -490,22 +487,25 @@ def restart_build(fld):
 
 def restart_update(fld):
     """
-    delete temporary files and start update from scratch
+    delete save states to start update from scratch
     """
-    rm_files([fld + "update_download",
-              fld + "update_parse",
-              fld + "update_run"])
+    clear_states("update", fld)
+
+
+def clear_states(prefix, folder):
+    """
+    delete all build/update save states
+    """
+    rm_files([folder + prefix + "_download",
+              folder + prefix + "_parse",
+              folder + prefix + "_run"])
 
 
 def save_config(cfg, config_file):
     """
-    save configuration for updates
+    save configuration for updates based on an instance of the Config class
     """
-    # either receive a dict (update) or instance of config class
-    if not isinstance(cfg, dict):
-        v = vars(cfg)
-    else:
-        v = cfg
+    v = vars(cfg)
     v["version"] = cfg.version
     with open(config_file, "wb") as file:
         pickle.dump(v, file)

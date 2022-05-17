@@ -2,7 +2,7 @@
 import sys
 import time
 
-from ganon.build_update import build, build_custom, update, update_custom
+from ganon.build_update import build, build_custom, update
 from ganon.classify import classify
 from ganon.report import report
 from ganon.table import table
@@ -37,8 +37,6 @@ def main(which: str=None, cfg=None, **kwargs):
         ret = build_custom(cfg)
     elif cfg.which == 'update':
         ret = update(cfg)
-    elif cfg.which == 'update-custom':
-        ret = update_custom(cfg)
     elif cfg.which == 'classify':
         ret = classify(cfg)
     elif cfg.which == 'report':
