@@ -12,11 +12,11 @@ class Config:
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
-    choices_taxonomy = ["ncbi", "gtdb", "skip"] # get from multitax
+    choices_taxonomy = ["ncbi", "gtdb", "skip"]  # get from multitax
     choices_og = ["archaea", "bacteria", "fungi", "human", "invertebrate", "metagenomes", "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "custom"]
-    choices_ncbi_sequence_info = ["eutils","nucl_gb","nucl_wgs","nucl_est","nucl_gss","pdb","prot","dead_nucl","dead_wgs","dead_prot"]
+    choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb", "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank"]
 
     def __init__(self, which: str=None, **kwargs):
@@ -45,14 +45,6 @@ class Config:
         build_default_advanced_args.add_argument("-w", "--window-size",    type=int,               metavar="", default=32,   help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=int,               metavar="", default=0,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
 
-        build_default_other_args = build_default_parser.add_argument_group("optional arguments")
-        build_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch. Will delete {db_prefix}.tax, {db_prefix}.ibf and {db_prefix}_files/ if existing. If not set and files exist, try to resume build from last possible step.")
-        build_default_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
-        build_default_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
-        build_default_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
-        build_default_other_args.add_argument("--n-refs",     type=int,            metavar="",             help=argparse.SUPPRESS)
-        build_default_other_args.add_argument("--n-batches",  type=int,            metavar="",             help=argparse.SUPPRESS)
-
         ####################################################################################################
 
         build_parser = argparse.ArgumentParser(add_help=False)
@@ -63,7 +55,7 @@ class Config:
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",           type=str, nargs="*",       default=["refseq"], metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                       help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,        metavar="", help="Download top organims for each taxa (only possible for --taxonomy ncbi). 0 for all.")
+        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,        metavar="", help="Download top organims for each taxa. 0 for all.")
         build_download_args.add_argument("-u", "--genome-updater",   type=str,                                      metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
 
         ####################################################################################################
@@ -72,7 +64,7 @@ class Config:
 
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
         build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s). Mutually exclusive --input-file.")
-        build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards are not supported (e.g. *).")
+        build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",           type=file_exists,    metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
@@ -86,11 +78,6 @@ class Config:
 
         ####################################################################################################
 
-        update_custom_parser = argparse.ArgumentParser(add_help=False)
-        update_custom_parser.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Database input prefix")
-
-        ####################################################################################################
-
         update_parser = argparse.ArgumentParser(add_help=False)
 
         # Required
@@ -98,17 +85,20 @@ class Config:
         update_group_required.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Existing database input prefix")
 
         update_default_important_args = update_parser.add_argument_group("important arguments")
-        update_default_important_args.add_argument("-o", "--output-db-prefix", type=str,            metavar="",                 help="Output database prefix. Default: overwrite current --db-prefix")
-        update_default_important_args.add_argument("-x", "--taxonomy", type=str,                    metavar="", default="ncbi", help="Set taxonomy to enable taxonomic classification, lca and reports [" + ",".join(self.choices_taxonomy) + "]", choices=self.choices_taxonomy)
-        update_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
+        update_default_important_args.add_argument("-o", "--output-db-prefix", type=str,            metavar="",            help="Output database prefix. Default: same as --db-prefix, overwrite files")
+        update_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1, help="")
 
-        update_default_other_args = update_parser.add_argument_group("optional arguments")
-        update_default_other_args.add_argument("--restart",    action="store_true",                         help="Restart build from scratch. Will delete {db_prefix}.tax, {db_prefix}.ibf and {db_prefix}_files/ if existing. If not set and files exist, try to resume build from last possible step.")
-        update_default_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
-        update_default_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
-        update_default_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
-        update_default_other_args.add_argument("--n-refs",     type=int,            metavar="",             help=argparse.SUPPRESS)
-        update_default_other_args.add_argument("--n-batches",  type=int,            metavar="",             help=argparse.SUPPRESS)
+        ####################################################################################################
+
+        build_update_parser = argparse.ArgumentParser(add_help=False)
+
+        build_update_other_args = build_update_parser.add_argument_group("optional arguments")
+        build_update_other_args.add_argument("--restart",    action="store_true",                         help="Restart build/update from scratch, do not try to resume from the latest possible step. {db_prefix}_files/ will be deleted if present.")
+        build_update_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
+        build_update_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
+        build_update_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--n-refs",     type=int,            metavar="",             help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--n-batches",  type=int,            metavar="",             help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -213,27 +203,21 @@ class Config:
 
         build = subparsers.add_parser("build",
                                       help="Download and build ganon default databases (refseq/genbank)",
-                                      parents=[build_parser, build_default_parser],
+                                      parents=[build_parser, build_default_parser, build_update_parser],
                                       formatter_class=formatter_class)
         build.set_defaults(which="build")
 
         build_custom = subparsers.add_parser("build-custom",
                                              help="Build custom ganon databases",
-                                             parents=[build_custom_parser, build_default_parser],
+                                             parents=[build_custom_parser, build_default_parser, build_update_parser],
                                              formatter_class=formatter_class)
         build_custom.set_defaults(which="build-custom")
 
         update = subparsers.add_parser("update",
                                        help="Update ganon default databases",
-                                       parents=[update_parser],
+                                       parents=[update_parser, build_update_parser],
                                        formatter_class=formatter_class)
         update.set_defaults(which="update")
-
-        #update_custom = subparsers.add_parser("update-custom",
-        #                                      help="Update custom ganon databases",
-        #                                      parents=[update_custom_parser],
-        #                                      formatter_class=formatter_class)
-        #update_custom.set_defaults(which="update-custom")
 
         classify = subparsers.add_parser("classify",
                                          help="Classify reads",
@@ -294,7 +278,11 @@ class Config:
             self.verbose = False
 
         if self.which == "build":
-            pass
+            for e in ["ibf"] if self.taxonomy == "skip" else ["ibf", "tax"]:
+                if check_file(self.db_prefix + "." + e):
+                    print_log("Output database found: " + self.db_prefix + "." + e)
+                    print_log("Use a different --db-prefix or activate --restart to re-build it")
+                    return False
 
         elif self.which == "build-custom":
 
@@ -313,21 +301,30 @@ class Config:
             if self.taxonomy == "ncbi":
                 for entry in self.ncbi_sequence_info:
                     if entry not in self.choices_ncbi_sequence_info and not check_file(entry):
-                        print_log("Invalid --get-sequence-info. Should be a valid file or: " + " ".join(self.choices_ncbi_sequence_info))
+                        print_log("Invalid --get-sequence-info. Should be a valid file or: " +
+                                  " ".join(self.choices_ncbi_sequence_info))
                         return False
 
                 for entry in self.ncbi_file_info:
                     if entry not in self.choices_ncbi_file_info and not check_file(entry):
-                        print_log("Invalid --get-file-info. Should be a valid file or: " + " ".join(self.choices_ncbi_file_info))
+                        print_log("Invalid --get-file-info. Should be a valid file or: " +
+                                  " ".join(self.choices_ncbi_file_info))
                         return False
 
-        elif self.which == "update" or self.which == "update-custom":
-            if not check_file(self.db_prefix+".ibf"):
+        elif self.which == "update":
+            if not check_folder(set_output_folder(self.db_prefix)):
+                print_log("Folder to update not found: " + set_output_folder(self.db_prefix))
                 return False
 
-            if not all([sim in retrieve_info_options for sim in self.retrieve_info]):
-                print_log("Invalid --seq-info-mode. Options: " + " ".join(seq_info_mode_options))
+            if self.output_db_prefix and check_folder(set_output_folder(self.output_db_prefix)):
+                print_log("New output folder already exists and it's not empty: " + set_output_folder(self.output_db_prefix))
                 return False
+
+            update_required_files = ["_files/assembly_summary.txt", "_files/history.tsv", "_files/config.pkl"]
+            for f in update_required_files:
+                if not check_file(self.db_prefix + f):
+                    print_log("Required file to update not found: " + f)
+                    return False
 
         elif self.which == "classify":
             if not all([check_file(prefix + ".ibf") for prefix in self.db_prefix]):
@@ -384,7 +381,7 @@ class Config:
 
     def set_paths(self):
         missing_path = False
-        if self.which in ["build", "build-custom", "update", "update-custom"]:
+        if self.which in ["build", "build-custom", "update"]:
             self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
 
             # if path is given, look for binaries only there

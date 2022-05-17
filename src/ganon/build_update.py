@@ -2,6 +2,7 @@ import time
 import pandas as pd
 import os
 import shutil
+import pickle
 
 from ganon.config import Config
 from ganon.util import check_file
@@ -10,8 +11,8 @@ from ganon.util import print_log
 from ganon.util import run
 from ganon.util import validate_input_files
 from ganon.util import rm_files
-from ganon.util import rm_folders
 from ganon.util import save_state
+from ganon.util import set_output_folder
 from ganon.util import load_state
 from ganon.tax_util import get_file_info
 from ganon.tax_util import get_sequence_info
@@ -22,18 +23,20 @@ from multitax import NcbiTx, GtdbTx
 
 
 def build(cfg):
-    files_output_folder = set_output_folder(cfg.db_prefix, cfg.restart)
-    if files_output_folder is None:
-        return False
+    files_output_folder = set_output_folder(cfg.db_prefix)
+    if cfg.restart:
+        restart_build(files_output_folder)
 
     assembly_summary = files_output_folder + "assembly_summary.txt"
 
     # Skip if already finished download from previous run
-    if not load_state("download_build", files_output_folder):
+    if load_state("build_download", files_output_folder) and check_file(assembly_summary):
+        print_log("Download finished - skipping", cfg.quiet)
+    else:
         # If assembly_summary.txt was written and some files were already downloaded, try to fix
         resume_download = False
         if check_file(assembly_summary):
-            if check_folder(files_output_folder + get_gu_files_dir(assembly_summary)):
+            if check_folder(files_output_folder + get_gu_current_version(assembly_summary) + "/files/"):
                 print_log("Incomplete files detected, resuming download\n", cfg.quiet)
                 resume_download = True
 
@@ -55,17 +58,16 @@ def build(cfg):
                                            cfg.genome_updater if cfg.genome_updater else ""])
         run(run_genome_updater_cmd, quiet=cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
-        save_state("download_build", files_output_folder)
+        save_state("build_download", files_output_folder)
 
     # get current version from assembly_summary
-    input_folder = files_output_folder + get_gu_files_dir(assembly_summary)
+    input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
 
     build_custom_params = {"input": input_folder,
                            "input_extension": "fna.gz",
                            "input_target": "file",
                            "level": "assembly",
-                           "ncbi_file_info": assembly_summary,
-                           "restart": False}
+                           "ncbi_file_info": assembly_summary}
 
     build_default_params = {"db_prefix": cfg.db_prefix,
                             "taxonomy": cfg.taxonomy,
@@ -83,27 +85,101 @@ def build(cfg):
 
     build_custom_params.update(build_default_params)
 
-    return build_custom(cfg=Config("build-custom", **build_custom_params),
-                        files_output_folder=files_output_folder)
+    build_custom_config = Config("build-custom", **build_custom_params)
+    save_config(build_custom_config, files_output_folder + "config.pkl")
+
+    ret_build = build_custom(cfg=build_custom_config,
+                             files_output_folder=files_output_folder,
+                             which_call="build")
+
+    if ret_build:
+        # Delete save state
+        os.remove(files_output_folder + "build_download")
+
+    return ret_build
 
 
 def update(cfg):
-    return False
+    files_output_folder = set_output_folder(cfg.db_prefix)
+    if cfg.restart:
+        restart_update(files_output_folder)
+
+    tx = time.time()
+    # Skip if already finished download from previous run
+    if load_state("update_download", files_output_folder):
+        print_log("Download finished - skipping", cfg.quiet)
+    else:
+        print_log("Downloading updated files", cfg.quiet)
+        run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
+                                           "-o " + files_output_folder,
+                                           "-m",
+                                           "-s" if cfg.quiet else "",
+                                           "-w" if not cfg.verbose else ""])
+        run(run_genome_updater_cmd, quiet=cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+        save_state("update_download", files_output_folder)
+
+    # get current version from assembly_summary
+    assembly_summary = files_output_folder + "assembly_summary.txt"
+    input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
+
+    build_custom_params = {"input": input_folder,
+                           "input_extension": "fna.gz",
+                           "input_target": "file",
+                           "level": "assembly",
+                           "ncbi_file_info": assembly_summary}
+
+    build_default_params = {"db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
+                            "threads": cfg.threads,
+                            "verbose": cfg.verbose,
+                            "quiet": cfg.quiet,
+                            "ganon_path": cfg.ganon_path,
+                            "n_refs": cfg.n_refs,
+                            "n_batches": cfg.n_batches}
+    build_custom_params.update(build_default_params)
+
+    loaded_params = load_config(files_output_folder + "config.pkl")
+    build_custom_params["taxonomy"] = loaded_params["taxonomy"]
+    build_custom_params["max_fp"] = loaded_params["max_fp"]
+    build_custom_params["filter_size"] = loaded_params["filter_size"]
+    build_custom_params["kmer_size"] = loaded_params["kmer_size"]
+    build_custom_params["window_size"] = loaded_params["window_size"]
+    build_custom_params["hash_functions"] = loaded_params["hash_functions"]
+
+    build_custom_config = Config("build-custom", **build_custom_params)
+
+    ret_build = build_custom(cfg=build_custom_config,
+                             files_output_folder=files_output_folder,
+                             which_call="update")
+
+    if ret_build:
+        # Save config again (change on db_prefix, input folders)
+        save_config(build_custom_config, files_output_folder + "config.pkl")
+        # Delete save state
+        os.remove(files_output_folder + "update_download")
+        if cfg.output_db_prefix:
+            # Move files folder to new output_db_prefix
+            os.rename(set_output_folder(cfg.db_prefix), set_output_folder(cfg.output_db_prefix))
+
+    return ret_build
 
 
-def build_custom(cfg, files_output_folder: str=None):
+def build_custom(cfg, files_output_folder: str=None, which_call: str="build_custom"):
+
+    # calling build_custom internally, already checked folders
     if files_output_folder is None:
         files_output_folder = set_output_folder(cfg.db_prefix, cfg.restart)
         if files_output_folder is None:
             return False
 
-    tax = None
-    input_files = []
     build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
-    target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
-
     # Skip if already finished target_info from previous run
-    if not load_state("target_info", files_output_folder):
+    if load_state(which_call + "_parse", files_output_folder):
+        print_log("Parse finished - skipping", cfg.quiet)
+    else:
+        tax = None
+        input_files = []
+        target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
 
         # Create tmp build folder if not yet existing
         os.makedirs(build_output_folder, exist_ok=True)
@@ -171,30 +247,36 @@ def build_custom(cfg, files_output_folder: str=None):
 
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
-        save_state("target_info", files_output_folder)
+        save_state(which_call + "_parse", files_output_folder)
 
-    # run ganon-build
-    print("RUN BUILD")
+    # Skip if already finished target_info from previous run
+    if load_state(which_call + "_run", files_output_folder):
+        print_log("Build finished - skipping", cfg.quiet)
+    else:
+        # run ganon-build
+        print("RUN BUILD")
+        save_state(which_call + "_run", files_output_folder)
 
     # Set output database files
     db_files_ext = ["ibf"] if cfg.taxonomy == "skip" else ["ibf", "tax"]
     print_log("Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]), cfg.quiet)
-    if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
-        rm_folders(build_output_folder)
-        if check_folder(files_output_folder):
-            rm_folders(files_output_folder)
-        else:
-            print_log(files_output_folder + " contains downloaded reference sequences. \
-                      Keep this folder if you want to update your database later. Otherwise it can be deleted.", cfg.quiet)
+    #if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
+    if True:
+        # remove tmp build folder
+        shutil.rmtree(build_output_folder, ignore_errors=True)
+        # remove save states
+        os.remove(files_output_folder + which_call + "_parse")
+        os.remove(files_output_folder + which_call + "_run")
+        print_log("", cfg.quiet)
+        print_log(files_output_folder + " contains downloaded reference sequences and configuration files.", cfg.quiet)
+        print_log("Keep this folder if you want to update your database later. Otherwise it can be deleted.", cfg.quiet)
+        print_log("", cfg.quiet)
         print_log("Build finished successfully", cfg.quiet)
         return True
     else:
         print_log("ERROR: build failed - one or more database files not found or empty", cfg.quiet)
         return False
 
-
-def update_custom(cfg):
-    return False
 
 ########################################################################################################################
 
@@ -264,6 +346,9 @@ def load_input(cfg, input_files):
 
 
 def load_taxonomy(cfg, build_output_folder):
+    """
+    load/download chosen taxonomy from multitax
+    """
     tx = time.time()
 
     if cfg.taxonomy_files:
@@ -388,21 +473,46 @@ def validate_taxonomy(info, tax, cfg):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
 
-def get_gu_files_dir(assembly_summary):
+def get_gu_current_version(assembly_summary):
     """
-    return files directory from genome_updater based on an assembly_summary link
+    return current version from genome_updater
     """
-    return os.path.dirname(os.readlink(assembly_summary)) + "/files/"
+    return os.path.dirname(os.readlink(assembly_summary))
 
 
-def set_output_folder(db_prefix, restart: bool=False):
+def restart_build(fld):
     """
-    set general working directory for downloads and temporaray files
-    returns None if fails, otherwise path
+    delete temporary folder and start build from scratch
     """
-    output_folder = db_prefix + "_files/"
-    if restart:
-        shutil.rmtree(output_folder)
-        os.makedirs(output_folder)
+    shutil.rmtree(fld)
+    os.makedirs(fld)
 
-    return output_folder
+
+def restart_update(fld):
+    """
+    delete temporary files and start update from scratch
+    """
+    rm_files([fld + "update_download",
+              fld + "update_parse",
+              fld + "update_run"])
+
+
+def save_config(cfg, config_file):
+    """
+    save configuration for updates
+    """
+    # either receive a dict (update) or instance of config class
+    if not isinstance(cfg, dict):
+        v = vars(cfg)
+    else:
+        v = cfg
+    v["version"] = cfg.version
+    with open(config_file, "wb") as file:
+        pickle.dump(v, file)
+
+
+def load_config(config_file):
+    """
+    load configuration
+    """
+    return pickle.load(open(config_file, "rb"))

@@ -58,16 +58,8 @@ def rm_files(files):
     if isinstance(files, str):
         files = [files]
     for f in files:
-        if check_file(f):
+        if os.path.isfile(f):
             os.remove(f)
-
-
-def rm_folders(folders):
-    if isinstance(folders, str):
-        folders = [folders]
-    for f in folders:
-        if check_folder(f):
-            shutil.rmtree(f)
 
 
 def validate_input_files(input_files_folder, input_extension, quiet):
@@ -125,6 +117,13 @@ def save_state(state, folder):
 
 def load_state(state, folder):
     return os.path.isfile(folder + state)
+
+
+def set_output_folder(db_prefix, restart: bool=False):
+    """
+    set general working directory for downloads and temporary files
+    """
+    return db_prefix + "_files/"
 
 
 def download(urls: list, output_prefix: str):
