@@ -187,7 +187,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         if cfg.input:
             input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet)
             if not input_files:
-                print_log("ERROR: No valid input files found")
+                print_log("ERROR: No valid input files found", cfg.quiet)
                 return False
 
         # Set --input-target automatically if not given
@@ -205,7 +205,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         # Set-up input info
         info = load_input(cfg, input_files)
         if info.empty:
-            print_log("ERROR: Unable to parse input files")
+            print_log("ERROR: Unable to parse input files", cfg.quiet)
             return False
 
         # Retrieve target info if taxonomy or specialization is required (and if file is not provided)
@@ -219,14 +219,14 @@ def build_custom(cfg, which_call: str="build_custom"):
         if tax:
             validate_taxonomy(info, tax, cfg)
             if info.empty:
-                print_log("ERROR: Unable to match taxonomy to targets")
+                print_log("ERROR: Unable to match taxonomy to targets", cfg.quiet)
                 return False
 
         # Validate specialization for assembly and custom (required to be after taxonomy)
         if cfg.level in cfg.choices_level:
             validate_specialization(info, cfg.quiet)
             if info.empty:
-                print_log("ERROR: Unable to match specialization to targets")
+                print_log("ERROR: Unable to match specialization to targets", cfg.quiet)
                 return False
 
         # Define user bins for writing taxonomy and target info file
@@ -262,14 +262,17 @@ def build_custom(cfg, which_call: str="build_custom"):
     db_files_ext = ["ibf"] if cfg.taxonomy == "skip" else ["ibf", "tax"]
     print_log("Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]), cfg.quiet)
     if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
-        if which_call == "build_custom":
-            # remove temporary files folder
-            shutil.rmtree(files_output_folder)
-        else:
-            # remove tmp build folder
-            shutil.rmtree(build_output_folder, ignore_errors=True)
-            # remove save states
-            clear_states(which_call, files_output_folder)
+        # Do not delete temp (mostly tests, hidden param)
+        if not cfg.keep_files:
+            if which_call == "build_custom":
+                # remove temporary files folder
+                shutil.rmtree(files_output_folder)
+            else:
+                # remove tmp build folder
+                shutil.rmtree(build_output_folder, ignore_errors=True)
+
+        # remove save states
+        clear_states(which_call, files_output_folder)
         print_log("Build finished successfully", cfg.quiet)
         return True
     else:

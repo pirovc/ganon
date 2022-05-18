@@ -96,6 +96,7 @@ class Config:
         build_update_other_args.add_argument("--restart",    action="store_true",                         help="Restart build/update from scratch, do not try to resume from the latest possible step. {db_prefix}_files/ will be deleted if present.")
         build_update_other_args.add_argument("--verbose",    action="store_true",                         help="Verbose output mode")
         build_update_other_args.add_argument("--quiet",      action="store_true",                         help="Quiet output mode")
+        build_update_other_args.add_argument("--keep-files", action="store_true",                         help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--ganon-path", type=str,            metavar="", default="", help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-refs",     type=int,            metavar="",             help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-batches",  type=int,            metavar="",             help=argparse.SUPPRESS)
