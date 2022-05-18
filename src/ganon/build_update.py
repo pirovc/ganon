@@ -164,13 +164,13 @@ def update(cfg):
 
 
 def build_custom(cfg, which_call: str="build_custom"):
-    files_output_folder = set_output_folder(cfg.db_prefix)
+    files_output_folder = set_output_folder(cfg.db_prefix)      # DB_PREFIX_files/
+    build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
 
     # calling build_custom internally, already checked folders
     if which_call == "build_custom" and cfg.restart:
         restart_build(files_output_folder)
 
-    build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
     # Skip if already finished target_info from previous run
     if load_state(which_call + "_parse", files_output_folder):
         print_log("Parse finished - skipping", cfg.quiet)
@@ -180,6 +180,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
 
         # Create tmp build folder if not yet existing
+        shutil.rmtree(build_output_folder, ignore_errors=True)
         os.makedirs(build_output_folder, exist_ok=True)
 
         # Retrieve and check input files or folders
@@ -240,7 +241,8 @@ def build_custom(cfg, which_call: str="build_custom"):
             tax.filter(info["node"].unique())  # filter only used tax. nodes
             write_tax(cfg.db_prefix + ".tax", info, tax, user_bins_col, cfg.level, cfg.input_target)
 
-        print(info)
+        if cfg.write_info_file:
+            write_info_file(info, cfg.db_prefix)
 
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
@@ -403,6 +405,20 @@ def write_target_info(info, input_target, user_bins_col, target_info_file):
                 print(row["file"], t, sep="\t", end="\n", file=outf)
 
 
+def write_info_file(info, db_prefix):
+    """
+    write tabular file to be re-used as --input-file (sort cols in the right order)
+    db_prefix.info.tsv
+    """
+    info.reset_index()[['file',
+                        'target',
+                        'node',
+                        'specialization',
+                        'specialization_name']].to_csv(db_prefix + ".info.tsv",
+                                                       sep="\t",
+                                                       header=False,
+                                                       index=False)
+
 def validate_specialization(info, quiet):
     """
     validate specialization for each node
@@ -482,7 +498,6 @@ def restart_build(fld):
     delete temporary folder to start build from scratch
     """
     shutil.rmtree(fld)
-    os.makedirs(fld)
 
 
 def restart_update(fld):
