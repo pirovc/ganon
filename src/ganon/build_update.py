@@ -253,7 +253,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished - skipping", cfg.quiet)
     else:
         # run ganon-build
-        print("RUN BUILD")
+        print_log("RUN BUILD", cfg.quiet)
         with open(cfg.db_prefix + ".ibf", "w") as tmpfile:
             print("dummy temp IBF for tests", file=tmpfile)
         save_state(which_call + "_run", files_output_folder)

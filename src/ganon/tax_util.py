@@ -46,8 +46,9 @@ def get_file_info(cfg, info, tax, build_output_folder):
         for assembly_summary in cfg.ncbi_file_info:
             # Either a file or prefix for download
             if assembly_summary in cfg.choices_ncbi_file_info:
-                assembly_summary_urls.append("ftp://ftp.ncbi.nlm.nih.gov/genomes/" +
-                                             assembly_summary + "/assembly_summary_" +
+                # split if _historical
+                assembly_summary_urls.append("https://ftp.ncbi.nlm.nih.gov/genomes/" +
+                                             assembly_summary.split("_")[0] + "/assembly_summary_" +
                                              assembly_summary + ".txt")
             else:
                 assembly_summary_files.append(assembly_summary)
@@ -56,6 +57,13 @@ def get_file_info(cfg, info, tax, build_output_folder):
             tx = time.time()
             print_log("Downloading assembly_summary files", cfg.quiet)
             assembly_summary_files.extend(download(assembly_summary_urls, build_output_folder))
+            # Skip headers (first 2 lines) so pandas.read_csv read it properly
+            for f in assembly_summary_files:
+                with open(f, 'r+') as fp:
+                    lines = fp.readlines()
+                    fp.seek(0)
+                    fp.truncate()
+                    fp.writelines(lines[2:])
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
         tx = time.time()
@@ -128,7 +136,7 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
                 for acc2txid in mode:
                     # Either a file or prefix for download
                     if acc2txid in cfg.choices_ncbi_sequence_info:
-                        acc2txid_urls.append("ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/" +
+                        acc2txid_urls.append("https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/" +
                                              acc2txid + ".accession2taxid.gz")
                     else:
                         acc2txid_files.append(acc2txid)
@@ -155,6 +163,7 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
 
     elif cfg.taxonomy == "gtdb":
         tx = time.time()
+        # The only way to link gtdb to sequences is through NCBI assembly accessions
         print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)
         # Get NCBI assembly accession for every sequence
         assembly_info = run_eutils(cfg, info, build_output_folder, skip_taxid=True, level="assembly")
@@ -162,6 +171,10 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
         gtdb_target_node = get_gtdb_target_node(tax, cfg.level)
         # Update info with merged info
         info.update(assembly_info.join(on="specialization", other=gtdb_target_node, lsuffix="_acc"))
+        # if no specialization was requested, delete data
+        if cfg.level not in cfg.choices_level:
+            info["specialization"] = None
+            info["specialization_name"] = None
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
     elif cfg.taxonomy == "skip":
@@ -183,8 +196,7 @@ def parse_acc2txid(info, acc2txid_files):
                                    usecols=[1, 2],
                                    names=["target", "node"],
                                    index_col="target",
-                                   converters={"target": lambda x: x if x in unique_acc else None},
-                                   dtype=object)
+                                   converters={"target": lambda x: x if x in unique_acc else None, "node": str})
         tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
         tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"]  # filter out taxid==0
 
@@ -209,13 +221,12 @@ def parse_assembly_summary(info, assembly_summary_files, level):
         tmp_acc_node = pd.read_csv(assembly_summary,
                                    sep="\t",
                                    header=None,
-                                   # skiprows=2, do not skiprows (no header from genome_updater)
+                                   # skiprows=2, do not skiprows (no header from genome_updater or skipped before)
                                    # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
                                    usecols=[0, 5, 7, 8],
                                    names=["target", "node", "organism_name", "infraspecific_name"],
                                    index_col="target",
-                                   converters={"target": lambda x: x if x in unique_acc else None},
-                                   dtype={"node": "str"})
+                                   converters={"target": lambda x: x if x in unique_acc else None, "node": str})
         tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
 
         # save count to return

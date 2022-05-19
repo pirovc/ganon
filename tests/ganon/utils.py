@@ -114,6 +114,51 @@ def build_sanity_check_and_parse(params):
             print("Target entries missing on .tax")
             return None
 
+    # Validate specialization and targets
+    if params["level"] in ["assembly", "custom"]:  # specializations
+        # Check if specialization was generated
+        if res["info"]["specialization"].isna().any() or res["info"]["specialization_name"].isna().any():
+            print("Undefined specialization")
+            return None
+
+        # Check if target_info has the correct value
+        if not (res["target"]["target"] == res["info"]["specialization"]).all():
+            print("Wrong target")
+            return None
+
+        # Check if specialization rank is present in tax
+        if params["taxonomy"] != "skip":
+            if params["level"] not in res["tax"]._ranks.values():
+                print("Rank missing from tax")
+                return None
+    else:
+        # Check if no specialization was generated
+        if not res["info"]["specialization"].isna().all() or not res["info"]["specialization_name"].isna().all():
+            print("Unrequested specialization")
+            return None
+
+        if params["level"]:  # If given and not assembly or custom, should be a taxonomic rank or leaves
+            if not (res["target"]["target"] == res["info"]["node"]).all():
+                print("Wrong target")
+                return None
+
+            # Check if specialization rank is present in tax (skip for leaves, not a specific rank)
+            if params["taxonomy"] != "skip" and params["level"] != "leaves":
+                if params["level"] not in res["tax"]._ranks.values():
+                    print("Rank missing from tax")
+                    return None
+
+        else:  # if not given, default to --input-target
+            if not (res["target"]["target"] == res["info"]["target"]).all():
+                print("Wrong target")
+                return None
+
+            # Check if specialization rank is present in tax
+            if params["taxonomy"] != "skip":
+                if params["input_target"] not in res["tax"]._ranks.values():
+                    print("Rank missing from tax")
+                    return None
+
     return res
 
 

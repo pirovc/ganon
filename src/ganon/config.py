@@ -17,7 +17,7 @@ class Config:
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "custom"]
     choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb", "prot", "dead_nucl", "dead_wgs", "dead_prot"]
-    choices_ncbi_file_info = ["refseq", "genbank"]
+    choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -73,8 +73,8 @@ class Config:
         build_custom_args.add_argument("-m", "--taxonomy-files", type=str, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
         build_custom_args.add_argument("--write-info-file",      action="store_true",             help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
-        ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                          metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
-        ncbi_args.add_argument("-q", "--ncbi-file-info",     type=str, nargs="*", default=self.choices_ncbi_file_info, metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
+        ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                               metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
+        ncbi_args.add_argument("-q", "--ncbi-file-info",     type=str, nargs="*", default=self.choices_ncbi_file_info[0:2], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
 
         ####################################################################################################
 

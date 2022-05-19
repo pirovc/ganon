@@ -1,6 +1,5 @@
 import unittest
 import sys
-import os
 
 sys.path.append('src')
 from ganon import ganon
@@ -15,18 +14,16 @@ from utils import build_sanity_check_and_parse
 data_dir = base_dir + "data/"
 
 
-class TestBuildCustomOffline(unittest.TestCase):
+class TestBuildCustom(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/build-custom/"
 
-    default_params = {"input": data_dir + "build-custom/",
-                      "ncbi_file_info": data_dir + "build-custom/assembly_summary.txt",
-                      "taxonomy": "ncbi",
-                      "taxonomy_files": data_dir + "build-custom/taxdump.tar.gz",
+    default_params = {"input": data_dir + "build-custom/files/",
+                      "taxonomy": "skip",
                       "threads": 1,
                       "write_info_file": True,
                       "keep_files": True,
-                      "verbose": False,
+                      "verbose": True,
                       "quiet": True}
 
     @classmethod
@@ -39,7 +36,7 @@ class TestBuildCustomOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_folder"
-        params["input"] = data_dir + "build-custom/"
+        params["input"] = data_dir + "build-custom/files/"
         params["input_extension"] = "fna.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
@@ -55,7 +52,7 @@ class TestBuildCustomOffline(unittest.TestCase):
         # Wrong extension
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_folder_wrong_extension"
-        params["input"] = data_dir + "build-custom/"
+        params["input"] = data_dir + "build-custom/files/"
         params["input_extension"] = "xxx.gz"
         cfg = Config("build-custom", **params)
         self.assertFalse(ganon.main(cfg=cfg), "ganon build-custom ran but it should fail")
@@ -72,7 +69,7 @@ class TestBuildCustomOffline(unittest.TestCase):
         """
         ganon build-custom with files as --input
         """
-        files = list_files_folder(data_dir + "build-custom/", "fna.gz")
+        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_files"
         params["input"] = files
@@ -100,8 +97,8 @@ class TestBuildCustomOffline(unittest.TestCase):
         """
         ganon build-custom with files and folders as --input with --extension
         """
-        files = list_files_folder(data_dir + "build-custom/", "fna.gz")
-        folder = data_dir + "build-custom/more/"
+        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
+        folder = data_dir + "build-custom/files/more/"
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_folders_files"
         params["input"] = files + [folder]
@@ -126,6 +123,7 @@ class TestBuildCustomOffline(unittest.TestCase):
         params["db_prefix"] = self.results_dir + "test_taxonomy_ncbi"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -177,7 +175,6 @@ class TestBuildCustomOffline(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_target_sequence"
         params["input_target"] = "sequence"
-        params["taxonomy"] = "skip"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -189,11 +186,12 @@ class TestBuildCustomOffline(unittest.TestCase):
         self.assertTrue(res["info"]["target"].isin(sequences).all(), "Files missing from info")
         self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of files on info")
 
-    def test_level_file(self):
+    def test_level_file_default(self):
         """
-        ganon build-custom --input-target file and --level default, assembly or ranks
+        ganon build-custom --input-target file and --level default
         """
-        # --level default (file)
+
+        # --level default (file) - no tax
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_file_default"
         params["input_target"] = "file"
@@ -201,84 +199,244 @@ class TestBuildCustomOffline(unittest.TestCase):
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
-        # target (accession from file) should be final target
-        self.assertTrue((res["target"]["target"] == res["info"]["target"]).all(), "Wrong target")
-        # Should not have any specialization, target is the file
-        self.assertTrue(res["info"]["specialization"].isna().all(), "Undefined specialization")
-        self.assertTrue(res["info"]["specialization_name"].isna().all(), "Undefined specialization")
-        # Tax must have "file" rank
-        self.assertTrue("file" in res["tax"]._ranks.values(), "file rank not found")
 
-        # --level genus (file)
+        # --level default (file) NCBI
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_level_file_genus"
+        params["db_prefix"] = self.results_dir + "test_level_file_default_ncbi"
+        params["input_target"] = "file"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # --level default (file) GTDB
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_default_gtdb"
+        params["input_target"] = "file"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+    def test_level_file_taxrank(self):
+        """
+        ganon build-custom --input-target file and --level {taxonomic rank}
+        """
+
+        # --level genus NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_genus_ncbi"
         params["input_target"] = "file"
         params["level"] = "genus"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
-        # node should be final target
-        self.assertTrue((res["target"]["target"] == res["info"]["node"]).all(), "Wrong target")
-        # Should not have any specialization, target is the file
-        self.assertTrue(res["info"]["specialization"].isna().all(), "Undefined specialization")
-        self.assertTrue(res["info"]["specialization_name"].isna().all(), "Undefined specialization")
-        # Tax must have "genus" rank and not "species"
-        self.assertTrue("genus" in res["tax"]._ranks.values(), "file rank not found")
-        self.assertFalse("species" in res["tax"]._ranks.values(), "file rank not found")
+        # Tax must not have "species" (filtered out)
+        self.assertFalse("species" in res["tax"]._ranks.values(), "rank found")
 
-        # --level leaves (file)
+        # --level genus GTDB
         params = self.default_params.copy()
-        params["db_prefix"] = self.results_dir + "test_level_file_leaves"
+        params["db_prefix"] = self.results_dir + "test_level_file_genus_gtdb"
+        params["input_target"] = "file"
+        params["level"] = "genus"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+        # Tax must not have "species" (filtered out)
+        self.assertFalse("species" in res["tax"]._ranks.values(), "rank found")
+
+    def test_level_file_leaves(self):
+        """
+        ganon build-custom --input-target file and --level leaves
+        """
+
+        # --level leaves NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_leaves_ncbi"
         params["input_target"] = "file"
         params["level"] = "leaves"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
-        res = build_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
-        # node should be final target
-        self.assertTrue((res["target"]["target"] == res["info"]["node"]).all(), "Wrong target")
-        # Should not have any specialization, target is the file
-        self.assertTrue(res["info"]["specialization"].isna().all(), "Undefined specialization")
-        self.assertTrue(res["info"]["specialization_name"].isna().all(), "Undefined specialization")
-        # Tax must have "genus" and "species"
-        self.assertTrue("genus" in res["tax"]._ranks.values(), "file rank not found")
-        self.assertTrue("species" in res["tax"]._ranks.values(), "file rank not found")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
 
-        # --level assembly (file) - specialization
+        # --level leaves GTDB
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_leaves_gtdb"
+        params["input_target"] = "file"
+        params["level"] = "leaves"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+    def test_level_file_specialization(self):
+        """
+        ganon build-custom --input-target file and --level assembly/custom (specialization)
+        """
+
+        # --level assembly no tax
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_file_assembly"
         params["input_target"] = "file"
         params["level"] = "assembly"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+        # --level assembly NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_assembly_ncbi"
+        params["input_target"] = "file"
+        params["level"] = "assembly"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+        # --level assembly GTDB
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_assembly_gtdb"
+        params["input_target"] = "file"
+        params["level"] = "assembly"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+        # --level custom NCBI
+        # uses info.tsv from last tests
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_custom_ncbi"
+        params["input"] = []
+        params["input_target"] = "file"
+        params["input_file"] = self.results_dir + "test_level_file_assembly_ncbi.info.tsv"
+        params["level"] = "custom"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+        # --level custom GTDB
+        # uses info.tsv from last tests
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_custom_gtdb"
+        params["input"] = []
+        params["input_target"] = "file"
+        params["input_file"] = self.results_dir + "test_level_file_assembly_gtdb.info.tsv"
+        params["level"] = "custom"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
+
+    def test_level_sequence_default(self):
+        """
+        ganon build-custom --input-target sequence and --level default
+        """
+        # --level default (sequence) - no tax
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_sequence_default"
+        params["input_target"] = "sequence"
         cfg = Config("build-custom", **params)
         self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
-        # specialization should be final target
-        self.assertTrue((res["target"]["target"] == res["info"]["specialization"]).all(), "Wrong target")
-        # Should have specialization
-        self.assertFalse(res["info"]["specialization"].isna().any(), "Missing specialization")
-        self.assertFalse(res["info"]["specialization_name"].isna().any(), "Missing specialization")
-        # Tax must have "assembly" rank
-        self.assertTrue("assembly" in res["tax"]._ranks.values(), "assembly rank not found")
 
-    # def test_level_sequence(self):
-    #     """
-    #     ganon build-custom --input-target sequence and --level default, assembly or ranks
-    #     """
+        # --level default (sequence) - NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_sequence_default_ncbi"
+        params["input_target"] = "sequence"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
-    #     # --level default (sequence)
-    #     params["db_prefix"] = self.results_dir + "test_level_sequence"
-    #     params["input_target"] = "sequence"
-    #     params["taxonomy"] = "skip"
-    #     cfg = Config("build-custom", **params)
-    #     self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
-    #     res = build_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon build-custom sanity check failed")
-    #     # Should not have any specialization, target is the sequence
-    #     self.assertTrue(res["info"]["specialization"].isna().all(), "Undefined specialization")
+    def test_level_sequence_taxrank(self):
+        """
+        ganon build-custom --input-target sequence and --level {tax.rank}
+        """
+        # --level genus NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_sequence_genus_ncbi"
+        params["input_target"] = "sequence"
+        params["level"] = "genus"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+        # Tax must not have "species" (filtered out)
+        self.assertFalse("species" in res["tax"]._ranks.values(), "rank found")
 
-    #     print(res)
+    def test_level_sequence_leaves_ncbi(self):
+        """
+        ganon build-custom --input-target sequence and --level leaves
+        """
+        # --level leaves NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_sequence_leaves_ncbi"
+        params["input_target"] = "sequence"
+        params["level"] = "leaves"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        cfg = Config("build-custom", **params)
+        self.assertTrue(ganon.main(cfg=cfg), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+    def test_ncbi_sequence_info(self):
+        """
+        ganon build-custom --ncbi-sequence-info files
+        """
+        # Test with one, two or invalid file
+        pass
+
+    def test_ncbi_file_info(self):
+        """
+        ganon build-custom --ncbi-file-info files
+        """
+        # Test with one, two or invalid file
+        pass
+
+    def test_restart(self):
+        """
+        ganon build-custom --restart
+        """
+        pass
+
 
 if __name__ == '__main__':
     unittest.main()
