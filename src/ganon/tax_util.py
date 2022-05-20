@@ -47,9 +47,9 @@ def get_file_info(cfg, info, tax, build_output_folder):
             # Either a file or prefix for download
             if assembly_summary in cfg.choices_ncbi_file_info:
                 # split if _historical
-                assembly_summary_urls.append("https://ftp.ncbi.nlm.nih.gov/genomes/" +
-                                             assembly_summary.split("_")[0] + "/assembly_summary_" +
-                                             assembly_summary + ".txt")
+                assembly_summary_urls.append(cfg.ncbi_ftp +
+                                             "/genomes/" + assembly_summary.split("_")[0] + 
+                                             "/assembly_summary_" + assembly_summary + ".txt")
             else:
                 assembly_summary_files.append(assembly_summary)
 
@@ -136,7 +136,7 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
                 for acc2txid in mode:
                     # Either a file or prefix for download
                     if acc2txid in cfg.choices_ncbi_sequence_info:
-                        acc2txid_urls.append("https://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid/" +
+                        acc2txid_urls.append(cfg.ncbi_ftp + "/pub/taxonomy/accession2taxid/" +
                                              acc2txid + ".accession2taxid.gz")
                     else:
                         acc2txid_files.append(acc2txid)

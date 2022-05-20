@@ -1,11 +1,23 @@
 import shutil
 import os
 import gzip
+import sys
 import pandas as pd
 from pathlib import Path
 from math import floor
 
 from multitax import CustomTx
+
+sys.path.append('src')
+from ganon import ganon
+
+
+def run_ganon(cfg):
+    """
+    capture stderr to log file and run
+    """
+    with open(cfg.db_prefix + ".log", "w") as sys.stderr:
+        return ganon.main(cfg=cfg)
 
 
 def setup_dir(results_dir):
@@ -81,7 +93,7 @@ def parse_rep(rep_file):
     return pd.read_table(rep_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
-def build_sanity_check_and_parse(params):
+def build_sanity_check_and_parse(params, skipped_targets: bool=False):
     # Provide sanity checks for outputs (not specific to a test) and returns loaded data
     res = {}
 
@@ -91,6 +103,30 @@ def build_sanity_check_and_parse(params):
     # target_info file to be read by ganon-build
     # res["target"] fields ['file', 'target', 'sequence']
     res["target"] = parse_target(params["db_prefix"] + "_files/build/target_info.tsv")
+
+    if not skipped_targets:
+        # Count number of target based on input files
+        ntarget = 0
+        if params["input_file"]:
+            with open(params["input_file"], "r") as fp:
+                ntarget = len(fp.readlines())
+        else:
+            input_files = []
+            for i in params["input"]:
+                if os.path.isdir(i):
+                    input_files.extend(list_files_folder(i, params["input_extension"]))
+                else:
+                    input_files.append(i)
+
+            if params["input_target"] == "sequence":
+                ntarget = len(list_sequences(input_files))
+            else:
+                ntarget = len(input_files)
+
+        # Correct number of targets
+        if res["target"].shape[0] != ntarget:
+            print("Wrong number of targets")
+            return None
 
     # res["info"] fields ['file', 'target', 'node', 'specialization', 'specialization_name']
     if "input_file" in params and params["input_file"]:
@@ -268,43 +304,3 @@ def table_sanity_check_and_parse(params):
 
     return res
 
-def update_sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
-
-    if not check_files(params["output_db_prefix"], ["ibf", "map", "tax", "gnn"]):
-        return None
-
-    res = {}
-    # Sequence information from database to be updated
-    if not params["update_complete"]:
-        res["seq_info"] = parse_info(params["db_prefix"] + ".info.tsv")
-    else: 
-        res["seq_info"] = pd.DataFrame()
-
-    # Parse in and out files
-    if "seq_info_file" in params and params["seq_info_file"]:
-        res["seq_info"] = res["seq_info"].append(parse_seq_info(params["seq_info_file"]), ignore_index=True)
-    else:
-        res["seq_info"] = res["seq_info"].append(parse_seq_info(params["output_db_prefix"]+".seqinfo.txt"), ignore_index=True)
-
-    res["gnn"] = Gnn(file=params["output_db_prefix"]+".gnn")
-    res["tax_pd"] = parse_tax(params["output_db_prefix"]+".tax")
-    res["map_pd"] = parse_map(params["output_db_prefix"]+".map")
-    res["bins_pd"] = parse_bins(Bins(taxsbp_ret=res["gnn"].bins))
-
-    # Check number of bins
-    if res["map_pd"].binid.unique().size != res["gnn"].number_of_bins:
-        print("Number of bins do not match between .gnn and .map")
-        return None
-
-    # Check if all input accession made it to the bins
-    if not res["seq_info"]["seqid"].isin(res["bins_pd"]["seqid"]).all():
-        print("Missing sequence accessions on bins")
-        return None
-
-    # Check if all taxids/assembly on .map appear on .tax
-    if res["tax_pd"]["taxid"].isin(res["map_pd"]["target"].drop_duplicates()).all():
-        print("Inconsistent entries between taxonomy (.tax) and bin map (.map)")
-        return None
-
-    return res
