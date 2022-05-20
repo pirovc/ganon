@@ -23,7 +23,7 @@ class TestBuildCustom(unittest.TestCase):
                       "threads": 1,
                       "write_info_file": True,
                       "keep_files": True,
-                      "verbose": True,
+                      "verbose": False,
                       "quiet": True}
 
     @classmethod

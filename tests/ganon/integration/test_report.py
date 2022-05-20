@@ -1,4 +1,5 @@
-import unittest, sys
+import unittest
+import sys
 sys.path.append('src')
 from ganon import ganon
 from ganon.config import Config
@@ -7,6 +8,7 @@ base_dir = "tests/ganon/"
 sys.path.append(base_dir)
 from utils import *
 data_dir = base_dir + "data/"
+
 
 class TestReportOffline(unittest.TestCase):
 
@@ -19,14 +21,14 @@ class TestReportOffline(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
-       
+
     def test_default(self):
         """
         Test run with default parameters
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_default"
-        
+
         # Build config from params
         cfg = Config("report", **params)
         # Run
@@ -159,7 +161,7 @@ class TestReportOffline(unittest.TestCase):
         self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
-        
+
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "no rank" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"]=="no rank").any(),"ganon report did not report the correct ranks")

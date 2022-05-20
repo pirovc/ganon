@@ -107,16 +107,5 @@ class TestClassifyOffline(unittest.TestCase):
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon classify has inconsistent results")
 
-def classify_classify_sanity_check_and_parse(params):
-    # Provide sanity checks for outputs (not specific to a test) and return loaded data
-
-    if not check_files(params["output_prefix"], ["lca","all","rep","tre"]):
-        return None
-
-    res = {}
-    # Sequence information from database to be updated
-    res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
-    return res
-
 if __name__ == '__main__':
     unittest.main()

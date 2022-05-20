@@ -16,7 +16,7 @@ class TestBuildCustom(unittest.TestCase):
 
     results_dir = base_dir + "results/integration_online/build-custom/"
 
-    default_params = {"input": data_dir + "build-custom/",
+    default_params = {"input": data_dir + "build-custom/files/",
                       "taxonomy": "skip",
                       "threads": 1,
                       "write_info_file": True,

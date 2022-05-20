@@ -10,6 +10,9 @@ wget "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz" --output-documen
 wget "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz" --output-document base_files/new_taxdump.tar.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_taxonomy.tsv.gz" --output-document base_files/bac120_taxonomy.tsv.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_taxonomy.tsv.gz" --output-document base_files/ar53_taxonomy.tsv.gz
+tar xf base_files/new_taxdump.tar.gz nodes.dmp names.dmp
+tar xf base_files/new_taxdump.tar.gz taxidlineage.dmp
+mv taxidlineage.dmp nodes.dmp names.dmp base_files/
 
 # extract accessions
 zgrep -h -o '^>[^ ]*' files/*.fna.gz | sed 's/>//' > seq_acc.txt
@@ -18,12 +21,9 @@ ls -1 files/*.fna.gz | grep -o "GC[FA]_[0-9.]*" > ass_acc.txt
 ls -1 files/more/*.fna.gz | grep -o "GC[FA]_[0-9.]*" >> ass_acc.txt
 
 # filter assembly_summary.txt 
-join <(sort ass_acc.txt) <(sort -k 1,1 base_files/assembly_summary.txt) -t$'\t' > assembly_summary.txt
+join <(sort ass_acc.txt) <(sort -t$'\t' -k 1,1 base_files/assembly_summary.txt) -t$'\t' | sort | uniq > assembly_summary.txt
 
 # filter taxdump.tar.gz
-tar xf base_files/new_taxdump.tar.gz nodes.dmp names.dmp
-tar xf base_files/new_taxdump.tar.gz taxidlineage.dmp
-mv taxidlineage.dmp nodes.dmp names.dmp base_files/
 # get all taxids and lineage
 cut -f 6 assembly_summary.txt | sort | uniq > taxids.txt
 cut -f 6 assembly_summary.txt | xargs -I {} grep "^{}[^0-9]" base_files/taxidlineage.dmp | cut -f 3 | tr ' ' '\n' | sort | uniq | sed -r '/^\s*$/d' >> taxids.txt 

@@ -9,7 +9,7 @@ from utils import *
 data_dir = base_dir + "data/"
 
 class TestReportOnline(unittest.TestCase):
-    
+
     results_dir = base_dir + "results/integration_online/report/"
     default_params = {"rep_files": data_dir+"report/results.rep",
                       "output_format": "tsv",
@@ -25,7 +25,7 @@ class TestReportOnline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_default"
-        
+
         # report config from params
         cfg = Config("report", **params)
         # Run
