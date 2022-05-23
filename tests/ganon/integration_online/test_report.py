@@ -1,12 +1,15 @@
-import unittest, sys
+import unittest
+import sys
 sys.path.append('src')
 from ganon import ganon
 from ganon.config import Config
 
 base_dir = "tests/ganon/"
 sys.path.append(base_dir)
-from utils import *
+from utils import setup_dir
+from utils import report_sanity_check_and_parse
 data_dir = base_dir + "data/"
+
 
 class TestReportOnline(unittest.TestCase):
 

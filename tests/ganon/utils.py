@@ -12,11 +12,11 @@ sys.path.append('src')
 from ganon import ganon
 
 
-def run_ganon(cfg):
+def run_ganon(cfg, prefix):
     """
     capture stderr to log file and run
     """
-    with open(cfg.db_prefix + ".log", "w") as sys.stderr:
+    with open(prefix + ".log", "w") as sys.stderr:
         return ganon.main(cfg=cfg)
 
 

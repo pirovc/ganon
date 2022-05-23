@@ -143,22 +143,27 @@ class Config:
 
         # Required
         report_group_required = report_parser.add_argument_group("required arguments")
-        report_group_required.add_argument("-i", "--rep-files",     type=str, nargs="*", required=False, help="One or more *.rep files from ganon classify")
-        report_group_required.add_argument("-o", "--output-prefix", type=str,            required=True,  help="Output prefix for report file '{output_prefix}.tre'. In case of multiple files, the base input filename will be appended at the end of the output file '{output_prefix + FILENAME}.tre'")
+        report_group_required.add_argument("-i", "--input",           type=str,          required=True, nargs="*",     metavar="", help="Input file(s) and/or folder(s). '.rep' file(s) from ganon classify.")
+        report_group_required.add_argument("-e", "--input-extension", type=str,          default="rep", metavar="",                help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
+        report_group_required.add_argument("-o", "--output-prefix",   type=str,          required=True,                            help="Output prefix for report file '{output_prefix}.tre'. In case of multiple files, the base input filename will be appended at the end of the output file '{output_prefix + FILENAME}.tre'")
 
         # Defaults
+        report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
+        report_group_dbtax.add_argument("-d", "--db-prefix",      type=str, nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
+        report_group_dbtax.add_argument("-x", "--taxonomy",       type=str,            metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
+        report_group_dbtax.add_argument("-m", "--taxonomy-files", type=str, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
+
+        report_group_output = report_parser.add_argument_group("output arguments")
+        report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",   help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization. Default: tsv")
+        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="reads", help="Type of report to generate [reads, matches]. Default: reads")
+        report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],      help="Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: """)
+        report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",      help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
+        report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                             help="Ommit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent")
+        report_group_output.add_argument("-y", "--split-hierarchy", action="store_true",                             help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
+        report_group_output.add_argument("-p", "--skip-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
+        report_group_output.add_argument("-k", "--keep-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
+
         report_group_optional = report_parser.add_argument_group("optional arguments")
-        report_group_optional.add_argument("-d", "--db-prefix",      type=str, nargs="*", metavar="", default=[],      help="Database prefix[es] used for classification (in any order). Only '.tax' file is required. If not provided, new taxonomy will be downloaded")
-        report_group_optional.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",   help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization. Default: tsv")
-        report_group_optional.add_argument("-e", "--report-type",    type=str,            metavar="", default="reads", help="Type of report to generate [reads, matches]. Default: reads")
-        report_group_optional.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],      help="Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: """)
-        report_group_optional.add_argument("-s", "--sort",           type=str,            metavar="", default="",      help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
-        report_group_optional.add_argument("-y", "--split-hierarchy",action="store_true",                              help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
-        report_group_optional.add_argument("-p", "--skip-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
-        report_group_optional.add_argument("-k", "--keep-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
-        report_group_optional.add_argument("--taxdump-file",         type=str, nargs="*", metavar="", default=[],      help="Force use of a specific version of the (taxdump.tar.gz) or (nodes.dmp names.dmp [merged.dmp]) file(s) from NCBI Taxonomy (otherwise it will be automatically downloaded)")
-        report_group_optional.add_argument("--input-directory",      type=str,            metavar="", default="",      help="Directory containing input files")
-        report_group_optional.add_argument("--input-extension",      type=str,            metavar="", default="",      help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.rep')")
         report_group_optional.add_argument("--verbose",              action="store_true",             default=False,   help="Verbose output mode")
         report_group_optional.add_argument("--quiet",                action="store_true",             default=False,   help="Quiet output mode")
 
@@ -173,32 +178,32 @@ class Config:
 
         # Defaults
         table_group_optional = table_parser.add_argument_group("optional arguments")
-        table_group_optional.add_argument("-l", "--output-value",  type=str,   metavar="", default="counts", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
-        table_group_optional.add_argument("-f", "--output-format", type=str,   metavar="", default="tsv",    help="Output format [tsv, csv]. Default: tsv")
-        table_group_optional.add_argument("-t", "--top-sample",    type=int,   metavar="", default=0,        help="Top hits of each sample individually")
-        table_group_optional.add_argument("-a", "--top-all",       type=int,   metavar="", default=0,        help="Top hits of all samples (ranked by percentage)")
-        table_group_optional.add_argument("-m", "--min-frequency", type=float, metavar="", default=0,        help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
-        table_group_optional.add_argument("-r", "--rank",          type=str,   metavar="", default=None,     help="Define specific rank to report. Empty will report all ranks.")
-        table_group_optional.add_argument("-n", "--no-root",       action="store_true",    default=False,    help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
-        table_group_optional.add_argument("--header",              type=str,   metavar="", default="name",   help="Header information [name, taxid, lineage]. Default: name")
-        table_group_optional.add_argument("--unclassified-label",  type=str,   metavar="", default=None,     help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
-        table_group_optional.add_argument("--filtered-label",      type=str,   metavar="", default=None,     help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
-        table_group_optional.add_argument("--skip-zeros",          action="store_true",    default=False,    help="Do not print lines with only zero count/percentage")
-        table_group_optional.add_argument("--transpose",           action="store_true",    default=False,    help="Transpose output table (taxa as cols and files as rows)")
-        table_group_optional.add_argument("--input-directory",     type=str,  metavar="",  default="",       help="Directory containing input files")
-        table_group_optional.add_argument("--input-extension",     type=str,  metavar="",  default="",       help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.tre')")
-        table_group_optional.add_argument("--verbose",             action="store_true",    default=False,    help="Verbose output mode")
-        table_group_optional.add_argument("--quiet",               action="store_true",    default=False,    help="Quiet output mode")
+        table_group_optional.add_argument("-l", "--output-value",  type=str,             metavar="", default="counts", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
+        table_group_optional.add_argument("-f", "--output-format", type=str,             metavar="", default="tsv",    help="Output format [tsv, csv]. Default: tsv")
+        table_group_optional.add_argument("-t", "--top-sample",    type=unsigned_int(0), metavar="", default=0,        help="Top hits of each sample individually")
+        table_group_optional.add_argument("-a", "--top-all",       type=unsigned_int(0), metavar="", default=0,        help="Top hits of all samples (ranked by percentage)")
+        table_group_optional.add_argument("-m", "--min-frequency", type=int_or_float(0), metavar="", default=0,        help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
+        table_group_optional.add_argument("-r", "--rank",          type=str,             metavar="", default=None,     help="Define specific rank to report. Empty will report all ranks.")
+        table_group_optional.add_argument("-n", "--no-root",       action="store_true",    default=False,           help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
+        table_group_optional.add_argument("--header",              type=str,   metavar="", default="name",          help="Header information [name, taxid, lineage]. Default: name")
+        table_group_optional.add_argument("--unclassified-label",  type=str,   metavar="", default=None,            help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
+        table_group_optional.add_argument("--filtered-label",      type=str,   metavar="", default=None,            help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
+        table_group_optional.add_argument("--skip-zeros",          action="store_true",    default=False,           help="Do not print lines with only zero count/percentage")
+        table_group_optional.add_argument("--transpose",           action="store_true",    default=False,           help="Transpose output table (taxa as cols and files as rows)")
+        table_group_optional.add_argument("--input-directory",     type=str,  metavar="",  default="",              help="Directory containing input files")
+        table_group_optional.add_argument("--input-extension",     type=str,  metavar="",  default="",              help="Extension of files to use with --input-directory (provide it without * expansion, e.g. '.tre')")
+        table_group_optional.add_argument("--verbose",             action="store_true",    default=False,           help="Verbose output mode")
+        table_group_optional.add_argument("--quiet",               action="store_true",    default=False,           help="Quiet output mode")
 
         ####################################################################################################
 
         filter_parser = argparse.ArgumentParser(add_help=False)
         filter_arguments = filter_parser.add_argument_group("filter arguments")
-        filter_arguments.add_argument("--min-count",      type=float,          metavar="", default=0,  help="Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
-        filter_arguments.add_argument("--max-count",      type=float,          metavar="", default=0,  help="Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
-        filter_arguments.add_argument("--names",          type=str, nargs="*", metavar="", default=[], help="Show only entries matching exact names of the provided list")
-        filter_arguments.add_argument("--names-with",     type=str, nargs="*", metavar="", default=[], help="Show entries containing full or partial names of the provided list")
-        filter_arguments.add_argument("--taxids",         type=str, nargs="*", metavar="", default=[], help="One or more taxids to report (including children taxa)")
+        filter_arguments.add_argument("--min-count",      type=int_or_float(0), metavar="", default=0,  help="Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
+        filter_arguments.add_argument("--max-count",      type=int_or_float(0), metavar="", default=0,  help="Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1 specific number]")
+        filter_arguments.add_argument("--names",          type=str, nargs="*",  metavar="", default=[],               help="Show only entries matching exact names of the provided list")
+        filter_arguments.add_argument("--names-with",     type=str, nargs="*",  metavar="", default=[],               help="Show entries containing full or partial names of the provided list")
+        filter_arguments.add_argument("--taxids",         type=str, nargs="*",  metavar="", default=[],               help="One or more taxids to report (including children taxa)")
 
         formatter_class = lambda prog: argparse.ArgumentDefaultsHelpFormatter(prog, width=120)
         subparsers = parser.add_subparsers()
@@ -229,7 +234,7 @@ class Config:
 
         report = subparsers.add_parser("report",
                                        help="Generate reports from classification results",
-                                       parents=[filter_parser, report_parser],
+                                       parents=[report_parser, filter_parser],
                                        formatter_class=formatter_class)
         report.set_defaults(which="report")
 
@@ -360,19 +365,11 @@ class Config:
                 return False
 
             if self.db_prefix:
-                dbp = []
-                # add ".tax" if was passed as prefix
                 for prefix in self.db_prefix:
-                    if prefix.endswith(".tax"):
-                        dbp.append(prefix)
-                    else:
-                        dbp.append(prefix+".tax")
-                # check if files exists
-                dbp_ok = check_files(dbp)
-                # report files not found and stop
-                if len(dbp_ok)!=len(dbp):
-                    print_log(",".join(set(dbp).difference(dbp_ok)))
-                    return False
+                    file = prefix + ".tax" if not prefix.endswith(".tax") else prefix
+                    if not check_file(file):
+                        print_log("File not found: " + file)
+                        return False
 
         elif self.which == "table":
             if self.min_frequency < 0:
