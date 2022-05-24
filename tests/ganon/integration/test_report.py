@@ -56,7 +56,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if none is higher than min_count
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(), "ganon report failed filtering with --min-count")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(),
+                        "ganon report failed filtering with --min-count")
 
     def test_min_count_perc(self):
         """
@@ -74,7 +75,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if none is higher than min_count
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] >= (params["min_count"]*100)).all(), "ganon report failed filtering with --min-count")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] >= (params["min_count"]*100)).all(),
+                        "ganon report failed filtering with --min-count")
 
     def test_max_count(self):
         """
@@ -92,7 +94,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if none is higher than min_count
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] <= params["max_count"]).all(), "ganon report failed filtering with --max-count")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] <= params["max_count"]).all(),
+                        "ganon report failed filtering with --max-count")
 
     def test_max_count_perc(self):
         """
@@ -110,7 +113,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if none is higher than min_count
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] <= (params["max_count"]*100)).all(), "ganon report failed filtering with --max-count")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] <= (params["max_count"]*100)).all(),
+                        "ganon report failed filtering with --max-count")
 
     def test_report_type(self):
         """
@@ -128,7 +132,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not output unclassified
-        self.assertFalse((res["tre_pd"]['rank'] == "unclassified").any(), "ganon report has wrong output for --report_type matches")
+        self.assertFalse((res["tre_pd"]['rank'] == "unclassified").any(),
+                         "ganon report has wrong output for --report_type matches")
 
     def test_ranks(self):
         """
@@ -136,7 +141,7 @@ class TestReport(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_ranks"
-        params["ranks"] = ["phylum","species"]
+        params["ranks"] = ["phylum", "species"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -146,7 +151,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if only selected ranks were reported
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"].isin(params["ranks"])).all(),"ganon report did not report the correct ranks")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"].isin(params["ranks"])).all(),
+                        "ganon report did not report the correct ranks")
 
     def test_ranks_all(self):
         """
@@ -165,7 +171,8 @@ class TestReport(unittest.TestCase):
 
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "no rank" rank
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"]=="no rank").any(),"ganon report did not report the correct ranks")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
+                        "ganon report did not report the correct ranks")
 
     def test_skip_hierachy(self):
         """
@@ -183,7 +190,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
-        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
+        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),
+                         "ganon report did not skip the hierarchy")
 
     def test_keep_hierachy(self):
         """
@@ -201,7 +209,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
-        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),"ganon report did not skip the hierarchy")
+        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),
+                         "ganon report did not skip the hierarchy")
 
     def test_split_hierachy(self):
         """
@@ -317,7 +326,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have only reported the species asked
-        self.assertEqual(res["tre_pd"][~res["idx_base"]]["name"].values[0],params["names"][0], "ganon report did not filter by name")
+        self.assertEqual(res["tre_pd"][~res["idx_base"]]["name"].values[0], params["names"][0],
+                         "ganon report did not filter by name")
 
     def test_names_with(self):
         """
@@ -335,7 +345,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have only matches with pattern
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["name"].str.contains(params["names_with"][0])).all(), "ganon report did not filter by names with")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["name"].str.contains(params["names_with"][0])).all(),
+                        "ganon report did not filter by names with")
 
     def test_taxids(self):
         """
@@ -353,7 +364,8 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have only matches with pattern
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["lineage"].str.contains(params["taxids"][0])).all(), "ganon report did not filter by taxids")
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["lineage"].str.contains(params["taxids"][0])).all(),
+                        "ganon report did not filter by taxids")
 
     def test_taxdump_file(self):
         """
