@@ -18,7 +18,8 @@ class TestReport(unittest.TestCase):
     default_params = {"db_prefix": data_dir+"report/bacteria_assembly",
                       "input": data_dir+"report/results.rep",
                       "output_format": "tsv",
-                      "quiet": True}
+                      "verbose": True,
+                      "quiet": False}
 
     @classmethod
     def setUpClass(self):
@@ -244,7 +245,7 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have two outputs
-        self.assertEqual(len(res), len(params["rep_files"]), "ganon report did not generate multiple report files")
+        self.assertEqual(len(res), len(params["input"]), "ganon report did not generate multiple report files")
 
     def test_multiple_rep_files_folder(self):
         """
@@ -260,7 +261,7 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have two outputs
-        self.assertEqual(len(res), len(list_files_folder(params["input"], params["input_extension"])),
+        self.assertEqual(len(res), len(list_files_folder(params["input"][0], params["input_extension"])),
                          "ganon report did not generate multiple report files")
 
     def test_multiple_rep_files_split_hierachy(self):
@@ -268,7 +269,7 @@ class TestReport(unittest.TestCase):
         Test run with multiple rep files as input
         """
         params = self.default_params.copy()
-        params["rep_files"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
+        params["input"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
         params["output_prefix"] = self.results_dir + "test_multiple_rep_files_split_hierachy_"
         params["split_hierarchy"] = True
 
@@ -288,10 +289,9 @@ class TestReport(unittest.TestCase):
         Test run with default parameters using input directory and extension
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_input_directory_"
-        del params["rep_files"]
-        params["input_directory"] = data_dir+"report/"
-        params["input_extension"] = ".rep"
+        params["output_prefix"] = self.results_dir + "test_input_directory"
+        params["input"] = data_dir+"report/"
+        params["input_extension"] = "rep"
 
         # Build config from params
         cfg = Config("report", **params)
@@ -400,8 +400,8 @@ class TestReport(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_na_ranks"
         params["db_prefix"] = ""
-        params["ranks"] = ["genus","species","na"]
-        params["taxdump_file"] = [data_dir+"mini_nodes.dmp", data_dir+"mini_names.dmp"]
+        params["ranks"] = ["genus", "species"]
+        params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -410,8 +410,8 @@ class TestReport(unittest.TestCase):
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
-        # check if only selected ranks were reported
-        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"].isin(params["ranks"])).all(),
+        # check if reported any "na" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
                         "ganon report did not report the correct ranks")
 
 if __name__ == '__main__':

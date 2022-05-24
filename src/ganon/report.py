@@ -39,20 +39,25 @@ def report(cfg):
             tax = GtdbTx(files=cfg.taxonomy_files, **tax_args)
 
     # define fixed_ranks or leave it empty for all
-    if not cfg.ranks:
-        fixed_ranks = [tax.name(tax.root_node),
-                       "superkingdom",
-                       "phylum",
-                       "class",
-                       "order",
-                       "family",
-                       "genus",
-                       "species",
-                       "assembly"]
-    elif cfg.ranks[0] == "all":
+    if cfg.ranks and cfg.ranks[0] == "all":
         fixed_ranks = []
     else:
-        fixed_ranks = [tax.name(tax.root_node)] + cfg.ranks
+        if not cfg.ranks or cfg.ranks == [""]:
+            fixed_ranks = [tax.name(tax.root_node),
+                           "superkingdom",
+                           "phylum",
+                           "class",
+                           "order",
+                           "family",
+                           "genus",
+                           "species",
+                           "assembly"]
+        else:
+            fixed_ranks = [tax.name(tax.root_node)] + cfg.ranks
+
+        # If reporting orphan nodes, add at the end
+        if not cfg.no_orphan:
+            fixed_ranks.append(tax.undefined_rank)
 
     any_rep = False
     print_log("Generating report(s)", cfg.quiet)
@@ -246,8 +251,8 @@ def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
 
     if orphan_nodes and not cfg.no_orphan:
         print_log(" - " + str(orphan_nodes) + " orphan nodes not found in the taxonomy. " +
-                  "Those entries are reported as 'na' with root as direct parent. " +
-                  "Too ommit them from the report, use --no-orphan", cfg.quiet)
+                  "\n   Orphan nodes are reported as 'na' with root as direct parent. " +
+                  "\n   Too ommit them from the report, use --no-orphan", cfg.quiet)
     print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
     return True
 
@@ -314,11 +319,10 @@ def filter_report(tree_cum_counts, tax, fixed_ranks, total, cfg):
             # skip if not in fixed ranks
             if fixed_ranks and tax.rank(node) not in fixed_ranks:
                 continue
-        else:
+        elif cfg.no_orphan:
             # not found in tax
             # skip if not reporting orphan nodes
-            if cfg.no_orphan:
-                continue
+            continue
 
         # Filter by value
         if cfg.min_count:
