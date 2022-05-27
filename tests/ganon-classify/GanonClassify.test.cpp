@@ -14,6 +14,7 @@
 
 using namespace seqan3::literals;
 
+/*
 namespace config_classify
 {
 
@@ -52,14 +53,13 @@ struct Res
             std::string                field;
             while ( std::getline( stream_line, field, '\t' ) )
                 fields.push_back( field );
-            /* 0 hierarchy_label <tab>
-               1 target <tab>
-               2 matches <tab>
-               3 unique reads <tab>
-               4 lca reads <tab>
-               5 [rank <tab>]
-               6 [name]
-            */
+            //   0 hierarchy_label <tab>
+            //   1 target <tab>
+            //   2 matches <tab>
+            //   3 unique reads <tab>
+            //   4 lca reads <tab>
+            //   5 [rank <tab>]
+            //   6 [name]
             if ( fields[0] == "#total_classified" )
             {
                 total_classified = std::stoul( fields[1] );
@@ -767,27 +767,26 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
     // RevCom from GGGCCTCTTGGT
     aux::write_sequences( folder_prefix + "rR.fasta", { "ACCAAGAGGCCC"_dna4 }, { "readR" } );
 
-    /*
-    all unknow chars (not ACTG) are replace by A, causing some unexpected assignments
+    //all unknow chars (not ACTG) are replace by A, causing some unexpected assignments
+    //
+    //CTCGTGTTTCCT----GGGCCTCTTGGT  e0
+    //CTC-TGTTTCCT----GGGCCTCTTGGT  e1F
+    //CTC-TGTTTCCT----GGG-CTCTTGGT  e1F_e1R
+    ////CTC-TGTTTCCT----GGG-CTCT-GGT  e1F_e2R
+    //CTC-TGTT-CCT----GGG-CTCTTGGT  e2F_e1R
+    //CTC-TGTT-CCT----GGG-CTCT-GGT  e2F_e2R
+    //
+    //      max 4-mer count
+    //F  e0 9
+    //F  e1 5
+    //F  e2 1
+    //FR e0 18
+    //FR e1 14
+    //FR e2 10
+    //FR e3 6
+    //FR e4 2
+    //FR e5 2
 
-    CTCGTGTTTCCT----GGGCCTCTTGGT  e0
-    CTC-TGTTTCCT----GGGCCTCTTGGT  e1F
-    CTC-TGTTTCCT----GGG-CTCTTGGT  e1F_e1R
-    CTC-TGTTTCCT----GGG-CTCT-GGT  e1F_e2R
-    CTC-TGTT-CCT----GGG-CTCTTGGT  e2F_e1R
-    CTC-TGTT-CCT----GGG-CTCT-GGT  e2F_e2R
-
-          max 4-mer count
-    F  e0 9
-    F  e1 5
-    F  e2 1
-    FR e0 18
-    FR e1 14
-    FR e2 10
-    FR e3 6
-    FR e4 2
-    FR e5 2
-    */
     // Sequences (28bp), error rates on references based on k = 4
     const ids_type       ids{ "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" };
     const sequences_type seqs{ "CTCGTGTTTCCT----GGGCCTCTTGGT"_dna4, "CTC-TGTTTCCT----GGGCCTCTTGGT"_dna4,
@@ -1632,19 +1631,18 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
 
     SECTION( "--offset" )
     {
-        /*
-              offset=1 offset=2 offset=3 offset=4
-        F  e0 9        5        4        3
-        F  e1 5        3        3        2
-        F  e2 1        1        2        1
+        //      offset=1 offset=2 offset=3 offset=4
+        //F  e0 9        5        4        3
+        //F  e1 5        3        3        2
+        //F  e2 1        1        2        1
 
-        FR e0 18       10       8        6
-        FR e1 14       8        7        5
-        FR e2 10       6        6        4
-        FR e3 6        4        4        3
-        FR e4 2        2        3        2
-        FR e5 2        2        2        1
-        */
+        //FR e0 18       10       8        6
+        //FR e1 14       8        7        5
+        //FR e2 10       6        6        4
+        //FR e3 6        4        4        3
+        //FR e4 2        2        3        2
+        //FR e5 2        2        2        1
+
         SECTION( "--offset 2 --abs-cutoff 0 --abs-filter 0" )
         {
             std::string prefix{ folder_prefix + "offset_2_abs_cutoff_0_abs_filter_0" };
@@ -1932,4 +1930,4 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
             REQUIRE( res.all["readFe1"]["e0"] == 16 );
         }
     }
-}
+}*/

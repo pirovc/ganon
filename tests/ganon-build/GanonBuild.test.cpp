@@ -17,6 +17,7 @@
 
 using namespace seqan3::literals;
 
+/*
 namespace config_build
 {
 
@@ -99,6 +100,7 @@ bool validate_elements( const GanonBuild::Config cfg, const sequences_type& seqs
 }
 
 
+
 GanonBuild::Config defaultConfig( const std::string prefix )
 {
     GanonBuild::Config cfg;
@@ -111,6 +113,7 @@ GanonBuild::Config defaultConfig( const std::string prefix )
     cfg.output_filter_file = prefix + ".ibf";
     return cfg;
 }
+
 
 GanonBuild::Config defaultConfig( const std::string     prefix,
                                   const sequences_type& seqs,
@@ -134,7 +137,7 @@ GanonBuild::Config defaultConfig( const std::string     prefix,
 
 } // namespace config_build
 
-/*
+
 Testing scheme:
 
 (build) without --update-filter-file
@@ -180,7 +183,7 @@ const sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_
                            "ACCTTCGATTTCTTTAGATCGGGGATGATGATGCATGATGCTTAGGGATT"_dna4 };
 const bins_type      bins{ 0, 1, 2 };
 
-SCENARIO( "building indices", "[ganon-build]" )
+/*SCENARIO( "building indices", "[ganon-build]" )
 {
 
     std::string folder_prefix{ "ganon-build-build/" };
@@ -733,3 +736,4 @@ SCENARIO( "updating indices", "[ganon-build]" )
         }
     }
 }
+*/

@@ -57,7 +57,7 @@ class Config:
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",           type=str, nargs="*",         default=["refseq"], metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,        metavar="", help="Download top organims for each taxa. 0 for all.")
-        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                       help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                              help="Download only sub-set of complete genomes")
         build_download_args.add_argument("-u", "--genome-updater",   type=str,                                      metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
 
         ####################################################################################################
@@ -84,10 +84,10 @@ class Config:
 
         # Required
         update_group_required = update_parser.add_argument_group("required arguments")
-        update_group_required.add_argument("-d", "--db-prefix",   type=str,            required=True,  help="Existing database input prefix")
+        update_group_required.add_argument("-d", "--db-prefix", type=str, required=True, help="Existing database input prefix")
 
         update_default_important_args = update_parser.add_argument_group("important arguments")
-        update_default_important_args.add_argument("-o", "--output-db-prefix", type=str,            metavar="",            help="Output database prefix. Default: same as --db-prefix, overwrite files")
+        update_default_important_args.add_argument("-o", "--output-db-prefix", type=str,            metavar="",            help="Output database prefix. By default will be the same as --db-prefix and overwrite files")
         update_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1, help="")
 
         ####################################################################################################
@@ -130,26 +130,24 @@ class Config:
         classify_group_other.add_argument("-a", "--abs-filter",          type=int,   nargs="*", metavar="", help="Additional absolute number of errors (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0 2 1). -1 for no filter. Mutually exclusive --rel-filter")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,   nargs="*", metavar="", help="Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: H1")
         classify_group_other.add_argument("-f", "--offset",              type=int,              metavar="", help="Number of k-mers to skip during classification. Can speed up analysis but may reduce recall. (e.g. 1 = all k-mers, 3 = every 3rd k-mer). Default: 1")
-        classify_group_other.add_argument("-t", "--threads",             type=int,              metavar="", help="Number of sub-processes/threads to use. Default: 3")
+        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1),              metavar="", help="Number of sub-processes/threads to use. Default: 3")
         classify_group_other.add_argument("-r", "--ranks",               type=str,   nargs="*", metavar="", help="Ranks to show in the report (.tre). 'all' for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly. This file can be re-generated with the ganon report command.")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="", help=argparse.SUPPRESS) 
-        classify_group_other.add_argument("--n-reads",                   type=int,              metavar="", help=argparse.SUPPRESS)
-        classify_group_other.add_argument("--n-batches",                 type=int,              metavar="", help=argparse.SUPPRESS)
+        classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1),              metavar="", help=argparse.SUPPRESS)
+        classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1),              metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
 
         ####################################################################################################
 
         report_parser = argparse.ArgumentParser(add_help=False)
 
-        # Required
         report_group_required = report_parser.add_argument_group("required arguments")
         report_group_required.add_argument("-i", "--input",           type=str,          required=True, nargs="*",     metavar="", help="Input file(s) and/or folder(s). '.rep' file(s) from ganon classify.")
         report_group_required.add_argument("-e", "--input-extension", type=str,          default="rep", metavar="",                help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
-        report_group_required.add_argument("-o", "--output-prefix",   type=str,          required=True,                            help="Output prefix for report file '{output_prefix}.tre'. In case of multiple files, the base input filename will be appended at the end of the output file '{output_prefix + FILENAME}.tre'")
+        report_group_required.add_argument("-o", "--output-prefix",   type=str,          required=True, metavar="",                help="Output prefix for report file '{output_prefix}.tre'. In case of multiple files, the base input filename will be appended at the end of the output file '{output_prefix + FILENAME}.tre'")
 
-        # Defaults
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
         report_group_dbtax.add_argument("-d", "--db-prefix",      type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
         report_group_dbtax.add_argument("-x", "--taxonomy",       type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
