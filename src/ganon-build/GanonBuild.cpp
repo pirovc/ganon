@@ -132,7 +132,7 @@ int64_t bf_size( double max_fp, uint8_t hash_functions, uint64_t elements )
 }
 
 uint8_t hash_functions_from_fp(double max_fp){
-    return -static_cast< int >(std::log(max_fp));
+    return -static_cast< uint8_t >(std::log(max_fp));
 }
 
 uint8_t hash_functions_from_ratio(uint64_t bin_size_bits, uint64_t elements ){
@@ -156,93 +156,89 @@ double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_fun
            / std::log( 1.0 - std::exp( std::log( max_fp ) / hash_functions ) );
 }
 
-inline uint64_t get_optimal_bins( uint64_t nbins )
+inline uint64_t optimal_bins( uint64_t nbins )
 {
     return std::ceil( nbins / 64.0 ) * 64;
 }
 
-inline double get_fp( uint64_t bin_size_bits, uint8_t hash_functions, uint64_t elements )
+inline double false_positive( uint64_t bin_size_bits, uint8_t hash_functions, uint64_t elements )
 {
     return std::pow( 1 - std::exp( -hash_functions / ( bin_size_bits / static_cast< double >( elements ) ) ),
                      hash_functions );
 }
 
-uint64_t optimal_elements_bin( THashesCount const& hashes_count,
+std::tuple< uint64_t, uint8_t > optimal_elements_size( THashesCount const& hashes_count,
                                uint64_t            min_hashes,
                                uint64_t            max_hashes,
                                uint64_t            filter_size,
                                uint8_t             hash_functions,
                                uint8_t             max_hash_functions )
 {
-    std::cout << "n_hashes" << '\t' << "bin_size_bits" << '\t' << "max_split_bins" << '\t' << "crate" << '\t' << "nbins" << '\t' << "fp" << std::endl;
-    // total-1 zero index
-    for (size_t n = max_hashes - 1; n >= min_hashes; n-=100 ){
-        uint64_t n_hashes = n + 1;
-        uint64_t nbins = get_optimal_bins(n_bins(hashes_count, n_hashes));
+
+    
+    double min_fp = 1;
+    uint64_t optimal_elements = max_hashes;
+    
+    int optimal_hash_functions = hash_functions;
+    // total + 1 zero index
+    for (size_t n = max_hashes + 1; n > min_hashes; n-=100 ){
+        uint64_t n_hashes = n - 1;
+        uint64_t nbins = optimal_bins(n_bins(hashes_count, n_hashes));
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
-
-
         int64_t bin_size_bits = ( filter_size / static_cast< double >( nbins ) ) * 8388608u;
+        uint8_t hf = hash_functions;
+        if (hf==0)
+            hf = hash_functions_from_ratio(bin_size_bits, n_hashes);
+        if (hf > max_hash_functions || hf == 0)
+            hf = max_hash_functions; 
 
-        if (hash_functions==0){
-            hash_functions = hash_functions_from_ratio(bin_size_bits, n_hashes);
-            if (hash_functions>max_hash_functions)
-                hash_functions = max_hash_functions;
+        double fp = false_positive(bin_size_bits, hf, n_hashes );
+        double real_fp = 1 - std::pow(1 - fp, static_cast<double>(max_split_bins));
+
+        if (real_fp < min_fp){
+            min_fp = real_fp;
+            optimal_hash_functions = hf;
+            optimal_elements = n_hashes;
         }
+    }
 
-        double fp = get_fp(bin_size_bits, hash_functions, n_hashes );
-        
-        
-        double crate = correction_rate(max_split_bins, fp, hash_functions);
-
-        uint64_t filter_size_bits = bin_size_bits * nbins * crate;
-        std::cout << n_hashes << '\t';
-        std::cout << bin_size_bits << '\t';
-        std::cout << max_split_bins << '\t';
-        std::cout << crate << '\t';
-        std::cout << nbins << '\t';
-        std::cout << fp*crate << '\t';
-        std::cout << std::endl;
-    }   
+    return std::make_tuple( optimal_elements, optimal_hash_functions );
 }
 
-uint64_t optimal_elements_bin( THashesCount const& hashes_count,
+std::tuple< uint64_t, uint8_t > optimal_elements_fp( THashesCount const& hashes_count,
                                uint64_t            min_hashes,
                                uint64_t            max_hashes,
                                double              max_fp,
-                               uint8_t             hash_functions )
+                               uint8_t             hash_functions,
+                               uint8_t             max_hash_functions )
 {
+    uint64_t min_filter_size = 0;
+    uint64_t optimal_elements = max_hashes;
+    
+    // Define optimal hash functions based on max_fp if not provided
+    uint8_t optimal_hash_functions = ( hash_functions > 0 ) ? hash_functions : hash_functions_from_fp(max_fp);
+    if (optimal_hash_functions > max_hash_functions  || optimal_hash_functions == 0)
+        optimal_hash_functions = max_hash_functions;
 
-    std::cout << min_hashes << std::endl;
-    std::cout << max_hashes << std::endl;
+    // total + 1 zero index
+    for (size_t n = max_hashes + 1; n > min_hashes; n-=100 ){
 
-    std::cout << "n_hashes" << '\t' << "bin_size_bits" << '\t' << "max_split_bins" << '\t' << "crate" << '\t' << "nbins" << '\t' << "filter_size_bits" << std::endl;
-        
-    // total-1 zero index
-    for (size_t n = max_hashes - 1; n >= min_hashes; n-=100 ){
-
-        uint64_t n_hashes = n + 1;
-        uint64_t nbins = get_optimal_bins(n_bins(hashes_count, n_hashes));
+        uint64_t n_hashes = n - 1;
+        uint64_t nbins = optimal_bins(n_bins(hashes_count, n_hashes));
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
 
-        int64_t bin_size_bits = bf_size(max_fp, hash_functions, n_hashes);
-        double crate = correction_rate(max_split_bins, max_fp, hash_functions);
+        int64_t bin_size_bits = bf_size(max_fp, optimal_hash_functions, n_hashes);
+
+        double crate = correction_rate(max_split_bins, max_fp, optimal_hash_functions);
 
         uint64_t filter_size_bits = bin_size_bits * nbins * crate;
-        std::cout << n_hashes << '\t';
-        std::cout << bin_size_bits << '\t';
-        std::cout << max_split_bins << '\t';
-        std::cout << crate << '\t';
-        std::cout << nbins << '\t';
-        std::cout << filter_size_bits << '\t';
-        std::cout << std::endl;
 
-        if (bin_size_bits < 0)
-            break;
-
+        if (filter_size_bits < min_filter_size || min_filter_size == 0){
+            min_filter_size = filter_size_bits;
+            optimal_elements = n_hashes;
+        }
     }
-
-    // return min filter_size
+    return std::make_tuple( optimal_elements, optimal_hash_functions );
 }
 
 } // namespace detail
@@ -264,6 +260,8 @@ bool run( Config config )
 
     // Parse input file into map {file: {"": target}} or {file: {sequence: target,...}}
     detail::TInputFilesMap ifm = detail::parse_input_file( config.input_file );
+
+    // TODO nomenclature - n_hashes or elements
 
     // TODO parallelize by file
     detail::THashesCount hashes_count;
@@ -289,27 +287,40 @@ bool run( Config config )
         }
     }
 
+    uint64_t elements = max_hashes;
+    uint8_t hash_functions = config.hash_functions;
     uint8_t max_hash_functions = 5;
+
+    // Create a ibf struct
+    // n_bins
+    // n_hashes
+    // hash_funcions
+    // bin_size_bits
+    // max_fp
     if (config.filter_size > 0){
-        // Define hash functions if not provided
-        auto elements = detail::optimal_elements_bin( hashes_count, min_hashes, max_hashes, config.filter_size, config.hash_functions, max_hash_functions );
-
+        // Optimal elements based on filter size (smallest fp)
+        std::tie( elements, hash_functions ) = detail::optimal_elements_size( hashes_count, min_hashes, max_hashes, config.filter_size, config.hash_functions, max_hash_functions );
     }else{
-        // define filter size based on max_fp
-
-        // Define hash functions if not provided
-        uint8_t hash_functions = ( config.hash_functions > 0 ) ? hash_functions : detail::hash_functions_from_fp(config.max_fp);
-        if (hash_functions > max_hash_functions)
-            hash_functions = max_hash_functions;
-
-        // Create technical bins -> optimize split of bins, hash functions and corrrection ratio
-        auto elements = detail::optimal_elements_bin( hashes_count, min_hashes, max_hashes, config.max_fp, hash_functions );
+        // Optimal elements based on max_fp (smallest filter size)
+        std::tie( elements, hash_functions ) = detail::optimal_elements_fp( hashes_count, min_hashes, max_hashes, config.max_fp, config.hash_functions, max_hash_functions);
     }
 
+    std::cout << "elements per bin:" << elements << std::endl;
+    std::cout << "hash_functions:" << unsigned(hash_functions) << std::endl;
     // given a number of elements per bin, create map
-    // target -> 
-
+    uint64_t binno = 0;
+    for ( auto const [t, c] : hashes_count )
+    {
+        uint64_t nbins = std::ceil(c/static_cast<double>(elements));
+        for(uint64_t i=0; i <=nbins; ++i){
+            std::cout << t << '\t' << c << '\t' << binno << std::endl; 
+            binno++;
+        }
+       
+    }
+    
     // build ibf reading .min files
+    // parallelize by target
 
     // write ibf
 
