@@ -778,9 +778,9 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
         {
             std::string hierarchy_label = h.first;
             avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
-                                              ? ( stats.hierarchy_total[hierarchy_label].matches
+                              ? ( stats.hierarchy_total[hierarchy_label].matches
                                   / static_cast< double >( stats.hierarchy_total[hierarchy_label].reads_classified ) )
-                                              : 0;
+                              : 0;
             std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
                       << ( stats.hierarchy_total[hierarchy_label].reads_classified

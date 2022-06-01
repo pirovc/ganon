@@ -22,8 +22,6 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "f,filter-size", "Filter size (MB) [mutually exclusive --max-fp]", cxxopts::value< double >() )
         ( "m,tmp-output-folder", "Folder to write temporary files", cxxopts::value< std::string >() )
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
-        ( "n-refs", "Number of sequences for each batch. Default: 400", cxxopts::value< uint32_t >() )        
-        ( "n-batches", "Number of batches of n-refs to hold in memory. Default: 1000", cxxopts::value< uint32_t >() )
         ( "verbose", "Verbose output mode", cxxopts::value<bool>())
         ( "quiet", "Quiet output mode", cxxopts::value<bool>())
         ( "h,help", "Show help commands" )
@@ -70,10 +68,6 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.tmp_output_folder = args["tmp-output-folder"].as< std::string >();
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
-    if ( args.count( "n-refs" ) )
-        config.n_refs = args["n-refs"].as< uint32_t >();
-    if ( args.count( "n-batches" ) )
-        config.n_batches = args["n-batches"].as< uint32_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "quiet" ) )

@@ -18,13 +18,9 @@ public:
     uint8_t     kmer_size         = 19;
     uint16_t    window_size       = 32;
     uint8_t     hash_functions    = 0;
-    uint16_t    threads           = 2;
-    uint32_t    n_refs            = 400;
-    uint32_t    n_batches         = 1000;
+    uint16_t    threads           = 1;
     bool        verbose           = false;
     bool        quiet             = false;
-
-    uint16_t threads_build = 1;
 
     bool validate()
     {
@@ -58,17 +54,8 @@ public:
             return false;
         }
 
-        // 2 threads default: one read input, one process
-        if ( threads <= 2 )
-            threads_build = 1;
-        else
-            threads_build = threads - 1;
-
-        if ( n_batches < 1 )
-            n_batches = 1;
-
-        if ( n_refs < 1 )
-            n_refs = 1;
+        if ( threads < 1 )
+            threads = 1;
 
         // Skip variables if updating, loads from existing filter file
         if ( filter_size == 0 && max_fp == 0 )
@@ -103,8 +90,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--window-size       " << config.window_size << newl;
     stream << "--hash-functions    " << unsigned( config.hash_functions ) << newl;
     stream << "--threads           " << config.threads << newl;
-    stream << "--n-refs            " << config.n_refs << newl;
-    stream << "--n-batches         " << config.n_batches << newl;
     stream << "--verbose           " << config.verbose << newl;
     stream << "--quiet             " << config.quiet << newl;
     stream << separator << newl;

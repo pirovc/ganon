@@ -360,8 +360,8 @@ public:
      * hibf::hierarchical_interleaved_bloom_filter::membership_agent for each thread.
      */
     template < std::ranges::forward_range value_range_t >
-    [[nodiscard]] std::vector< int64_t > const& bulk_contains( value_range_t&& values,
-                                                               size_t const    threshold ) & noexcept
+        [[nodiscard]] std::vector< int64_t > const& bulk_contains( value_range_t&& values, size_t const threshold )
+        & noexcept
     {
         assert( hibf_ptr != nullptr );
 
@@ -381,8 +381,8 @@ public:
     // `bulk_contains` cannot be called on a temporary, since the object the returned reference points to
     // is immediately destroyed.
     template < std::ranges::range value_range_t >
-    [[nodiscard]] std::vector< int64_t > const& bulk_contains( value_range_t&& values,
-                                                               size_t const    threshold ) && noexcept = delete;
+        [[nodiscard]] std::vector< int64_t > const& bulk_contains( value_range_t&& values, size_t const threshold )
+        && noexcept = delete;
     //!\}
 };
 
@@ -476,8 +476,9 @@ public:
      * hibf::hierarchical_interleaved_bloom_filter::counting_agent_type for each thread.
      */
     template < std::ranges::forward_range value_range_t >
-    [[nodiscard]] seqan3::counting_vector< value_t > const& bulk_count( value_range_t&& values,
-                                                                        size_t const    threshold = 1u ) & noexcept
+        [[nodiscard]] seqan3::counting_vector< value_t > const& bulk_count( value_range_t&& values,
+                                                                            size_t const    threshold = 1u )
+        & noexcept
     {
         assert( hibf_ptr != nullptr );
         assert( threshold > 0u );
@@ -497,8 +498,9 @@ public:
     // `bulk_count` cannot be called on a temporary, since the object the returned reference points to
     // is immediately destroyed.
     template < std::ranges::range value_range_t >
-    [[nodiscard]] seqan3::counting_vector< value_t > const& bulk_count(
-        value_range_t&& values, size_t const threshold = 1u ) && noexcept = delete;
+        [[nodiscard]] seqan3::counting_vector< value_t > const& bulk_count( value_range_t&& values,
+                                                                            size_t const    threshold = 1u )
+        && noexcept = delete;
     //!\}
 };
 #endif // RAPTOR_HIBF_HAS_COUNT
