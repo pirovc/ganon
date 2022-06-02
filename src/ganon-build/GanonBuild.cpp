@@ -32,12 +32,13 @@ namespace GanonBuild
 namespace detail
 {
 
-typedef robin_hood::unordered_map< std::string, std::string >                           TTarget;
-typedef robin_hood::unordered_map< std::string, TTarget >                               TInputFilesMap;
-typedef robin_hood::unordered_map< std::string, robin_hood::unordered_set< uint64_t > > THashes;
-typedef robin_hood::unordered_map< std::string, uint64_t >                              THashesCount;
-typedef robin_hood::unordered_map< uint64_t, std::tuple<std::string, uint64_t, uint64_t> > TBinMap;
+typedef robin_hood::unordered_map< std::string, std::string >                                TTarget;
+typedef robin_hood::unordered_map< std::string, TTarget >                                    TInputFilesMap;
+typedef robin_hood::unordered_map< std::string, robin_hood::unordered_set< uint64_t > >      THashes;
+typedef robin_hood::unordered_map< std::string, uint64_t >                                   THashesCount;
+typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMap;
 
+typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
 
 struct IBFConfig
 {
@@ -108,10 +109,12 @@ THashes count_hashes( const std::string& file, TTarget& target, const GanonBuild
                                                          seqan3::window_size{ config.window_size },
                                                          seqan3::seed{ raptor::adjust_seed( config.kmer_size ) } );
 
-    THashes                                                                                                     hashes;
+    THashes hashes;
+
     seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
         file
     };
+
     for ( auto& [header, seq] : fin )
     {
         const auto mh = seq | minimiser_view | std::views::common;
@@ -142,11 +145,28 @@ void store_hashes( THashes const& hashes, const GanonBuild::Config& config )
         std::filesystem::path outf{ config.tmp_output_folder };
         outf += target + ".min";
         std::ofstream outfile{ outf, std::ios::binary };
-        for ( auto&& h : hashes )
+        for ( auto&& h : hash )
         {
             outfile.write( reinterpret_cast< const char* >( &h ), sizeof( h ) );
         }
     }
+}
+
+std::vector< uint64_t > load_hashes( std::string file )
+{
+    uint64_t                hash;
+    std::vector< uint64_t > hashes;
+    std::ifstream           infile{ file, std::ios::binary };
+    while ( infile.read( reinterpret_cast< char* >( &hash ), sizeof( hash ) ) )
+        hashes.push_back( hash );
+    return hashes;
+}
+
+void save_filter( TIBF const& ibf, std::string output_file )
+{
+    std::ofstream               os( output_file, std::ios::binary );
+    cereal::BinaryOutputArchive archive( os );
+    archive( ibf );
 }
 
 int64_t bf_size( double max_fp, uint8_t hash_functions, uint64_t n_hashes )
@@ -277,15 +297,15 @@ void optimal_hashes_fp( IBFConfig&          ibf_config,
     }
 }
 
-TBinMap create_binmap(IBFConfig const&          ibf_config,
-                        THashesCount const& hashes_count){
+TBinMap create_binmap( IBFConfig const& ibf_config, THashesCount const& hashes_count )
+{
 
     uint64_t binno = 0;
-    TBinMap binmap;
+    TBinMap  binmap;
     for ( auto const& [target, count] : hashes_count )
     {
         uint64_t n_bins_target = std::ceil( count / static_cast< double >( ibf_config.max_hashes_bin ) );
-        uint64_t n_hashes_bin = std::ceil( count / static_cast< double >( n_bins_target ) );
+        uint64_t n_hashes_bin  = std::ceil( count / static_cast< double >( n_bins_target ) );
 
         if ( n_hashes_bin > ibf_config.max_hashes_bin )
             n_hashes_bin = ibf_config.max_hashes_bin;
@@ -296,11 +316,50 @@ TBinMap create_binmap(IBFConfig const&          ibf_config,
             uint64_t hashes_idx_en = hashes_idx_st + n_hashes_bin - 1;
             if ( hashes_idx_st >= count )
                 hashes_idx_en = count - 1;
-            binmap[binno] = std::make_tuple(target, hashes_idx_st, hashes_idx_en); 
+            binmap[binno] = std::make_tuple( target, hashes_idx_st, hashes_idx_en );
             binno++;
         }
     }
     return binmap;
+}
+
+void build( TIBF&                       ibf,
+            std::atomic< std::size_t >& bin_batches,
+            const uint64_t              max_batch,
+            const uint64_t              batch_size,
+            const TBinMap&              binmap,
+            std::string                 tmp_output_folder )
+{
+    while ( true )
+    {
+        // Add to atomic bin_batches and store
+        uint64_t batch = bin_batches++;
+        if ( batch >= max_batch )
+            break;
+
+        // Set and check boundaries of batches
+        uint64_t batch_start = batch * batch_size;
+        uint64_t batch_end   = batch_start + batch_size - 1;
+        if ( batch_end > binmap.size() - 1 )
+            batch_end = binmap.size() - 1;
+
+        robin_hood::unordered_map< std::string, std::vector< uint64_t > > target_hashes;
+        // Insert hashes by index to the ibf
+        for ( uint64_t binno = batch_start; binno <= batch_end; binno++ )
+        {
+            auto [target, hashes_idx_st, hashes_idx_en] = binmap.at( binno );
+            // read files just once and store
+            if ( !target_hashes.count( target ) )
+            {
+                auto file             = tmp_output_folder + target + ".min";
+                target_hashes[target] = load_hashes( file );
+            }
+            for ( uint64_t pos = hashes_idx_st; pos <= hashes_idx_en; pos++ )
+            {
+                ibf.emplace( target_hashes[target][pos], seqan3::bin_index{ binno } );
+            }
+        }
+    }
 }
 
 } // namespace detail
@@ -382,14 +441,37 @@ bool run( Config config )
     std::cout << "window_size " << ibf_config.window_size << std::endl;
     std::cout << "bin_size_bits " << ibf_config.bin_size_bits << std::endl;
 
+    // Split hashes into optimal size creating technical bins {binno: (target, idx_hashes_start, idx_hashes_end)}
+    const detail::TBinMap binmap = create_binmap( ibf_config, hashes_count );
 
-    // Create a map {binno: (target, idx_hashes_start, idx_hashes_end)}
-    detail::TBinMap binmap = create_binmap(ibf_config, hashes_count);
+    // TODO assert binmap.size() == ibf_config.n_bins
+
+    // Create filter
+    auto ibf = detail::TIBF{ seqan3::bin_count{ ibf_config.n_bins },
+                             seqan3::bin_size{ ibf_config.bin_size_bits },
+                             seqan3::hash_function_count{ ibf_config.hash_functions } };
 
     // build ibf reading .min files
     // parallelize for every 64 entries in binmap, insert to ibf
-    
+    uint64_t batch_size = 64;
+    uint64_t max_batch  = std::ceil( binmap.size() / static_cast< double >( batch_size ) );
+
+    // Keep track of batches processed in the threads
+    std::atomic< std::size_t >         bin_batches = 0;
+    std::vector< std::future< void > > tasks;
+    for ( uint16_t taskn = 0; taskn < config.threads; ++taskn )
+    {
+        tasks.emplace_back( std::async( std::launch::async, [=, &ibf, &bin_batches, &binmap]() {
+            detail::build( ibf, bin_batches, max_batch, batch_size, binmap, config.tmp_output_folder );
+        } ) );
+    }
+    for ( auto&& task : tasks )
+    {
+        task.get();
+    }
+
     // write ibf and other infos
+    detail::save_filter( ibf, config.output_file );
 
     // Stop timer for total build time
     timeGanon.stop();
