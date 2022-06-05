@@ -36,13 +36,13 @@ public:
             if ( !std::filesystem::exists( input_file ) )
             {
                 if ( !quiet )
-                    std::cerr << "file not found: " << input_file << std::endl;
+                    std::cerr << "--input-file not found: " << input_file << std::endl;
                 return false;
             }
             else if ( std::filesystem::file_size( input_file ) == 0 )
             {
                 if ( !quiet )
-                    std::cerr << "file is empty: " << input_file << std::endl;
+                    std::cerr << "--input-file is empty: " << input_file << std::endl;
                 return false;
             }
         }
@@ -51,6 +51,13 @@ public:
         {
             if ( !quiet )
                 std::cerr << "--output-file is mandatory" << std::endl;
+            return false;
+        }
+
+        if ( tmp_output_folder != "" && !std::filesystem::exists( tmp_output_folder ) )
+        {
+            if ( !quiet )
+                std::cerr << "--tmp-output-folder not found" << std::endl;
             return false;
         }
 
