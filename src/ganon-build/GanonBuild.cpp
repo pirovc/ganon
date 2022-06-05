@@ -64,12 +64,41 @@ struct InputFileMap
     TTarget     targets;
 };
 
+
+struct Total
+{
+    uint64_t files             = 0;
+    uint64_t invalid_files     = 0;
+    uint64_t sequences         = 0;
+    uint64_t invalid_sequences = 0;
+    uint64_t length_bp         = 0;
+};
+
+struct Stats
+{
+    Total total;
+    void  add_totals( std::vector< Total > const& totals )
+    {
+        // add several totals (from threads) to the stats
+        for ( auto const& t : totals )
+        {
+            total.files += t.files;
+            total.invalid_files += t.invalid_files;
+            total.sequences += t.sequences;
+            total.invalid_sequences += t.invalid_sequences;
+            total.length_bp += t.length_bp;
+        }
+    }
+};
+
 inline std::string get_seqid( std::string header )
 {
     return header.substr( 0, header.find( ' ' ) );
 }
 
-robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::string& input_file, bool quiet )
+robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::string& input_file,
+                                                                    bool               quiet,
+                                                                    Stats&             stats )
 {
     robin_hood::unordered_map< std::string, TTarget > input_map;
     std::string                                       line;
@@ -87,6 +116,7 @@ robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::s
         {
             if ( !quiet )
                 std::cerr << "input file not found/empty: " << file << std::endl;
+            stats.total.invalid_files++;
             continue;
         }
 
@@ -109,6 +139,7 @@ robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::s
             // sequence as target
             input_map[file][fields[2]] = fields[1];
         }
+        stats.total.files++;
     }
 
     return input_map;
@@ -136,7 +167,10 @@ void delete_hashes( const std::string target, const std::string tmp_output_folde
     std::filesystem::remove( outf );
 }
 
-void count_hashes( SafeQueue< InputFileMap >& ifm_queue, THashesCount& hashes_count, const GanonBuild::Config& config )
+void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
+                   THashesCount&              hashes_count,
+                   const GanonBuild::Config&  config,
+                   Total&                     total )
 {
 
     auto minimiser_view = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
@@ -176,11 +210,12 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue, THashesCount& hashes_co
                 }
                 else
                 {
-                    // file header not found in definitions
-                    // TODO report stats
+                    total.invalid_sequences++;
                     continue;
                 }
             }
+            total.sequences++;
+            total.length_bp += seq.size();
             const auto mh = seq | minimiser_view | std::views::common;
             hashes[target].insert( mh.begin(), mh.end() );
             hashes_count[target] = hashes[target].size();
@@ -409,6 +444,20 @@ void build( TIBF&                       ibf,
     }
 }
 
+void print_stats( Stats& stats, const StopClock& timeGanon )
+{
+    double elapsed = timeGanon.elapsed();
+    std::cerr << "ganon-build processed " << stats.total.sequences << " sequences / " << stats.total.files << " files ("
+              << stats.total.length_bp / 1000000.0 << " Mbp) in " << elapsed << " seconds ("
+              << ( stats.total.sequences / 1000.0 ) / ( elapsed / 60.0 ) << " Kseq/m, "
+              << ( stats.total.length_bp / 1000000.0 ) / ( elapsed / 60.0 ) << " Mbp/m)" << std::endl;
+
+    if ( stats.total.invalid_files > 0 )
+        std::cerr << " - " << stats.total.invalid_files << " invalid files skipped" << std::endl;
+    if ( stats.total.invalid_sequences > 0 )
+        std::cerr << " - " << stats.total.invalid_sequences << " invalid sequences skipped" << std::endl;
+}
+
 } // namespace detail
 
 bool run( Config config )
@@ -426,6 +475,10 @@ bool run( Config config )
     StopClock timeGanon;
     timeGanon.start();
 
+    // Init. Stats and Totals (one for each thread)
+    detail::Stats                stats;
+    std::vector< detail::Total > totals( config.threads );
+
     // Limit on hash_functions from seqan3
     uint8_t max_hash_functions = 5;
 
@@ -439,7 +492,7 @@ bool run( Config config )
 
     // Parse valid input file into a queue of InputFileMap
     SafeQueue< detail::InputFileMap > ifm_queue;
-    for ( auto const& [file, targets] : detail::parse_input_file( config.input_file, config.quiet ) )
+    for ( auto const& [file, targets] : detail::parse_input_file( config.input_file, config.quiet, stats ) )
     {
         // Initialize hashes_count for each target to be able to update it threads mode
         for ( auto const& target : targets )
@@ -455,6 +508,10 @@ bool run( Config config )
         std::cerr << "No valid input files" << std::endl;
         return false;
     }
+    else
+    {
+        stats.total.files = ifm_queue.size();
+    }
 
     // Create temporary output folder if not existing
     if ( config.tmp_output_folder != "" && !std::filesystem::exists( config.tmp_output_folder ) )
@@ -467,7 +524,8 @@ bool run( Config config )
                                               detail::count_hashes,
                                               std::ref( ifm_queue ),
                                               std::ref( hashes_count ),
-                                              std::ref( config ) ) );
+                                              std::ref( config ),
+                                              std::ref( totals[taskn] ) ) );
     }
     for ( auto&& task : tasks_count )
     {
@@ -477,7 +535,6 @@ bool run( Config config )
     // TODO parallelize by file
     uint64_t min_hashes = 0;
     uint64_t max_hashes = 0;
-
     for ( auto const& [target, cnt] : hashes_count )
     {
         std::cout << target << '\t' << cnt << std::endl;
@@ -486,7 +543,6 @@ bool run( Config config )
         if ( cnt < min_hashes || min_hashes == 0 )
             min_hashes = cnt;
     }
-
 
     // Define optimal parameters and fill ibf_config
     if ( config.filter_size > 0 )
@@ -561,8 +617,14 @@ bool run( Config config )
     // write ibf and other infos
     detail::save_filter( config, ibf, ibf_config, hashes_count, bin_map );
 
+    // sum totals from threads
+    stats.add_totals( totals );
+
     // Stop timer for total build time
     timeGanon.stop();
+
+    if ( !config.quiet )
+        detail::print_stats( stats, timeGanon );
 
     return true;
 }
