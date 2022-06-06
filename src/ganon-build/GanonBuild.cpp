@@ -56,6 +56,8 @@ struct IBFConfig
     uint16_t window_size;
     uint64_t bin_size_bits;
     double   max_fp;
+    double   true_max_fp;
+    double   true_avg_fp;
 };
 
 struct InputFileMap
@@ -281,9 +283,7 @@ uint64_t number_of_bins( THashesCount const& hashes_count, uint64_t n_hashes )
 
 double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions )
 {
-    return std::log( 1
-                     - std::exp( std::log( 1.0 - std::pow( 1 - max_fp, static_cast< double >( max_split_bins ) ) )
-                                 / hash_functions ) )
+    return std::log( 1 - std::exp( std::log( 1.0 - std::pow( 1 - max_fp, max_split_bins ) ) / hash_functions ) )
            / std::log( 1.0 - std::exp( std::log( max_fp ) / hash_functions ) );
 }
 
@@ -298,19 +298,60 @@ inline double false_positive( uint64_t bin_size_bits, uint8_t hash_functions, ui
                      hash_functions );
 }
 
-void optimal_hashes_size( IBFConfig&          ibf_config,
+std::tuple< double, double > true_false_positive( const TBinMapHash& bin_map_hash,
+                                                  uint64_t           bin_size_bits,
+                                                  uint8_t            hash_functions )
+{
+
+    // Calculate product of false positives for each target (instead of naive (1-fp)**max_split)
+    std::map< std::string, double > target_prod_fp;
+    for ( auto const& [binno, vals] : bin_map_hash )
+    {
+        const std::string target   = std::get< 0 >( vals );
+        const uint64_t    n_hashes = std::get< 2 >( vals ) - std::get< 1 >( vals ) + 1;
+
+        if ( target_prod_fp.count( target ) == 0 )
+        {
+            target_prod_fp[target] = 1.0;
+        }
+        target_prod_fp[target] =
+            target_prod_fp[target] * ( 1.0 - false_positive( bin_size_bits, hash_functions, n_hashes ) );
+    }
+
+    double highest_fp = 0;
+    double average_fp = 0;
+    for ( auto const& [target, prod_fp] : target_prod_fp )
+    {
+        const double target_fp = 1.0 - prod_fp;
+        if ( target_fp > highest_fp )
+        {
+            highest_fp = target_fp;
+        }
+        average_fp += target_fp;
+    }
+    average_fp = average_fp / static_cast< double >( target_prod_fp.size() );
+
+    return std::make_tuple( highest_fp, average_fp );
+}
+
+void optimal_hashes_size( uint64_t            filter_size,
+                          IBFConfig&          ibf_config,
                           THashesCount const& hashes_count,
-                          uint64_t            min_hashes,
-                          uint64_t            max_hashes,
-                          uint64_t            filter_size,
                           uint8_t             hash_functions,
                           uint8_t             max_hash_functions )
 {
 
 
+    uint64_t max_hashes = 0;
+    for ( auto const& [target, cnt] : hashes_count )
+    {
+        if ( cnt > max_hashes )
+            max_hashes = cnt;
+    }
+
     double min_fp = 1;
     // total + 1 zero index
-    for ( size_t n = max_hashes + 1; n > min_hashes; n -= 100 )
+    for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
         uint64_t n_hashes      = n - 1;
         uint64_t n_bins        = number_of_bins( hashes_count, n_hashes );
@@ -337,15 +378,20 @@ void optimal_hashes_size( IBFConfig&          ibf_config,
     }
 }
 
-void optimal_hashes_fp( IBFConfig&          ibf_config,
+void optimal_hashes_fp( double              max_fp,
+                        IBFConfig&          ibf_config,
                         THashesCount const& hashes_count,
-                        uint64_t            min_hashes,
-                        uint64_t            max_hashes,
-                        double              max_fp,
                         uint8_t             hash_functions,
                         uint8_t             max_hash_functions )
 {
     uint64_t min_filter_size = 0;
+
+    uint64_t max_hashes = 0;
+    for ( auto const& [target, cnt] : hashes_count )
+    {
+        if ( cnt > max_hashes )
+            max_hashes = cnt;
+    }
 
     // Define optimal hash functions based on max_fp if not provided
     uint8_t optimal_hash_functions = ( hash_functions > 0 ) ? hash_functions : hash_functions_from_fp( max_fp );
@@ -356,7 +402,7 @@ void optimal_hashes_fp( IBFConfig&          ibf_config,
     ibf_config.max_fp         = max_fp;
 
     // total + 1 zero index
-    for ( size_t n = max_hashes + 1; n > min_hashes; n -= 100 )
+    for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
 
         uint64_t n_hashes       = n - 1;
@@ -373,7 +419,7 @@ void optimal_hashes_fp( IBFConfig&          ibf_config,
         {
             min_filter_size           = filter_size_bits;
             ibf_config.max_hashes_bin = n_hashes;
-            ibf_config.bin_size_bits  = bin_size_bits;
+            ibf_config.bin_size_bits  = bin_size_bits * crate;
             ibf_config.n_bins         = n_bins;
         }
     }
@@ -444,18 +490,23 @@ void build( TIBF&                       ibf,
     }
 }
 
-void print_stats( Stats& stats, const StopClock& timeGanon )
+void print_stats( Stats& stats, const IBFConfig& ibf_config, const StopClock& timeGanon )
 {
     double elapsed = timeGanon.elapsed();
     std::cerr << "ganon-build processed " << stats.total.sequences << " sequences / " << stats.total.files << " files ("
               << stats.total.length_bp / 1000000.0 << " Mbp) in " << elapsed << " seconds ("
-              << ( stats.total.sequences / 1000.0 ) / ( elapsed / 60.0 ) << " Kseq/m, "
               << ( stats.total.length_bp / 1000000.0 ) / ( elapsed / 60.0 ) << " Mbp/m)" << std::endl;
 
     if ( stats.total.invalid_files > 0 )
         std::cerr << " - " << stats.total.invalid_files << " invalid files skipped" << std::endl;
     if ( stats.total.invalid_sequences > 0 )
         std::cerr << " - " << stats.total.invalid_sequences << " invalid sequences skipped" << std::endl;
+
+    std::cerr << std::fixed << std::setprecision( 4 ) << " - max. false positive: " << ibf_config.true_max_fp;
+    std::cerr << std::fixed << std::setprecision( 4 ) << " (avg.: " << ibf_config.true_avg_fp << ")" << std::endl;
+    std::cerr << std::fixed << std::setprecision( 2 ) << " - filter size: "
+              << ( optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits ) / static_cast< double >( 8388608u )
+              << "MB" << std::endl;
 }
 
 } // namespace detail
@@ -532,48 +583,37 @@ bool run( Config config )
         task.get();
     }
 
-    // TODO parallelize by file
-    uint64_t min_hashes = 0;
-    uint64_t max_hashes = 0;
-    for ( auto const& [target, cnt] : hashes_count )
-    {
-        std::cout << target << '\t' << cnt << std::endl;
-        if ( cnt > max_hashes )
-            max_hashes = cnt;
-        if ( cnt < min_hashes || min_hashes == 0 )
-            min_hashes = cnt;
-    }
-
     // Define optimal parameters and fill ibf_config
     if ( config.filter_size > 0 )
     {
         // Optimal max hashes per bin based on filter size (smallest fp)
-        detail::optimal_hashes_size( ibf_config,
-                                     hashes_count,
-                                     min_hashes,
-                                     max_hashes,
-                                     config.filter_size,
-                                     config.hash_functions,
-                                     max_hash_functions );
+        detail::optimal_hashes_size(
+            config.filter_size, ibf_config, hashes_count, config.hash_functions, max_hash_functions );
     }
     else
     {
         // Optimal max hashes per bin based on max_fp (smallest filter size)
-        detail::optimal_hashes_fp(
-            ibf_config, hashes_count, min_hashes, max_hashes, config.max_fp, config.hash_functions, max_hash_functions );
+        detail::optimal_hashes_fp( config.max_fp, ibf_config, hashes_count, config.hash_functions, max_hash_functions );
     }
-
-    std::cout << "ibf_config:" << std::endl;
-    std::cout << "n_bins " << ibf_config.n_bins << std::endl;
-    std::cout << "max_hashes_bin " << ibf_config.max_hashes_bin << std::endl;
-    std::cout << "hash_functions " << unsigned( ibf_config.hash_functions ) << std::endl;
-    std::cout << "kmer_size " << unsigned( ibf_config.kmer_size ) << std::endl;
-    std::cout << "window_size " << ibf_config.window_size << std::endl;
-    std::cout << "bin_size_bits " << ibf_config.bin_size_bits << std::endl;
 
     // Split hashes into optimal size creating technical bins
     // {binno: (target, idx_hashes_start, idx_hashes_end)}
     const detail::TBinMapHash bin_map_hash = create_bin_map_hash( ibf_config, hashes_count );
+
+    // Calculate true fp for the choosen parameters
+    std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) =
+        detail::true_false_positive( bin_map_hash, ibf_config.bin_size_bits, ibf_config.hash_functions );
+
+    std::cerr << "ibf_config:" << std::endl;
+    std::cerr << "n_bins " << ibf_config.n_bins << std::endl;
+    std::cerr << "max_hashes_bin " << ibf_config.max_hashes_bin << std::endl;
+    std::cerr << "hash_functions " << unsigned( ibf_config.hash_functions ) << std::endl;
+    std::cerr << "kmer_size " << unsigned( ibf_config.kmer_size ) << std::endl;
+    std::cerr << "window_size " << ibf_config.window_size << std::endl;
+    std::cerr << "bin_size_bits " << ibf_config.bin_size_bits << std::endl;
+    std::cerr << "max_fp " << ibf_config.max_fp << std::endl;
+    std::cerr << "true_max_fp " << ibf_config.true_max_fp << std::endl;
+    std::cerr << "true_avg_fp " << ibf_config.true_avg_fp << std::endl;
 
     // TODO assert bin_map_hash.size() == ibf_config.n_bins
 
@@ -624,7 +664,7 @@ bool run( Config config )
     timeGanon.stop();
 
     if ( !config.quiet )
-        detail::print_stats( stats, timeGanon );
+        detail::print_stats( stats, ibf_config, timeGanon );
 
     return true;
 }
