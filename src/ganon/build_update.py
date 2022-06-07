@@ -263,7 +263,9 @@ def build_custom(cfg, which_call: str="build_custom"):
                                        "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
                                        "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
                                        "--tmp-output-folder '" + build_output_folder + "'",
-                                       "--threads " + str(cfg.threads)])
+                                       "--threads " + str(cfg.threads),
+                                       "--verbose" if cfg.verbose else "",
+                                       "--quiet" if not cfg.quiet else ""])
         run(run_ganon_build_cmd, quiet=cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         save_state(which_call + "_run", files_output_folder)
