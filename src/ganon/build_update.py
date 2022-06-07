@@ -166,6 +166,7 @@ def update(cfg):
 def build_custom(cfg, which_call: str="build_custom"):
     files_output_folder = set_output_folder(cfg.db_prefix)      # DB_PREFIX_files/
     build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
+    target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
 
     # calling build_custom internally, already checked folders
     if which_call == "build_custom" and cfg.restart:
@@ -177,7 +178,6 @@ def build_custom(cfg, which_call: str="build_custom"):
     else:
         tax = None
         input_files = []
-        target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
 
         # Create tmp build folder if not yet existing
         shutil.rmtree(build_output_folder, ignore_errors=True)
@@ -248,14 +248,24 @@ def build_custom(cfg, which_call: str="build_custom"):
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
         save_state(which_call + "_parse", files_output_folder)
 
-    # Skip if already finished target_info from previous run
+    # Skip if already finished run
     if load_state(which_call + "_run", files_output_folder):
         print_log("Build finished - skipping", cfg.quiet)
     else:
-        # run ganon-build
-        print_log("RUN BUILD", cfg.quiet)
-        with open(cfg.db_prefix + ".ibf", "w") as tmpfile:
-            print("dummy temp IBF for tests", file=tmpfile)
+        tx = time.time()
+        print_log("Building index", cfg.quiet)
+        run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
+                                       "--input-file '" + target_info_file + "'",
+                                       "--output-file '" + cfg.db_prefix + ".ibf" + "'",
+                                       "--kmer-size " + str(cfg.kmer_size),
+                                       "--window-size " + str(cfg.window_size),
+                                       "--hash-functions " + str(cfg.hash_functions),
+                                       "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
+                                       "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
+                                       "--tmp-output-folder '" + build_output_folder + "'",
+                                       "--threads " + str(cfg.threads)])
+        run(run_ganon_build_cmd, quiet=cfg.quiet)
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         save_state(which_call + "_run", files_output_folder)
 
     # Set output database files
@@ -421,6 +431,7 @@ def write_info_file(info, db_prefix):
                                                        sep="\t",
                                                        header=False,
                                                        index=False)
+
 
 def validate_specialization(info, quiet):
     """

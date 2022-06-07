@@ -284,11 +284,12 @@ class Config:
             self.verbose = False
 
         if self.which == "build":
-            for e in ["ibf"] if self.taxonomy == "skip" else ["ibf", "tax"]:
-                if check_file(self.db_prefix + "." + e):
-                    print_log("Output database found: " + self.db_prefix + "." + e)
-                    print_log("Use a different --db-prefix or activate --restart to re-build it")
-                    return False
+            pass
+            # for e in ["ibf"] if self.taxonomy == "skip" else ["ibf", "tax"]:
+            #     if check_file(self.db_prefix + "." + e):
+            #         print_log("Output database found: " + self.db_prefix + "." + e)
+            #         print_log("Use a different --db-prefix or activate --restart to re-build it")
+            #         return False
 
         elif self.which == "build-custom":
 
@@ -340,20 +341,25 @@ class Config:
                 print_log("Please provide file[s] with --single-reads or --paired-reads")
                 return False
 
-            len_single_reads = 0
+            single_reads = []
             if self.single_reads:
-                self.single_reads = check_files(self.single_reads)
-                len_single_reads = len(self.single_reads)
-            len_paired_reads = 0
-            if self.paired_reads:
-                self.paired_reads = check_files(self.paired_reads)
-                len_paired_reads = len(self.paired_reads)
+                for f in self.single_reads:
+                    if check_file(f):
+                        single_reads.append(f)
+            self.single_reads = single_reads
 
-            if len_paired_reads % 2 != 0:
-                print_log("Invalid paired reads")
+            paired_reads = []
+            if self.paired_reads:
+                for f in self.paired_reads:
+                    if check_file(f):
+                        paired_reads.append(f)
+            self.paired_reads = paired_reads
+
+            if len(self.paired_reads) % 2 != 0:
+                print_log("Invalid number of paired reads")
                 return False
 
-            if len_single_reads + len_paired_reads == 0:
+            if len(self.single_reads) + len(self.paired_reads) == 0:
                 print_log("No valid input files to classify")
                 return False
 

@@ -1,4 +1,4 @@
-from ganon.util import *
+from ganon.util import run, print_log
 from ganon.report import report
 from ganon.config import Config
 
@@ -6,26 +6,29 @@ from ganon.config import Config
 def classify(cfg):
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
 
-    kmer_size = set()
-    window_size = set()
-    for i, db_prefix in enumerate(cfg.db_prefix):
-        gnn = Gnn(file=db_prefix+".gnn")
-        if cfg.hierarchy_labels:
-            # one per hierarchical label
-            kmer_size.add((cfg.hierarchy_labels[i], gnn.kmer_size))
-            window_size.add((cfg.hierarchy_labels[i], gnn.window_size))
-        else:
-            kmer_size.add(gnn.kmer_size)
-            window_size.add(gnn.window_size)
+    kmer_size = set([19])
+    window_size = set([32])
 
-    if cfg.hierarchy_labels:
-        # Sort by hierarchical label and get value
-        kmer_size = [value for _, value in sorted(kmer_size, key=lambda tup: tup[0])]
-        window_size = [value for _, value in sorted(window_size, key=lambda tup: tup[0])]
+    # kmer_size = set()
+    # window_size = set()
+    # for i, db_prefix in enumerate(cfg.db_prefix):
+    #     gnn = Gnn(file=db_prefix+".gnn")
+    #     if cfg.hierarchy_labels:
+    #         # one per hierarchical label
+    #         kmer_size.add((cfg.hierarchy_labels[i], gnn.kmer_size))
+    #         window_size.add((cfg.hierarchy_labels[i], gnn.window_size))
+    #     else:
+    #         kmer_size.add(gnn.kmer_size)
+    #         window_size.add(gnn.window_size)
 
-    if len(kmer_size) != len(window_size):
-        print_log("Incompatible databases", cfg.quiet)
-        return False
+    # if cfg.hierarchy_labels:
+    #     # Sort by hierarchical label and get value
+    #     kmer_size = [value for _, value in sorted(kmer_size, key=lambda tup: tup[0])]
+    #     window_size = [value for _, value in sorted(window_size, key=lambda tup: tup[0])]
+
+    # if len(kmer_size) != len(window_size):
+    #     print_log("Incompatible databases", cfg.quiet)
+    #     return False
 
     run_ganon_classify = " ".join([cfg.path_exec['classify'],
                                    "--single-reads " + ",".join(cfg.single_reads) if cfg.single_reads else "",
@@ -52,15 +55,13 @@ def classify(cfg):
                                    "--verbose" if cfg.verbose else "",
                                    "--hibf" if cfg.hibf else "",
                                    "--quiet" if cfg.quiet else ""])
-    #print(run_ganon_classify)
-    stdout, stderr = run(run_ganon_classify)
+    stdout = run(run_ganon_classify, quiet=cfg.quiet)
     if not cfg.output_prefix:
         print(stdout)
-    print_log(stderr, cfg.quiet)
 
     if cfg.output_prefix:
         report_params = {"db_prefix": cfg.db_prefix,
-                         "rep_file": cfg.output_prefix+".rep",
+                         "input": cfg.output_prefix+".rep",
                          "output_prefix": cfg.output_prefix,
                          "ranks": cfg.ranks,
                          "output_format": "tsv",

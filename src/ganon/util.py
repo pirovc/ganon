@@ -1,7 +1,6 @@
 import sys
 import subprocess
 import shlex
-import shutil
 import os
 import urllib.request
 from pathlib import Path
