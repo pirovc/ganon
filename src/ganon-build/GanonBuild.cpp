@@ -60,6 +60,25 @@ struct IBFConfig
     double   true_avg_fp;
 };
 
+inline std::ostream& operator<<( std::ostream& stream, const IBFConfig& ibf_config )
+{
+    constexpr auto newl{ "\n" };
+    constexpr auto separator{ "----------------------------------------------------------------------" };
+
+    stream << "ibf_config:" << newl;
+    stream << "n_bins         " << ibf_config.n_bins << newl;
+    stream << "max_hashes_bin " << ibf_config.max_hashes_bin << newl;
+    stream << "hash_functions " << unsigned( ibf_config.hash_functions ) << newl;
+    stream << "kmer_size      " << unsigned( ibf_config.kmer_size ) << newl;
+    stream << "window_size    " << ibf_config.window_size << newl;
+    stream << "bin_size_bits  " << ibf_config.bin_size_bits << newl;
+    stream << "max_fp         " << ibf_config.max_fp << newl;
+    stream << "true_max_fp    " << ibf_config.true_max_fp << newl;
+    stream << "true_avg_fp    " << ibf_config.true_avg_fp << newl;
+    stream << separator << newl;
+    return stream;
+}
+
 struct InputFileMap
 {
     std::string file;
@@ -237,11 +256,11 @@ std::vector< uint64_t > load_hashes( std::string file )
     return hashes;
 }
 
-void save_filter( GanonBuild::Config const& config,
-                  TIBF const&               ibf,
-                  IBFConfig const&          ibf_config,
-                  THashesCount const&       hashes_count,
-                  TBinMap const&            bin_map )
+void save_filter( const GanonBuild::Config& config,
+                  const TIBF&               ibf,
+                  const IBFConfig&          ibf_config,
+                  const THashesCount&       hashes_count,
+                  const TBinMap&            bin_map )
 {
     std::ofstream               os( config.output_file, std::ios::binary );
     cereal::BinaryOutputArchive archive( os );
@@ -334,11 +353,11 @@ std::tuple< double, double > true_false_positive( const TBinMapHash& bin_map_has
     return std::make_tuple( highest_fp, average_fp );
 }
 
-void optimal_hashes_size( uint64_t            filter_size,
+void optimal_hashes_size( uint64_t const      filter_size,
                           IBFConfig&          ibf_config,
                           THashesCount const& hashes_count,
-                          uint8_t             hash_functions,
-                          uint8_t             max_hash_functions )
+                          uint8_t const       hash_functions,
+                          uint8_t const       max_hash_functions )
 {
 
 
@@ -353,36 +372,38 @@ void optimal_hashes_size( uint64_t            filter_size,
     // total + 1 zero index
     for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
-        uint64_t n_hashes      = n - 1;
-        uint64_t n_bins        = number_of_bins( hashes_count, n_hashes );
-        int64_t  bin_size_bits = ( filter_size / static_cast< double >( optimal_bins( n_bins ) ) ) * 8388608u;
-        uint8_t  hf            = hash_functions;
-        if ( hf == 0 )
-            hf = hash_functions_from_ratio( bin_size_bits, n_hashes );
-        if ( hf > max_hash_functions || hf == 0 )
-            hf = max_hash_functions;
+        uint64_t n_hashes = n - 1;
+        uint64_t n_bins   = number_of_bins( hashes_count, n_hashes );
 
-        double   fp             = false_positive( bin_size_bits, hf, n_hashes );
+        int64_t bin_size_bits          = ( filter_size / static_cast< double >( optimal_bins( n_bins ) ) ) * 8388608u;
+        uint8_t optimal_hash_functions = hash_functions;
+        if ( optimal_hash_functions == 0 )
+            optimal_hash_functions = hash_functions_from_ratio( bin_size_bits, n_hashes );
+        if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
+            optimal_hash_functions = max_hash_functions;
+
+        double   fp             = false_positive( bin_size_bits, optimal_hash_functions, n_hashes );
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
-        double   real_fp        = 1 - std::pow( 1 - fp, static_cast< double >( max_split_bins ) );
+        double   real_fp        = 1 - std::pow( 1.0 - fp, max_split_bins );
 
         if ( real_fp < min_fp )
         {
+
             min_fp                    = real_fp;
             ibf_config.max_hashes_bin = n_hashes;
             ibf_config.bin_size_bits  = bin_size_bits;
-            ibf_config.hash_functions = hf;
+            ibf_config.hash_functions = optimal_hash_functions;
             ibf_config.max_fp         = real_fp;
             ibf_config.n_bins         = n_bins;
         }
     }
 }
 
-void optimal_hashes_fp( double              max_fp,
+void optimal_hashes_fp( double const        max_fp,
                         IBFConfig&          ibf_config,
                         THashesCount const& hashes_count,
-                        uint8_t             hash_functions,
-                        uint8_t             max_hash_functions )
+                        uint8_t const       hash_functions,
+                        uint8_t const       max_hash_functions )
 {
     uint64_t min_filter_size = 0;
 
@@ -531,7 +552,7 @@ bool run( Config config )
     std::vector< detail::Total > totals( config.threads );
 
     // Limit on hash_functions from seqan3
-    uint8_t max_hash_functions = 5;
+    const uint8_t max_hash_functions = 5;
 
     // create IBF configuration and set-up fixedparameters
     detail::IBFConfig ibf_config;
@@ -601,19 +622,14 @@ bool run( Config config )
     const detail::TBinMapHash bin_map_hash = create_bin_map_hash( ibf_config, hashes_count );
 
     // Calculate true fp for the choosen parameters
+    // when calculating optimal parameters, assumes full bins for the sake of speed
+    // in reality bins are rarely completely fully loaded
     std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) =
         detail::true_false_positive( bin_map_hash, ibf_config.bin_size_bits, ibf_config.hash_functions );
 
-    std::cerr << "ibf_config:" << std::endl;
-    std::cerr << "n_bins " << ibf_config.n_bins << std::endl;
-    std::cerr << "max_hashes_bin " << ibf_config.max_hashes_bin << std::endl;
-    std::cerr << "hash_functions " << unsigned( ibf_config.hash_functions ) << std::endl;
-    std::cerr << "kmer_size " << unsigned( ibf_config.kmer_size ) << std::endl;
-    std::cerr << "window_size " << ibf_config.window_size << std::endl;
-    std::cerr << "bin_size_bits " << ibf_config.bin_size_bits << std::endl;
-    std::cerr << "max_fp " << ibf_config.max_fp << std::endl;
-    std::cerr << "true_max_fp " << ibf_config.true_max_fp << std::endl;
-    std::cerr << "true_avg_fp " << ibf_config.true_avg_fp << std::endl;
+    // Print verbose arguments for ibf
+    if ( config.verbose )
+        std::cerr << ibf_config;
 
     // TODO assert bin_map_hash.size() == ibf_config.n_bins
 
@@ -648,11 +664,14 @@ bool run( Config config )
     }
 
     detail::TBinMap bin_map;
+    std::ofstream   outfile{ config.output_file + ".map" }; // TEMP test - TODO remove
     // Create a map for each bin {binno: target}
     for ( auto& [binno, vals] : bin_map_hash )
     {
         bin_map[binno] = std::get< 0 >( vals );
+        outfile << bin_map[binno] << '\t' << binno << std::endl; // TEMP test - TODO remove
     }
+    outfile.close(); // TEMP test - TODO remove
 
     // write ibf and other infos
     detail::save_filter( config, ibf, ibf_config, hashes_count, bin_map );
