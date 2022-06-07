@@ -272,16 +272,11 @@ void save_filter( const GanonBuild::Config& config,
     archive( ibf );
 }
 
-int64_t bf_size( double max_fp, uint8_t hash_functions, uint64_t n_hashes )
+int64_t bf_size( double max_fp, uint64_t n_hashes )
 {
-    return std::ceil( -static_cast< double >( n_hashes * hash_functions )
-                      / std::log( 1 - std::exp( std::log( max_fp ) / hash_functions ) ) );
+    return std::ceil( n_hashes * std::log( max_fp ) / std::log( 1.0 / std::pow( 2.0, std::log( 2 ) ) ) );
 }
 
-uint8_t hash_functions_from_fp( double max_fp )
-{
-    return -static_cast< uint8_t >( std::log( max_fp ) );
-}
 
 uint8_t hash_functions_from_ratio( uint64_t bin_size_bits, uint64_t n_hashes )
 {
@@ -302,7 +297,7 @@ uint64_t number_of_bins( THashesCount const& hashes_count, uint64_t n_hashes )
 
 double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions )
 {
-    return std::log( 1 - std::exp( std::log( 1.0 - std::pow( 1 - max_fp, max_split_bins ) ) / hash_functions ) )
+    return std::log( 1.0 - std::exp( std::log( 1.0 - std::pow( 1.0 - max_fp, max_split_bins ) ) / hash_functions ) )
            / std::log( 1.0 - std::exp( std::log( max_fp ) / hash_functions ) );
 }
 
@@ -388,7 +383,6 @@ void optimal_hashes_size( uint64_t const      filter_size,
 
         if ( real_fp < min_fp )
         {
-
             min_fp                    = real_fp;
             ibf_config.max_hashes_bin = n_hashes;
             ibf_config.bin_size_bits  = bin_size_bits;
@@ -414,13 +408,7 @@ void optimal_hashes_fp( double const        max_fp,
             max_hashes = cnt;
     }
 
-    // Define optimal hash functions based on max_fp if not provided
-    uint8_t optimal_hash_functions = ( hash_functions > 0 ) ? hash_functions : hash_functions_from_fp( max_fp );
-    if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
-        optimal_hash_functions = max_hash_functions;
-
-    ibf_config.hash_functions = optimal_hash_functions;
-    ibf_config.max_fp         = max_fp;
+    ibf_config.max_fp = max_fp;
 
     // total + 1 zero index
     for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
@@ -430,18 +418,27 @@ void optimal_hashes_fp( double const        max_fp,
         uint64_t n_bins         = number_of_bins( hashes_count, n_hashes );
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
 
-        int64_t bin_size_bits = bf_size( max_fp, optimal_hash_functions, n_hashes );
+        int64_t bin_size_bits          = bf_size( max_fp, n_hashes );
+        uint8_t optimal_hash_functions = hash_functions;
+        if ( optimal_hash_functions == 0 )
+            optimal_hash_functions = hash_functions_from_ratio( bin_size_bits, n_hashes );
+        if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
+            optimal_hash_functions = max_hash_functions;
 
         double crate = correction_rate( max_split_bins, max_fp, optimal_hash_functions );
 
         uint64_t filter_size_bits = bin_size_bits * optimal_bins( n_bins ) * crate;
 
+        // std::cerr << n_hashes << '\t' << n_bins << '\t' << max_split_bins << '\t' << bin_size_bits << '\t' <<
+        // unsigned(optimal_hash_functions) << '\t' << crate << '\t' << filter_size_bits << std::endl; std::cerr <<
+        // bin_size_bits_old << '\t' << unsigned(optimal_hash_functions_old) << std::endl;
         if ( filter_size_bits < min_filter_size || min_filter_size == 0 )
         {
             min_filter_size           = filter_size_bits;
             ibf_config.max_hashes_bin = n_hashes;
             ibf_config.bin_size_bits  = bin_size_bits * crate;
             ibf_config.n_bins         = n_bins;
+            ibf_config.hash_functions = optimal_hash_functions;
         }
     }
 }
@@ -632,6 +629,9 @@ bool run( Config config )
         std::cerr << ibf_config;
 
     // TODO assert bin_map_hash.size() == ibf_config.n_bins
+
+    std::cerr << bin_map_hash.size() << std::endl;
+    std::cerr << ibf_config.n_bins << std::endl;
 
     // Create filter
     auto ibf = detail::TIBF{ seqan3::bin_count{ ibf_config.n_bins },
