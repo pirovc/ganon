@@ -22,6 +22,8 @@ public:
     bool        verbose           = false;
     bool        quiet             = false;
 
+    const uint8_t max_hash_functions = 5;
+
     bool validate()
     {
 
@@ -61,14 +63,19 @@ public:
             return false;
         }
 
-        if ( threads < 1 )
-            threads = 1;
+        if ( hash_functions > max_hash_functions )
+        {
+            if ( !quiet )
+                std::cerr << "--hash-functions must be <=5" << std::endl;
+            return false;
+        }
 
         // Skip variables if updating, loads from existing filter file
         if ( filter_size == 0 && max_fp == 0 )
         {
             if ( !quiet )
-                std::cerr << "--false-positive or --filter-size are mandatory" << std::endl;
+                std::cerr << "--false-positive or --filter-size is mandatory" << std::endl;
+            return false;
         }
 
         if ( window_size > 0 && window_size < kmer_size )

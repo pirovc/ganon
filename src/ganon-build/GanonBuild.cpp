@@ -277,6 +277,11 @@ int64_t bf_size( double max_fp, uint64_t n_hashes )
     return std::ceil( n_hashes * std::log( max_fp ) / std::log( 1.0 / std::pow( 2.0, std::log( 2 ) ) ) );
 }
 
+int64_t bf_size( double max_fp, uint64_t n_hashes, uint8_t hash_functions )
+{
+    return std::ceil( -static_cast< double >( n_hashes * hash_functions )
+                      / std::log( 1 - std::exp( std::log( max_fp ) / hash_functions ) ) );
+}
 
 uint8_t hash_functions_from_ratio( uint64_t bin_size_bits, uint64_t n_hashes )
 {
@@ -312,43 +317,30 @@ inline double false_positive( uint64_t bin_size_bits, uint8_t hash_functions, ui
                      hash_functions );
 }
 
-std::tuple< double, double > true_false_positive( const TBinMapHash& bin_map_hash,
-                                                  uint64_t           bin_size_bits,
-                                                  uint8_t            hash_functions )
+std::tuple< double, double > true_false_positive( THashesCount const& hashes_count,
+                                                  uint64_t            max_hashes_bin,
+                                                  uint64_t            bin_size_bits,
+                                                  uint8_t             hash_functions )
 {
 
-    // Calculate product of false positives for each target (instead of naive (1-fp)**max_split)
-    std::map< std::string, double > target_prod_fp;
-    for ( auto const& [binno, vals] : bin_map_hash )
-    {
-        const std::string target   = std::get< 0 >( vals );
-        const uint64_t    n_hashes = std::get< 2 >( vals ) - std::get< 1 >( vals ) + 1;
-
-        if ( target_prod_fp.count( target ) == 0 )
-        {
-            target_prod_fp[target] = 1.0;
-        }
-        target_prod_fp[target] =
-            target_prod_fp[target] * ( 1.0 - false_positive( bin_size_bits, hash_functions, n_hashes ) );
-    }
-
+    // Calculate true fp for each target, considering split into several bins (multiple testing)
     double highest_fp = 0;
     double average_fp = 0;
-    for ( auto const& [target, prod_fp] : target_prod_fp )
+    for ( auto const& [target, count] : hashes_count )
     {
-        const double target_fp = 1.0 - prod_fp;
-        if ( target_fp > highest_fp )
-        {
-            highest_fp = target_fp;
-        }
-        average_fp += target_fp;
+        uint64_t n_bins_target = std::ceil( count / static_cast< double >( max_hashes_bin ) );
+        uint64_t n_hashes_bin  = std::ceil( count / static_cast< double >( n_bins_target ) );
+        double tfp = 1 - std::pow( 1.0 - false_positive( bin_size_bits, hash_functions, n_hashes_bin ), n_bins_target );
+        if ( tfp > highest_fp )
+            highest_fp = tfp;
+        average_fp += tfp;
     }
-    average_fp = average_fp / static_cast< double >( target_prod_fp.size() );
+    average_fp = average_fp / static_cast< double >( hashes_count.size() );
 
     return std::make_tuple( highest_fp, average_fp );
 }
 
-void optimal_hashes_size( uint64_t const      filter_size,
+void optimal_hashes_size( double const        filter_size,
                           IBFConfig&          ibf_config,
                           THashesCount const& hashes_count,
                           uint8_t const       hash_functions,
@@ -374,11 +366,13 @@ void optimal_hashes_size( uint64_t const      filter_size,
         uint8_t optimal_hash_functions = hash_functions;
         if ( optimal_hash_functions == 0 )
             optimal_hash_functions = hash_functions_from_ratio( bin_size_bits, n_hashes );
+
         if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
             optimal_hash_functions = max_hash_functions;
 
-        double   fp             = false_positive( bin_size_bits, optimal_hash_functions, n_hashes );
+        // using avg n_hashes per split bin
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
+        double   fp             = false_positive( bin_size_bits, optimal_hash_functions, n_hashes );
         double   real_fp        = 1 - std::pow( 1.0 - fp, max_split_bins );
 
         if ( real_fp < min_fp )
@@ -408,6 +402,7 @@ void optimal_hashes_fp( double const        max_fp,
             max_hashes = cnt;
     }
 
+
     ibf_config.max_fp = max_fp;
 
     // total + 1 zero index
@@ -418,20 +413,32 @@ void optimal_hashes_fp( double const        max_fp,
         uint64_t n_bins         = number_of_bins( hashes_count, n_hashes );
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
 
-        int64_t bin_size_bits          = bf_size( max_fp, n_hashes );
+        int64_t bin_size_bits;
         uint8_t optimal_hash_functions = hash_functions;
         if ( optimal_hash_functions == 0 )
+        {
+            bin_size_bits          = bf_size( max_fp, n_hashes );
             optimal_hash_functions = hash_functions_from_ratio( bin_size_bits, n_hashes );
+        }
+        else
+        {
+            bin_size_bits = bf_size( max_fp, n_hashes, optimal_hash_functions );
+        }
+
         if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
             optimal_hash_functions = max_hash_functions;
 
-        double crate = correction_rate( max_split_bins, max_fp, optimal_hash_functions );
+        // Approximate real false positive based on average n_hashes per split bin on the max target
+        // to not overestimate the correction rate if bins are not completely full
+        uint64_t avg_n_hashes = std::ceil( max_hashes / static_cast< double >( max_split_bins ) );
+        double   approx_fp    = false_positive( bin_size_bits, optimal_hash_functions, avg_n_hashes );
+        if ( approx_fp > max_fp )
+            approx_fp = max_fp;
+
+        double crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions );
 
         uint64_t filter_size_bits = bin_size_bits * optimal_bins( n_bins ) * crate;
 
-        // std::cerr << n_hashes << '\t' << n_bins << '\t' << max_split_bins << '\t' << bin_size_bits << '\t' <<
-        // unsigned(optimal_hash_functions) << '\t' << crate << '\t' << filter_size_bits << std::endl; std::cerr <<
-        // bin_size_bits_old << '\t' << unsigned(optimal_hash_functions_old) << std::endl;
         if ( filter_size_bits < min_filter_size || min_filter_size == 0 )
         {
             min_filter_size           = filter_size_bits;
@@ -548,9 +555,6 @@ bool run( Config config )
     detail::Stats                stats;
     std::vector< detail::Total > totals( config.threads );
 
-    // Limit on hash_functions from seqan3
-    const uint8_t max_hash_functions = 5;
-
     // create IBF configuration and set-up fixedparameters
     detail::IBFConfig ibf_config;
     ibf_config.kmer_size   = config.kmer_size;
@@ -606,12 +610,13 @@ bool run( Config config )
     {
         // Optimal max hashes per bin based on filter size (smallest fp)
         detail::optimal_hashes_size(
-            config.filter_size, ibf_config, hashes_count, config.hash_functions, max_hash_functions );
+            config.filter_size, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
     }
     else
     {
         // Optimal max hashes per bin based on max_fp (smallest filter size)
-        detail::optimal_hashes_fp( config.max_fp, ibf_config, hashes_count, config.hash_functions, max_hash_functions );
+        detail::optimal_hashes_fp(
+            config.max_fp, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
     }
 
     // Split hashes into optimal size creating technical bins
@@ -621,8 +626,8 @@ bool run( Config config )
     // Calculate true fp for the choosen parameters
     // when calculating optimal parameters, assumes full bins for the sake of speed
     // in reality bins are rarely completely fully loaded
-    std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) =
-        detail::true_false_positive( bin_map_hash, ibf_config.bin_size_bits, ibf_config.hash_functions );
+    std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) = detail::true_false_positive(
+        hashes_count, ibf_config.max_hashes_bin, ibf_config.bin_size_bits, ibf_config.hash_functions );
 
     // Print verbose arguments for ibf
     if ( config.verbose )
