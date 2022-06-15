@@ -144,9 +144,9 @@ class Config:
         report_parser = argparse.ArgumentParser(add_help=False)
 
         report_group_required = report_parser.add_argument_group("required arguments")
-        report_group_required.add_argument("-i", "--input",           type=str,          required=True, nargs="*",     metavar="", help="Input file(s) and/or folder(s). '.rep' file(s) from ganon classify.")
-        report_group_required.add_argument("-e", "--input-extension", type=str,          default="rep", metavar="",                help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
-        report_group_required.add_argument("-o", "--output-prefix",   type=str,          required=True, metavar="",                help="Output prefix for report file '{output_prefix}.tre'. In case of multiple files, the base input filename will be appended at the end of the output file '{output_prefix + FILENAME}.tre'")
+        report_group_required.add_argument("-i", "--input",           type=str, required=True, nargs="*", metavar="", help="Input file(s) and/or folder(s). '.rep' file(s) from ganon classify.")
+        report_group_required.add_argument("-e", "--input-extension", type=str, default="rep",            help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
+        report_group_required.add_argument("-o", "--output-prefix",   type=str, required=True,            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'")
 
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
         report_group_dbtax.add_argument("-d", "--db-prefix",      type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
@@ -269,7 +269,7 @@ class Config:
                 self.empty = True
 
     def __repr__(self):
-        args = ["{}={}".format(k, repr(v)) for (k,v) in vars(self).items()]
+        args = ["{}={}".format(k, repr(v)) for (k, v) in vars(self).items()]
         return "Config({})".format(", ".join(args))
 
     def validate(self):

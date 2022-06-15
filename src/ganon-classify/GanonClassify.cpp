@@ -4,18 +4,21 @@
 #include <robin_hood.h>
 
 #include <utils/LCA.hpp>
+#include <utils/IBFConfig.hpp>
 #include <utils/SafeQueue.hpp>
 #include <utils/StopClock.hpp>
 #include <utils/adjust_seed.hpp>
 #include <utils/dna4_traits.hpp>
-#include <utils/load_map.hpp>
 
 #include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/types/tuple.hpp>
+
 #include <seqan3/alphabet/views/complement.hpp>
 #include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
-#include <seqan3/search/views/kmer_hash.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
 #include <seqan3/utility/views/chunk.hpp>
 
@@ -38,6 +41,9 @@ namespace detail
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
 typedef robin_hood::unordered_map< std::string, uint16_t >                                 TMatches;
+
+typedef std::vector<std::tuple< uint64_t, std::string >> TBinMap;
+typedef robin_hood::unordered_map< uint64_t, std::string > TMap;
 
 struct Node
 {
@@ -159,6 +165,34 @@ struct Stats
     }
 };
 
+struct FilterConfig
+{
+    FilterConfig()
+    {
+    }
+
+    FilterConfig( std::string _ibf_file, double _rel_cutoff )
+    {
+        ibf_file   = _ibf_file;
+        rel_cutoff = _rel_cutoff;
+    }
+
+    std::string ibf_file;
+    std::string tax_file = "";
+    double      rel_cutoff;
+    IBFConfig ibf_config;
+};
+
+struct HierarchyConfig
+{
+    std::vector< FilterConfig > filters;
+    uint8_t                     kmer_size;
+    uint32_t                    window_size;
+    double                      rel_filter;
+    std::string                 output_file_lca;
+    std::string                 output_file_all;
+};
+
 template < typename TFilter >
 struct Filter
 {
@@ -169,6 +203,58 @@ struct Filter
     FilterConfig filter_config;
 };
 
+std::map< std::string, HierarchyConfig > parse_hierarchy(Config& config){
+    
+    std::map< std::string, HierarchyConfig > parsed_hierarchy;
+
+    std::vector< std::string > sorted_hierarchy = config.hierarchy_labels;
+    std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
+    // get unique hierarcy labels
+    uint16_t unique_hierarchy =
+        std::unique( sorted_hierarchy.begin(), sorted_hierarchy.end() ) - sorted_hierarchy.begin();
+
+    uint16_t hierarchy_count = 0;
+    for ( uint16_t h = 0; h < config.hierarchy_labels.size(); ++h )
+    {
+
+        auto filter_cfg = FilterConfig{ config.ibf[h], config.rel_cutoff[h] };
+        if ( config.tax.size() > 0 )
+            filter_cfg.tax_file = config.tax[h];
+
+        if ( parsed_hierarchy.find( config.hierarchy_labels[h] ) == parsed_hierarchy.end() )
+        { // not found
+            // validate by hiearchy
+            std::vector< FilterConfig > fc;
+            fc.push_back( filter_cfg );
+            std::string output_file_lca = "";
+            std::string output_file_all = "";
+            if ( !config.output_prefix.empty() && unique_hierarchy > 1 && !config.output_single )
+            {
+                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".lca";
+                output_file_all = config.output_prefix + "." + config.hierarchy_labels[h] + ".all";
+            }
+            else if ( !config.output_prefix.empty() )
+            {
+                output_file_lca = config.output_prefix + ".lca";
+                output_file_all = config.output_prefix + ".all";
+            }
+
+            parsed_hierarchy[config.hierarchy_labels[h]] = HierarchyConfig{ fc,
+                                                                     0,
+                                                                     0,
+                                                                     config.rel_filter[hierarchy_count],
+                                                                     output_file_lca,
+                                                                     output_file_all };
+            ++hierarchy_count;
+        }
+        else
+        { // found
+            parsed_hierarchy[config.hierarchy_labels[h]].filters.push_back( filter_cfg );
+        }
+    }
+
+    return parsed_hierarchy;
+}
 
 inline TRep sum_reports( std::vector< TRep > const& reports )
 {
@@ -185,20 +271,11 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
     return report_sum;
 }
 
-inline uint16_t threshold_abs( uint16_t kmers, uint16_t e, uint8_t k, uint8_t o )
-{
-    return ( kmers * o > e * k ) ? std::ceil( kmers - ( e * k ) / static_cast< double >( o ) ) : 0u;
-}
-
 inline uint16_t threshold_rel( uint16_t kmers, double p )
 {
     return std::ceil( kmers * p );
 }
 
-inline uint16_t get_abs_error( uint16_t kmers, uint8_t k, uint8_t o, uint8_t count )
-{
-    return std::ceil( ( o * ( -count + kmers ) ) / static_cast< double >( k ) );
-}
 
 void select_matches( Filter< TIBF >&        filter,
                      TMatches&              matches,
@@ -264,113 +341,38 @@ void select_matches( Filter< THIBF >&       filter,
     }
 }
 
-auto get_offset_hashes( auto& hashes, uint8_t offset )
-{
-    // return offset of hashes, always keep last one to cover full read (extra_pos)
-    uint16_t n_kmers     = hashes.size() - 1;
-    auto     nth_element = [offset, n_kmers]( auto&& tuple ) {
-        return ( std::get< 0 >( tuple ) % offset == 0 || n_kmers == std::get< 0 >( tuple ) );
-    };
-    return seqan3::views::zip( std::views::iota( 0 ), hashes ) | std::views::filter( nth_element ) | std::views::values
-           | seqan3::views::to< std::vector >;
-}
-
 void get_hashes( std::vector< seqan3::dna4 >& seq,
                  std::vector< size_t >&       hashes_f,
                  std::vector< size_t >&       hashes_r,
-                 uint8_t                      window_size,
-                 uint8_t                      offset,
-                 auto&                        kmer_hash,
                  auto&                        minimiser_hash )
 {
-
-    if ( window_size > 0 )
-    {
-        // minimizers - no need to calculate reverse hashes
-        hashes_f = seq | minimiser_hash | seqan3::views::to< std::vector >;
-    }
-    else
-    {
-        if ( offset > 1 )
-        {
-            // offset
-            auto hf  = seq | kmer_hash;
-            hashes_f = get_offset_hashes( hf, offset );
-            auto hr  = seq | std::views::reverse | seqan3::views::complement | kmer_hash;
-            hashes_r = get_offset_hashes( hr, offset );
-        }
-        else
-        {
-            // kmer
-            hashes_f = seq | kmer_hash | seqan3::views::to< std::vector >;
-            hashes_r =
-                seq | std::views::reverse | seqan3::views::complement | kmer_hash | seqan3::views::to< std::vector >;
-        }
-    }
+    // minimizers - no need to calculate reverse hashes
+    hashes_f = seq | minimiser_hash | seqan3::views::to< std::vector >;
 }
 
 void get_hashes( std::vector< seqan3::dna4 >& seq,
                  std::vector< seqan3::dna4 >& seq2,
                  std::vector< size_t >&       hashes_f,
                  std::vector< size_t >&       hashes_r,
-                 uint8_t                      window_size,
-                 uint8_t                      offset,
-                 auto&                        kmer_hash,
                  auto&                        minimiser_hash )
 {
 
     // first pair
-    get_hashes( seq, hashes_f, hashes_r, window_size, offset, kmer_hash, minimiser_hash );
+    get_hashes( seq, hashes_f, hashes_r, minimiser_hash );
 
     // hashes are inserted in the same vector for the second pair in the rev.comp.
-    if ( window_size > 0 )
-    {
-        // minimizers - no need to calculate reverse hashes
-        auto hf = seq2 | minimiser_hash | std::views::common;
-        hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
-    }
-    else
-    {
-        if ( offset > 1 )
-        {
-            // offset
-            auto hf        = seq2 | std::views::reverse | seqan3::views::complement | kmer_hash;
-            auto hashes_f2 = get_offset_hashes( hf, offset );
-            hashes_f.insert( hashes_f.end(), hashes_f2.begin(), hashes_f2.end() );
-            auto hr        = seq2 | kmer_hash;
-            auto hashes_r2 = get_offset_hashes( hr, offset );
-            hashes_r.insert( hashes_r.end(), hashes_r2.begin(), hashes_r2.end() );
-        }
-        else
-        {
-            // kmer
-            auto hf = seq2 | std::views::reverse | seqan3::views::complement | kmer_hash | std::views::common;
-            hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
-            auto hr = seq2 | kmer_hash | std::views::common;
-            hashes_r.insert( hashes_r.end(), hr.begin(), hr.end() );
-        }
-    }
+    // minimizers - no need to calculate reverse hashes
+    auto hf = seq2 | minimiser_hash | std::views::common;
+    hashes_f.insert( hashes_f.end(), hf.begin(), hf.end() );
 }
 
 uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config,
-                               uint16_t               kmers,
-                               uint16_t               max_kmer_count_read,
-                               uint8_t                kmer_size,
-                               uint8_t                offset )
+                               uint16_t               max_kmer_count_read )
 {
     uint16_t threshold_filter = 0;
     if ( hierarchy_config.rel_filter >= 0 )
-    {
         threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
-    }
-    else if ( hierarchy_config.abs_filter >= 0 )
-    {
-        // get maximum possible number of errors of best match + abs_filter
-        uint16_t max_error_threshold =
-            get_abs_error( kmers, kmer_size, offset, max_kmer_count_read ) + hierarchy_config.abs_filter;
-        // get min kmer count necesary to achieve the calculated number of errors
-        threshold_filter = threshold_abs( kmers, max_error_threshold, kmer_size, offset );
-    }
+
     return threshold_filter;
 }
 
@@ -425,7 +427,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
     uint16_t wk_size = ( hierarchy_config.window_size > 0 ) ? hierarchy_config.window_size : hierarchy_config.kmer_size;
 
     // oner hash adaptor per thread
-    auto kmer_hash = seqan3::views::kmer_hash( seqan3::ungapped{ hierarchy_config.kmer_size } );
     auto minimiser_hash =
         seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
                                        seqan3::window_size{ wk_size },
@@ -482,9 +483,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
                                 rb.seqs2[readID],
                                 hashes_f,
                                 hashes_r,
-                                hierarchy_config.window_size,
-                                hierarchy_config.offset,
-                                kmer_hash,
                                 minimiser_hash );
                 }
                 else
@@ -493,9 +491,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     get_hashes( rb.seqs[readID],
                                 hashes_f,
                                 hashes_r,
-                                hierarchy_config.window_size,
-                                hierarchy_config.offset,
-                                kmer_hash,
                                 minimiser_hash );
                 }
                 kmers = hashes_f.size();
@@ -517,11 +512,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     uint16_t threshold_cutoff = 0;
                     if ( filters[i].filter_config.rel_cutoff >= 0 )
                         threshold_cutoff = threshold_rel( kmers, filters[i].filter_config.rel_cutoff );
-                    else if ( filters[i].filter_config.abs_cutoff >= 0 )
-                        threshold_cutoff = threshold_abs( kmers,
-                                                          filters[i].filter_config.abs_cutoff,
-                                                          hierarchy_config.kmer_size,
-                                                          hierarchy_config.offset );
 
                     // reset low threshold_cutoff to just one kmer (0 would match everywhere)
                     if ( threshold_cutoff == 0 )
@@ -543,7 +533,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
                 // Calculate threshold for filtering (keep matches above)
                 uint16_t threshold_filter = get_threshold_filter(
-                    hierarchy_config, kmers, max_kmer_count_read, hierarchy_config.kmer_size, hierarchy_config.offset );
+                    hierarchy_config, max_kmer_count_read );
 
                 // Filter matches
                 uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
@@ -623,7 +613,7 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
     }
 }
 
-size_t load_filter( THIBF& filter, std::string const& input_filter_file )
+size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::string const& input_filter_file )
 {
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
@@ -646,10 +636,19 @@ size_t load_filter( THIBF& filter, std::string const& input_filter_file )
     return filter.user_bins.num_user_bins();
 }
 
-size_t load_filter( TIBF& filter, std::string const& input_filter_file )
+size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::string const& input_filter_file )
 {
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
+
+    std::string parsed_version;
+
+    archive( parsed_version );
+
+    std::cerr << parsed_version << std::endl;
+
+    archive( ibf_config );
+    archive( bin_map );
     archive( filter );
 
     return filter.bin_count();
@@ -675,43 +674,26 @@ TTax load_tax( std::string tax_file )
 }
 
 template < typename TFilter >
-bool load_files( std::vector< Filter< TFilter > >& filters, std::string hierarchy_label, Config& config, bool run_lca )
+bool load_files( std::vector< Filter< TFilter > >& filters, bool run_lca, std::vector< FilterConfig >& fconf )
 {
     uint16_t filter_cnt = 0;
-    for ( auto const& filter_config : config.parsed_hierarchy[hierarchy_label].filters )
+    for ( auto & filter_config : fconf )
     {
-        TMap    map;
         TTax    tax;
+        IBFConfig ibf_config;
+        TBinMap bin_map;
         TFilter filter;
-        auto    bin_count = load_filter( filter, filter_config.ibf_file );
+        auto    bin_count = load_filter( filter, ibf_config, bin_map, filter_config.ibf_file );
 
-        if ( !filter_config.map_file.empty() )
+        // Parse vector with bin_map to the old map
+        TMap map;
+        for ( auto const& [binno, target] : bin_map )
         {
-            map = load_map( filter_config.map_file );
-        }
-        else
-        {
-            // If multiple hierarchies or filters are used, create unique binid target
-            std::string binid_prefix = "";
-            if ( config.parsed_hierarchy.size() > 1 || config.parsed_hierarchy[hierarchy_label].filters.size() > 1 )
-            {
-                binid_prefix = hierarchy_label + "-" + std::to_string( filter_cnt ) + "-";
-            }
-            // fill map with binids as targets
-            for ( uint32_t binid = 0; binid < bin_count; ++binid )
-            {
-                map[binid] = binid_prefix + std::to_string( binid );
-            }
+            map[binno] = target;
         }
 
-        // Check consistency of map file and ibf file
-        // map.size can be smaller than bins set on IBF if sequences were removed
-        if ( map.size() > bin_count )
-        {
-            std::cerr << "ERROR: .ibf and .map files are inconsistent." << std::endl;
-            return false;
-        }
-
+        filter_config.ibf_config = ibf_config;
+        
         if ( run_lca )
             tax = load_tax( filter_config.tax_file );
 
@@ -734,7 +716,7 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const Config& config, const StopClock& timeClassPrint )
+void print_stats( Stats& stats, const StopClock& timeClassPrint, auto&parsed_hierarchy )
 {
     const double elapsed_classification = timeClassPrint.elapsed();
     std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
@@ -770,11 +752,11 @@ void print_stats( Stats& stats, const Config& config, const StopClock& timeClass
                   << " reads skipped (shorther than k-mer size)" << std::endl;
     }
 
-    if ( config.parsed_hierarchy.size() > 1 )
+    if ( parsed_hierarchy.size() > 1 )
     {
         std::cerr << std::endl;
         std::cerr << "By database hierarchy:" << std::endl;
-        for ( auto const& h : config.parsed_hierarchy )
+        for ( auto const& h : parsed_hierarchy )
         {
             std::string hierarchy_label = h.first;
             avg_matches                 = stats.hierarchy_total[hierarchy_label].reads_classified
@@ -940,10 +922,11 @@ void pre_process_lca( LCA& lca, TTax& tax )
 template < typename TFilter >
 bool ganon_classify( Config config )
 {
-
     // Start time count
     StopClock timeGanon;
     timeGanon.start();
+
+    auto parsed_hierarchy = detail::parse_hierarchy(config);
 
     // Initialize variables
     StopClock timeLoadFilters;
@@ -995,10 +978,10 @@ bool ganon_classify( Config config )
 
     // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = config.parsed_hierarchy.size();
+    uint16_t hierarchy_size = parsed_hierarchy.size();
     // Check if tax files are present to run lca
     bool run_lca = config.tax.size();
-    for ( auto const& [hierarchy_label, hierarchy_config] : config.parsed_hierarchy )
+    for ( auto & [hierarchy_label, hierarchy_config] : parsed_hierarchy )
     {
         ++hierarchy_id;
         bool                                     hierarchy_first = ( hierarchy_id == 1 );
@@ -1008,13 +991,17 @@ bool ganon_classify( Config config )
         LCA                                      lca;
 
         timeLoadFilters.start();
-        bool loaded = detail::load_files( filters, hierarchy_label, config, run_lca );
+        bool loaded = detail::load_files( filters, run_lca, parsed_hierarchy[hierarchy_label].filters );
         if ( !loaded )
         {
-            std::cerr << "ERROR: loading ibf, map or tax files" << std::endl;
+            std::cerr << "ERROR: loading ibf or tax files" << std::endl;
             return false;
         }
         timeLoadFilters.stop();
+
+        // TODO check if all matching
+        hierarchy_config.kmer_size = filters[0].filter_config.ibf_config.kmer_size;
+        hierarchy_config.window_size = filters[0].filter_config.ibf_config.window_size;
 
         if ( run_lca )
         {
@@ -1175,9 +1162,9 @@ bool ganon_classify( Config config )
         std::cerr << std::endl;
         if ( config.verbose )
         {
-            detail::print_time( timeGanon, timeLoadFilters, timeClassPrint );
+            detail::print_time( timeGanon, timeLoadFilters, timeClassPrint);
         }
-        detail::print_stats( stats, config, timeClassPrint );
+    detail::print_stats( stats, timeClassPrint, parsed_hierarchy);
     }
 
     return true;
