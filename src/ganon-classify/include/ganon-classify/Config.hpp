@@ -220,7 +220,6 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
         for ( const auto& s : config.paired_reads )
             stream << "                      " << s << newl;
     }
-    stream << newl;
     stream << "--output-prefix       " << config.output_prefix << newl;
     stream << "--output-lca          " << config.output_lca << newl;
     stream << "--output-all          " << config.output_all << newl;

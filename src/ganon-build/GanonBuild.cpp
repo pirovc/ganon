@@ -36,8 +36,6 @@ namespace detail
 typedef robin_hood::unordered_map< std::string, std::string > TTarget;
 typedef robin_hood::unordered_map< std::string, uint64_t >    THashesCount;
 
-// typedef robin_hood::unordered_map< uint64_t, std::string >                                   TBinMap;
-typedef std::vector< std::tuple< uint64_t, std::string > >                                   TBinMap;
 typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
 
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
@@ -232,18 +230,32 @@ std::vector< uint64_t > load_hashes( std::string file )
 void save_filter( const GanonBuild::Config& config,
                   const TIBF&               ibf,
                   const IBFConfig&          ibf_config,
-                  // const THashesCount&       hashes_count,
-                  const TBinMap& bin_map )
+                  const THashesCount&       hashes_count,
+                  const TBinMapHash&        bin_map_hash )
 {
     std::ofstream               os( config.output_file, std::ios::binary );
     cereal::BinaryOutputArchive archive( os );
-    archive( static_cast< std::string >( defaults::version_string ) );
+
+    // Create a map for each bin and store on stdlib structures {binno: target}
+    std::vector< std::tuple< uint64_t, std::string > > bin_map;
+    for ( auto& [binno, vals] : bin_map_hash )
+    {
+        bin_map.push_back( { binno, std::get< 0 >( vals ) } );
+    }
+
+    // Store hashes_count on stdlib structures {target: hash_count}
+    std::vector< std::tuple< std::string, uint64_t > > hashes_count_std;
+    for ( auto& [target, count] : hashes_count )
+    {
+        hashes_count_std.push_back( { target, count } );
+    }
+
+    archive( std::make_tuple(defaults::version_major, defaults::version_minor, defaults::version_patch) );
     archive( ibf_config );
-    // archive( hashes_count );
+    archive( hashes_count_std );
     archive( bin_map );
     archive( ibf );
 }
-
 
 uint64_t bf_size( double max_fp, uint64_t n_hashes )
 {
@@ -652,16 +664,8 @@ bool run( Config config )
         detail::delete_hashes( target, config.tmp_output_folder );
     }
 
-    detail::TBinMap bin_map;
-    // Create a map for each bin {binno: target}
-    for ( auto& [binno, vals] : bin_map_hash )
-    {
-        // bin_map[binno] = std::get< 0 >( vals );
-        bin_map.push_back( { binno, std::get< 0 >( vals ) } );
-    }
-
     // write ibf and other infos
-    detail::save_filter( config, ibf, ibf_config, bin_map );
+    detail::save_filter( config, ibf, ibf_config, hashes_count, bin_map_hash );
 
     // sum totals from threads
     stats.add_totals( totals );

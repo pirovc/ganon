@@ -253,6 +253,37 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
     return parsed_hierarchy;
 }
 
+void print_hierarchy( Config const& config, std::map< std::string, HierarchyConfig > const& parsed_hierarchy )
+{
+
+    constexpr auto newl{ "\n" };
+    for ( auto const& hierarchy_config : parsed_hierarchy )
+    {
+        std::cerr << hierarchy_config.first << newl;
+        std::cerr << "--rel-filter " << hierarchy_config.second.rel_filter << newl;
+        for ( auto const& filter_config : hierarchy_config.second.filters )
+        {
+            std::cerr << "    " << filter_config.ibf_file;
+            if ( !filter_config.tax_file.empty() )
+                std::cerr << ", " << filter_config.tax_file;
+            if ( filter_config.rel_cutoff > -1 )
+                std::cerr << " --rel-cutoff " << filter_config.rel_cutoff;
+            std::cerr << newl;
+        }
+        if ( !config.output_prefix.empty() )
+        {
+            std::cerr << "    Output files: ";
+            std::cerr << config.output_prefix + ".rep";
+            if ( config.output_lca )
+                std::cerr << ", " << hierarchy_config.second.output_file_lca;
+            if ( config.output_all )
+                std::cerr << ", " << hierarchy_config.second.output_file_all;
+            std::cerr << newl;
+        }
+    }
+    std::cerr << "----------------------------------------------------------------------" << newl;
+}
+
 inline TRep sum_reports( std::vector< TRep > const& reports )
 {
     TRep report_sum;
@@ -331,15 +362,6 @@ void select_matches( Filter< THIBF >&       filter,
             }
         }
     }
-}
-
-uint16_t get_threshold_filter( HierarchyConfig const& hierarchy_config, uint16_t max_kmer_count_read )
-{
-    uint16_t threshold_filter = 0;
-    if ( hierarchy_config.rel_filter >= 0 )
-        threshold_filter = max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
-
-    return threshold_filter;
 }
 
 uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
@@ -472,7 +494,8 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 total.reads_classified++;
 
                 // Calculate threshold for filtering (keep matches above)
-                uint16_t threshold_filter = get_threshold_filter( hierarchy_config, max_kmer_count_read );
+                uint16_t threshold_filter =
+                    max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
 
                 // Filter matches
                 uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
@@ -580,16 +603,14 @@ size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
 
-    std::string parsed_version;
+    std::tuple<int,int,int> parsed_version;
+    std::vector< std::tuple< std::string, uint64_t > > hashes_count_std;
 
     archive( parsed_version );
-
-    std::cerr << parsed_version << std::endl;
-
     archive( ibf_config );
-    archive( bin_map );
+    archive( hashes_count_std );
+    archive( bin_map ) ;
     archive( filter );
-
     return filter.bin_count();
 }
 
@@ -660,7 +681,6 @@ void print_stats( Stats& stats, const StopClock& timeClassPrint, auto& parsed_hi
     const double elapsed_classification = timeClassPrint.elapsed();
     std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
               << stats.total.length_processed / 1000000.0 << " Mbp) in " << elapsed_classification << " seconds ("
-              << ( stats.total.reads_processed / 1000.0 ) / ( elapsed_classification / 60.0 ) << " Kseq/m, "
               << ( stats.total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
               << std::endl;
     std::cerr << " - " << stats.total.reads_classified << " reads classified ("
@@ -866,6 +886,9 @@ bool ganon_classify( Config config )
     timeGanon.start();
 
     auto parsed_hierarchy = detail::parse_hierarchy( config );
+
+    if ( config.verbose )
+        detail::print_hierarchy( config, parsed_hierarchy );
 
     // Initialize variables
     StopClock timeLoadFilters;
