@@ -34,7 +34,7 @@ def parse_file_accession(input_files, info):
     for file in input_files:
         match = assembly_accession_pattern.search(file)
         assembly_accessions.append((match.group() if match else os.path.basename(file), file))
-    info[["target", "file"]] = assembly_accessions
+    info[["target", "file"]] = pd.DataFrame(assembly_accessions)
     return info
 
 

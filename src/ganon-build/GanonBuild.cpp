@@ -11,8 +11,8 @@
 
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
-#include <cereal/types/vector.hpp>
 #include <cereal/types/tuple.hpp>
+#include <cereal/types/vector.hpp>
 
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
@@ -36,8 +36,8 @@ namespace detail
 typedef robin_hood::unordered_map< std::string, std::string > TTarget;
 typedef robin_hood::unordered_map< std::string, uint64_t >    THashesCount;
 
-//typedef robin_hood::unordered_map< uint64_t, std::string >                                   TBinMap;
-typedef std::vector<std::tuple< uint64_t, std::string >> TBinMap;
+// typedef robin_hood::unordered_map< uint64_t, std::string >                                   TBinMap;
+typedef std::vector< std::tuple< uint64_t, std::string > >                                   TBinMap;
 typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
 
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
@@ -141,6 +141,7 @@ void store_hashes( const std::string                            target,
     {
         outfile.write( reinterpret_cast< const char* >( &h ), sizeof( h ) );
     }
+    outfile.close();
 }
 
 void delete_hashes( const std::string target, const std::string tmp_output_folder )
@@ -176,17 +177,26 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
             ifm.file
         };
 
-        for ( auto& [header, seq] : fin )
+        if ( ifm.targets.count( "" ) )
         {
-            std::string target;
-            // file as target
-            if ( ifm.targets.count( "" ) )
+            // File as target
+            std::string target = ifm.targets[""];
+            for ( auto const& [header, seq] : fin )
             {
-                target = ifm.targets[""];
+                total.sequences++;
+                total.length_bp += seq.size();
+                const auto mh = seq | minimiser_view | std::views::common;
+                hashes[target].insert( mh.begin(), mh.end() );
             }
-            else
+            hashes_count[target] = hashes[target].size();
+            detail::store_hashes( target, hashes[target], config.tmp_output_folder );
+        }
+        else
+        {
+            // Sequence as target
+            std::string target;
+            for ( auto const& [header, seq] : fin )
             {
-                // hashes for each sequence
                 const auto seqid = get_seqid( header );
                 if ( ifm.targets.count( seqid ) )
                 {
@@ -197,13 +207,13 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                     total.invalid_sequences++;
                     continue;
                 }
+                total.sequences++;
+                total.length_bp += seq.size();
+                const auto mh = seq | minimiser_view | std::views::common;
+                hashes[target].insert( mh.begin(), mh.end() );
+                hashes_count[target] = hashes[target].size();
+                detail::store_hashes( target, hashes[target], config.tmp_output_folder );
             }
-            total.sequences++;
-            total.length_bp += seq.size();
-            const auto mh = seq | minimiser_view | std::views::common;
-            hashes[target].insert( mh.begin(), mh.end() );
-            hashes_count[target] = hashes[target].size();
-            detail::store_hashes( target, hashes[target], config.tmp_output_folder );
         }
     }
 }
@@ -222,8 +232,8 @@ std::vector< uint64_t > load_hashes( std::string file )
 void save_filter( const GanonBuild::Config& config,
                   const TIBF&               ibf,
                   const IBFConfig&          ibf_config,
-                  //const THashesCount&       hashes_count,
-                  const TBinMap&            bin_map )
+                  // const THashesCount&       hashes_count,
+                  const TBinMap& bin_map )
 {
     std::ofstream               os( config.output_file, std::ios::binary );
     cereal::BinaryOutputArchive archive( os );
@@ -297,9 +307,9 @@ std::tuple< double, double > true_false_positive( THashesCount const& hashes_cou
         // this can be off by a very small number (rounding ceil on multiple bins)
         uint64_t n_hashes_bin = std::ceil( count / static_cast< double >( n_bins_target ) );
 
-        double fp = false_positive( bin_size_bits, hash_functions, n_hashes_bin );
-        double tfp = 1.0 - std::pow( 1.0 - fp , n_bins_target );
-        
+        double fp  = false_positive( bin_size_bits, hash_functions, n_hashes_bin );
+        double tfp = 1.0 - std::pow( 1.0 - fp, n_bins_target );
+
         if ( tfp > highest_fp )
             highest_fp = tfp;
         average_fp += tfp;
@@ -378,9 +388,9 @@ void optimal_hashes_fp( double const        max_fp,
     for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
 
-        uint64_t n_hashes       = n - 1;
-        uint64_t n_bins         = number_of_bins( hashes_count, n_hashes );
-        
+        uint64_t n_hashes = n - 1;
+        uint64_t n_bins   = number_of_bins( hashes_count, n_hashes );
+
         uint64_t bin_size_bits;
         uint8_t  optimal_hash_functions = hash_functions;
         if ( optimal_hash_functions == 0 )
@@ -399,16 +409,21 @@ void optimal_hashes_fp( double const        max_fp,
         // Approximate real false positive based on average n_hashes per split bin on the max target
         // to not overestimate the correction rate if bins are not completely full
         uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
-        uint64_t avg_n_hashes = std::ceil( max_hashes / static_cast< double >( max_split_bins ) );
-        double   approx_fp    = false_positive( bin_size_bits, optimal_hash_functions, avg_n_hashes );
+        uint64_t avg_n_hashes   = std::ceil( max_hashes / static_cast< double >( max_split_bins ) );
+        double   approx_fp      = false_positive( bin_size_bits, optimal_hash_functions, avg_n_hashes );
         if ( approx_fp > max_fp )
             approx_fp = max_fp;
 
-        double crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions );
-        
-        bin_size_bits = bin_size_bits * crate;
-
+        double crate              = correction_rate( max_split_bins, approx_fp, optimal_hash_functions );
+        bin_size_bits             = bin_size_bits * crate;
         uint64_t filter_size_bits = bin_size_bits * optimal_bins( n_bins );
+
+        // std::cerr << n_hashes << '\t' << n_bins << '\t' << bin_size_bits << '\t' << optimal_hash_functions << '\t' <<
+        // max_split_bins << '\t' << avg_n_hashes << '\t' << approx_fp << '\t' << crate << '\t' << filter_size_bits <<
+        // std::endl;
+        // TODO crate is too high, check overflow?
+        if ( filter_size_bits == 0 )
+            break;
 
         if ( filter_size_bits < min_filter_size || min_filter_size == 0 )
         {
@@ -419,8 +434,6 @@ void optimal_hashes_fp( double const        max_fp,
             ibf_config.hash_functions = optimal_hash_functions;
         }
     }
-
-
 }
 
 TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const& hashes_count )
@@ -643,8 +656,8 @@ bool run( Config config )
     // Create a map for each bin {binno: target}
     for ( auto& [binno, vals] : bin_map_hash )
     {
-        //bin_map[binno] = std::get< 0 >( vals );
-        bin_map.push_back({ binno, std::get< 0 >( vals )});
+        // bin_map[binno] = std::get< 0 >( vals );
+        bin_map.push_back( { binno, std::get< 0 >( vals ) } );
     }
 
     // write ibf and other infos

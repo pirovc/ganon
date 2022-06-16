@@ -27,8 +27,8 @@ public:
 
     std::vector< std::string > hierarchy_labels{ "H1" };
 
-    std::vector< double >  rel_cutoff{ 0.2 };
-    std::vector< double >  rel_filter{ 0.1 };
+    std::vector< double > rel_cutoff{ 0.2 };
+    std::vector< double > rel_filter{ 0.1 };
 
     std::string output_prefix       = "";
     bool        output_lca          = false;
@@ -43,7 +43,7 @@ public:
     bool     verbose   = false;
     bool     quiet     = false;
 
-    uint16_t                                 threads_classify;
+    uint16_t threads_classify;
 
     bool check_files( std::vector< std::string > const& files )
     {
@@ -208,51 +208,20 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     constexpr auto separator{ "----------------------------------------------------------------------" };
 
     stream << separator << newl;
-/*    stream << "Database hierarchy:" << newl;
-    for ( auto const& hierarchy_config : config.parsed_hierarchy )
-    {
-        if ( !hierarchy_config.first.empty() )
-        {
-            stream << hierarchy_config.first << ")" << newl;
-            if ( hierarchy_config.second.rel_filter > -1 )
-                stream << " --rel-filter:        " << hierarchy_config.second.rel_filter << newl;
-        }
-        for ( auto const& filter_config : hierarchy_config.second.filters )
-        {
-            stream << "   --ibf:             " << filter_config.ibf_file << newl;
-            if ( !filter_config.tax_file.empty() )
-                stream << "   --tax:             " << filter_config.tax_file << newl;
-            if ( filter_config.rel_cutoff > -1 )
-                stream << "   --rel-cutoff:      " << filter_config.rel_cutoff << newl;
-        }
-        if ( !config.output_prefix.empty() )
-        {
-            stream << "  Output files:" << newl;
-            stream << "    " << config.output_prefix + ".rep" << newl;
-            if ( config.output_lca )
-                stream << "    " << hierarchy_config.second.output_file_lca << newl;
-            if ( config.output_all )
-                stream << "    " << hierarchy_config.second.output_file_all << newl;
-        }
-    }*/
-    stream << newl;
-    stream << "Input files:" << newl;
     if ( config.single_reads.size() )
     {
-        stream << "--reads-single        " << newl;
+        stream << "--single-reads        " << newl;
         for ( const auto& s : config.single_reads )
             stream << "                      " << s << newl;
     }
     if ( config.paired_reads.size() )
     {
-        stream << "--reads-paired        " << newl;
+        stream << "--paired-reads        " << newl;
         for ( const auto& s : config.paired_reads )
             stream << "                      " << s << newl;
     }
     stream << newl;
-    stream << "Parameters:" << newl;
-    if ( config.output_prefix.size() )
-        stream << "--output-prefix       " << config.output_prefix << newl;
+    stream << "--output-prefix       " << config.output_prefix << newl;
     stream << "--output-lca          " << config.output_lca << newl;
     stream << "--output-all          " << config.output_all << newl;
     stream << "--output-unclassified " << config.output_unclassified << newl;
