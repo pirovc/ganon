@@ -33,12 +33,13 @@ namespace GanonBuild
 namespace detail
 {
 
+
+typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
+
 typedef robin_hood::unordered_map< std::string, std::string > TTarget;
 typedef robin_hood::unordered_map< std::string, uint64_t >    THashesCount;
 
 typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
-
-typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
 
 struct InputFileMap
 {
@@ -75,6 +76,9 @@ struct Stats
 
 inline std::string get_seqid( std::string header )
 {
+    /*
+     * returns accession version from fasta headers (anything up to first space)
+     */
     return header.substr( 0, header.find( ' ' ) );
 }
 
@@ -133,11 +137,14 @@ robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::s
     return input_map;
 }
 
+
 void store_hashes( const std::string                            target,
                    const robin_hood::unordered_set< uint64_t >& hashes,
                    const std::string                            tmp_output_folder )
 {
-
+    /*
+     * store hashes from set to disk in the specified folder (or current folder ".")
+     */
     std::filesystem::path outf{ tmp_output_folder };
     outf += target + ".min";
     std::ofstream outfile{ outf, std::ios::binary };
@@ -148,9 +155,25 @@ void store_hashes( const std::string                            target,
     outfile.close();
 }
 
+
+std::vector< uint64_t > load_hashes( std::string file )
+{
+    /*
+     * load hashes file from disk and returns them in a vector
+     */
+    uint64_t                hash;
+    std::vector< uint64_t > hashes;
+    std::ifstream           infile{ file, std::ios::binary };
+    while ( infile.read( reinterpret_cast< char* >( &hash ), sizeof( hash ) ) )
+        hashes.push_back( hash );
+    return hashes;
+}
+
 void delete_hashes( const std::string target, const std::string tmp_output_folder )
 {
-
+    /*
+     * delete hashes from disk
+     */
     std::filesystem::path outf{ tmp_output_folder };
     outf += target + ".min";
     std::filesystem::remove( outf );
@@ -233,23 +256,21 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
     }
 }
 
-
-std::vector< uint64_t > load_hashes( std::string file )
-{
-    uint64_t                hash;
-    std::vector< uint64_t > hashes;
-    std::ifstream           infile{ file, std::ios::binary };
-    while ( infile.read( reinterpret_cast< char* >( &hash ), sizeof( hash ) ) )
-        hashes.push_back( hash );
-    return hashes;
-}
-
 void save_filter( const GanonBuild::Config& config,
                   const TIBF&               ibf,
                   const IBFConfig&          ibf_config,
                   const THashesCount&       hashes_count,
                   const TBinMapHash&        bin_map_hash )
 {
+    /*
+     * saves structures and IBF to file. structures are coverted to std. lib
+     * contents:
+     * version:      tuple(major, minor, patch)
+     * ibf_config:   IBFConfig struct with values used to build filter
+     * hashes_count: vector<tuple(string, int)> [(target, count)]
+     * bin_map:      vector<tuple(int, string)> [(binno, target)]
+     * ibf:          Interleaved Bloom Filter from seqan3
+     */
     std::ofstream               os( config.output_file, std::ios::binary );
     cereal::BinaryOutputArchive archive( os );
 
@@ -274,26 +295,38 @@ void save_filter( const GanonBuild::Config& config,
     archive( ibf );
 }
 
-uint64_t bf_size( double max_fp, uint64_t n_hashes )
+uint64_t bin_size( double max_fp, uint64_t n_hashes )
 {
+    /*
+     * calculates bin size (bloom filter) based on max. false positive and elements to be inserted
+     */
     return std::ceil( ( n_hashes * std::log( max_fp ) ) / std::log( 1.0 / std::pow( 2, std::log( 2 ) ) ) );
 }
 
-uint64_t bf_size( double max_fp, uint64_t n_hashes, uint8_t hash_functions )
+uint64_t bin_size( double max_fp, uint64_t n_hashes, uint8_t hash_functions )
 {
-
+    /*
+     * calculates bin size (bloom filter) based on max. false positive, elements to be inserted
+     * and number of hash functions
+     */
     return std::ceil( n_hashes
                       * ( -hash_functions / std::log( 1 - std::exp( std::log( max_fp ) / hash_functions ) ) ) );
 }
 
 uint8_t hash_functions_from_ratio( uint64_t bin_size_bits, uint64_t n_hashes )
 {
+    /*
+     * optimal number of hash functions based on bin size and number of elements
+     */
     return static_cast< uint8_t >( std::log( 2 ) * ( bin_size_bits / static_cast< double >( n_hashes ) ) );
 }
 
 
 uint64_t number_of_bins( THashesCount const& hashes_count, uint64_t n_hashes )
 {
+    /*
+     * number of bins of the IBF given a number of elements (will count bins and split bins)
+     */
     uint64_t n_bins = 0;
     for ( auto const& [target, count] : hashes_count )
     {
@@ -325,6 +358,9 @@ inline uint64_t optimal_bins( uint64_t n_bins )
 
 inline double false_positive( uint64_t bin_size_bits, uint8_t hash_functions, uint64_t n_hashes )
 {
+    /*
+     * calculates the theoretical false positive of a bin (bf) based on parameters
+     */
     return std::pow( 1 - std::exp( -hash_functions / ( bin_size_bits / static_cast< double >( n_hashes ) ) ),
                      hash_functions );
 }
@@ -334,7 +370,10 @@ std::tuple< double, double > true_false_positive( THashesCount const& hashes_cou
                                                   uint64_t            bin_size_bits,
                                                   uint8_t             hash_functions )
 {
-
+    /*
+     * calculates the theoretical false positive (avg and max) of a the IBF
+     * based on targets and split bins
+     */
     double highest_fp = 0;
     double average_fp = 0;
     // Calculate true fp for each target group, considering split into several bins (multiple testing)
@@ -345,12 +384,13 @@ std::tuple< double, double > true_false_positive( THashesCount const& hashes_cou
         // this can be off by a very small number (rounding ceil on multiple bins)
         uint64_t n_hashes_bin = std::ceil( count / static_cast< double >( n_bins_target ) );
 
-        double fp  = false_positive( bin_size_bits, hash_functions, n_hashes_bin );
-        double tfp = 1.0 - std::pow( 1.0 - fp, n_bins_target );
+        // false positive for the current target, considering split bins
+        double real_fp =
+            1.0 - std::pow( 1.0 - false_positive( bin_size_bits, hash_functions, n_hashes_bin ), n_bins_target );
 
-        if ( tfp > highest_fp )
-            highest_fp = tfp;
-        average_fp += tfp;
+        if ( real_fp > highest_fp )
+            highest_fp = real_fp;
+        average_fp += real_fp;
     }
     average_fp = average_fp / static_cast< double >( hashes_count.size() );
 
@@ -458,13 +498,13 @@ void optimal_hashes_fp( double const        max_fp,
         if ( optimal_hash_functions == 0 )
         {
             // First define size and than n. hash functions
-            bin_size_bits          = bf_size( max_fp, n_hashes );
+            bin_size_bits          = bin_size( max_fp, n_hashes );
             optimal_hash_functions = hash_functions_from_ratio( bin_size_bits, n_hashes );
         }
         else
         {
             // n. hash functions provided, define best bin size
-            bin_size_bits = bf_size( max_fp, n_hashes, optimal_hash_functions );
+            bin_size_bits = bin_size( max_fp, n_hashes, optimal_hash_functions );
         }
         if ( optimal_hash_functions > max_hash_functions || optimal_hash_functions == 0 )
             optimal_hash_functions = max_hash_functions;
@@ -505,6 +545,11 @@ void optimal_hashes_fp( double const        max_fp,
 TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const& hashes_count )
 {
 
+    /*
+     * creates binnos based on the IBF parameters and current hashes
+     * distribute hashes by average on split bins
+     * outputs a map with binno and indices of the hashes array to be inserted to the IBF
+     */
     uint64_t    binno = 0;
     TBinMapHash bin_map_hash;
     for ( auto const& [target, count] : hashes_count )
@@ -537,6 +582,9 @@ void build( TIBF&                       ibf,
             const TBinMapHash&          bin_map_hash,
             std::string                 tmp_output_folder )
 {
+    /*
+     * build the IBF from minimizers files and a previously generated map
+     */
     while ( true )
     {
         // Add to atomic bin_batches and store
@@ -550,6 +598,7 @@ void build( TIBF&                       ibf,
         if ( batch_end > bin_map_hash.size() - 1 )
             batch_end = bin_map_hash.size() - 1;
 
+        // store files and the hashes into a map for quick access
         robin_hood::unordered_map< std::string, std::vector< uint64_t > > target_hashes;
         // Insert hashes by index to the ibf
         for ( uint64_t binno = batch_start; binno <= batch_end; binno++ )
@@ -571,6 +620,9 @@ void build( TIBF&                       ibf,
 
 void print_stats( Stats& stats, const IBFConfig& ibf_config, const StopClock& timeGanonBuild )
 {
+    /*
+     * print general statistic of the build
+     */
     double elapsed = timeGanonBuild.elapsed();
     std::cerr << "ganon-build processed " << stats.total.sequences << " sequences / " << stats.total.files << " files ("
               << stats.total.length_bp / 1000000.0 << " Mbp) in " << elapsed << " seconds ("
@@ -588,10 +640,15 @@ void print_stats( Stats& stats, const IBFConfig& ibf_config, const StopClock& ti
               << "MB" << std::endl;
 }
 
-void print_stats_verbose( const StopClock& timeGanonBuild, const StopClock&  timeCountStoreHashes,
-                        const StopClock& timeEstimateParams,
-                             const StopClock& timeBuildIBF, const StopClock& timeWriteIBF)
+void print_stats_verbose( const StopClock& timeGanonBuild,
+                          const StopClock& timeCountStoreHashes,
+                          const StopClock& timeEstimateParams,
+                          const StopClock& timeBuildIBF,
+                          const StopClock& timeWriteIBF )
 {
+    /*
+     * print advanced statistic and times of the build
+     */
     using ::operator<<;
     std::cerr << "Count/save hashes start: " << timeCountStoreHashes.begin() << std::endl;
     std::cerr << "                    end: " << timeCountStoreHashes.end() << std::endl;
@@ -688,11 +745,10 @@ bool run( Config config )
     {
         task.get();
     }
+    timeCountStoreHashes.stop();
 
     // Sum totals from threads
     stats.add_totals( totals );
-
-    timeCountStoreHashes.stop();
 
     // Define optimal parameters based on provided filter size or max.fp
     // fills ibf_config with optimal value
@@ -713,7 +769,7 @@ bool run( Config config )
     std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) = detail::true_false_positive(
         hashes_count, ibf_config.max_hashes_bin, ibf_config.bin_size_bits, ibf_config.hash_functions );
     timeEstimateParams.stop();
-    
+
     // Print verbose arguments for ibf
     if ( config.verbose )
         std::cerr << ibf_config;
@@ -732,7 +788,7 @@ bool run( Config config )
     // parallelize for every batch_size (64) to guarantee thread safety to the IBF
     uint64_t batch_size = 64;
     // calculate max number of batches necessary
-    uint64_t max_batch  = std::ceil( bin_map_hash.size() / static_cast< double >( batch_size ) );
+    uint64_t max_batch = std::ceil( bin_map_hash.size() / static_cast< double >( batch_size ) );
     // Keep track of batches processed in the threads with an atomic integer
     std::atomic< std::size_t >         bin_batches = 0;
     std::vector< std::future< void > > tasks_build;
@@ -749,7 +805,7 @@ bool run( Config config )
     }
     timeBuildIBF.stop();
 
-    // Delete hash .min files
+    // Delete .min hashes files
     for ( auto const& [target, cnt] : hashes_count )
     {
         detail::delete_hashes( target, config.tmp_output_folder );
@@ -763,10 +819,13 @@ bool run( Config config )
     // Stop timer for total build time
     timeGanonBuild.stop();
 
-    if ( !config.quiet ){
-        if ( config.verbose ){
-            detail::print_stats_verbose(timeGanonBuild, timeCountStoreHashes, timeEstimateParams,
-                             timeBuildIBF, timeWriteIBF );
+    // Print stats and times
+    if ( !config.quiet )
+    {
+        if ( config.verbose )
+        {
+            detail::print_stats_verbose(
+                timeGanonBuild, timeCountStoreHashes, timeEstimateParams, timeBuildIBF, timeWriteIBF );
         }
         detail::print_stats( stats, ibf_config, timeGanonBuild );
     }

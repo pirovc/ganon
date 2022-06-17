@@ -1,4 +1,4 @@
-from ganon.util import run, print_log
+from ganon.util import run, print_log, check_file
 from ganon.report import report
 from ganon.config import Config
 
@@ -6,11 +6,18 @@ from ganon.config import Config
 def classify(cfg):
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
 
+    # list ibf files
+    ibf_files = ",".join([db_prefix + ".ibf" for db_prefix in cfg.db_prefix])
+
+    # list tax files, just add if all dbs have .tax files
+    tax_files = [db_prefix + ".tax" for db_prefix in cfg.db_prefix if check_file(db_prefix + ".tax")]
+    tax_files = ",".join(tax_files) if len(tax_files) == len(cfg.db_prefix) else ""
+
     run_ganon_classify = " ".join([cfg.path_exec['classify'],
                                    "--single-reads " + ",".join(cfg.single_reads) if cfg.single_reads else "",
                                    "--paired-reads " + ",".join(cfg.paired_reads) if cfg.paired_reads else "",
-                                   "--ibf " + ",".join([db_prefix+".ibf" for db_prefix in cfg.db_prefix]),
-                                   "--tax " + ",".join([db_prefix+".tax" for db_prefix in cfg.db_prefix]),
+                                   "--ibf " + ibf_files,
+                                   "--tax " + tax_files if tax_files else "",
                                    "--hierarchy-labels " + ",".join(cfg.hierarchy_labels) if cfg.hierarchy_labels else "",
                                    "--rel-cutoff " + ",".join([str(rc) for rc in cfg.rel_cutoff]) if cfg.rel_cutoff else "",
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
@@ -30,9 +37,9 @@ def classify(cfg):
     if not cfg.output_prefix:
         print(stdout)
 
-    if cfg.output_prefix:
+    if cfg.output_prefix and tax_files:
         report_params = {"db_prefix": cfg.db_prefix,
-                         "input": cfg.output_prefix+".rep",
+                         "input": cfg.output_prefix + ".rep",
                          "output_prefix": cfg.output_prefix,
                          "ranks": cfg.ranks,
                          "output_format": "tsv",
