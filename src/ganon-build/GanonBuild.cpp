@@ -388,7 +388,7 @@ void optimal_hashes_size( double const        filter_size,
     // target value to be chosen (the smallest)
     double min_fp = 1;
     // total + 1 zero index
-    for ( size_t n = max_hashes + 1; n > 1; n -= 1 )
+    for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
         // number of elements to be inserted in a bin
         uint64_t n_hashes = n - 1;
@@ -444,7 +444,7 @@ void optimal_hashes_fp( double const        max_fp,
     // target value to be chosen (the smallest)
     uint64_t min_filter_size = 0;
     // total + 1 zero index
-    for ( size_t n = max_hashes + 1; n > 1; n -= 1 )
+    for ( size_t n = max_hashes + 1; n > 100; n -= 100 )
     {
         // number of elements to be inserted in a bin
         uint64_t n_hashes = n - 1;
@@ -688,6 +688,10 @@ bool run( Config config )
     {
         task.get();
     }
+
+    // Sum totals from threads
+    stats.add_totals( totals );
+
     timeCountStoreHashes.stop();
 
     // Define optimal parameters based on provided filter size or max.fp
@@ -755,9 +759,6 @@ bool run( Config config )
     timeWriteIBF.start();
     detail::save_filter( config, ibf, ibf_config, hashes_count, bin_map_hash );
     timeWriteIBF.stop();
-
-    // Sum totals from threads
-    stats.add_totals( totals );
 
     // Stop timer for total build time
     timeGanonBuild.stop();
