@@ -52,13 +52,14 @@ class Config:
         build_parser = argparse.ArgumentParser(add_help=False)
 
         build_required_args = build_parser.add_argument_group("required arguments")
-        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", required=True, help="One or more organim groups [" + ",".join(self.choices_og) + "]", choices=self.choices_og)
+        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", help="One or more organim groups to download [" + ",".join(self.choices_og) + "]. Mutually exclusive --taxid", choices=self.choices_og)
+        build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")
 
         build_download_args = build_parser.add_argument_group("download arguments")
-        build_download_args.add_argument("-b", "--source",           type=str, nargs="*",         default=["refseq"], metavar="", help="[" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
-        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,        metavar="", help="Download top organims for each taxa. 0 for all.")
-        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                              help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                      metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
+        build_download_args.add_argument("-b", "--source",           type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
+        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited organims for each taxa. 0 for all.")
+        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                         help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
 
         ####################################################################################################
 
@@ -115,8 +116,8 @@ class Config:
         classify_group_required.add_argument("-p", "--paired-reads", type=str, nargs="*", required=False, metavar="reads.1.fq[.gz] reads.2.fq[.gz]", help="Multi-fastq[.gz] pairs of file[s] to classify")
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
-        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. Mutually exclusive --abs-cutoff. Default: 0.5")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. Mutually exclusive --abs-filter. Default: 0.1")
+        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. relative percentage of k-mers necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.5 0.7 1 0.25). 0 for no cutoff. Default: 0.5")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of k-mers (relative to the best match) to keep a match (applied after cutoff). Single value or one per hierarchy (e.g. 0.1 0 0.25). 1 for no filter. Default: 0.1")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix to print report (.rep). Empty to output to STDOUT")
@@ -282,12 +283,14 @@ class Config:
             self.verbose = False
 
         if self.which == "build":
-            pass
-            # for e in ["ibf"] if self.taxonomy == "skip" else ["ibf", "tax"]:
-            #     if check_file(self.db_prefix + "." + e):
-            #         print_log("Output database found: " + self.db_prefix + "." + e)
-            #         print_log("Use a different --db-prefix or activate --restart to re-build it")
-            #         return False
+
+            if not self.organism_group and not self.taxid:
+                print_log("--organism-group or --taxid is required")
+                return False
+
+            if self.organism_group and self.taxid:
+                print_log("--organism-group is mutually exclusive with --taxid")
+                return False
 
         elif self.which == "build-custom":
 

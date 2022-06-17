@@ -41,10 +41,11 @@ def build(cfg):
                 resume_download = True
 
         tx = time.time()
-        print_log("Downloading files from " + ",".join(cfg.source) + " [" + ",".join(cfg.organism_group) + "]", cfg.quiet)
+        print_log("Downloading files from " + ",".join(cfg.source) + " [" + ",".join(cfg.organism_group if cfg.organism_group else cfg.taxid) + "]", cfg.quiet)
         run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
                                            "-d '" + ",".join(cfg.source) + "'",
-                                           "-g '" + ",".join(cfg.organism_group) + "'",
+                                           "-g '" + ",".join(cfg.organism_group) + "'" if cfg.organism_group else "",
+                                           "-T '" + ",".join(cfg.taxid) + "'" if cfg.taxid else "",
                                            "-A " + str(cfg.top) if cfg.top else "",
                                            "-l 'complete genome'" if cfg.complete_genomes else "",
                                            "-f 'genomic.fna.gz'",
