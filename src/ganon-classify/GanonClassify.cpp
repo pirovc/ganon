@@ -603,13 +603,13 @@ size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
 
-    std::tuple<int,int,int> parsed_version;
+    std::tuple< int, int, int >                        parsed_version;
     std::vector< std::tuple< std::string, uint64_t > > hashes_count_std;
 
     archive( parsed_version );
     archive( ibf_config );
     archive( hashes_count_std );
-    archive( bin_map ) ;
+    archive( bin_map );
     archive( filter );
     return filter.bin_count();
 }

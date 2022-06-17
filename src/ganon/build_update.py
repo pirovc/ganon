@@ -513,7 +513,8 @@ def restart_build(fld):
     """
     delete temporary folder to start build from scratch
     """
-    shutil.rmtree(fld)
+    if os.path.isdir(fld):
+        shutil.rmtree(fld)
 
 
 def restart_update(fld):
