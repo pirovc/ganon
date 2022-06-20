@@ -1,10 +1,18 @@
 #pragma once
 
 #include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/tuple.hpp>
+#include <cereal/types/vector.hpp>
+
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/sequence_file/output.hpp>
 #include <seqan3/io/sequence_file/record.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
+
+#include <utils/IBFConfig.hpp>
+#include <utils/dna4_traits.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -15,16 +23,14 @@
 #include <string>
 #include <vector>
 
-using bins_type            = std::vector< uint16_t >;
 using sequences_type       = std::vector< seqan3::dna4_vector >;
-using ids_type             = std::vector< std::string >;
 using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna4 >, std::string >,
                                                       seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
 
 namespace aux
 {
 
-inline void write_sequences( const std::string file, const sequences_type& seqs, const ids_type& ids )
+inline void write_sequences( const std::string file, const sequences_type& seqs, const std::vector< std::string >& ids )
 {
     seqan3::sequence_file_output fout{ file };
     int                          i = 0;
@@ -39,8 +45,23 @@ inline void write_sequences( const std::string file, const sequences_type& seqs,
 
 inline std::vector< std::string > write_sequences_files( const std::string     prefix,
                                                          const std::string     suffix,
-                                                         const sequences_type& seqs,
-                                                         const ids_type&       ids )
+                                                         const sequences_type& seqs )
+{
+    std::vector< std::string > output_files;
+    for ( uint16_t i = 0; i < seqs.size(); ++i )
+    {
+        auto        id = std::to_string( i );
+        std::string filename{ prefix + id + "." + suffix };
+        write_sequences( filename, { seqs[i] }, { id } );
+        output_files.push_back( filename );
+    }
+    return output_files;
+}
+
+inline std::vector< std::string > write_sequences_files( const std::string                 prefix,
+                                                         const std::string                 suffix,
+                                                         const sequences_type&             seqs,
+                                                         const std::vector< std::string >& ids )
 {
     std::vector< std::string > output_files;
     for ( uint16_t i = 0; i < seqs.size(); ++i )
@@ -52,17 +73,49 @@ inline std::vector< std::string > write_sequences_files( const std::string     p
     return output_files;
 }
 
-inline void write_seqid_bin( std::string file, const sequences_type& seqs, const ids_type& ids, const bins_type& bins )
+inline void write_input_file( std::string out_file, std::vector< std::string >& files )
 {
-    // generate basic seqid_bin -> every sequence in one bin, no fragmentation
-    std::ofstream seqid_bin_file{ file };
-    uint16_t      i = 0;
-    for ( auto& seq : seqs )
+    std::ofstream output_file{ out_file };
+    for ( auto& file : files )
     {
-        seqid_bin_file << ids[i] << "\t1\t" << std::ranges::size( seq ) << "\t" << bins[i] << '\n';
-        i += 1;
+        output_file << std::filesystem::canonical( file ).c_str() << '\n';
     }
-    seqid_bin_file.close();
+    output_file.close();
+}
+
+inline void write_input_file_target( std::string                 out_file,
+                                     std::vector< std::string >& files,
+                                     std::vector< std::string >& targets_file )
+{
+    std::ofstream output_file{ out_file };
+    size_t        i = 0;
+    for ( auto& file : files )
+    {
+        output_file << std::filesystem::canonical( file ).c_str() << '\t' << targets_file[i] << '\n';
+        i++;
+    }
+    output_file.close();
+}
+
+inline void write_input_file_seqs( std::string                 out_file,
+                                   std::vector< std::string >& files,
+                                   std::vector< std::string >& targets_seq )
+{
+    std::ofstream output_file{ out_file };
+    size_t        i = 0;
+    for ( auto& file : files )
+    {
+        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
+            file
+        };
+        for ( auto const& [header, seq] : fin )
+        {
+            output_file << std::filesystem::canonical( file ).c_str() << '\t' << targets_seq[i] << '\t' << header
+                        << '\n';
+            i++;
+        }
+    }
+    output_file.close();
 }
 
 inline int fileLines( const std::string& file )
@@ -134,12 +187,22 @@ inline std::vector< std::vector< std::string > > parse_tsv( const std::string& f
     return parsed;
 }
 
-inline seqan3::interleaved_bloom_filter<> load_ibf( const std::string& file )
+inline seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > load_ibf(
+    const std::string& file, IBFConfig& ibf_config, std::vector< std::tuple< uint64_t, std::string > >& bin_map )
 {
-    seqan3::interleaved_bloom_filter<> filter;
-    std::ifstream                      is( file, std::ios::binary );
-    cereal::BinaryInputArchive         archive( is );
+    std::ifstream              is( file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
+
+    std::tuple< int, int, int >                                           parsed_version;
+    std::vector< std::tuple< std::string, uint64_t > >                    hashes_count_std;
+    seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > filter;
+
+    archive( parsed_version );
+    archive( ibf_config );
+    archive( hashes_count_std );
+    archive( bin_map );
     archive( filter );
+
     return filter;
 }
 

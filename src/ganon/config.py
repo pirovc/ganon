@@ -70,10 +70,11 @@ class Config:
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
-        build_custom_args.add_argument("-n", "--input-file",     type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
-        build_custom_args.add_argument("-a", "--input-target",   type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",          type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
-        build_custom_args.add_argument("-m", "--taxonomy-files", type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_custom_args.add_argument("-n", "--input-file",       type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
+        build_custom_args.add_argument("-a", "--input-target",     type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-l", "--level",            type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
+        build_custom_args.add_argument("-m", "--taxonomy-files",   type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+
         build_custom_args.add_argument("--write-info-file",      action="store_true",                     help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
         ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                               metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
@@ -325,10 +326,13 @@ class Config:
                 return False
 
             if self.output_db_prefix and check_folder(set_output_folder(self.output_db_prefix)):
-                print_log("New output folder already exists and it's not empty: " + set_output_folder(self.output_db_prefix))
+                print_log("New output folder already exists and it's not empty: " +
+                          set_output_folder(self.output_db_prefix))
                 return False
 
-            update_required_files = ["_files/assembly_summary.txt", "_files/history.tsv", "_files/config.pkl"]
+            update_required_files = ["_files/assembly_summary.txt",
+                                     "_files/history.tsv",
+                                     "_files/config.pkl"]
             for f in update_required_files:
                 if not check_file(self.db_prefix + f):
                     print_log("Required file to update not found: " + f)

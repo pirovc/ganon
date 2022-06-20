@@ -1,4 +1,4 @@
-#include "aux/Aux.hpp"
+/*#include "aux/Aux.hpp"
 
 #include <seqan3/core/debug_stream.hpp>
 
@@ -13,6 +13,7 @@
 #include <filesystem>
 
 using namespace seqan3::literals;
+*/
 
 /*
 namespace config_classify

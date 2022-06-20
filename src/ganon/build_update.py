@@ -242,6 +242,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             tax.filter(info["node"].unique())  # filter only used tax. nodes
             write_tax(cfg.db_prefix + ".tax", info, tax, user_bins_col, cfg.level, cfg.input_target)
 
+        # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
             write_info_file(info, cfg.db_prefix)
 
@@ -465,7 +466,7 @@ def validate_specialization(info, quiet):
             # replace invalid specialization entries with target
             info.loc[idx_replace, "specialization"] = info.index[idx_replace]
             info.loc[idx_replace, "specialization_name"] = info.index[idx_replace]
-            print_log(str(sum(idx_replace)) + " invalid specialization entries replaced by target\n", quiet)
+            print_log(" - " + str(sum(idx_replace)) + " invalid specialization entries replaced by target", quiet)
 
     # Skip invalid nodes
     shape_tmp = info.shape[0]
@@ -495,10 +496,10 @@ def validate_taxonomy(info, tax, cfg):
         info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, cfg.level))
 
     # Skip invalid nodes (na == tax.undefined_node (None))
-    shape_tmp = info.shape[0]
-    info.dropna(subset=["node"], inplace=True)
-    if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid taxonomic nodes skipped", cfg.quiet)
+    na_entries = info["node"].isna().sum()
+    if na_entries > 0:
+        info.dropna(subset=["node"], inplace=True)
+        print_log(" - " + str(na_entries) + " entries without valid taxonomic nodes skipped", cfg.quiet)
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
