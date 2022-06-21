@@ -27,6 +27,43 @@ using sequences_type       = std::vector< seqan3::dna4_vector >;
 using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna4 >, std::string >,
                                                       seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
 
+struct SeqTarget
+{
+    SeqTarget()
+    {
+    }
+
+    SeqTarget( std::string prefix, sequences_type& _sequences )
+    {
+        sequences = _sequences;
+        for ( size_t i = 0; i < sequences.size(); i++ )
+        {
+            auto p      = std::filesystem::path( prefix ).parent_path().string();
+            auto f      = std::filesystem::path( prefix ).filename().string();
+            auto suffix = "." + std::to_string( i ) + ".fasta";
+            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
+            targets.push_back( f + suffix );
+        }
+    }
+
+    SeqTarget( std::string prefix, sequences_type& _sequences, std::vector< std::string >& _targets )
+    {
+        sequences = _sequences;
+        targets   = _targets;
+        for ( size_t i = 0; i < sequences.size(); i++ )
+        {
+            auto p      = std::filesystem::path( prefix ).parent_path().string();
+            auto f      = std::filesystem::path( prefix ).filename().string();
+            auto suffix = "." + std::to_string( i ) + ".fasta";
+            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
+        }
+    }
+
+    std::vector< std::string >         files;
+    std::vector< seqan3::dna4_vector > sequences;
+    std::vector< std::string >         targets;
+};
+
 namespace aux
 {
 
@@ -43,80 +80,31 @@ inline void write_sequences( const std::string file, const sequences_type& seqs,
 }
 
 
-inline std::vector< std::string > write_sequences_files( const std::string     prefix,
-                                                         const std::string     suffix,
-                                                         const sequences_type& seqs )
+inline void write_sequences_files( const SeqTarget& seqtarget )
 {
-    std::vector< std::string > output_files;
-    for ( uint16_t i = 0; i < seqs.size(); ++i )
+    for ( uint16_t i = 0; i < seqtarget.sequences.size(); ++i )
     {
-        auto        id = std::to_string( i );
-        std::string filename{ prefix + id + "." + suffix };
-        write_sequences( filename, { seqs[i] }, { id } );
-        output_files.push_back( filename );
+        auto id = std::to_string( i );
+        write_sequences( seqtarget.files[i], { seqtarget.sequences[i] }, { id } );
     }
-    return output_files;
 }
 
-inline std::vector< std::string > write_sequences_files( const std::string                 prefix,
-                                                         const std::string                 suffix,
-                                                         const sequences_type&             seqs,
-                                                         const std::vector< std::string >& ids )
-{
-    std::vector< std::string > output_files;
-    for ( uint16_t i = 0; i < seqs.size(); ++i )
-    {
-        std::string filename{ prefix + ids[i] + "." + suffix };
-        write_sequences( filename, { seqs[i] }, { ids[i] } );
-        output_files.push_back( filename );
-    }
-    return output_files;
-}
 
-inline void write_input_file( std::string out_file, std::vector< std::string >& files )
+inline std::string write_input_file( const std::string prefix, const SeqTarget& seqtarget, bool write_target )
 {
-    std::ofstream output_file{ out_file };
-    for ( auto& file : files )
+    std::string   fname = prefix + "_info.tsv";
+    std::ofstream output_file{ fname };
+    for ( uint16_t i = 0; i < seqtarget.files.size(); ++i )
     {
-        output_file << std::filesystem::canonical( file ).c_str() << '\n';
+        output_file << seqtarget.files[i];
+        if ( write_target )
+            output_file << '\t' << seqtarget.targets[i];
+        output_file << '\n';
     }
     output_file.close();
+    return fname;
 }
 
-inline void write_input_file_target( std::string                 out_file,
-                                     std::vector< std::string >& files,
-                                     std::vector< std::string >& targets_file )
-{
-    std::ofstream output_file{ out_file };
-    size_t        i = 0;
-    for ( auto& file : files )
-    {
-        output_file << std::filesystem::canonical( file ).c_str() << '\t' << targets_file[i] << '\n';
-        i++;
-    }
-    output_file.close();
-}
-
-inline void write_input_file_seqs( std::string                 out_file,
-                                   std::vector< std::string >& files,
-                                   std::vector< std::string >& targets_seq )
-{
-    std::ofstream output_file{ out_file };
-    size_t        i = 0;
-    for ( auto& file : files )
-    {
-        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
-            file
-        };
-        for ( auto const& [header, seq] : fin )
-        {
-            output_file << std::filesystem::canonical( file ).c_str() << '\t' << targets_seq[i] << '\t' << header
-                        << '\n';
-            i++;
-        }
-    }
-    output_file.close();
-}
 
 inline int fileLines( const std::string& file )
 {

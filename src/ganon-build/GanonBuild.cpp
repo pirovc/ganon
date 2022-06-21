@@ -427,9 +427,15 @@ void optimal_hashes_size( double const        filter_size,
     uint64_t max_hashes = get_max_hashes( hashes_count );
     // target value to be chosen (the smallest)
     double min_fp = 1;
+
     // simulation on every 100th n. of elements
+    size_t iter = 100;
+    // check if max_hashes not smaller than iteration
+    if ( max_hashes < iter )
+        iter = max_hashes;
+
     // (total + 1) to deal with zero index
-    for ( size_t n = max_hashes + 1; n > 1; n -= 100 )
+    for ( size_t n = max_hashes + 1; n > iter; n -= iter )
     {
         // number of elements to be inserted in a bin
         uint64_t n_hashes = n - 1;
@@ -486,8 +492,13 @@ void optimal_hashes_fp( double const        max_fp,
     uint64_t min_filter_size = 0;
 
     // simulation on every 100th n. of elements
+    size_t iter = 100;
+    // check if max_hashes not smaller than iteration
+    if ( max_hashes < iter )
+        iter = max_hashes;
+
     // (total + 1) to deal with zero index
-    for ( size_t n = max_hashes + 1; n > 1; n -= 100 )
+    for ( size_t n = max_hashes + 1; n > iter; n -= iter )
     {
         // number of elements to be inserted in a bin
         uint64_t n_hashes = n - 1;
