@@ -36,15 +36,15 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
 
-typedef robin_hood::unordered_map< std::string, std::string > TTarget;
-typedef robin_hood::unordered_map< std::string, uint64_t >    THashesCount;
+typedef robin_hood::unordered_map< std::string, robin_hood::unordered_set< std::string > > TFile;
+typedef robin_hood::unordered_map< std::string, uint64_t >                                 THashesCount;
 
 typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
 
 struct InputFileMap
 {
-    std::string file;
-    TTarget     targets;
+    std::string target;
+    TFile       files;
 };
 
 
@@ -82,26 +82,27 @@ inline std::string get_seqid( std::string header )
     return header.substr( 0, header.find( ' ' ) );
 }
 
-robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::string& input_file,
-                                                                    bool               quiet,
-                                                                    Stats&             stats )
+robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::string& input_file,
+                                                                  THashesCount&      hashes_count,
+                                                                  bool               quiet,
+                                                                  Stats&             stats )
 {
     /*
      * Funtion to parse input file -> tabular file with the fields: file [<tab> target <tab> seqid]
-     * Returns an map with {file: target} where target is another map {seqid: target}
-     * In case of sequence parsing (provided seqids on third row), one file has multiple targets
-     * In case of file parsing, each file has only one target and seqid = ""
+     * Returns an map with {target: {file: [seqids]}}
+     * In case of sequence parsing (provided seqids on third row), seqids is a set of sequence ids
+     * In case of file parsing, each file has only one target and seqids is empty
      */
-    robin_hood::unordered_map< std::string, TTarget > input_map;
-    std::string                                       line;
-    std::ifstream                                     infile( input_file );
+    robin_hood::unordered_map< std::string, TFile > input_map;
+    std::string                                     line;
+    std::ifstream                                   infile( input_file );
     while ( std::getline( infile, line, '\n' ) )
     {
         std::istringstream         stream_line( line );
         std::vector< std::string > fields;
         std::string                field;
         while ( std::getline( stream_line, field, '\t' ) )
-            fields.push_back( field ); // file [<tab> target <tab> sequence]
+            fields.push_back( field ); // file [<tab> target <tab> seqid]
 
         const std::string file = fields[0];
         if ( !std::filesystem::exists( file ) || std::filesystem::file_size( file ) == 0 )
@@ -114,22 +115,23 @@ robin_hood::unordered_map< std::string, TTarget > parse_input_file( const std::s
 
         if ( fields.size() == 1 )
         {
-            // skip repeated files
-            if ( !input_map.count( file ) )
-            {
-                // target is the file itself (filename only wihtout path)
-                input_map[file][""] = std::filesystem::path( file ).filename();
-            }
+            // target is the file itself (filename only wihtout path)
+            auto target             = std::filesystem::path( file ).filename();
+            input_map[target][file] = {};
+            hashes_count[target]    = 0;
         }
         else if ( fields.size() == 2 )
         {
             // provided target in the file
-            input_map[file][""] = fields[1];
+            input_map[fields[1]][file] = {};
+            hashes_count[fields[1]]    = 0;
         }
         else
         {
             // sequence as target
-            input_map[file][fields[2]] = fields[1];
+            std::string seqid = fields[2];
+            input_map[fields[1]][file].insert( seqid );
+            hashes_count[seqid] = 0;
         }
         stats.total.files++;
     }
@@ -147,7 +149,7 @@ void store_hashes( const std::string                            target,
      */
     std::filesystem::path outf{ tmp_output_folder };
     outf += target + ".min";
-    std::ofstream outfile{ outf, std::ios::binary };
+    std::ofstream outfile{ outf, std::ios::binary | std::ios::app };
     for ( auto&& h : hashes )
     {
         outfile.write( reinterpret_cast< const char* >( &h ), sizeof( h ) );
@@ -169,14 +171,18 @@ std::vector< uint64_t > load_hashes( std::string file )
     return hashes;
 }
 
-void delete_hashes( const std::string target, const std::string tmp_output_folder )
+void delete_hashes( const THashesCount& hashes_count, const std::string tmp_output_folder )
 {
     /*
      * delete hashes from disk
      */
-    std::filesystem::path outf{ tmp_output_folder };
-    outf += target + ".min";
-    std::filesystem::remove( outf );
+    for ( auto const& [target, cnt] : hashes_count )
+    {
+        std::filesystem::path outf{ tmp_output_folder };
+        outf += target + ".min";
+        if ( std::filesystem::exists( outf ) )
+            std::filesystem::remove( outf );
+    }
 }
 
 void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
@@ -201,56 +207,53 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
         // Wait here until reads are available or push is over and queue is empty
         InputFileMap ifm = ifm_queue.pop();
 
-        // If empty exit thread
-        if ( ifm.file == "" )
+        // If empty after pop, exit thread
+        if ( ifm.target == "" )
             break;
 
-        // store hashes in the robin_hood::unordered_set for performance
-        robin_hood::unordered_map< std::string, robin_hood::unordered_set< uint64_t > > hashes;
 
-        // open file
-        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin{
-            ifm.file
-        };
-
-
-        if ( ifm.targets.count( "" ) )
+        // For all files of a target
+        for ( auto& [file, seqids] : ifm.files )
         {
-            // File as target - generate all hashes from file (can have multiple sequences)
-            // before counting and storing
-            std::string target = ifm.targets[""];
-            for ( auto const& [header, seq] : fin )
+
+            // open file
+            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                fin{ file };
+
+            if ( seqids.empty() )
             {
-                total.sequences++;
-                total.length_bp += seq.size();
-                const auto mh = seq | minimiser_view | std::views::common;
-                hashes[target].insert( mh.begin(), mh.end() );
+                robin_hood::unordered_set< uint64_t > hashes;
+
+                // File as target - generate all hashes from file with possible multiple sequences
+                // before counting and storing
+                for ( auto const& [header, seq] : fin )
+                {
+                    total.sequences++;
+                    total.length_bp += seq.size();
+                    const auto mh = seq | minimiser_view | std::views::common;
+                    hashes.insert( mh.begin(), mh.end() );
+                }
+                hashes_count[ifm.target] += hashes.size();
+                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
             }
-            hashes_count[target] = hashes[target].size();
-            detail::store_hashes( target, hashes[target], config.tmp_output_folder );
-        }
-        else
-        {
-            // Sequence as target - count and store hashes for each sequence
-            std::string target;
-            for ( auto const& [header, seq] : fin )
+            else
             {
-                const auto seqid = get_seqid( header );
-                if ( ifm.targets.count( seqid ) )
+                // Sequence as target - count and store hashes for each sequence
+                for ( auto const& [header, seq] : fin )
                 {
-                    target = ifm.targets[seqid];
+                    const auto seqid = get_seqid( header );
+                    // If header is present for this target
+                    if ( seqids.count( seqid ) )
+                    {
+                        robin_hood::unordered_set< uint64_t > hashes;
+                        total.sequences++;
+                        total.length_bp += seq.size();
+                        const auto mh = seq | minimiser_view | std::views::common;
+                        hashes.insert( mh.begin(), mh.end() );
+                        hashes_count[seqid] = hashes.size();
+                        detail::store_hashes( seqid, hashes, config.tmp_output_folder );
+                    }
                 }
-                else
-                {
-                    total.invalid_sequences++;
-                    continue;
-                }
-                total.sequences++;
-                total.length_bp += seq.size();
-                const auto mh = seq | minimiser_view | std::views::common;
-                hashes[target].insert( mh.begin(), mh.end() );
-                hashes_count[target] = hashes[target].size();
-                detail::store_hashes( target, hashes[target], config.tmp_output_folder );
             }
         }
     }
@@ -715,16 +718,13 @@ bool run( Config config )
     // Map to store number of hashes for each target {target: count}
     detail::THashesCount hashes_count;
 
-    // Parse valid input file into a queue of InputFileMap
+    // Parse valid input file into a queue of InputFileMap by target and initialize hashes_count for each target or seqid
     SafeQueue< detail::InputFileMap > ifm_queue;
-    for ( auto const& [file, targets] : detail::parse_input_file( config.input_file, config.quiet, stats ) )
+    for ( auto const& [target, files] :
+          detail::parse_input_file( config.input_file, hashes_count, config.quiet, stats ) )
     {
-        // Initialize hashes_count for each target to be able to update it threads mode
-        for ( auto const& target : targets )
-            hashes_count[target.second] = 0;
-
-        // Add to File and Targets to the SafeQueue
-        ifm_queue.push( detail::InputFileMap{ file, std::move( targets ) } );
+        // Add to Target and Files to the SafeQueue
+        ifm_queue.push( detail::InputFileMap{ target, std::move( files ) } );
     }
     ifm_queue.notify_push_over();
 
@@ -741,6 +741,8 @@ bool run( Config config )
     // Create temporary output folder if not existing to write minimizer hashes
     if ( config.tmp_output_folder != "" && !std::filesystem::exists( config.tmp_output_folder ) )
         std::filesystem::create_directory( config.tmp_output_folder );
+    // Delete .min hashes files in case they were previously created
+    detail::delete_hashes( hashes_count, config.tmp_output_folder );
 
     // Initialize in parallel (by file) the hash counting and storing
     timeCountStoreHashes.start();
@@ -820,10 +822,7 @@ bool run( Config config )
     timeBuildIBF.stop();
 
     // Delete .min hashes files
-    for ( auto const& [target, cnt] : hashes_count )
-    {
-        detail::delete_hashes( target, config.tmp_output_folder );
-    }
+    detail::delete_hashes( hashes_count, config.tmp_output_folder );
 
     // Write IBF and other data structures to file
     timeWriteIBF.start();

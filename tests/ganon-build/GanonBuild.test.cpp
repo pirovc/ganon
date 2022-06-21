@@ -47,39 +47,50 @@ void validate_filter( const GanonBuild::Config cfg )
 
 void validate_elements( const GanonBuild::Config cfg, const SeqTarget& seqtarget )
 {
-    // check if elements were properly inserted in the IBF
-    // expects unique minimizers among all sequences without errors
+    /*
+     * check if elements were properly inserted in the IBF by querying them against the generated IBF
+     */
+
+    // load IBF and data
     IBFConfig                                          ibf_config;
     std::vector< std::tuple< uint64_t, std::string > > bin_map;
     auto                                               filter = aux::load_ibf( cfg.output_file, ibf_config, bin_map );
-    // create map with targets and binnos
+
+    // agent to query and hash
+    auto agent          = filter.counting_agent< uint16_t >();
+    auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } },
+                                                         seqan3::window_size{ cfg.window_size },
+                                                         seqan3::seed{ raptor::adjust_seed( cfg.kmer_size ) } );
+
+    // create map with targets and respective binnos {target: (binnos)}
     robin_hood::unordered_map< std::string, std::vector< uint64_t > > targets;
     for ( auto const& [binno, target] : bin_map )
     {
         targets[target].push_back( binno );
     }
 
-    seqan3::debug_stream << seqtarget.targets << std::endl;
-    auto agent          = filter.counting_agent< uint16_t >();
-    auto minimiser_hash = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ cfg.kmer_size } },
-                                                         seqan3::window_size{ cfg.window_size },
-                                                         seqan3::seed{ raptor::adjust_seed( cfg.kmer_size ) } );
-
     int i = 0;
+    // For each sequence used to build the filter
     for ( auto& seq : seqtarget.sequences )
     {
         auto hashes     = seq | minimiser_hash | seqan3::views::to< std::vector >;
         auto counts_seq = agent.bulk_count( hashes );
 
-        seqan3::debug_stream << counts_seq << std::endl;
-        uint16_t expected_counts = 0;
+        // get bins from target of this sequence
+        std::vector< uint64_t > target_bins;
+        if ( seqtarget.sequence_as_target )
+            target_bins = targets[seqtarget.headers[i]];
+        else
+            target_bins = targets[seqtarget.targets[i]];
 
         // sum matches for all bins of the targets this sequences belongs
-        for ( auto binno : targets[seqtarget.targets[i]] )
+        uint16_t expected_counts = 0;
+        for ( auto binno : target_bins )
         {
             expected_counts += counts_seq[binno];
         }
 
+        // it should have all hashes matching among the respective bins
         REQUIRE( expected_counts == hashes.size() );
         i += 1;
     }
@@ -89,6 +100,7 @@ void validate_elements( const GanonBuild::Config cfg, const SeqTarget& seqtarget
 GanonBuild::Config defaultConfig( const std::string prefix )
 {
     GanonBuild::Config cfg;
+    cfg.input_file     = prefix + "_input.tsv";
     cfg.output_file    = prefix + ".ibf";
     cfg.verbose        = true;
     cfg.quiet          = false;
@@ -99,19 +111,7 @@ GanonBuild::Config defaultConfig( const std::string prefix )
     return cfg;
 }
 
-
-GanonBuild::Config defaultConfig( const std::string prefix, const SeqTarget& seqtarget, bool write_target )
-{
-
-    // Make config
-    GanonBuild::Config cfg = defaultConfig( prefix );
-    aux::write_sequences_files( seqtarget );
-    cfg.input_file = aux::write_input_file( prefix, seqtarget, write_target );
-    return cfg;
-}
-
 } // namespace config_build
-
 
 // Default sequences to build
 sequences_type seqs{ "TTCAATTCGGCGTACTCAGCATCGCAGCTAGCTGTACGGCTAGTCGTCAT"_dna4,
@@ -127,12 +127,14 @@ SCENARIO( "building indices", "[ganon-build]" )
     SECTION( "--input-file" )
     {
 
-        SECTION( "one column - filename as target" )
+        SECTION( "one column - filename as default target" )
         {
             std::string prefix{ folder_prefix + "input_file_one_col" };
-            auto        seqtarget = SeqTarget( prefix, seqs );
+            auto        cfg = config_build::defaultConfig( prefix );
 
-            auto cfg = config_build::defaultConfig( prefix, seqtarget, false );
+            auto seqtarget = SeqTarget( prefix, seqs );
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
 
             REQUIRE( GanonBuild::run( cfg ) );
             config_build::validate_filter( cfg );
@@ -141,10 +143,28 @@ SCENARIO( "building indices", "[ganon-build]" )
 
         SECTION( "two columns - custom target" )
         {
-            std::string                prefix{ folder_prefix + "input_file_two_cols" };
+            std::string prefix{ folder_prefix + "input_file_two_cols" };
+            auto        cfg = config_build::defaultConfig( prefix );
+
             std::vector< std::string > targets{ "T1", "T1", "T2" };
             auto                       seqtarget = SeqTarget( prefix, seqs, targets );
-            auto                       cfg       = config_build::defaultConfig( prefix, seqtarget, true );
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
+
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg );
+            config_build::validate_elements( cfg, seqtarget );
+        }
+
+        SECTION( "three columns - sequence as target" )
+        {
+            std::string prefix{ folder_prefix + "input_file_three_cols" };
+            auto        cfg = config_build::defaultConfig( prefix );
+
+            auto seqtarget               = SeqTarget( prefix, seqs );
+            seqtarget.sequence_as_target = true;
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
 
             REQUIRE( GanonBuild::run( cfg ) );
             config_build::validate_filter( cfg );

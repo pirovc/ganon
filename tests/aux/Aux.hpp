@@ -38,73 +38,72 @@ struct SeqTarget
         sequences = _sequences;
         for ( size_t i = 0; i < sequences.size(); i++ )
         {
+            auto seqid  = "SEQ" + std::to_string( i );
             auto p      = std::filesystem::path( prefix ).parent_path().string();
             auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + std::to_string( i ) + ".fasta";
+            auto suffix = "." + seqid + ".fasta";
             files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
             targets.push_back( f + suffix );
+            headers.push_back( seqid );
         }
     }
 
     SeqTarget( std::string prefix, sequences_type& _sequences, std::vector< std::string >& _targets )
     {
-        sequences = _sequences;
-        targets   = _targets;
+        sequences      = _sequences;
+        targets        = _targets;
+        custom_targets = true;
         for ( size_t i = 0; i < sequences.size(); i++ )
         {
+            auto seqid  = "SEQ" + std::to_string( i );
             auto p      = std::filesystem::path( prefix ).parent_path().string();
             auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + std::to_string( i ) + ".fasta";
+            auto suffix = "." + seqid + ".fasta";
             files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
+            headers.push_back( seqid );
+        }
+    }
+
+    void write_input_file( const std::string input_file )
+    {
+        std::ofstream output_file{ input_file };
+        for ( uint16_t i = 0; i < files.size(); ++i )
+        {
+            output_file << files[i];
+            if ( custom_targets || sequence_as_target )
+            {
+                output_file << '\t' << targets[i];
+                if ( sequence_as_target )
+                {
+                    output_file << '\t' << headers[i];
+                }
+            }
+
+            output_file << '\n';
+        }
+        output_file.close();
+    }
+
+    void write_sequences_files()
+    {
+        for ( uint16_t i = 0; i < files.size(); ++i )
+        {
+            seqan3::sequence_file_output fout{ files[i] };
+            sequence_record_type         rec{ sequences[i], headers[i] };
+            fout.push_back( rec );
         }
     }
 
     std::vector< std::string >         files;
+    std::vector< std::string >         headers;
     std::vector< seqan3::dna4_vector > sequences;
     std::vector< std::string >         targets;
+    bool                               sequence_as_target = false;
+    bool                               custom_targets     = false;
 };
 
 namespace aux
 {
-
-inline void write_sequences( const std::string file, const sequences_type& seqs, const std::vector< std::string >& ids )
-{
-    seqan3::sequence_file_output fout{ file };
-    int                          i = 0;
-    for ( auto& seq : seqs )
-    {
-        sequence_record_type rec{ seq, ids[i] };
-        fout.push_back( rec );
-        i += 1;
-    }
-}
-
-
-inline void write_sequences_files( const SeqTarget& seqtarget )
-{
-    for ( uint16_t i = 0; i < seqtarget.sequences.size(); ++i )
-    {
-        auto id = std::to_string( i );
-        write_sequences( seqtarget.files[i], { seqtarget.sequences[i] }, { id } );
-    }
-}
-
-
-inline std::string write_input_file( const std::string prefix, const SeqTarget& seqtarget, bool write_target )
-{
-    std::string   fname = prefix + "_info.tsv";
-    std::ofstream output_file{ fname };
-    for ( uint16_t i = 0; i < seqtarget.files.size(); ++i )
-    {
-        output_file << seqtarget.files[i];
-        if ( write_target )
-            output_file << '\t' << seqtarget.targets[i];
-        output_file << '\n';
-    }
-    output_file.close();
-    return fname;
-}
-
 
 inline int fileLines( const std::string& file )
 {
