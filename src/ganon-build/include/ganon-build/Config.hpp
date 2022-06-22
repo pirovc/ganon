@@ -78,13 +78,19 @@ public:
             return false;
         }
 
-        if ( window_size > 0 && window_size < kmer_size )
+        if ( window_size < kmer_size )
         {
             if ( !quiet )
                 std::cerr << "--window-size has to be >= --kmer-size" << std::endl;
             return false;
         }
 
+        if ( kmer_size > 32 )
+        {
+            if ( !quiet )
+                std::cerr << "--kmer-size has to be <= 32" << std::endl;
+            return false;
+        }
         return true;
     }
 };

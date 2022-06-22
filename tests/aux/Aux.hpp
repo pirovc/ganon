@@ -5,14 +5,9 @@
 #include <cereal/types/tuple.hpp>
 #include <cereal/types/vector.hpp>
 
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/io/sequence_file/output.hpp>
-#include <seqan3/io/sequence_file/record.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 
 #include <utils/IBFConfig.hpp>
-#include <utils/dna4_traits.hpp>
 
 #include <algorithm>
 #include <fstream>
@@ -23,84 +18,6 @@
 #include <string>
 #include <vector>
 
-using sequences_type       = std::vector< seqan3::dna4_vector >;
-using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna4 >, std::string >,
-                                                      seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
-
-struct SeqTarget
-{
-    SeqTarget()
-    {
-    }
-
-    SeqTarget( std::string prefix, sequences_type& _sequences )
-    {
-        sequences = _sequences;
-        for ( size_t i = 0; i < sequences.size(); i++ )
-        {
-            auto seqid  = "SEQ" + std::to_string( i );
-            auto p      = std::filesystem::path( prefix ).parent_path().string();
-            auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + seqid + ".fasta";
-            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
-            targets.push_back( f + suffix );
-            headers.push_back( seqid );
-        }
-    }
-
-    SeqTarget( std::string prefix, sequences_type& _sequences, std::vector< std::string >& _targets )
-    {
-        sequences      = _sequences;
-        targets        = _targets;
-        custom_targets = true;
-        for ( size_t i = 0; i < sequences.size(); i++ )
-        {
-            auto seqid  = "SEQ" + std::to_string( i );
-            auto p      = std::filesystem::path( prefix ).parent_path().string();
-            auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + seqid + ".fasta";
-            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
-            headers.push_back( seqid );
-        }
-    }
-
-    void write_input_file( const std::string input_file )
-    {
-        std::ofstream output_file{ input_file };
-        for ( uint16_t i = 0; i < files.size(); ++i )
-        {
-            output_file << files[i];
-            if ( custom_targets || sequence_as_target )
-            {
-                output_file << '\t' << targets[i];
-                if ( sequence_as_target )
-                {
-                    output_file << '\t' << headers[i];
-                }
-            }
-
-            output_file << '\n';
-        }
-        output_file.close();
-    }
-
-    void write_sequences_files()
-    {
-        for ( uint16_t i = 0; i < files.size(); ++i )
-        {
-            seqan3::sequence_file_output fout{ files[i] };
-            sequence_record_type         rec{ sequences[i], headers[i] };
-            fout.push_back( rec );
-        }
-    }
-
-    std::vector< std::string >         files;
-    std::vector< std::string >         headers;
-    std::vector< seqan3::dna4_vector > sequences;
-    std::vector< std::string >         targets;
-    bool                               sequence_as_target = false;
-    bool                               custom_targets     = false;
-};
 
 namespace aux
 {
