@@ -36,17 +36,22 @@ sort_in_out(){ # $1 file, $2 order
 function showhelp {
     echo "ganon-get-seq-info.sh"
     echo
-    echo "Uses NCBI E-utils http request to get sequence information (lenght, taxid, assembly accession, assembly name)"
-    echo "outputs to STDOUT in the same order of the input (besides failed entries or all with -k)"
+    echo "Uses NCBI E-utils http requests to get sequence information (lenght, taxid, assembly accession, assembly name) based on accessions "
+    echo "outputs to STDOUT in the same order of the input (besides failed entries, which can be reported with -k)"
     echo
     echo $' -i [str] input file with one accessions per line (use - to read from STDIN)' 
     echo $' -l [str] list of accesions (comma separated)'
     echo $' -n [str] ncbi_api_key'
+    echo
     echo $' -k Keep all entries even if nothing is retrieved (report "na")'
-    echo $' -s Skip sequence length and taxid requests'
-    echo $' -a Get assembly accession (only latest for the sequence accession)'
-    echo $' -m Get assembly name'
     echo $' -r Use sequence accession for unavailable asssembly accessions/names (by default report "na")'
+    echo
+    echo $' -e Get sequence length and taxid'
+    echo $' -a Get assembly accession (latest)'
+    echo $' -m Get assembly name'
+
+
+
     echo
 }
 
@@ -56,20 +61,21 @@ ncbi_api_key=""
 keep_all=0
 get_assembly_accession=0
 get_assembly_name=0
-skip_len_taxid=0
+get_length_taxid=0
 replace_not_found_accession=0
 
 OPTIND=1 # Reset getopts
-while getopts "i:l:n:kamsr" opt; do
+while getopts "i:l:n:kretam" opt; do
   case ${opt} in
     i) input_file=${OPTARG} ;;
     l) list_acc=${OPTARG} ;;
     n) ncbi_api_key=${OPTARG} ;;
     k) keep_all=1 ;;
+    r) replace_not_found_accession=1 ;;
+    e) get_length_taxid=1 ;;
     a) get_assembly_accession=1 ;;
     m) get_assembly_name=1 ;;
-    s) skip_len_taxid=1 ;;
-    r) replace_not_found_accession=1 ;;
+
     h|\?) showhelp; exit 1 ;;
     :) echo "Option -${OPTARG} requires an argument." >&2; exit 1 ;;
   esac
@@ -78,11 +84,8 @@ if [ ${OPTIND} -eq 1 ]; then showhelp; exit 1; fi
 shift $((OPTIND-1))
 [ "$1" = "--" ] && shift
 
-# Activate assembly accession by default if all deactivated
-if [ "${skip_len_taxid}" -eq 1 ];  then
-    if [ "${get_assembly_accession}" -eq 0 ] & [ "${get_assembly_name}" -eq 0 ];  then
-        get_assembly_accession=1
-    fi
+if [[ "${get_length_taxid}" -eq 0 && "${get_assembly_accession}" -eq 0 && "${get_assembly_name}" -eq 0 ]]; then
+    echo "At least one option has to be active (-e -a -m)"; exit 1;
 fi
 
 if [[ "${input_file}" == "-" ]]; then
@@ -101,6 +104,7 @@ if [[ ! -z "${ncbi_api_key}" ]]; then
     api_key_test="$(retrieve_summary_xml "" "${ncbi_api_key}" | grep -o 'API key invalid')"
     if [[ ! -z "${api_key_test}" ]]; then
         ncbi_api_key=""
+        (>&2 printf "Invalid NCBI API key\n")
     fi
 fi
 
@@ -110,8 +114,7 @@ while [[ ! -z "${acc}" ]];
 do
     out=""
 
-    # if -s active
-    if [ "${skip_len_taxid}" -eq 0 ]; then
+    if [ "${get_length_taxid}" -eq 1 ]; then
         for i in $(seq 1 ${att});
         do
             # First try to get from summary, lighter resource 
@@ -263,7 +266,7 @@ do
 
         final="${out}"
         # define output
-        if [ "${skip_len_taxid}" -eq 0 ]; then
+        if [ "${get_length_taxid}" -eq 1 ]; then
             out_fields="0,1.2,1.3,2.2";
         else
             out_fields="0,2.2";
@@ -277,7 +280,7 @@ do
             
             # fix output for assembly name
             if [ "${get_assembly_name}" -eq 1 ]; then 
-                if [ "${skip_len_taxid}" -eq 0 ]; then
+                if [ "${get_length_taxid}" -eq 1 ]; then
                     out_fields="0,1.2,1.3,1.4,2.2";
                 else
                     out_fields="0,1.2,2.2";

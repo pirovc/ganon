@@ -1,0 +1,27 @@
+366602	75	species	Caulobacter sp. K31
+75	76892	genus	Caulobacter
+76892	204458	family	Caulobacteraceae
+204458	28211	order	Caulobacterales
+28211	1224	class	Alphaproteobacteria
+1224	2	phylum	Proteobacteria
+2	131567	superkingdom	Bacteria
+131567	1	no rank	cellular organisms
+1	0	root	root
+696749	470	no rank	Acinetobacter baumannii 1656-2
+470	909768	species	Acinetobacter baumannii
+909768	469	species group	Acinetobacter calcoaceticus/baumannii complex
+469	468	genus	Acinetobacter
+468	72274	family	Moraxellaceae
+72274	1236	order	Pseudomonadales
+1236	1224	class	Gammaproteobacteria
+1052684	1406	no rank	Paenibacillus polymyxa M1
+1406	44249	species	Paenibacillus polymyxa
+44249	186822	genus	Paenibacillus
+186822	1385	family	Paenibacillaceae
+1385	91061	order	Bacillales
+91061	1239	class	Bacilli
+1239	1783272	phylum	Firmicutes
+1783272	2	no rank	Terrabacteria group
+GCF_000019145.1	366602	assembly	GCF_000019145.1
+GCF_000188215.1	696749	assembly	GCF_000188215.1
+GCF_000237325.1	1052684	assembly	GCF_000237325.1

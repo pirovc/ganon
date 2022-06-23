@@ -10,3 +10,6 @@
 [submodule "libs/robin-hood-hashing"]
 	path = libs/robin-hood-hashing
 	url = https://github.com/martinus/robin-hood-hashing/
+[submodule "libs/genome_updater"]
+	path = libs/genome_updater
+	url = https://github.com/pirovc/genome_updater.git
