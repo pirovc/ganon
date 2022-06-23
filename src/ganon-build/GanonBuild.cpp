@@ -588,7 +588,7 @@ TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const
         }
     }
     // assert if number of bins created are same as expected
-    assert( bin_map_hash.size() < ibf_config.n_bins );
+    assert( bin_map_hash.size() == ibf_config.n_bins );
     return bin_map_hash;
 }
 
