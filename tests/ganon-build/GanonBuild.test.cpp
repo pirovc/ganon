@@ -1,110 +1,23 @@
 #include "aux/Aux.hpp"
 
-#include <seqan3/core/debug_stream.hpp>
-
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/io/sequence_file/output.hpp>
-#include <seqan3/io/sequence_file/record.hpp>
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
-#include <seqan3/std/ranges>
-#include <utils/dna4_traits.hpp>
-
-#include <iostream>
 
 #include <ganon-build/Config.hpp>
 #include <ganon-build/GanonBuild.hpp>
+
 #include <utils/adjust_seed.hpp>
 
 #include <catch2/catch.hpp>
 #include <robin_hood.h>
 
+#include <iostream>
 
 using namespace seqan3::literals;
 
-
 namespace config_build
 {
-
-using sequences_type       = std::vector< seqan3::dna4_vector >;
-using sequence_record_type = seqan3::sequence_record< seqan3::type_list< std::vector< seqan3::dna4 >, std::string >,
-                                                      seqan3::fields< seqan3::field::seq, seqan3::field::id > >;
-
-struct SeqTarget
-{
-    SeqTarget()
-    {
-    }
-
-    SeqTarget( std::string prefix, sequences_type& _sequences )
-    {
-        sequences = _sequences;
-        for ( size_t i = 0; i < sequences.size(); i++ )
-        {
-            auto seqid  = "SEQ" + std::to_string( i );
-            auto p      = std::filesystem::path( prefix ).parent_path().string();
-            auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + seqid + ".fasta";
-            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
-            targets.push_back( f + suffix );
-            headers.push_back( seqid );
-        }
-    }
-
-    SeqTarget( std::string prefix, sequences_type& _sequences, std::vector< std::string >& _targets )
-    {
-        sequences      = _sequences;
-        targets        = _targets;
-        custom_targets = true;
-        for ( size_t i = 0; i < sequences.size(); i++ )
-        {
-            auto seqid  = "SEQ" + std::to_string( i );
-            auto p      = std::filesystem::path( prefix ).parent_path().string();
-            auto f      = std::filesystem::path( prefix ).filename().string();
-            auto suffix = "." + seqid + ".fasta";
-            files.push_back( std::filesystem::canonical( p ).string() + "/" + f + suffix );
-            headers.push_back( seqid );
-        }
-    }
-
-    void write_input_file( const std::string input_file )
-    {
-        std::ofstream output_file{ input_file };
-        for ( uint16_t i = 0; i < files.size(); ++i )
-        {
-            output_file << files[i];
-            if ( custom_targets || sequence_as_target )
-            {
-                output_file << '\t' << targets[i];
-                if ( sequence_as_target )
-                {
-                    output_file << '\t' << headers[i];
-                }
-            }
-
-            output_file << '\n';
-        }
-        output_file.close();
-    }
-
-    void write_sequences_files()
-    {
-        for ( uint16_t i = 0; i < files.size(); ++i )
-        {
-            seqan3::sequence_file_output fout{ files[i] };
-            sequence_record_type         rec{ sequences[i], headers[i] };
-            fout.push_back( rec );
-        }
-    }
-
-    std::vector< std::string >         files;
-    std::vector< std::string >         headers;
-    std::vector< seqan3::dna4_vector > sequences;
-    std::vector< std::string >         targets;
-    bool                               sequence_as_target = false;
-    bool                               custom_targets     = false;
-};
-
 
 void validate_filter( const GanonBuild::Config cfg )
 {
@@ -139,7 +52,7 @@ void validate_filter( const GanonBuild::Config cfg )
 }
 
 
-void validate_elements( const GanonBuild::Config cfg, const SeqTarget& seqtarget )
+void validate_elements( const GanonBuild::Config cfg, const aux::SeqTarget& seqtarget )
 {
     /*
      * check if elements were properly inserted in the IBF by querying them against the generated IBF
@@ -209,18 +122,16 @@ GanonBuild::Config defaultConfig( const std::string prefix )
 
 // Default sequences to build
 
-config_build::sequences_type seqs{
-    "ACACTCTTTGAAAATGCATATAATATTGAACGTTATTTTGAAATAGATTAATTACTCATATCCATTTGCTAATCTTATCG"_dna4,
-    "TTTATTATATGTAATTATAAATTTATCGTTAAGCTTGACATAAGTGAGTGTATCTATGTTCTTAACAAATACATCGCGTT"_dna4,
-    "TTTTATTTTTATTTCTTATGCACAAGAATAAATTATATGCATATGATAATTTCTCATTCAATGCGGATGTACATTATGGT"_dna4,
-    "TATGGTAAGCTATTATGGCATGATAAAAAACCAGTCATATACCCATTGGCATCCTTATCTGATTATACTTATTATAACGA"_dna4,
-    "ATCCGACCCATTTGAAACGATTTATTATGTGGAGCAATACTATAAAATTAGCTTAAATGAGAGTAAGCGAATTCAAGAAC"_dna4,
-    "AAAAGGACATTTACGCACACCTTCAATTAAAACATAATAAATCATTAATTACAGCAAATGTAACGTTACATAATAAAAGT"_dna4,
-    "AATAGTTCGTATTATGTTCATCGGATGAATTTACCAGCAAACATCCATGAATCACCTTACTCTCCTTTGTGCAGTGGTTC"_dna4,
-    "TTTTTTAATCGTAACAAATAACATACGGTTAGATTATATAAGAAAAATTACATGCCGATTTGATTTGTGGATAAAAAAAT"_dna4,
-    "CTGACTGGATAGAAATATCACCCGGAGAAAAACTCTCATACACAGTAAATTTGAATGACTATTATGCTTTTCTCCCTGCG"_dna4,
-    "ATGCATCAATATGATATAGGAACTGTAGAGTTCACATTGGTAAATAGTAATTGGTTCTTAGAACAGCATATTTATGATCT"_dna4
-};
+aux::sequences_type seqs{ "ACACTCTTTGAAAATGCATATAATATTGAACGTTATTTTGAAATAGATTAATTACTCATATCCATTTGCTAATCTTATCG"_dna4,
+                          "TTTATTATATGTAATTATAAATTTATCGTTAAGCTTGACATAAGTGAGTGTATCTATGTTCTTAACAAATACATCGCGTT"_dna4,
+                          "TTTTATTTTTATTTCTTATGCACAAGAATAAATTATATGCATATGATAATTTCTCATTCAATGCGGATGTACATTATGGT"_dna4,
+                          "TATGGTAAGCTATTATGGCATGATAAAAAACCAGTCATATACCCATTGGCATCCTTATCTGATTATACTTATTATAACGA"_dna4,
+                          "ATCCGACCCATTTGAAACGATTTATTATGTGGAGCAATACTATAAAATTAGCTTAAATGAGAGTAAGCGAATTCAAGAAC"_dna4,
+                          "AAAAGGACATTTACGCACACCTTCAATTAAAACATAATAAATCATTAATTACAGCAAATGTAACGTTACATAATAAAAGT"_dna4,
+                          "AATAGTTCGTATTATGTTCATCGGATGAATTTACCAGCAAACATCCATGAATCACCTTACTCTCCTTTGTGCAGTGGTTC"_dna4,
+                          "TTTTTTAATCGTAACAAATAACATACGGTTAGATTATATAAGAAAAATTACATGCCGATTTGATTTGTGGATAAAAAAAT"_dna4,
+                          "CTGACTGGATAGAAATATCACCCGGAGAAAAACTCTCATACACAGTAAATTTGAATGACTATTATGCTTTTCTCCCTGCG"_dna4,
+                          "ATGCATCAATATGATATAGGAACTGTAGAGTTCACATTGGTAAATAGTAATTGGTTCTTAGAACAGCATATTTATGATCT"_dna4 };
 
 SCENARIO( "building indices", "[ganon-build]" )
 {
@@ -236,7 +147,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             std::string prefix{ folder_prefix + "input_file_one_col" };
             auto        cfg = config_build::defaultConfig( prefix );
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -252,7 +163,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
             std::vector< std::string > targets{ "T1", "T9", "T1", "T8", "T1", "T1", "T1", "T1", "T4", "T1" };
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs, targets );
+            auto seqtarget = aux::SeqTarget( prefix, seqs, targets );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -266,7 +177,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             std::string prefix{ folder_prefix + "input_file_three_cols" };
             auto        cfg = config_build::defaultConfig( prefix );
 
-            auto seqtarget               = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget               = aux::SeqTarget( prefix, seqs );
             seqtarget.sequence_as_target = true;
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
@@ -283,7 +194,7 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg = config_build::defaultConfig( prefix );
         cfg.max_fp      = 0.01;
 
-        auto seqtarget = config_build::SeqTarget( prefix, seqs );
+        auto seqtarget = aux::SeqTarget( prefix, seqs );
         seqtarget.write_input_file( cfg.input_file );
         seqtarget.write_sequences_files();
 
@@ -296,7 +207,7 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg2 = config_build::defaultConfig( prefix2 );
         cfg2.max_fp      = 0.5;
 
-        auto seqtarget2 = config_build::SeqTarget( prefix2, seqs );
+        auto seqtarget2 = aux::SeqTarget( prefix2, seqs );
         seqtarget2.write_input_file( cfg2.input_file );
         seqtarget2.write_sequences_files();
 
@@ -315,7 +226,7 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg = config_build::defaultConfig( prefix );
         cfg.filter_size = 0.1;
 
-        auto seqtarget = config_build::SeqTarget( prefix, seqs );
+        auto seqtarget = aux::SeqTarget( prefix, seqs );
         seqtarget.write_input_file( cfg.input_file );
         seqtarget.write_sequences_files();
 
@@ -328,7 +239,7 @@ SCENARIO( "building indices", "[ganon-build]" )
         auto        cfg2 = config_build::defaultConfig( prefix2 );
         cfg2.filter_size = 1;
 
-        auto seqtarget2 = config_build::SeqTarget( prefix2, seqs );
+        auto seqtarget2 = aux::SeqTarget( prefix2, seqs );
         seqtarget2.write_input_file( cfg2.input_file );
         seqtarget2.write_sequences_files();
 
@@ -349,7 +260,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             auto        cfg    = config_build::defaultConfig( prefix );
             cfg.hash_functions = 0;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -364,7 +275,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             auto        cfg    = config_build::defaultConfig( prefix );
             cfg.hash_functions = 2;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -380,7 +291,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             auto        cfg    = config_build::defaultConfig( prefix );
             cfg.hash_functions = 6;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -398,7 +309,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.window_size = 32;
             cfg.kmer_size   = 19;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -414,7 +325,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.window_size = 23;
             cfg.kmer_size   = 21;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -430,7 +341,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.window_size = 27;
             cfg.kmer_size   = 27;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -446,7 +357,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.window_size = 42;
             cfg.kmer_size   = 35;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -460,7 +371,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             cfg.window_size = 12;
             cfg.kmer_size   = 32;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -477,7 +388,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             auto        cfg       = config_build::defaultConfig( prefix );
             cfg.tmp_output_folder = "";
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -495,7 +406,7 @@ SCENARIO( "building indices", "[ganon-build]" )
 
             std::filesystem::create_directory( prefix );
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 
@@ -511,7 +422,7 @@ SCENARIO( "building indices", "[ganon-build]" )
             auto        cfg       = config_build::defaultConfig( prefix );
             cfg.tmp_output_folder = prefix;
 
-            auto seqtarget = config_build::SeqTarget( prefix, seqs );
+            auto seqtarget = aux::SeqTarget( prefix, seqs );
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 

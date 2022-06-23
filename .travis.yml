@@ -69,7 +69,6 @@ script:
   - ganon-build -h # ret 0
   - ganon-classify -h # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/unit/ -v
   - python3 -m unittest discover -s tests/ganon/integration/ -v
   - python3 setup.py install --user
   - ganon -h # ret 0
@@ -77,7 +76,6 @@ script:
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
-      coverage run --append -m unittest discover -s tests/ganon/unit/ -v;
       coverage run --append -m unittest discover -s tests/ganon/integration/ -v;
       bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
     fi
