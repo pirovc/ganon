@@ -157,6 +157,9 @@ def update(cfg):
         # Save config again (change on db_prefix, input folders)
         save_config(build_custom_config, files_output_folder + "config.pkl")
 
+        # Remove save states from finished update (from base folder)
+        clear_states("update", files_output_folder)
+
         if cfg.output_db_prefix:
             # Move files folder to new output_db_prefix
             os.rename(set_output_folder(cfg.db_prefix), set_output_folder(cfg.output_db_prefix))
