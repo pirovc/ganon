@@ -117,26 +117,27 @@ class Config:
         classify_group_required.add_argument("-p", "--paired-reads", type=str, nargs="*", required=False, metavar="reads.1.fq[.gz] reads.2.fq[.gz]", help="Multi-fastq[.gz] pairs of file[s] to classify")
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
-        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff. Default: 0.5")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter. Default: 0.1")
+        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
-        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix to print report (.rep). Empty to output to STDOUT")
+        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
         classify_group_output.add_argument("--output-lca",                action="store_true",               help="Output an additional file with one lca match for each read (.lca)")
         classify_group_output.add_argument("--output-all",                action="store_true",               help="Output an additional file with all matches. File can be very large (.all)")
         classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output an additional file with unclassified read headers (.unc)")
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
-        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", help="Number of sub-processes/threads to use. Default: 3")
-        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,   nargs="*", metavar="", help="Hierarchy definition, one for each database input. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). Default: H1")
-        classify_group_other.add_argument("-r", "--ranks",               type=str,   nargs="*", metavar="", help="Ranks to show in the report (.tre). 'all' for all identified ranks. empty for default ranks: superkingdom phylum class order family genus species assembly. This file can be re-generated with the ganon report command.")
+        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=3,    help="Number of sub-processes/threads to use")
+        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hiearchy is 'H1'")
+        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="",               help="Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). This file can be re-generated with the 'ganon report' command")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
-        classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="", help=argparse.SUPPRESS) 
+        
+        classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="",       help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
-        classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
+        classify_group_other.add_argument("--hibf",                      action="store_true",                     help=argparse.SUPPRESS)
 
         ####################################################################################################
 
