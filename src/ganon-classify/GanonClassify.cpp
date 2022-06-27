@@ -595,6 +595,34 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     archive( bin_path );
     archive( filter );
 
+    // load ibf_config from raptor params
+    ibf_config.window_size = window_size;
+    ibf_config.kmer_size   = shape.count();
+
+    // Create map from paths
+    size_t binno{};
+    for ( auto const& file_list : bin_path )
+    {
+        for ( auto const& filename : file_list )
+        {
+            // based on the filename, try to get only assembly accession (e.g.
+            // GCF_013391805.1_ASM1339180v1_genomic.fna.gz), otherwise use filename as target
+            auto   f     = std::filesystem::path( filename ).filename().string();
+            size_t found = f.find( '_' );
+            if ( found != std::string::npos )
+            {
+                found = f.find( '_', found + 1 );
+                if ( found != std::string::npos )
+                {
+                    f = f.substr( 0, found );
+                }
+            }
+
+            bin_map.push_back( std::make_tuple( binno, f ) );
+        }
+        ++binno;
+    }
+
     return filter.user_bins.num_user_bins();
 }
 
