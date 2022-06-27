@@ -7,7 +7,8 @@ def classify(cfg):
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
 
     # list ibf files
-    ibf_files = ",".join([db_prefix + ".ibf" for db_prefix in cfg.db_prefix])
+    suffix = ".ibf" if not cfg.hibf else ".hibf"
+    ibf_files = ",".join([db_prefix + suffix for db_prefix in cfg.db_prefix])
 
     # list tax files, just add if all dbs have .tax files
     tax_files = [db_prefix + ".tax" for db_prefix in cfg.db_prefix if check_file(db_prefix + ".tax")]

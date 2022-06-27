@@ -606,7 +606,7 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
         for ( auto const& filename : file_list )
         {
             // based on the filename, try to get only assembly accession (e.g.
-            // GCF_013391805.1_ASM1339180v1_genomic.fna.gz)
+            // GCF_013391805.1_ASM1339180v1_genomic.fna.gz), otherwise use filename as target
             auto   f     = std::filesystem::path( filename ).filename().string();
             size_t found = f.find( '_' );
             if ( found != std::string::npos )
@@ -619,7 +619,6 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
             }
 
             bin_map.push_back( std::make_tuple( binno, f ) );
-            // seqan3::debug_stream << binno << " " << std::filesystem::path( filename ).filename().string() << std::endl;
         }
         ++binno;
     }
