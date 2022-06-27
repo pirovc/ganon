@@ -12,7 +12,7 @@ def parse_sequence_accession(input_files, info):
     Look for sequence accession (anything from > to the first space) in all input files
     """
     for file in input_files:
-        # cat | zcat | gawk -> compability with osx
+        # cat | zcat  -> compability with osx
         run_cat = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
         stdout = run(run_cat, shell=True, ret_stdout=True)
         tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target'])
