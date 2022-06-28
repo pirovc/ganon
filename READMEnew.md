@@ -4,7 +4,6 @@ ganon classifies short reads against large sets of refence sequences efficiently
 
 - [Quick install/usage guide](#quick-installusage-guide)
 - [Details](#details)
-- [Installation guide](#installation-guide)
 - [Examples](#examples)
 - [Output files](#output-files)
 - [Building customized databases](#building-customized-databases)
@@ -14,30 +13,30 @@ ganon classifies short reads against large sets of refence sequences efficiently
 
 ## Quick install/usage guide
 
-#### Install with conda
+### Install with conda
 
 ```sh
 conda install -c bioconda -c conda-forge ganon
 ```
 
-#### Download and build
+### Download and build
 ```bash
 # Archaeal complete genome sequences from NCBI RefSeq
 ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --complete-genomes --threads 12
 ```
 
-#### Classify
+### Classify
 ```bash
 ganon classify --db-prefix arc_cg_rs --output-prefix classify_results --single-reads my_reads.fq.gz --threads 12
 ```
 
-#### Re-generate reports and create tables from multiple reports
+### Re-generate reports and create tables from multiple reports
 ```bash
 ganon report --db-prefix arc_cg_rs --input classify_results.rep --output-prefix filtered_report --min-count 0.01
 ganon table --input classify_results.tre filtered_report.tre --output-file output_table.tsv --top-sample 10
 ```
 
-#### Update the database at a later time point
+### Update the database at a later time point
 ```bash
 ganon update --db-prefix arc_cg_rs --threads 12
 ```
@@ -59,27 +58,27 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - report the lowest common ancestor (LCA) but also multiple and unique matches for every read
 - generate reports and tables for multi-sample studies with filter and other customizations
 
-## Installation guide
+### Installation guide
 
-[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html)
+The easiest way to install ganon is via conda
 
 ```bash
 conda install -c bioconda -c conda-forge ganon
 ```
 
-* There are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:
+However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:
 
 <details>
   <summary>Instructions</summary>
 
-### build dependencies
+#### build dependencies
 
 System packages:
 - gcc >=7
 - cmake >=3.10
 - zlib
 
-### run dependencies
+#### run dependencies
 
 System packages:
 - python >=3.5
@@ -91,7 +90,7 @@ python3 -m pip install "pandas>=0.22.0"
 python3 -m pip install "multitax>=1.1.1"
 ```
 
-### Downloading and building ganon
+#### Downloading and building ganon
 
 ```bash
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
@@ -117,7 +116,7 @@ If everything was properly installed, the following commands should show the hel
 ganon -h
 ```
 
-### Run tests
+#### Run tests
 
 ```bash
 python3 -m unittest discover -s tests/ganon/integration/
@@ -129,22 +128,22 @@ ctest -VV .
 
 ## Examples
 
-#### Commonly used reference set for metagenomics analysis (complete genomes, NCBI RefSeq, archaea+bacteria+fungi+viral)
+### Commonly used reference set for metagenomics analysis (complete genomes, NCBI RefSeq, archaea+bacteria+fungi+viral)
 ```bash
 ganon build --db-prefix abfv_rs_cg --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12
 ```
 
-#### Top 3 bacterial genomes (for each taxa) from NCBI RefSeq
+### Top 3 bacterial genomes (for each taxa) from NCBI RefSeq
 ```bash
 ganon build --db-prefix bac_rs_top3 --organism-group bacteria --source refseq --taxonomy ncbi --top 3 --threads 12
 ```
 
-#### Complete GTDB database
+### Complete GTDB database
 ```bash
 ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12
 ```
 
-#### Database based on specific taxonomic identifiers (203492 - Fusobacteriaceae)
+### Database based on specific taxonomic identifiers (203492 - Fusobacteriaceae)
 ```bash
 # NCBI
 ganon build --db-prefix fuso_ncbi --taxid "203492" --source refseq genbank --taxonomy ncbi --threads 12
@@ -152,17 +151,17 @@ ganon build --db-prefix fuso_ncbi --taxid "203492" --source refseq genbank --tax
 ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq genbank --taxonomy gtdb --threads 12
 ```
 
-#### Customized database at assembly level 
+### Customized database at assembly level 
 ```bash
 ganon build-custom --db-prefix my_db --input my_big_fasta_file.fasta.gz --level assembly --threads 12
 ```
 
-#### Customized database at species level build based on files previously downloaded with genome_updater
+### Customized database at species level build based on files previously downloaded with genome_updater
 ```bash
 ganon build-custom --db-prefix custom_db_gu --input myfiles/2022-06-28_10-02-14/files/ --level species --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --threads 12
 ```
 
-#### Customized database with sequence as target (to classify reads at sequence level)
+### Customized database with sequence as target (to classify reads at sequence level)
 ```bash
 ganon build-custom --db-prefix seq_target --input myfiles/2022-06-28_10-02-14/files/ --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --input-target sequence --threads 12
 ```
@@ -170,10 +169,11 @@ ganon build-custom --db-prefix seq_target --input myfiles/2022-06-28_10-02-14/fi
 
 ### build/update
 
-Every run on `ganon build` or `ganon update` will generate the following database files:
+Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter index file
  - {prefix}**.tax**: taxonomic tree *(fields: target/node, parent, rank, name)* (only if `--taxonomy` is used)
+ - {prefix}**_files/**: folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if you want to update your database later. Otherwise it can be deleted.
 
 *Obs: Database files generated with version 1.2.0 or higher are not compatible with older versions.*
 
@@ -272,12 +272,12 @@ Besides the automated download and build (`ganon build`) ganon provides a highly
 
 To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
 
-*ganon expects assembly accessions if building by file (e.g. file names should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#target-file-or-sequence---input-target).
+*ganon expects assembly accessions if building by file (e.g. filename should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#target-file-or-sequence---input-target).
 
-It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name]. 
+It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].
 
 <details>
-  <summary>Examples</summary>
+  <summary>Examples of --input-file</summary>
 
 Using `--input-target sequence`:
 
@@ -446,7 +446,382 @@ Note that reads that remain with only one reference match (after `cutoff` and `f
 
 #### Target file or sequence (--input-target) 
 
+Customized builds can be done either by file or sequence. `--input-target file` will consider every file provided with `--input` a single unit. `--input-target sequence` will use every sequence as a unit.
+
+`--input-target file` is the default behaviour most efficient to build databases. `--input-target sequence` should be used when the input is stored in a single file or when classification at sequence level is desired.
+
 #### Build level (--level)
 
+The `--level` parameter defines the depth of the database for classification. This parameter is relevant because the `--max-fp` is going to be guaranteed at the `--level` chosen. By default, the level will be the same as `--input-target`, meaning that classification will be done either at file or sequence level.
+
+Alternatively, `--level assembly` can be selected and will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
+
+#### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
+
+Further taxonomy and assembly linking information has to be collected to properly build the database. Those parameters allow customizations on this step.
+
+`--ncbi-sequence-info` (used with `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
+
+`--ncbi-file-info` (used with `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
 
 ## Parameters
+
+```
+usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
+
+- - - - - - - - - -
+   _  _  _  _  _   
+  (_|(_|| |(_)| |  
+   _|   v. 1.2.0
+- - - - - - - - - -
+
+positional arguments:
+  {build,build-custom,update,classify,report,table}
+    build               Download and build ganon default databases (refseq/genbank)
+    build-custom        Build custom ganon databases
+    update              Update ganon default databases
+    classify            Classify reads against built databases
+    report              Generate reports from classification results
+    table               Generate table from reports
+
+options:
+  -h, --help            show this help message and exit
+  -v, --version         Show program's version number and exit.
+```
+
+<details>
+  <summary>ganon build</summary>
+
+```
+usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k]
+                   [-w] [-s] [--restart] [--verbose] [--quiet]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -g [ ...], --organism-group [ ...]
+                        One or more organim groups to download [archaea,bacteria,fungi,human,invertebrate,metagenomes,ot
+                        her,plant,protozoa,vertebrate_mammalian,vertebrate_other,viral]. Mutually exclusive --taxid
+                        (default: None)
+  -a [ ...], --taxid [ ...]
+                        One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x
+                        gtdb). Mutually exclusive --organism-group (default: None)
+  -d DB_PREFIX, --db-prefix DB_PREFIX
+                        Database output prefix (default: None)
+
+download arguments:
+  -b [ ...], --source [ ...]
+                        Source to download [refseq,genbank] (default: ['refseq'])
+  -o , --top            Download limited organims for each taxa. 0 for all. (default: 0)
+  -c, --complete-genomes
+                        Download only sub-set of complete genomes (default: False)
+  -u , --genome-updater 
+                        Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
+  -m [ ...], --taxonomy-files [ ...]
+                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
+
+important arguments:
+  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
+                        ncbi)
+  -t , --threads 
+
+advanced arguments:
+  -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -k , --kmer-size      The k-mer size to split sequences. (default: 19)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -s , --hash-functions 
+                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
+                        (default: 0)
+
+optional arguments:
+  --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
+                        {db_prefix}_files/ will be deleted if present. (default: False)
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+```
+
+</details>
+
+<details>
+  <summary>ganon build-custom</summary>
+
+```
+usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [--write-info-file] [-r [...]] [-q [...]] -d
+                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -i [ ...], --input [ ...]
+                        Input file(s) and/or folder(s). Mutually exclusive --input-file. (default: None)
+  -e , --input-extension 
+                        Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
+                        (default: fna.gz)
+  -d DB_PREFIX, --db-prefix DB_PREFIX
+                        Database output prefix (default: None)
+
+custom arguments:
+  -n , --input-file     Manually set information for input files: file <tab> [target <tab> node <tab> specialization
+                        <tab> specialization name]. target is the sequence identifier if --input-target sequence (file
+                        can be repeated for multiple sequences). if --input-target file and target is not set, filename
+                        is used. node is the taxonomic identifier. Mutually exclusive --input (default: None)
+  -a , --input-target   Target to use [file, sequence]. By default: 'file' if multiple input files are provided or
+                        --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and
+                        will speed-up the building process (default: None)
+  -l , --level          Use a specialized target to build the database. By default, --level is the --input-target.
+                        Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy).
+                        Further specialization options [assembly,custom]. assembly will retrieve and use the assembly
+                        accession and name. custom requires and uses the specialization field in the --input-file.
+                        (default: None)
+  -m [ ...], --taxonomy-files [ ...]
+                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
+
+ncbi arguments:
+  -r [ ...], --ncbi-sequence-info [ ...]
+                        Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information.
+                        [eutils,nucl_gb,nucl_wgs,nucl_est,nucl_gss,pdb,prot,dead_nucl,dead_wgs,dead_prot or one or more
+                        accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By
+                        default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise. (default:
+                        [])
+  -q [ ...], --ncbi-file-info [ ...]
+                        Downloads assembly_summary files to extract target information.
+                        [refseq,genbank,refseq_historical,genbank_historical or one or more assembly_summary files from
+                        https://ftp.ncbi.nlm.nih.gov/genomes/] (default: ['refseq', 'genbank'])
+
+important arguments:
+  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
+                        ncbi)
+  -t , --threads 
+
+advanced arguments:
+  -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -k , --kmer-size      The k-mer size to split sequences. (default: 19)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -s , --hash-functions 
+                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
+                        (default: 0)
+
+optional arguments:
+  --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
+                        {db_prefix}_files/ will be deleted if present. (default: False)
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+```
+
+</details>
+
+<details>
+  <summary>ganon update</summary>
+
+```
+usage: ganon update [-h] -d DB_PREFIX [-o] [-t] [--restart] [--verbose] [--quiet]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -d DB_PREFIX, --db-prefix DB_PREFIX
+                        Existing database input prefix (default: None)
+
+important arguments:
+  -o , --output-db-prefix 
+                        Output database prefix. By default will be the same as --db-prefix and overwrite files (default:
+                        None)
+  -t , --threads 
+
+optional arguments:
+  --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
+                        {db_prefix}_files/ will be deleted if present. (default: False)
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+```
+
+</details>
+
+<details>
+  <summary>ganon classify</summary>
+
+```
+usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
+                      [-c [...]] [-e [...]] [-o] [--output-lca] [--output-all] [--output-unclassified] [--output-single]
+                      [-t] [-l [...]] [-r [...]] [--verbose] [--quiet]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -d [DB_PREFIX ...], --db-prefix [DB_PREFIX ...]
+                        Database input prefix[es] (default: None)
+  -s [reads.fq[.gz] ...], --single-reads [reads.fq[.gz] ...]
+                        Multi-fastq[.gz] file[s] to classify (default: None)
+  -p [reads.1.fq[.gz] reads.2.fq[.gz] ...], --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] ...]
+                        Multi-fastq[.gz] pairs of file[s] to classify (default: None)
+
+cutoff/filter arguments:
+  -c [ ...], --rel-cutoff [ ...]
+                        Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider
+                        a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g.
+                        0.7 1 0.25). 0 for no cutoff (default: [0.2])
+  -e [ ...], --rel-filter [ ...]
+                        Additional relative percentage of minimizers (relative to the best match) to keep a match.
+                        Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
+                        0). 1 for no filter (default: [0.1])
+
+output arguments:
+  -o , --output-prefix 
+                        Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)
+                        (default: None)
+  --output-lca          Output an additional file with one lca match for each read (.lca) (default: False)
+  --output-all          Output an additional file with all matches. File can be very large (.all) (default: False)
+  --output-unclassified
+                        Output an additional file with unclassified read headers (.unc) (default: False)
+  --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
+                        hierarchy (default: False)
+
+other arguments:
+  -t , --threads        Number of sub-processes/threads to use (default: 3)
+  -l [ ...], --hierarchy-labels [ ...]
+                        Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
+                        be sorted to define order (e.g. 1 1 2 3). The default value reported without hiearchy is 'H1'
+                        (default: None)
+  -r [ ...], --ranks [ ...]
+                        Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom
+                        phylum class order family genus species assembly). This file can be re-generated with the 'ganon
+                        report' command (default: None)
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+```
+
+</details>
+
+<details>
+  <summary>ganon report</summary>
+
+```
+usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-f] [-t] [-r [...]]
+                    [-s] [-a] [-y] [-p [...]] [-k [...]] [--verbose] [--quiet] [--min-count] [--max-count]
+                    [--names [...]] [--names-with [...]] [--taxids [...]]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -i [ ...], --input [ ...]
+                        Input file(s) and/or folder(s). '.rep' file(s) from ganon classify. (default: None)
+  -e INPUT_EXTENSION, --input-extension INPUT_EXTENSION
+                        Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
+                        (default: rep)
+  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
+                        Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input
+                        filename will be appended at the end of the output file 'output_prefix + FILENAME.tre' (default:
+                        None)
+
+db/tax arguments:
+  -d [ ...], --db-prefix [ ...]
+                        Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided,
+                        new taxonomy will be downloaded. Mutually exclusive with --taxonomy. (default: [])
+  -x , --taxonomy       Taxonomy database to use [ncbi,gtdb,skip]. Mutually exclusive with --db-prefix. (default: ncbi)
+  -m [ ...], --taxonomy-files [ ...]
+                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
+
+output arguments:
+  -f , --output-format 
+                        Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better
+                        visualization. Default: tsv (default: tsv)
+  -t , --report-type    Type of report to generate [reads, matches]. Default: reads (default: reads)
+  -r [ ...], --ranks [ ...]
+                        Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks
+                        (superkingdom phylum class order family genus species assembly). Default: (default: [])
+  -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
+                        (with --ranks all) (default: )
+  -a, --no-orphan       Ommit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
+                        db/tax) are reported as 'na' with root as direct parent (default: False)
+  -y, --split-hierarchy
+                        Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the
+                        output files will be named as '{output_prefix}.{hierarchy}.tre' (default: False)
+  -p [ ...], --skip-hierarchy [ ...]
+                        One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels) (default:
+                        [])
+  -k [ ...], --keep-hierarchy [ ...]
+                        One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels) (default:
+                        [])
+
+optional arguments:
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+
+filter arguments:
+  --min-count           Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1
+                        specific number] (default: 0)
+  --max-count           Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1
+                        specific number] (default: 0)
+  --names [ ...]        Show only entries matching exact names of the provided list (default: [])
+  --names-with [ ...]   Show entries containing full or partial names of the provided list (default: [])
+  --taxids [ ...]       One or more taxids to report (including children taxa) (default: [])
+```
+
+</details>
+
+<details>
+  <summary>ganon table</summary>
+
+```
+usage: ganon table [-h] -i [...] [-e] -o OUTPUT_FILE [-l] [-f] [-t] [-a] [-m] [-r] [-n] [--header]
+                   [--unclassified-label] [--filtered-label] [--skip-zeros] [--transpose] [--verbose] [--quiet]
+                   [--min-count] [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -i [ ...], --input [ ...]
+                        Input file(s) and/or folder(s). '.tre' file(s) from ganon report. (default: None)
+  -e , --input-extension 
+                        Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
+                        (default: tre)
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Output filename for the table (default: None)
+
+output arguments:
+  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1].
+                        Default: counts (default: counts)
+  -f , --output-format 
+                        Output format [tsv, csv]. Default: tsv (default: tsv)
+  -t , --top-sample     Top hits of each sample individually (default: 0)
+  -a , --top-all        Top hits of all samples (ranked by percentage) (default: 0)
+  -m , --min-frequency 
+                        Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for
+                        percentage, >1 specific number] (default: 0)
+  -r , --rank           Define specific rank to report. Empty will report all ranks. (default: None)
+  -n, --no-root         Do not report root node entry and lineage. Direct and shared matches to root will be accounted
+                        as unclassified (default: False)
+  --header              Header information [name, taxid, lineage]. Default: name (default: name)
+  --unclassified-label 
+                        Add column with unclassified count/percentage with the chosen label. May be the same as
+                        --filtered-label (e.g. unassigned) (default: None)
+  --filtered-label      Add column with filtered count/percentage with the chosen label. May be the same as
+                        --unclassified-label (e.g. unassigned) (default: None)
+  --skip-zeros          Do not print lines with only zero count/percentage (default: False)
+  --transpose           Transpose output table (taxa as cols and files as rows) (default: False)
+
+optional arguments:
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+
+filter arguments:
+  --min-count           Minimum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1
+                        specific number] (default: 0)
+  --max-count           Maximum number/percentage of counts to keep an taxa [values between 0-1 for percentage, >1
+                        specific number] (default: 0)
+  --names [ ...]        Show only entries matching exact names of the provided list (default: [])
+  --names-with [ ...]   Show entries containing full or partial names of the provided list (default: [])
+  --taxids [ ...]       One or more taxids to report (including children taxa) (default: [])
+```
+
+</details>
