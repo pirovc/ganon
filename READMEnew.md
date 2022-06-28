@@ -2,6 +2,16 @@
 
 ganon classifies short reads against large sets of refence sequences efficiently, with custom download and build, taxonomic classification (ncbi and gtdb) and many other [features](#Features).
 
+- [Quick install/usage guide](#quick-installusage-guide)
+- [Details](#details)
+- [Installation guide](#installation-guide)
+- [Examples](#examples)
+- [Output files](#output-files)
+- [Building customized databases](#building-customized-databases)
+- [Multiple and Hierarchical classification](#multiple-and-hierarchical-classification)
+- [Choosing and explaining parameters](#choosing-and-explaining-parameters)
+- [Parameters](#parameters)
+
 ## Quick install/usage guide
 
 #### Install with conda
@@ -142,6 +152,20 @@ ganon build --db-prefix fuso_ncbi --taxid "203492" --source refseq genbank --tax
 ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq genbank --taxonomy gtdb --threads 12
 ```
 
+#### Customized database at assembly level 
+```bash
+ganon build-custom --db-prefix my_db --input my_big_fasta_file.fasta.gz --level assembly --threads 12
+```
+
+#### Customized database at species level build based on files previously downloaded with genome_updater
+```bash
+ganon build-custom --db-prefix custom_db_gu --input myfiles/2022-06-28_10-02-14/files/ --level species --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --threads 12
+```
+
+#### Customized database with sequence as target (to classify reads at sequence level)
+```bash
+ganon build-custom --db-prefix seq_target --input myfiles/2022-06-28_10-02-14/files/ --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --input-target sequence --threads 12
+```
 ## Output files
 
 ### build/update
@@ -244,7 +268,7 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Pa
 
 ## Building customized databases
 
-besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases. 
+Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases. 
 
 To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
 
