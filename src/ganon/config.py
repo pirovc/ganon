@@ -60,6 +60,7 @@ class Config:
         build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited organims for each taxa. 0 for all.")
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                         help="Download only sub-set of complete genomes")
         build_download_args.add_argument("-u", "--genome-updater",   type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
+        build_download_args.add_argument("-m", "--taxonomy-files",   type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
 
         ####################################################################################################
 

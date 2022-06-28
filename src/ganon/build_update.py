@@ -72,6 +72,7 @@ def build(cfg):
 
     build_default_params = {"db_prefix": cfg.db_prefix,
                             "taxonomy": cfg.taxonomy,
+                            "taxonomy_files": cfg.taxonomy_files,
                             "threads": cfg.threads,
                             "max_fp": cfg.max_fp,
                             "filter_size": cfg.filter_size,
