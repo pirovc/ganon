@@ -1,6 +1,8 @@
 # ganon [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458)
 
-ganon classifies short reads against large sets of refence sequences efficiently, with custom download and build, taxonomic classification (ncbi and gtdb) and many other [features](#Features).
+ganon classifies short DNA sequences against large sets of genomic refence sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
+
+## Index
 
 - [Quick install/usage guide](#quick-installusage-guide)
 - [Details](#details)
@@ -51,16 +53,18 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 
 - NCBI and GTDB native support for taxonomic classification
 - integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
-- [update indices](#updating-the-index) incrementally (`ganon update`)
-- customizable build for non-standard sequence files (`ganon build-custom`)
-- build and classify at different taxonomic levels, strain/assembly or custom specialization
+- update indices incrementally (`ganon update`)
+- customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
+- build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
 - report the lowest common ancestor (LCA) but also multiple and unique matches for every read
-- generate reports and tables for multi-sample studies with filter and other customizations
+- generate reports and tables for multi-sample studies with filter and further customizations
+
+ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
 ### Installation guide
 
-The easiest way to install ganon is via conda
+The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:
 
 ```bash
 conda install -c bioconda -c conda-forge ganon
@@ -90,7 +94,7 @@ python3 -m pip install "pandas>=0.22.0"
 python3 -m pip install "multitax>=1.1.1"
 ```
 
-#### Downloading and building ganon
+#### Downloading and building ganon + submodules
 
 ```bash
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
