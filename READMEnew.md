@@ -27,7 +27,7 @@ ganon report --db-prefix arc_cg_rs --input classify_results.rep --output-prefix 
 ganon table --input classify_results.tre filtered_report.tre --output-file output_table.tsv --top-sample 10
 ```
 
-#### Uupdate the database at a later time point
+#### Update the database at a later time point
 ```bash
 ganon update --db-prefix arc_cg_rs --threads 12
 ```
@@ -248,9 +248,14 @@ besides the automated download and build (`ganon build`) ganon provides a highly
 
 To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
 
-*ganon expects assembly accessions if building by file (e.g. file names should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#Target-file-or-sequence-(--input-target)).
+*ganon expects assembly accessions if building by file (e.g. file names should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#target-file-or-sequence---input-target).
 
-It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. For example, using `--input-target sequence`:
+It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name]. 
+
+<details>
+  <summary>Examples</summary>
+
+Using `--input-target sequence`:
 
 ```
 sequences.fasta HEADER1
@@ -286,17 +291,18 @@ sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
 others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
 others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
 ```
-
+</details>
 
 ## Multiple and Hierarchical classification
 
-ganon classification can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. 
+`ganon classify` can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. 
 
 Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. Multiple databases are considerer as if they were one (built together) and redundancy in content (same reference in two or more databases) is allowed.
 
 To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. `--rel-cutoff`) while others are set for each hierarchical level (e.g. `--rel-filter`)
 
-For example: 
+<details>
+  <summary>Examples</summary>
 
 ### Classifying reads against multiple databases:
 
@@ -340,6 +346,7 @@ ganon classify --db-prefix            db1     db2      db3 \
 
 In this example, classification will be performed with different `--rel-cutoff` for each database. For each hierarchy levels (`1_first` and `2_second`) a different `--rel-filter` will be used.
 
+</details>
 
 ## Choosing and explaining parameters
 
@@ -367,7 +374,8 @@ Every read can be classified against none, one or more references. What will be 
 
 The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match. Here one can control how far from the best match we want to allow further matches. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
 
-For example:
+<details>
+  <summary>Example</summary>
 
 Using `--kmer-size 19` (and `--window-size 19` to simplify the example), a certain read (100bp) has the following matches with the 5 references (`ref1..5`), sorted by shared k-mers:
 
@@ -401,6 +409,8 @@ since the `--rel-cutoff` threhsold is `82 * 0.25 = 21` (ceiling is applied). Fur
 
 
 since best match is 82, the filter parameter is removing any match below `0.3 * 82 = 57` (ceiling is applied) shared k-mers. `ref1` and `ref2` are reported as matches.
+
+</details>
 
 For databases built with `--window-size`, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of unique minimizers extracted from the read.
 
