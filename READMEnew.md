@@ -21,14 +21,22 @@ ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --com
 ganon classify --db-prefix arc_cg_rs --output-prefix classify_results --single-reads my_reads.fq.gz --threads 12
 ```
 
-#### Generate filtered reports
+#### Re-generate reports and create tables from multiple reports
 ```bash
 ganon report --db-prefix arc_cg_rs --input classify_results.rep --output-prefix filtered_report --min-count 0.01
+ganon table --input classify_results.tre filtered_report.tre --output-file output_table.tsv --top-sample 10
 ```
+
+#### Uupdate the database at a later time point
+```bash
+ganon update --db-prefix arc_cg_rs --threads 12
+```
+
+[More examples](#Examples)
 
 ## Details
 
-ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers and minimizers. It was mainly developed, but not limited, to the metagenomic classification problem: quickly assign short fragments to their closest reference among thousands of references.
+ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers and minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references.
 
 ### Features
 
@@ -37,9 +45,9 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - [update indices](#updating-the-index) incrementally (`ganon update`)
 - customizable build for non-standard sequence files (`ganon build-custom`)
 - build and classify at different taxonomic levels, strain/assembly or custom specialization
-- perform [hierarchical classification](#multiple-and-hierarchical-classification)
-- report the lowest common ancestor (LCA), multiple and unique matches for every read
-- generate reports and tables for multi-sample studies with filtering options
+- perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
+- report the lowest common ancestor (LCA) but also multiple and unique matches for every read
+- generate reports and tables for multi-sample studies with filter and other customizations
 
 ## Installation guide
 
@@ -57,7 +65,7 @@ conda install -c bioconda -c conda-forge ganon
 ### build dependencies
 
 System packages:
-- gcc >=8
+- gcc >=7
 - cmake >=3.10
 - zlib
 
@@ -70,7 +78,7 @@ System packages:
 
 ```bash
 python3 -m pip install "pandas>=0.22.0"
-python3 -m pip install "multitax==1.1.1"
+python3 -m pip install "multitax>=1.1.1"
 ```
 
 ### Downloading and building ganon
@@ -111,19 +119,28 @@ ctest -VV .
 
 ## Examples
 
-#### Commonly used reference set for metagenomics analysis (complete genomes, refseq, archaea+bacteria+fungi+viral)
+#### Commonly used reference set for metagenomics analysis (complete genomes, NCBI RefSeq, archaea+bacteria+fungi+viral)
 ```bash
 ganon build --db-prefix abfv_rs_cg --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12
 ```
 
-#### Building a complete GTDB database
+#### Top 3 bacterial genomes (for each taxa) from NCBI RefSeq
+```bash
+ganon build --db-prefix bac_rs_top3 --organism-group bacteria --source refseq --taxonomy ncbi --top 3 --threads 12
+```
+
+#### Complete GTDB database
 ```bash
 ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12
 ```
 
-#### More 
-
-....
+#### Database based on specific taxonomic identifiers (203492 - Fusobacteriaceae)
+```bash
+# NCBI
+ganon build --db-prefix fuso_ncbi --taxid "203492" --source refseq genbank --taxonomy ncbi --threads 12
+# GTDB
+ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq genbank --taxonomy gtdb --threads 12
+```
 
 ## Output files
 
@@ -132,7 +149,7 @@ ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source
 Every run on `ganon build` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter index file
- - {prefix}**.tax**: taxonomic tree *(fields: target/node, parent, rank, name)* (if --taxonomy is used)
+ - {prefix}**.tax**: taxonomic tree *(fields: target/node, parent, rank, name)* (only if `--taxonomy` is used)
 
 *Obs: Database files generated with version 1.2.0 or higher are not compatible with older versions.*
 
@@ -161,7 +178,7 @@ Every run on `ganon build` or `ganon update` will generate the following databas
 
 - The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To look at those matches you can create a report with `--report-type matches` or look at the file {prefix}**.rep**.
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To access those matches you can create a report with `--report-type matches` or look directly at the file {prefix}**.rep**.
 
 ### table
 
@@ -224,6 +241,52 @@ species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Pa
 ```
 
 </details>
+
+## Building customized databases
+
+besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases. 
+
+To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
+
+*ganon expects assembly accessions if building by file (e.g. file names should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#Target-file-or-sequence-(--input-target)).
+
+It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. For example, using `--input-target sequence`:
+
+```
+sequences.fasta HEADER1
+sequences.fasta HEADER2
+sequences.fasta HEADER3
+others.fasta HEADER4
+others.fasta HEADER5
+```
+
+or using `--input-target file`:
+
+```
+sequences.fasta FILE_A
+others.fasta FILE_B
+```
+
+Nodes can be provided to link the data with taxonomy. For example (using `--taxonomy ncbi`):
+
+```
+sequences.fasta HEADER1 562
+sequences.fasta HEADER2 562
+sequences.fasta HEADER3 562
+others.fasta HEADER4  623
+others.fasta HEADER5  623
+```
+
+Specialization can be used to create a additional classification level after the taxonomic leaves. For example (using `--level custom`):
+
+```
+sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
+sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
+sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
+others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
+others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
+```
+
 
 ## Multiple and Hierarchical classification
 
@@ -347,6 +410,9 @@ Note that reads that remain with only one reference match (after `cutoff` and `f
 
 ### ganon build-custom
 
-#### Input target (--input-target) 
+#### Target file or sequence (--input-target) 
+
+#### Build level (--level)
+
 
 ## Parameters
