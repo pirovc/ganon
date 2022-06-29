@@ -85,13 +85,13 @@ System packages:
 #### run dependencies
 
 System packages:
-- python >=3.5
-- pandas >=0.22.0
+- python >=3.6
+- pandas >=1.1.0
 - multitax >=1.1.1
 
 ```bash
-python3 -m pip install "pandas>=0.22.0"
-python3 -m pip install "multitax>=1.1.1"
+python3 -V # >=3.6
+python3 -m pip install "pandas>=1.1.0" "multitax>=1.1.1"
 ```
 
 #### Downloading and building ganon + submodules
@@ -124,7 +124,7 @@ ganon -h
 
 ```bash
 python3 -m unittest discover -s tests/ganon/integration/
-python3 -m unittest discover -s tests/ganon/integration_online/
+python3 -m unittest discover -s tests/ganon/integration_online/ #optional - downloads large files
 cd build_cpp/
 ctest -VV .
 ```

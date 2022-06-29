@@ -14,7 +14,7 @@ def run(cmd, ret_stdout: bool=False, shell: bool=False, quiet: bool=False):
         # print stdout to stderr if not captured (default log ganon)
         process = subprocess.Popen(shlex.split(cmd) if not shell else cmd,
                                    shell=shell,
-                                   text=True,
+                                   universal_newlines=True,  # text= (from py3.7)
                                    stdout=subprocess.PIPE if ret_stdout else sys.stderr,
                                    stderr=None if quiet else sys.stderr)
         if ret_stdout:
