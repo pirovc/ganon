@@ -1,6 +1,6 @@
 # ganon [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458)
 
-ganon classifies short DNA sequences against large sets of genomic refence sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
+ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
 
 ## Index
 
@@ -47,7 +47,7 @@ ganon update --db-prefix arc_cg_rs --threads 12
 
 ## Details
 
-ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers and minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references.
+ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references.
 
 ### Features
 
@@ -177,15 +177,15 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
 
  - {prefix}**.ibf**: main interleaved bloom filter index file
  - {prefix}**.tax**: taxonomic tree *(fields: target/node, parent, rank, name)* (only if `--taxonomy` is used)
- - {prefix}**_files/**: folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if you want to update your database later. Otherwise it can be deleted.
+ - {prefix}**_files/**: folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
 
 *Obs: Database files generated with version 1.2.0 or higher are not compatible with older versions.*
 
 ### classify
  
  - {prefix}**.rep**: plain report of the run with only targets that received a match *(fields: 1) hierarchy_label, 2) target, 3) total matches, 4) unique reads, 5) lca reads, 6) rank, 7) name)*. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
- - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer count)*
+ - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
+ - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer/minimizer count)*
   - {prefix}**.tre**: report file (see below)
 
 ### report
@@ -206,7 +206,7 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
 
 - The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To access those matches you can create a report with `--report-type matches` or look directly at the file {prefix}**.rep**.
+- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To access those matches, create a report with `--report-type matches` or use directly the file {prefix}**.rep**.
 
 ### table
 
@@ -325,7 +325,7 @@ others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
 
 `ganon classify` can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. 
 
-Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. Multiple databases are considerer as if they were one (built together) and redundancy in content (same reference in two or more databases) is allowed.
+Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.
 
 To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. `--rel-cutoff`) while others are set for each hierarchical level (e.g. `--rel-filter`)
 
@@ -384,9 +384,9 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives, but the larger the filter size will be. Alternatively, one can set a specific size for the final index with `--filer-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 
-#### minimizers (--window-size)
+#### minimizers (--window-size, --kmer-size)
 
-`--window-size` can be set with `ganon build` to activate the use of minimizers. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. Sensitivity and precision can be reduced by small margins. `--window-size` has to be greater or equal `--kmer-size`.
+in `ganon build`, when `--window-size` > `--kmer-size` minimizers are used. That means that for a every window, a single k-mer will be selected. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. Sensitivity and precision can be reduced by small margins. If `--window-size` = `--kmer-size`, all k-mers are going to be used to build the database.
 
 ### ganon classify
 
@@ -400,7 +400,7 @@ ganon has two parameters to control a match between reads and references: `--rel
 
 Every read can be classified against none, one or more references. What will be reported is the remaining matches after `cutoff` and `filter` thresholds are applied, based on the number of shared minimizers (or k-mers) between sequences.
 
-The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match. Here one can control how far from the best match we want to allow further matches. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
+The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match and control how far from the best match further matches are allowed. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
 
 <details>
   <summary>Example</summary>
@@ -425,7 +425,7 @@ this read can have at most 82 shared k-mers (`100-19+1=82`). With `--rel-cutoff 
 | ref4      | 25            |                   |
 | ~~ref5~~  | ~~20~~        | X                 |
 
-since the `--rel-cutoff` threhsold is `82 * 0.25 = 21` (ceiling is applied). Further, with `--rel-filter 0.3`, the following matches will be discarded:
+since the `--rel-cutoff` threshold is `82 * 0.25 = 21` (ceiling is applied). Further, with `--rel-filter 0.3`, the following matches will be discarded:
 
 | reference | shared k-mers | --rel-cutoff 0.25 | --rel-filter 0.3 |
 |-----------|---------------|-------------------|------------------|
@@ -452,21 +452,21 @@ Note that reads that remain with only one reference match (after `cutoff` and `f
 
 Customized builds can be done either by file or sequence. `--input-target file` will consider every file provided with `--input` a single unit. `--input-target sequence` will use every sequence as a unit.
 
-`--input-target file` is the default behaviour most efficient to build databases. `--input-target sequence` should be used when the input is stored in a single file or when classification at sequence level is desired.
+`--input-target file` is the default behavior and most efficient way to build databases. `--input-target sequence` should only be used when the input sequences are stored in a single file or when classification at sequence level is desired.
 
 #### Build level (--level)
 
-The `--level` parameter defines the depth of the database for classification. This parameter is relevant because the `--max-fp` is going to be guaranteed at the `--level` chosen. By default, the level will be the same as `--input-target`, meaning that classification will be done either at file or sequence level.
+The `--level` parameter defines the max. depth of the database for classification. This parameter is relevant because the `--max-fp` is going to be guaranteed at the `--level` chosen. By default, the level will be the same as `--input-target`, meaning that classification will be done either at file or sequence level.
 
-Alternatively, `--level assembly` can be selected and will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
+Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
 
 #### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
 
-Further taxonomy and assembly linking information has to be collected to properly build the database. Those parameters allow customizations on this step.
+Further taxonomy and assembly linking information has to be collected to properly build the database. `--ncbi-sequence-info` and `--ncbi-file-info` allow customizations on this step.
 
-`--ncbi-sequence-info` (used with `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
+`--ncbi-sequence-info` (used when `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
 
-`--ncbi-file-info` (used with `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
+`--ncbi-file-info` (used when `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
 
 ## Parameters
 
@@ -481,7 +481,8 @@ usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
 
 positional arguments:
   {build,build-custom,update,classify,report,table}
-    build               Download and build ganon default databases (refseq/genbank)
+    build               Download and build ganon default databases
+                        (refseq/genbank)
     build-custom        Build custom ganon databases
     update              Update ganon default databases
     classify            Classify reads against built databases
@@ -505,8 +506,8 @@ options:
 
 required arguments:
   -g [ ...], --organism-group [ ...]
-                        One or more organim groups to download [archaea,bacteria,fungi,human,invertebrate,metagenomes,ot
-                        her,plant,protozoa,vertebrate_mammalian,vertebrate_other,viral]. Mutually exclusive --taxid
+                        One or more organism groups to download [archaea,bacteria,fungi,human,invertebrate,metagenomes,o
+                        ther,plant,protozoa,vertebrate_mammalian,vertebrate_other,viral]. Mutually exclusive --taxid
                         (default: None)
   -a [ ...], --taxid [ ...]
                         One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x
@@ -517,7 +518,7 @@ required arguments:
 download arguments:
   -b [ ...], --source [ ...]
                         Source to download [refseq,genbank] (default: ['refseq'])
-  -o , --top            Download limited organims for each taxa. 0 for all. (default: 0)
+  -o , --top            Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
                         Download only sub-set of complete genomes (default: False)
   -u , --genome-updater 
@@ -692,7 +693,7 @@ other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 3)
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
-                        be sorted to define order (e.g. 1 1 2 3). The default value reported without hiearchy is 'H1'
+                        be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
   -r [ ...], --ranks [ ...]
                         Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom
@@ -744,7 +745,7 @@ output arguments:
                         (superkingdom phylum class order family genus species assembly). Default: (default: [])
   -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
-  -a, --no-orphan       Ommit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
+  -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
                         db/tax) are reported as 'na' with root as direct parent (default: False)
   -y, --split-hierarchy
                         Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the

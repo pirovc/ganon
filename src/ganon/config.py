@@ -52,12 +52,12 @@ class Config:
         build_parser = argparse.ArgumentParser(add_help=False)
 
         build_required_args = build_parser.add_argument_group("required arguments")
-        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", help="One or more organim groups to download [" + ",".join(self.choices_og) + "]. Mutually exclusive --taxid", choices=self.choices_og)
+        build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", help="One or more organism groups to download [" + ",".join(self.choices_og) + "]. Mutually exclusive --taxid", choices=self.choices_og)
         build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")
 
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",           type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
-        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited organims for each taxa. 0 for all.")
+        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
         build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                         help="Download only sub-set of complete genomes")
         build_download_args.add_argument("-u", "--genome-updater",   type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         build_download_args.add_argument("-m", "--taxonomy-files",   type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
@@ -130,7 +130,7 @@ class Config:
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=3,    help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hiearchy is 'H1'")
+        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="",               help="Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). This file can be re-generated with the 'ganon report' command")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
@@ -159,7 +159,7 @@ class Config:
         report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="reads", help="Type of report to generate [reads, matches]. Default: reads")
         report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],      help="Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: """)
         report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",      help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
-        report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                             help="Ommit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent")
+        report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                             help="Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent")
         report_group_output.add_argument("-y", "--split-hierarchy", action="store_true",                             help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
         report_group_output.add_argument("-p", "--skip-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
         report_group_output.add_argument("-k", "--keep-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
