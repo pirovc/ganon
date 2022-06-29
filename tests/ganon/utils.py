@@ -201,19 +201,28 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
 def classify_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
-    out_ext = ["lca","rep","tre"]
-    if params["output_all"]: out_ext.append("all")
+    out_ext = ["rep", "tre"]
+    if params["output_lca"]:
+        out_ext.append("lca")
+
+    if params["output_all"]:
+        out_ext.append("all")
+
     if not check_files(params["output_prefix"], out_ext):
         return None
 
     res = {}
     if params["output_all"]:
         res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
-        # Sequence information from database to be updated
+
+    if params["output_lca"]:
+        res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
+
     res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
     res["rep_pd"] = parse_rep(params["output_prefix"]+".rep")
-    res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
+
     return res
+
 
 def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
