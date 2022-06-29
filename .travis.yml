@@ -47,12 +47,12 @@ script:
   - cmake --build . -- -j2
   - ctest -VV .
   - sudo make install
-  - ganon-build -h # ret 0
-  - ganon-classify -h # ret 0
+  - ganon-build -h  # ret 0
+  - ganon-classify -h  # ret 0
   - cd ..
   - python3 -m unittest discover -s tests/ganon/integration/ -v
   - python3 setup.py install --user
-  - ganon -h # ret 0
+  - ganon -h  # ret 0
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
