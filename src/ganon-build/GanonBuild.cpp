@@ -744,7 +744,7 @@ bool run( Config config )
     // Delete .min hashes files in case they were previously created
     detail::delete_hashes( hashes_count, config.tmp_output_folder );
 
-    // Initialize in parallel (by file) the hash counting and storing
+    // Initialize in parallel (by target) the hash counting and storing
     timeCountStoreHashes.start();
     std::vector< std::future< void > > tasks_count;
     for ( uint16_t taskn = 0; taskn < config.threads; ++taskn )

@@ -214,12 +214,21 @@ def classify_sanity_check_and_parse(params):
     res = {}
     if params["output_all"]:
         res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
+        if res["all_pd"].empty:
+            return None
 
     if params["output_lca"]:
         res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
+        if res["lca_pd"].empty:
+            return None
 
     res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
+    if res["tre_pd"].empty:
+        return None
+
     res["rep_pd"] = parse_rep(params["output_prefix"]+".rep")
+    if res["rep_pd"].empty:
+        return None
 
     return res
 
