@@ -59,9 +59,11 @@ after_success:
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
       coverage run -m unittest discover -s tests/ganon/integration/ -v;
       coverage xml -o coverage_py.xml;
+      ls -lah;
+      cat coverage_py.xml;
       curl -Os https://uploader.codecov.io/latest/linux/codecov;
       chmod +x codecov;
-      ./codecov -X search --file coverage_py.xml --file coverage_cpp.lcov;
+      ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
     fi
 
 notifications:
