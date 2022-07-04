@@ -57,9 +57,10 @@ script:
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      coverage run --source src/ganon/ -m unittest discover -s tests/ganon/integration/ -v;
+      coverage run --source="$(pwd)/src/ganon/" --ommit="/usr/*" -m unittest discover -s tests/ganon/integration/ -v;
+      coverage report;
       coverage xml -o coverage_py.xml;
-      ls -lah;
+      ls -l;
       cat coverage_py.xml;
       curl -Os https://uploader.codecov.io/latest/linux/codecov;
       chmod +x codecov;
