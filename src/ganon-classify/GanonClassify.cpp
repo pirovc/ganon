@@ -304,6 +304,18 @@ inline uint16_t threshold_rel( uint16_t n_hashes, double p )
     return std::ceil( n_hashes * p );
 }
 
+robin_hood::unordered_map< std::string, uint16_t > sum_counts_target( seqan3::counting_vector< uint16_t > counts,
+                                                                      TMap&                               map )
+{
+    /* sum counts distributed among technical bins to a seme user bin (target)
+     */
+    robin_hood::unordered_map< std::string, uint16_t > summed_counts;
+    for ( auto const& [binid, target] : map )
+    {
+        summed_counts[target] += counts[binid];
+    }
+    return summed_counts;
+}
 
 void select_matches( Filter< TIBF >&        filter,
                      TMatches&              matches,
@@ -312,27 +324,16 @@ void select_matches( Filter< TIBF >&        filter,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
-    // count matches
-    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes );
 
-    // for each bin
-    // for ( uint32_t bin_n = 0; bin_n < filter.ibf.noOfBins; ++bin_n )
-    // loop in map structure to avoid extra validations when map.size() < filter.ibf.noOfBins when ibf is updated and
-    // sequences removed also avoid the error of spurius results from empty bins (bug reported)
-    for ( auto const& [bin_n, target] : filter.map )
+    auto summed_counts = sum_counts_target( agent.bulk_count( hashes ), filter.map );
+
+    for ( auto const& [target, count] : summed_counts )
     {
-        // if kmer count is higher than threshold_cutoff
-        if ( counts[bin_n] >= threshold_cutoff )
+        if ( count >= threshold_cutoff )
         {
-            // keep only the best match target/read when same targets are split in several
-            // bins
-            if ( matches.count( target ) == 0 || counts[bin_n] > matches[target] )
-            {
-                // store match to target
-                matches[target] = counts[bin_n];
-                if ( counts[bin_n] > max_kmer_count_read )
-                    max_kmer_count_read = counts[bin_n];
-            }
+            matches[target] = count;
+            if ( count > max_kmer_count_read )
+                max_kmer_count_read = count;
         }
     }
 }
@@ -345,22 +346,13 @@ void select_matches( Filter< THIBF >&       filter,
                      uint16_t&              max_kmer_count_read )
 {
     // count matches, return only above threhsold
-    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
+    auto summed_counts = sum_counts_target( agent.bulk_count( hashes, threshold_cutoff ), filter.map );
 
-    // on HIBF, returns user bins
-    for ( auto const& [bin_n, target] : filter.map )
+    for ( auto const& [target, count] : summed_counts )
     {
-        if ( counts[bin_n] > 0 )
-        {
-            // keep check on target in case of multiple filters with same target
-            if ( matches.count( target ) == 0 || counts[bin_n] > matches[target] )
-            {
-                // store match to target
-                matches[target] = counts[bin_n];
-                if ( counts[bin_n] > max_kmer_count_read )
-                    max_kmer_count_read = counts[bin_n];
-            }
-        }
+        matches[target] = count;
+        if ( count > max_kmer_count_read )
+            max_kmer_count_read = count;
     }
 }
 

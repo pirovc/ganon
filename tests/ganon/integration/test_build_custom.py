@@ -65,6 +65,26 @@ class TestBuildCustom(unittest.TestCase):
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom ran but it should fail")
 
+    def test_input_single_file(self):
+        """
+        ganon build-custom with one file as --input (will set --input-target sequence)
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_single_file"
+        params["input"] = files[0]
+        params["input_extension"] = ""
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        sequences = list_sequences([params["input"]])
+        self.assertTrue(res["target"]["sequence"].isin(sequences).all(), "Sequence missing from target")
+        self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of sequences on target")
+        self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
+        self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
+
     def test_input_files(self):
         """
         ganon build-custom with files as --input
