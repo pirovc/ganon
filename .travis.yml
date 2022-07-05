@@ -3,32 +3,28 @@ dist: focal
 
 matrix:
   include:
-    - name: "linux gcc-8"
-      os: linux
-      addons:
-        apt: { packages: [g++-8],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    # - name: "linux gcc-8"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-8] }
+    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
-      os: linux
-      addons:
-        apt: { packages: [g++-9],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    # - name: "linux gcc-9"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-9] }
+    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-10"
-      os: linux
-      addons:
-        apt: { packages: [g++-10],
-               sources:  [ubuntu-toolchain-r-test] }
-      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
+    # - name: "linux gcc-10"
+    #   os: linux
+    #   addons:
+    #     apt: { packages: [g++-10] }
+    #   env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov],
-               sources:  [ubuntu-toolchain-r-test] }
+        apt: { packages: [g++-8, lcov] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
 before_install:
@@ -57,7 +53,7 @@ script:
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      coverage run --source="$(pwd)/src/ganon/" --omit="/usr/*" -m unittest discover -s tests/ganon/integration/ -v;
+      coverage run --source="src" --omit="/usr/*" -m unittest discover -s tests/ganon/integration/ -v;
       coverage report;
       coverage xml -o coverage_py.xml;
       ls -l;
