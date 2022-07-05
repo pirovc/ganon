@@ -43,7 +43,10 @@ typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >   
 typedef robin_hood::unordered_map< std::string, uint16_t >                                 TMatches;
 
 typedef std::vector< std::tuple< uint64_t, std::string > > TBinMap;
-typedef robin_hood::unordered_map< uint64_t, std::string > TMap;
+// typedef robin_hood::unordered_map< uint64_t, std::string > TMap;
+
+
+typedef robin_hood::unordered_map< std::string, std::vector< uint64_t > > TMap;
 
 struct Node
 {
@@ -304,19 +307,6 @@ inline uint16_t threshold_rel( uint16_t n_hashes, double p )
     return std::ceil( n_hashes * p );
 }
 
-robin_hood::unordered_map< std::string, uint16_t > sum_counts_target( seqan3::counting_vector< uint16_t > counts,
-                                                                      TMap&                               map )
-{
-    /* sum counts distributed among technical bins to a seme user bin (target)
-     */
-    robin_hood::unordered_map< std::string, uint16_t > summed_counts;
-    for ( auto const& [binid, target] : map )
-    {
-        summed_counts[target] += counts[binid];
-    }
-    return summed_counts;
-}
-
 void select_matches( Filter< TIBF >&        filter,
                      TMatches&              matches,
                      std::vector< size_t >& hashes,
@@ -324,16 +314,22 @@ void select_matches( Filter< TIBF >&        filter,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
+    // Count every occurance on IBF
+    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes );
 
-    auto summed_counts = sum_counts_target( agent.bulk_count( hashes ), filter.map );
-
-    for ( auto const& [target, count] : summed_counts )
+    // Sum counts among bins (split target (user bins) into several tecnical bins)
+    for ( auto const& [target, bins] : filter.map )
     {
-        if ( count >= threshold_cutoff )
+        uint16_t summed_count = 0;
+        for ( auto const& binno : bins )
         {
-            matches[target] = count;
-            if ( count > max_kmer_count_read )
-                max_kmer_count_read = count;
+            summed_count += counts[binno];
+        }
+        if ( summed_count >= threshold_cutoff )
+        {
+            matches[target] = summed_count;
+            if ( summed_count > max_kmer_count_read )
+                max_kmer_count_read = summed_count;
         }
     }
 }
@@ -345,14 +341,17 @@ void select_matches( Filter< THIBF >&       filter,
                      uint16_t               threshold_cutoff,
                      uint16_t&              max_kmer_count_read )
 {
-    // count matches, return only above threhsold
-    auto summed_counts = sum_counts_target( agent.bulk_count( hashes, threshold_cutoff ), filter.map );
-
-    for ( auto const& [target, count] : summed_counts )
+    // Count only matches above threhsold
+    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
+    // Only one bin per target
+    for ( auto const& [target, bins] : filter.map )
     {
-        matches[target] = count;
-        if ( count > max_kmer_count_read )
-            max_kmer_count_read = count;
+        if ( counts[bins[0]] > 0 )
+        {
+            matches[target] = counts[bins[0]];
+            if ( counts[bins[0]] > max_kmer_count_read )
+                max_kmer_count_read = counts[bins[0]];
+        }
     }
 }
 
@@ -669,7 +668,7 @@ bool load_files( std::vector< Filter< TFilter > >& filters, bool run_lca, std::v
         TMap map;
         for ( auto const& [binno, target] : bin_map )
         {
-            map[binno] = target;
+            map[target].push_back( binno );
         }
 
         filter_config.ibf_config = ibf_config;
@@ -874,7 +873,7 @@ void validate_targets_tax( std::vector< Filter< TFilter > > const& filters, TTax
 {
     for ( auto const& filter : filters )
     {
-        for ( auto const& [binid, target] : filter.map )
+        for ( auto const& [target, bins] : filter.map )
         {
             if ( tax.count( target ) == 0 )
             {
