@@ -33,7 +33,7 @@ before_install:
   - python3 -m pip install "pandas>=1.1.0"
   - python3 -m pip install "multitax>=1.1.1"
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      sudo python3 -m pip install coverage;
+      python3 -m pip install coverage;
     fi
 
 script:
@@ -52,11 +52,13 @@ script:
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      ls -l src/*;
+      ls -l *;
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      coverage run -m unittest discover -s tests/ganon/integration/ -v;
-      coverage report;
-      coverage xml -o coverage_py.xml;
-      ls -l;
+      python3 -m coverage --version;
+      python3 -m coverage run --source="./src/ganon/" -m unittest discover -s tests/ganon/integration/ -v;
+      python3 -m coverage report;
+      python3 -m coverage xml -o coverage_py.xml;
       cat coverage_py.xml;
       curl -Os https://uploader.codecov.io/latest/linux/codecov;
       chmod +x codecov;
