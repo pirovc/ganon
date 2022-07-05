@@ -3,23 +3,23 @@ dist: focal
 
 matrix:
   include:
-    # - name: "linux gcc-8"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-8] }
-    #   env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+    - name: "linux gcc-8"
+      os: linux
+      addons:
+        apt: { packages: [g++-8] }
+      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-9"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-9] }
-    #   env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+    - name: "linux gcc-9"
+      os: linux
+      addons:
+        apt: { packages: [g++-9] }
+      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
-    # - name: "linux gcc-10"
-    #   os: linux
-    #   addons:
-    #     apt: { packages: [g++-10] }
-    #   env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
+    - name: "linux gcc-10"
+      os: linux
+      addons:
+        apt: { packages: [g++-10] }
+      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
@@ -46,19 +46,18 @@ script:
   - ganon-build -h  # ret 0
   - ganon-classify -h  # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/integration/ -v
-#  - python3 setup.py install --user
-#  - ganon -h  # ret 0
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m coverage run --ommit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
+    else
+      python3 -m unittest discover -s tests/ganon/integration/ -v;
+      python3 setup.py install --user;
+      ganon -h;
+    fi
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      python3 -m coverage --version;
-      python3 -m coverage run -m unittest discover -s tests/ganon/integration/ -v;
-      python3 -m coverage report;
       python3 -m coverage xml -o coverage_py.xml;
-      ls -l;
-      cat coverage_py.xml;
       curl -Os https://uploader.codecov.io/latest/linux/codecov;
       chmod +x codecov;
       ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
