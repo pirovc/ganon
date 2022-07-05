@@ -6,36 +6,32 @@ matrix:
     - name: "linux gcc-8"
       os: linux
       addons:
-        apt: { packages: [g++-8],
-               sources:  [ubuntu-toolchain-r-test] }
+        apt: { packages: [g++-8] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-9"
       os: linux
       addons:
-        apt: { packages: [g++-9],
-               sources:  [ubuntu-toolchain-r-test] }
+        apt: { packages: [g++-9] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
     - name: "linux gcc-10"
       os: linux
       addons:
-        apt: { packages: [g++-10],
-               sources:  [ubuntu-toolchain-r-test] }
+        apt: { packages: [g++-10] }
       env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov],
-               sources:  [ubuntu-toolchain-r-test] }
+        apt: { packages: [g++-8, lcov] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
 before_install:
   - eval "${MATRIX_EVAL}"
   - python3 -m pip install --upgrade pip
-  - python3 -m pip install "pandas>=0.22.0"
-  - python3 -m pip install "multitax==1.1.1"
+  - python3 -m pip install "pandas>=1.1.0"
+  - python3 -m pip install "multitax>=1.1.1"
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install coverage;
     fi
@@ -47,18 +43,24 @@ script:
   - cmake --build . -- -j2
   - ctest -VV .
   - sudo make install
-  - ganon-build -h # ret 0
-  - ganon-classify -h # ret 0
+  - ganon-build -h  # ret 0
+  - ganon-classify -h  # ret 0
   - cd ..
-  - python3 -m unittest discover -s tests/ganon/integration/ -v
-  - python3 setup.py install --user
-  - ganon -h # ret 0
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
+    else
+      python3 -m unittest discover -s tests/ganon/integration/ -v;
+      python3 setup.py install --user;
+      ganon -h;
+    fi
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage.info;
-      coverage run --append -m unittest discover -s tests/ganon/integration/ -v;
-      bash <(curl -s https://codecov.io/bash) -X gcov || echo "Codecov did not collect coverage reports";
+      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
+      python3 -m coverage xml -o coverage_py.xml;
+      curl -Os https://uploader.codecov.io/latest/linux/codecov;
+      chmod +x codecov;
+      ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
     fi
 
 notifications:

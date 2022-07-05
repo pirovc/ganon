@@ -14,6 +14,7 @@
 #include <cereal/types/tuple.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
@@ -210,7 +211,6 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
         // If empty after pop, exit thread
         if ( ifm.target == "" )
             break;
-
 
         // For all files of a target
         for ( auto& [file, seqids] : ifm.files )
@@ -571,6 +571,7 @@ TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const
     TBinMapHash bin_map_hash;
     for ( auto const& [target, count] : hashes_count )
     {
+        // average hashes target
         uint64_t n_bins_target = std::ceil( count / static_cast< double >( ibf_config.max_hashes_bin ) );
         uint64_t n_hashes_bin  = std::ceil( count / static_cast< double >( n_bins_target ) );
 
@@ -582,6 +583,8 @@ TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const
             uint64_t hashes_idx_st = i * n_hashes_bin;
             uint64_t hashes_idx_en = hashes_idx_st + n_hashes_bin - 1;
             if ( hashes_idx_st >= count )
+                break;
+            if ( hashes_idx_en >= count )
                 hashes_idx_en = count - 1;
             bin_map_hash[binno] = std::make_tuple( target, hashes_idx_st, hashes_idx_en );
             binno++;
@@ -616,7 +619,9 @@ void build( TIBF&                       ibf,
             batch_end = bin_map_hash.size() - 1;
 
         // store files and the hashes into a map for quick access
+        // since the bin batch could have repeated and muliple files
         robin_hood::unordered_map< std::string, std::vector< uint64_t > > target_hashes;
+
         // Insert hashes by index to the ibf
         for ( uint64_t binno = batch_start; binno <= batch_end; binno++ )
         {
@@ -740,11 +745,16 @@ bool run( Config config )
 
     // Create temporary output folder if not existing to write minimizer hashes
     if ( config.tmp_output_folder != "" && !std::filesystem::exists( config.tmp_output_folder ) )
+    {
         std::filesystem::create_directory( config.tmp_output_folder );
-    // Delete .min hashes files in case they were previously created
-    detail::delete_hashes( hashes_count, config.tmp_output_folder );
+    }
+    else
+    {
+        // Delete .min hashes files in case they were previously created
+        detail::delete_hashes( hashes_count, config.tmp_output_folder );
+    }
 
-    // Initialize in parallel (by file) the hash counting and storing
+    // Initialize in parallel (by target) the hash counting and storing
     timeCountStoreHashes.start();
     std::vector< std::future< void > > tasks_count;
     for ( uint16_t taskn = 0; taskn < config.threads; ++taskn )

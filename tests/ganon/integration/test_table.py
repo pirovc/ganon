@@ -14,7 +14,7 @@ data_dir = base_dir + "data/"
 class TestTable(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/table/"
-    default_params = {"input": [data_dir+"table/report_reads1.tre", 
+    default_params = {"input": [data_dir+"table/report_reads1.tre",
                                 data_dir+"table/report_reads2.tre",
                                 data_dir+"table/report_reads3.tre"],
                       "rank": "species",

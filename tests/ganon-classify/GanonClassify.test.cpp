@@ -220,6 +220,34 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
     cfg_build.window_size = 10;
     REQUIRE( GanonBuild::run( cfg_build ) );
 
+    SECTION( "--verbose" )
+    {
+        std::string prefix{ folder_prefix + "verbose" };
+
+        // Redirect cerr to file
+        std::streambuf* backup_cerr;
+        std::ofstream   filestr;
+        filestr.open( prefix + ".log" );
+        backup_cerr = std::cerr.rdbuf();
+        std::cerr.rdbuf( filestr.rdbuf() );
+
+        auto cfg         = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.single_reads = { folder_prefix + "readA.fasta" };
+        cfg.verbose      = true;
+
+        REQUIRE( GanonClassify::run( cfg ) );
+
+        // restore cerr and close file
+        std::cerr.rdbuf( backup_cerr );
+        filestr.close();
+
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        // check if there's output on verbose log
+        REQUIRE_FALSE( aux::fileIsEmpty( prefix + ".log" ) );
+    }
 
     SECTION( "--single-reads" )
     {

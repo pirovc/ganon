@@ -139,6 +139,37 @@ SCENARIO( "building indices", "[ganon-build]" )
     std::string folder_prefix{ "ganon-build/" };
     std::filesystem::create_directory( folder_prefix );
 
+    SECTION( "--verbose" )
+    {
+        std::string prefix{ folder_prefix + "verbose" };
+
+        // Redirect cerr to file
+        std::streambuf* backup_cerr;
+        std::ofstream   filestr;
+        filestr.open( prefix + ".log" );
+        backup_cerr = std::cerr.rdbuf();
+        std::cerr.rdbuf( filestr.rdbuf() );
+
+        auto cfg    = config_build::defaultConfig( prefix );
+        cfg.verbose = true;
+
+        auto seqtarget = aux::SeqTarget( prefix, seqs );
+        seqtarget.write_input_file( cfg.input_file );
+        seqtarget.write_sequences_files();
+
+        REQUIRE( GanonBuild::run( cfg ) );
+
+        // restore cerr and close file
+        std::cerr.rdbuf( backup_cerr );
+        filestr.close();
+
+        config_build::validate_filter( cfg );
+        config_build::validate_elements( cfg, seqtarget );
+
+        // check if there's output on verbose log
+        REQUIRE_FALSE( aux::fileIsEmpty( prefix + ".log" ) );
+    }
+
     SECTION( "--input-file" )
     {
 
