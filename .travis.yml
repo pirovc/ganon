@@ -56,7 +56,7 @@ after_success:
       ls -l *;
       lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
       python3 -m coverage --version;
-      python3 -m coverage run --source="./src/ganon/" -m unittest discover -s tests/ganon/integration/ -v;
+      python3 -m coverage run --source="src" -m unittest discover -s tests/ganon/integration/ -v;
       python3 -m coverage report;
       python3 -m coverage xml -o coverage_py.xml;
       cat coverage_py.xml;
