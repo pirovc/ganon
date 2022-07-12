@@ -43,8 +43,6 @@ typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >   
 typedef robin_hood::unordered_map< std::string, uint16_t >                                 TMatches;
 
 typedef std::vector< std::tuple< uint64_t, std::string > > TBinMap;
-// typedef robin_hood::unordered_map< uint64_t, std::string > TMap;
-
 
 typedef robin_hood::unordered_map< std::string, std::vector< uint64_t > > TMap;
 
@@ -1063,13 +1061,13 @@ bool ganon_classify( Config config )
         }
 
         // One report and total counters for each thread
-        std::vector< detail::TRep >  reports( config.threads_classify );
-        std::vector< detail::Total > totals( config.threads_classify );
+        std::vector< detail::TRep >  reports( config.threads );
+        std::vector< detail::Total > totals( config.threads );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
         timeClassPrint.start();
-        for ( uint16_t taskNo = 0; taskNo < config.threads_classify; ++taskNo )
+        for ( uint16_t taskNo = 0; taskNo < config.threads; ++taskNo )
         {
 
             tasks.emplace_back( std::async( std::launch::async,

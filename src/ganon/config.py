@@ -129,7 +129,7 @@ class Config:
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
-        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=3,    help="Number of sub-processes/threads to use")
+        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,    help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="",               help="Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). This file can be re-generated with the 'ganon report' command")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")

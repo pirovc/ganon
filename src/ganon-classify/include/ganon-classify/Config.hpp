@@ -37,13 +37,12 @@ public:
     bool        output_single       = false;
 
     bool     hibf      = false;
-    uint16_t threads   = 3;
+    uint16_t threads   = 1;
     uint32_t n_batches = 1000;
     uint32_t n_reads   = 400;
     bool     verbose   = false;
     bool     quiet     = false;
 
-    uint16_t threads_classify;
 
     bool check_files( std::vector< std::string > const& files )
     {
@@ -115,15 +114,6 @@ public:
         {
             std::cerr << "--rel-filter values should be set between 0 and 1 (1 to disable)" << std::endl;
             return false;
-        }
-
-        if ( threads <= 3 )
-        {
-            threads_classify = 1;
-        }
-        else
-        {
-            threads_classify = threads - 2;
         }
 
         if ( n_batches < 1 )
