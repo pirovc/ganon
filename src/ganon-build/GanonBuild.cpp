@@ -797,8 +797,11 @@ bool run( Config config )
     timeEstimateParams.stop();
 
     // Print verbose arguments for ibf
-    if ( config.verbose )
+    if ( config.verbose ){
         std::cerr << ibf_config;
+        std::cerr << "Filter size: " << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits ) << " Bits";
+        std::cerr  << " (" << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits ) / static_cast< double >( 8388608u ) << " Megabytes)" << std::endl;
+    }
 
     // Split hashes into optimal size creating technical bins
     // {binno: (target, idx_hashes_start, idx_hashes_end)}

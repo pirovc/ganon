@@ -2,7 +2,7 @@
 
 ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
 
-## Index
+---
 
 - [Quick install/usage guide](#quick-installusage-guide)
 - [Details](#details)
@@ -58,7 +58,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
 - report the lowest common ancestor (LCA) but also multiple and unique matches for every read
-- generate reports and tables for multi-sample studies with filter and further customizations
+- generate reports and tables for multi-sample studies with filters and further customizations
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -382,7 +382,9 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 #### filter false positive and size (--max-fp, --filter-size)
 
-ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives, but the larger the filter size will be. Alternatively, one can set a specific size for the final index with `--filer-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
+ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (e.g. assembly, specificed with `--level`) will have 1 in a 100 change of reporting a false match (between minimizer k-mers).
+
+Alternatively, one can set a specific size for the final index with `--filer-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 
 #### minimizers (--window-size, --kmer-size)
 
@@ -690,7 +692,7 @@ output arguments:
                         hierarchy (default: False)
 
 other arguments:
-  -t , --threads        Number of sub-processes/threads to use (default: 3)
+  -t , --threads        Number of sub-processes/threads to use (default: 1)
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
