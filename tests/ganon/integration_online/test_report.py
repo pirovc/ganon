@@ -1,38 +1,45 @@
-import unittest, sys
+import unittest
+import sys
 sys.path.append('src')
-from ganon import ganon
 from ganon.config import Config
 
 base_dir = "tests/ganon/"
 sys.path.append(base_dir)
-from utils import *
+from utils import setup_dir
+from utils import report_sanity_check_and_parse
+from utils import run_ganon
 data_dir = base_dir + "data/"
 
-class TestReportOnline(unittest.TestCase):
-    
+
+class TestReport(unittest.TestCase):
+
     results_dir = base_dir + "results/integration_online/report/"
-    default_params = {"rep_files": data_dir+"report/results.rep",
+    default_params = {"input": data_dir+"report/results.rep",
                       "output_format": "tsv",
-                      "quiet": True}
+                      "verbose": True,
+                      "quiet": False}
 
     @classmethod
     def setUpClass(self):
         setup_dir(self.results_dir)
 
-    def test_default(self):
+    def test_ncbi(self):
         """
-        With default parameters online
+        ganon report --taxonomy ncbi
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_default"
-        
+        params["output_prefix"] = self.results_dir + "test_ncbi"
+        params["taxonomy"] = "ncbi"
+
         # report config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon report exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+    # gtdb
 
 
 if __name__ == '__main__':

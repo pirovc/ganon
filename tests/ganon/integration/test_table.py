@@ -1,22 +1,26 @@
-import unittest, sys
+import unittest
+import sys
 sys.path.append('src')
-from ganon import ganon
 from ganon.config import Config
 
 base_dir = "tests/ganon/"
 sys.path.append(base_dir)
-from utils import *
+from utils import setup_dir
+from utils import table_sanity_check_and_parse
+from utils import run_ganon
 data_dir = base_dir + "data/"
 
-class TestTableOffline(unittest.TestCase):
+
+class TestTable(unittest.TestCase):
 
     results_dir = base_dir + "results/integration/table/"
-    default_params = {"tre_files": [data_dir+"table/report_reads1.tre", 
-                                    data_dir+"table/report_reads2.tre",
-                                    data_dir+"table/report_reads3.tre"],
+    default_params = {"input": [data_dir+"table/report_reads1.tre",
+                                data_dir+"table/report_reads2.tre",
+                                data_dir+"table/report_reads3.tre"],
                       "rank": "species",
                       "transpose": True,
-                      "quiet": True}
+                      "verbose": True,
+                      "quiet": False}
 
     @classmethod
     def setUpClass(self):
@@ -32,7 +36,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -43,14 +47,13 @@ class TestTableOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_input_directory.tsv"
-        del params["tre_files"]
-        params["input_directory"] = data_dir+"table/"
+        params["input"] = data_dir+"table/"
         params["input_extension"] = ".tre"
 
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -66,7 +69,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -85,7 +88,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -110,7 +113,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -135,7 +138,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -161,7 +164,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -188,7 +191,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -207,7 +210,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -226,7 +229,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -245,7 +248,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -264,7 +267,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -282,7 +285,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -300,7 +303,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -318,7 +321,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -337,7 +340,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -356,7 +359,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -375,7 +378,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -394,7 +397,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -412,7 +415,7 @@ class TestTableOffline(unittest.TestCase):
         params["filtered_label"] = "FIL"
         params["rank"] = "genus"
         cfg = Config("table", **params)
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         res1 = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res1, "ganon table has inconsistent results")
         # last 2 cols should be the fixed unclassified and filtered
@@ -422,7 +425,7 @@ class TestTableOffline(unittest.TestCase):
         params["unclassified_label"] = "UNC"
         params["filtered_label"] = None
         cfg = Config("table", **params)
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         res2 = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res2, "ganon table has inconsistent results")
         # last col should be the fixed unclassified
@@ -434,7 +437,7 @@ class TestTableOffline(unittest.TestCase):
         params["unclassified_label"] = None
         params["filtered_label"] = "FIL"
         cfg = Config("table", **params)
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         res3 = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res3, "ganon table has inconsistent results")
         # last col should be the fixed filtered
@@ -447,7 +450,7 @@ class TestTableOffline(unittest.TestCase):
         params["unclassified_label"] = "UNASSIGNED"
         params["filtered_label"] = "UNASSIGNED"
         cfg = Config("table", **params)
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         res4 = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res4, "ganon table has inconsistent results")
         # last col should be the fixed label
@@ -470,7 +473,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -483,15 +486,15 @@ class TestTableOffline(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_file"] = self.results_dir + "test_matches.tsv"
-        params["tre_files"] = [data_dir+"table/report_matches1.tre", 
-                               data_dir+"table/report_matches2.tre",
-                               data_dir+"table/report_matches3.tre"]
+        params["input"] = [data_dir+"table/report_matches1.tre",
+                           data_dir+"table/report_matches2.tre",
+                           data_dir+"table/report_matches3.tre"]
         params["unclassified_label"] = "unclassified"
 
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -509,7 +512,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
@@ -520,7 +523,7 @@ class TestTableOffline(unittest.TestCase):
         # Build config from params
         cfg = Config("table", **params)
         # Run
-        self.assertTrue(ganon.main(cfg=cfg), "ganon table exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_file"]), "ganon table exited with an error")
         # General sanity check of results
         res = table_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
