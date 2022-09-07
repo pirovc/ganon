@@ -1,4 +1,6 @@
 import os
+from math import floor
+
 from ganon.util import validate_input_files
 from ganon.util import print_log
 
@@ -154,14 +156,19 @@ def parse_rep(rep_file):
 def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
 
     # total
-    if cfg.report_type == "reads":
-        total = counts["total"]["reads"] + counts["total"]["unclassified"]
-    else:
+    if cfg.report_type == "matches":
         total = counts["total"]["matches"]
+    else:
+        total = counts["total"]["reads"] + counts["total"]["unclassified"]
+        
 
     # Count targets in the report by report type (counts or matches), merging multiple hierarchical levels
     # merged_counts[target] = {'count': INT, 'unique': INT}
     merged_counts = count_targets(reports, cfg.report_type)
+
+    # Re-distribute lca reads
+    if cfg.report_type == "abundance":
+        merged_counts = redistribute_shared_reads(merged_counts, tax)
 
     # Iterate over the taxonomic tree (all ranks) and sum the entries (cummulative)
     # tree_cum_counts[node] = cum_count
@@ -183,7 +190,7 @@ def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
     output_rows = []
 
     # Reporting reads, first line prints unclassified entries
-    if cfg.report_type == "reads":
+    if cfg.report_type in ["reads", "abundance"]:
         unclassified_line = ["unclassified",
                              "-",
                              "-",
@@ -261,14 +268,7 @@ def count_targets(reports, report_type):
     merged_counts = {}
     for hierarchy_name, report in reports.items():
         for target, rep in report.items():
-            if report_type == "reads":
-                # if there were reads assigned to the target (not only shared matches)
-                if rep['unique_reads'] + rep['lca_reads']:
-                    if target not in merged_counts:
-                        merged_counts[target] = {'unique': 0, 'count': 0}
-                    merged_counts[target]['unique'] += rep['unique_reads']
-                    merged_counts[target]['count'] += rep['lca_reads']
-            else:
+            if report_type == "matches":
                 # If there were any matches to the target
                 if rep['direct_matches']:
                     if target not in merged_counts:
@@ -277,7 +277,53 @@ def count_targets(reports, report_type):
                     # count of matches already has unique included
                     # it needs to be subtracted to fit the same model as the report type reads when printing
                     merged_counts[target]['count'] += rep['direct_matches']-rep['unique_reads']
+            else:
+                # if there were reads assigned to the target (not only shared matches)
+                if rep['unique_reads'] + rep['lca_reads']:
+                    if target not in merged_counts:
+                        merged_counts[target] = {'unique': 0, 'count': 0}
+                    merged_counts[target]['unique'] += rep['unique_reads']
+                    merged_counts[target]['count'] += rep['lca_reads']
+
     return merged_counts
+
+
+def redistribute_shared_reads(merged_counts, tax):
+    dist_merged_counts = {}
+    for target, v in merged_counts.items():
+        if target not in dist_merged_counts:
+            dist_merged_counts[target] = {'unique': 0, 'count': 0}
+
+        # keep unique reads on their targets
+        if v["unique"] > 0:
+            dist_merged_counts[target]['unique'] += v["unique"]
+
+        # if there are shared reads to redistribute among leaves
+        if v["count"] > 0:
+            leaves_unique = set()
+            total_unique = 0
+            leaves = tax.leaves(target)
+            # sum total unique assignments on leaves and occurrences
+            for leaf in leaves:
+                if leaf in merged_counts and merged_counts[leaf]["unique"] > 0:
+                    leaves_unique.add(leaf)
+                    total_unique += merged_counts[leaf]["unique"]
+
+            total_redistributed = 0
+            for leaf in leaves_unique:
+                red = floor(v["count"]*(merged_counts[leaf]["unique"]/total_unique))
+                total_redistributed += red
+                if leaf not in dist_merged_counts:
+                    dist_merged_counts[leaf] = {'unique': 0, 'count': 0}
+                dist_merged_counts[leaf]['count'] += red
+
+            # if leaf nodes have no unique matches (len(leaves_unique) == 0)
+            # or there are left overs to redistribute, keep on target
+            left_overs = v["count"] - total_redistributed
+            if left_overs:
+                dist_merged_counts[target]['count'] += left_overs
+
+    return dist_merged_counts
 
 
 def cummulative_count_tree(merged_counts, tax):
