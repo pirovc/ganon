@@ -1,14 +1,14 @@
+from utils import setup_dir
+from utils import run_ganon
+from utils import report_sanity_check_and_parse
+from utils import list_files_folder
+from ganon.config import Config
 import unittest
 import sys
 sys.path.append('src')
-from ganon.config import Config
 
 base_dir = "tests/ganon/"
 sys.path.append(base_dir)
-from utils import list_files_folder
-from utils import report_sanity_check_and_parse
-from utils import run_ganon
-from utils import setup_dir
 data_dir = base_dir + "data/"
 
 
@@ -35,7 +35,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -51,7 +52,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -70,7 +72,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -89,7 +92,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -108,7 +112,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -116,18 +121,62 @@ class TestReport(unittest.TestCase):
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] <= (params["max_count"]*100)).all(),
                         "ganon report failed filtering with --max-count")
 
-    def test_report_type(self):
+    def test_report_type_abundance(self):
+        """
+        Test run with report_type abundance
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + \
+            "test_report_type_abundance"
+        params["report_type"] = "abundance"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # No re-distribution, shared sum to 0
+        self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(
+        ) > 0, "ganon report has wrong output for --report_type abundance")
+
+    def test_report_type_reads(self):
+        """
+        Test run with report_type reads
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_report_type_reads"
+        params["report_type"] = "reads"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # No re-distribution, shared sum to 0
+        self.assertEqual(res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(
+        ), 0, "ganon report has wrong output for --report_type reads")
+
+    def test_report_type_matches(self):
         """
         Test run with report_type matches
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_report_type"
+        params["output_prefix"] = self.results_dir + "test_report_type_matches"
         params["report_type"] = "matches"
 
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -146,7 +195,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -165,7 +215,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
 
@@ -185,9 +236,11 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
+        res = report_sanity_check_and_parse(
+            vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),
@@ -204,9 +257,11 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
+        res = report_sanity_check_and_parse(
+            vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should not have any assembly reported
         self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"].isin(["assembly"])).any(),
@@ -224,37 +279,45 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
+        res = report_sanity_check_and_parse(
+            vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
         # sum all root value
         total_root_split = 0
         for file, r in res.items():
-            total_root_split += r["tre_pd"][r["tre_pd"]['rank'] == "root"]["cumulative_perc"].values[0]
+            total_root_split += r["tre_pd"][r["tre_pd"]
+                                            ['rank'] == "root"]["cumulative_perc"].values[0]
         # sum one time unclassified
-        total_root_split += r["tre_pd"][r["tre_pd"]['rank'] == "unclassified"]["cumulative_perc"].values[0]
+        total_root_split += r["tre_pd"][r["tre_pd"]['rank']
+                                        == "unclassified"]["cumulative_perc"].values[0]
         # values reported on root of splitted reports should equal 100
-        self.assertEqual(int(total_root_split), 100, "ganon report with wrong root counts")
+        self.assertEqual(int(total_root_split), 100,
+                         "ganon report with wrong root counts")
 
     def test_multiple_rep_files(self):
         """
         Test run with multiple rep files as input
         """
         params = self.default_params.copy()
-        params["input"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
+        params["input"] = [data_dir+"report/results.rep",
+                           data_dir+"report/results2.rep"]
         params["output_prefix"] = self.results_dir + "test_multiple_rep_files"
 
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have two outputs
-        self.assertEqual(len(res), len(params["input"]), "ganon report did not generate multiple report files")
+        self.assertEqual(len(res), len(
+            params["input"]), "ganon report did not generate multiple report files")
 
     def test_multiple_rep_files_folder(self):
         """
@@ -263,10 +326,12 @@ class TestReport(unittest.TestCase):
         params = self.default_params.copy()
         params["input"] = [data_dir+"report/"]
         params["input_extension"] = "rep"
-        params["output_prefix"] = self.results_dir + "test_multiple_rep_files_folder"
+        params["output_prefix"] = self.results_dir + \
+            "test_multiple_rep_files_folder"
 
         cfg = Config("report", **params)
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have two outputs
@@ -278,20 +343,25 @@ class TestReport(unittest.TestCase):
         Test run with multiple rep files as input
         """
         params = self.default_params.copy()
-        params["input"] = [data_dir+"report/results.rep", data_dir+"report/results2.rep"]
-        params["output_prefix"] = self.results_dir + "test_multiple_rep_files_split_hierachy_"
+        params["input"] = [data_dir+"report/results.rep",
+                           data_dir+"report/results2.rep"]
+        params["output_prefix"] = self.results_dir + \
+            "test_multiple_rep_files_split_hierachy_"
         params["split_hierarchy"] = True
 
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
-        res = report_sanity_check_and_parse(vars(cfg), sum_full_percentage=False)
+        res = report_sanity_check_and_parse(
+            vars(cfg), sum_full_percentage=False)
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
         # should have 2+4 outputs (6 hiearchies)
-        self.assertEqual(len(res), 6, "ganon report did not generate multiple report files")
+        self.assertEqual(
+            len(res), 6, "ganon report did not generate multiple report files")
 
     def test_input_directory(self):
         """
@@ -305,7 +375,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -321,7 +392,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -340,7 +412,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -359,7 +432,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -379,7 +453,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -397,7 +472,8 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
@@ -418,13 +494,15 @@ class TestReport(unittest.TestCase):
         # Build config from params
         cfg = Config("report", **params)
         # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         # General sanity check of results
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "na" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
                         "ganon report did not report the correct ranks")
+
 
 if __name__ == '__main__':
     unittest.main()

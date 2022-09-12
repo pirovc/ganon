@@ -254,10 +254,11 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         # get idx for root (idx_root) and root + unclassified (idx_base)
         res["idx_root"] = res["tre_pd"]['rank'] == "root"
-        if params["report_type"] == "reads":
-            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
-        else:
+        if params["report_type"] == "matches":
             res["idx_base"] = res["idx_root"]
+        else:
+            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
+            
 
         # Check if total is 100%
         if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
