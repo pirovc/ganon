@@ -2,6 +2,8 @@ import time
 import pandas as pd
 import re
 import os
+import gzip
+import tarfile
 
 from ganon.util import download, run, print_log, rm_files
 from io import StringIO
@@ -37,6 +39,111 @@ def parse_file_accession(input_files, info):
     info[["target", "file"]] = pd.DataFrame(assembly_accessions)
     return info
 
+def parse_genome_size_files(cfg, tax, build_output_folder):
+    """
+    Download and parse auxiliary files to determine approximate genome size for each taxa
+    NCBI based on species_genome_size.txt and GTDB on _metadata.tar.gz files
+    Returns sizes for leaf nodes in the provided taxonomy in a dict {node:size}
+    If node has no size information, returns {node:0}
+    """
+
+    # Download or set files
+    tx = time.time()
+    if not cfg.genome_size_files:
+        print_log("Downloading and parsing auxiliary files for genome size", cfg.quiet)
+        if cfg.taxonomy == "ncbi":
+            files = download([cfg.ncbi_url + "/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"], build_output_folder)
+        elif cfg.taxonomy == "gtdb":
+            files = download([cfg.gtdb_url + "/ar53_metadata.tar.gz", cfg.gtdb_url + "/bac120_metadata.tar.gz"], build_output_folder)
+    else:
+        print_log("Parsing parsing auxiliary files for genome size", cfg.quiet)
+        files = cfg.genome_size_files
+
+    leaves_sizes = {}
+    if cfg.taxonomy == "ncbi":
+        for file in files:
+            with gzip.open(file, "rt") as f:
+                # skip first line wiht header
+                # #species_taxid  min_ungapped_length  max_ungapped_length  expected_ungapped_length  number_of_genomes  method_determined
+                next(f)
+                for line in f:
+                    fields = line.rstrip().split("\t")
+                    t = tax.latest(fields[0])
+                    # Only record valid nodes on given taxonomy
+                    if t is not tax.undefined_node:
+                        v = int(fields[3])
+                        # Store genome size estimation for all leaf nodes available
+                        for leaf in tax.leaves(t):
+                            leaves_sizes[leaf] = v
+
+    elif cfg.taxonomy == "gtdb":
+        for file in files:
+            with tarfile.open(file, mode='r:gz') as tfile:
+                tfile.extractall(path=build_output_folder)
+                for n in tfile.getnames():
+                    with open(build_output_folder + "/" + n, "r") as f:
+                        # skip first line wiht header
+                        # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
+                        next(f)
+                        for line in f:
+                            fields = line.rstrip().split("\t")
+                            t = fields[16].split(";")[-1]  # species taxid (leaf)
+                            # Only record valid nodes on given taxonomy
+                            if t is not tax.undefined_node:
+                                # In GTDB, several genome sizes are available for each node
+                                # accumulate them in a list and make average
+                                v = int(fields[13])
+                                if t not in leaves_sizes:
+                                    leaves_sizes[t] = []
+                                leaves_sizes[t].append(v)
+        # Average sizes
+        for t in list(leaves_sizes.keys()):
+            leaves_sizes[t] = int(sum(leaves_sizes[t])/len(leaves_sizes[t]))
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+    return leaves_sizes
+
+
+def get_genome_size(cfg, info, tax, build_output_folder):
+    """
+    Estimate genome sizes based on auxiliary files
+    Only used nodes and lineage are calculated, based on the full set of values provided
+    If information of a certain node is not provided, uses the closest estimate of parent nodes
+    """
+    # Get sizes of the leaves on the tax tree
+    leaves_sizes = parse_genome_size_files(cfg, tax, build_output_folder)
+
+    tx = time.time()
+    print_log("Estimating genome sizes", cfg.quiet)
+    # Calculate genome size estimates for used nodes (and their lineage)
+    # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
+    genome_sizes = {}
+    for node in info["node"].unique():
+        # For the lineage of each target node
+        for t in tax.lineage(node):
+            # Skip if already calculated
+            if t not in genome_sizes:
+                cnt = 0
+                avg = 0
+                # Make average of available genome sizes in children leaves
+                for leaf in tax.leaves(t):
+                    if leaf in leaves_sizes:
+                        cnt += 1
+                        avg += leaves_sizes[leaf]
+                # If not information is availble, save as 0
+                genome_sizes[t] = int(avg / cnt) if cnt else 0
+
+    # Check nodes without genome size info (0) and use closest value from parent lineage
+    for node in info["node"].unique():
+        if genome_sizes[node] == 0:
+            # Fill lineage of zeros with latest genome size estimation
+            for t in tax.lineage(node):
+                if genome_sizes[t] == 0:
+                    genome_sizes[t] = genome_sizes[tax.parent(t)]
+
+    print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    return genome_sizes
+
 
 def get_file_info(cfg, info, tax, build_output_folder):
     if cfg.taxonomy == "ncbi" or (cfg.taxonomy == "skip" and cfg.level == "assembly"):
@@ -47,7 +154,7 @@ def get_file_info(cfg, info, tax, build_output_folder):
             # Either a file or prefix for download
             if assembly_summary in cfg.choices_ncbi_file_info:
                 # split if _historical
-                assembly_summary_urls.append(cfg.ncbi_ftp +
+                assembly_summary_urls.append(cfg.ncbi_url +
                                              "/genomes/" + assembly_summary.split("_")[0] + 
                                              "/assembly_summary_" + assembly_summary + ".txt")
             else:
@@ -136,7 +243,7 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
                 for acc2txid in mode:
                     # Either a file or prefix for download
                     if acc2txid in cfg.choices_ncbi_sequence_info:
-                        acc2txid_urls.append(cfg.ncbi_ftp + "/pub/taxonomy/accession2taxid/" +
+                        acc2txid_urls.append(cfg.ncbi_url + "/pub/taxonomy/accession2taxid/" +
                                              acc2txid + ".accession2taxid.gz")
                     else:
                         acc2txid_files.append(acc2txid)

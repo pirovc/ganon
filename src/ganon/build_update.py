@@ -18,6 +18,7 @@ from ganon.tax_util import get_file_info
 from ganon.tax_util import get_sequence_info
 from ganon.tax_util import parse_sequence_accession
 from ganon.tax_util import parse_file_accession
+from ganon.tax_util import get_genome_size
 
 from multitax import NcbiTx, GtdbTx
 
@@ -243,8 +244,10 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Filter and write taxonomy
         if tax:
+            # Get estimates of genome sizes
+            genome_sizes = get_genome_size(cfg, info, tax, build_output_folder)
             tax.filter(info["node"].unique())  # filter only used tax. nodes
-            write_tax(cfg.db_prefix + ".tax", info, tax, user_bins_col, cfg.level, cfg.input_target)
+            write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
 
         # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
@@ -391,7 +394,7 @@ def load_taxonomy(cfg, build_output_folder):
     return tax
 
 
-def write_tax(tax_file, info, tax, user_bins_col, level, input_target):
+def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_target):
     """
     write tabular taxonomy file .tax
     may include specialization as nodes
@@ -405,13 +408,17 @@ def write_tax(tax_file, info, tax, user_bins_col, level, input_target):
     if user_bins_col != "node":
         # Set rank to level or input_target
         rank = level if level else input_target
-
         with open(tax_file, "a") as outf:
             for target, row in info.iterrows():
                 t = row[user_bins_col] if user_bins_col != "target" else target
                 n = row["specialization_name"] if user_bins_col == "specialization" else t
                 print(t, row["node"], rank, n, sep="\t", end="\n", file=outf)
 
+    # add genome_sizes col, either from node or parent (specialization)
+    tax_df = pd.read_csv(tax_file, names=["node", "parent", "rank", "name"], delimiter='\t', dtype=str)
+    # Get estimated genome size from parent in case of specialization 
+    tax_df["genome_size"] = tax_df.apply(lambda d: genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent], axis=1)
+    tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
 
 def write_target_info(info, input_target, user_bins_col, target_info_file):
     """
