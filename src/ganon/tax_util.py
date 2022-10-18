@@ -104,7 +104,7 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
     return leaves_sizes
 
 
-def get_genome_size(cfg, info, tax, build_output_folder):
+def get_genome_size(cfg, nodes, tax, build_output_folder):
     """
     Estimate genome sizes based on auxiliary files
     Only used nodes and lineage are calculated, based on the full set of values provided
@@ -118,7 +118,7 @@ def get_genome_size(cfg, info, tax, build_output_folder):
     # Calculate genome size estimates for used nodes (and their lineage)
     # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
     genome_sizes = {}
-    for node in info["node"].unique():
+    for node in nodes:
         # For the lineage of each target node
         for t in tax.lineage(node):
             # Skip if already calculated
@@ -134,7 +134,7 @@ def get_genome_size(cfg, info, tax, build_output_folder):
                 genome_sizes[t] = int(avg / cnt) if cnt else 0
 
     # Check nodes without genome size info (0) and use closest value from parent lineage
-    for node in info["node"].unique():
+    for node in nodes:
         if genome_sizes[node] == 0:
             # Fill lineage of zeros with latest genome size estimation
             for t in tax.lineage(node):

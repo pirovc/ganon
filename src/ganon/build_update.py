@@ -245,7 +245,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         # Filter and write taxonomy
         if tax:
             # Get estimates of genome sizes
-            genome_sizes = get_genome_size(cfg, info, tax, build_output_folder)
+            genome_sizes = get_genome_size(cfg, info["node"].unique(), tax, build_output_folder)
             tax.filter(info["node"].unique())  # filter only used tax. nodes
             write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
 

@@ -3,6 +3,7 @@ from math import floor
 
 from ganon.util import validate_input_files
 from ganon.util import print_log
+from ganon.tax_util import get_genome_size
 
 from multitax import CustomTx, NcbiTx, GtdbTx
 
@@ -18,6 +19,7 @@ def report(cfg):
                 "root_name": "root",
                 "root_rank": "root"}
 
+    genome_sizes = {}
     if cfg.db_prefix:
         dbp = []
         for prefix in cfg.db_prefix:
@@ -29,6 +31,19 @@ def report(cfg):
         tax = CustomTx(files=dbp,
                        cols=["node", "parent", "rank", "name"],
                        **tax_args)
+
+        print(tax.stats())
+
+        for f in dbp:
+            with open(f, "r") as file:
+                for line in file:
+                    node, _, _, _, gsize = line.rstrip().split("\t")
+                    # keep largest genome size
+                    gsize = int(gsize)
+                    if node in genome_sizes and genome_sizes[node] > gsize:
+                        continue
+                    genome_sizes[node] = int(gsize)
+
     else:
         if cfg.taxonomy_files:
             print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
@@ -39,6 +54,9 @@ def report(cfg):
             tax = NcbiTx(files=cfg.taxonomy_files, **tax_args)
         elif cfg.taxonomy == "gtdb":
             tax = GtdbTx(files=cfg.taxonomy_files, **tax_args)
+
+        # TODO get_genome_size -- how to define used nodes?
+
 
     # define fixed_ranks or leave it empty for all
     if cfg.ranks and cfg.ranks[0] == "all":
@@ -87,7 +105,7 @@ def report(cfg):
             for h in reports:
                 if h not in cfg.skip_hierarchy:
                     output_file_h = output_file + "." + h + ".tre"
-                    r = print_final_report({h: reports[h]}, counts, tax, output_file_h, fixed_ranks, cfg)
+                    r = print_final_report({h: reports[h]}, counts, tax, genome_sizes, output_file_h, fixed_ranks, cfg)
                     if not r:
                         print_log(" - nothing to report for hierarchy " + h + " in the " + rep_file, cfg.quiet)
                         continue
@@ -97,7 +115,7 @@ def report(cfg):
 
         else:
             output_file = output_file + ".tre"
-            r = print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg)
+            r = print_final_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, cfg)
             if not r:
                 print_log(" - nothing to report for " + rep_file, cfg.quiet)
                 continue
@@ -153,14 +171,13 @@ def parse_rep(rep_file):
     return reports, counts
 
 
-def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
+def print_final_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, cfg):
 
     # total
     if cfg.report_type == "matches":
         total = counts["total"]["matches"]
     else:
         total = counts["total"]["reads"] + counts["total"]["unclassified"]
-        
 
     # Count targets in the report by report type (counts or matches), merging multiple hierarchical levels
     # merged_counts[target] = {'count': INT, 'unique': INT}
@@ -173,10 +190,15 @@ def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
     # Iterate over the taxonomic tree (all ranks) and sum the entries (cummulative)
     # tree_cum_counts[node] = cum_count
     tree_cum_counts = cummulative_count_tree(merged_counts, tax)
+    tree_cum_perc = cummulative_perc_tree(tree_cum_counts, total)
+
+    # Adjust percentages (tree_cum_perc) based on estimated genome sizes
+    if cfg.report_type == "abundance":
+        adjust_perc_genome_size(tree_cum_perc, tree_cum_counts, merged_counts, genome_sizes, total, tax)
 
     # filter with fixed ranks and user parameters (names, taxid)
     # filtered_cum_counts[node] = cum_count
-    filtered_cum_counts = filter_report(tree_cum_counts, tax, fixed_ranks, total, cfg)
+    filtered_cum_counts = filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, cfg)
 
     if not filtered_cum_counts:
         return False
@@ -211,7 +233,7 @@ def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
         unique = merged_counts[node]['unique'] if node in merged_counts else 0
         lca = merged_counts[node]['count'] if node in merged_counts else 0
         cum_count = filtered_cum_counts[node]
-        cum_count_perc = (filtered_cum_counts[node]/total)*100
+        cum_perc = tree_cum_perc[node]*100
         children = cum_count - unique - lca
 
         # Orphan node (not skipped in filter), reported directly to root as parent
@@ -233,7 +255,7 @@ def print_final_report(reports, counts, tax, output_file, fixed_ranks, cfg):
                     str(lca),
                     str(children),
                     str(cum_count),
-                    str("%.5f" % cum_count_perc)]
+                    str("%.5f" % cum_perc)]
         if cfg.output_format in ["tsv", "csv"]:
             print(*out_line, file=tre_file, sep="\t" if cfg.output_format == "tsv" else ",")
         else:
@@ -311,20 +333,52 @@ def redistribute_shared_reads(merged_counts, tax):
 
             total_redistributed = 0
             for leaf in leaves_unique:
+                # redistribue proportionally to the number of unique assignments for each leaf
+                # If there are no unique assignment among leaves, uses the shared counts
                 red = floor(v["count"]*(merged_counts[leaf]["unique"]/total_unique))
                 total_redistributed += red
                 if leaf not in dist_merged_counts:
                     dist_merged_counts[leaf] = {'unique': 0, 'count': 0}
                 dist_merged_counts[leaf]['count'] += red
 
-            # if leaf nodes have no unique matches (len(leaves_unique) == 0)
-            # or there are left overs to redistribute, keep on target
+            # If there left overs to redistribute
             left_overs = v["count"] - total_redistributed
             if left_overs:
-                dist_merged_counts[target]['count'] += left_overs
-
+                # No leaves with unique matches, 
+                if len(leaves_unique) == 0:
+                    # keep left_overs on original target
+                    dist_merged_counts[target]['count'] += left_overs
+                else:
+                    # Distribute left_over for the top leaves (by assignments, follow by leaf name to keep consistency)
+                    for leaf in sorted(leaves_unique, key=lambda x: (-merged_counts[x]["unique"], x))[:left_overs]:
+                        dist_merged_counts[leaf]['count'] += 1
+                
     return dist_merged_counts
 
+
+
+def adjust_perc_genome_size(tree_cum_perc, tree_cum_counts, merged_counts, genome_sizes, total, tax):
+    """
+    Uses genome sizes to adjust percentage of assigned reads
+    It only adjusts ranks with direct assignments (unique or lca)
+    It adjusts based on percentage of assigned reads to the defined rank (not 100%)
+    """
+    ranks_with_counts = set()
+    for leaf, val in merged_counts.items():
+        if val['unique'] > 0 or val['count'] > 0:
+            ranks_with_counts.add(tax.rank(leaf))
+    
+    total_rank_ratio = {r:0 for r in ranks_with_counts}
+    total_rank_count = {r:0 for r in ranks_with_counts} 
+    for node, cum_count in tree_cum_counts.items():
+        if tax.rank(node) in ranks_with_counts:
+            total_rank_ratio[tax.rank(node)] += cum_count/genome_sizes[node]
+            total_rank_count[tax.rank(node)] += cum_count
+
+    for node, cum_count in tree_cum_counts.items():
+        if tax.rank(node) in ranks_with_counts:
+            perc_adjusted = (cum_count/genome_sizes[node])/total_rank_ratio[tax.rank(node)]
+            tree_cum_perc[node] = (total_rank_count[tax.rank(node)]/total) * perc_adjusted
 
 def cummulative_count_tree(merged_counts, tax):
     """
@@ -349,7 +403,18 @@ def cummulative_count_tree(merged_counts, tax):
     return filtered_cum_counts
 
 
-def filter_report(tree_cum_counts, tax, fixed_ranks, total, cfg):
+def cummulative_perc_tree(tree_cum_counts, total):
+    """
+    Calculate percentage based on total counts on the tree
+    """
+    tree_cum_perc = {}
+    for node, cum_count in tree_cum_counts.items():
+        tree_cum_perc[node] = cum_count/total
+
+    return tree_cum_perc
+
+
+def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, cfg):
     """
     filter with fixed ranks and user parameters (names, taxid)
     """
@@ -374,13 +439,13 @@ def filter_report(tree_cum_counts, tax, fixed_ranks, total, cfg):
         if cfg.min_count:
             if cfg.min_count > 1 and cum_count < cfg.min_count:
                 continue
-            elif cfg.min_count < 1 and (cum_count/total) < cfg.min_count:
+            elif cfg.min_count < 1 and tree_cum_perc[node] < cfg.min_count:
                 continue
 
         if cfg.max_count:
             if cfg.max_count > 1 and cum_count > cfg.max_count:
                 continue
-            elif cfg.max_count < 1 and (cum_count/total) > cfg.max_count:
+            elif cfg.max_count < 1 and tree_cum_perc[node] > cfg.max_count:
                 continue
 
         if cfg.taxids and not any(t in cfg.taxids for t in tax.lineage(node)):
