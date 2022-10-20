@@ -50,13 +50,13 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
     # Download or set files
     tx = time.time()
     if not cfg.genome_size_files:
-        print_log("Downloading and parsing auxiliary files for genome size", cfg.quiet)
+        print_log("Downloading and parsing auxiliary files for genome size estimation", cfg.quiet)
         if cfg.taxonomy == "ncbi":
             files = download([cfg.ncbi_url + "/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"], build_output_folder)
         elif cfg.taxonomy == "gtdb":
             files = download([cfg.gtdb_url + "/ar53_metadata.tar.gz", cfg.gtdb_url + "/bac120_metadata.tar.gz"], build_output_folder)
     else:
-        print_log("Parsing parsing auxiliary files for genome size", cfg.quiet)
+        print_log("Parsing auxiliary files for genome size", cfg.quiet)
         files = cfg.genome_size_files
 
     leaves_sizes = {}
@@ -68,13 +68,13 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
                 next(f)
                 for line in f:
                     fields = line.rstrip().split("\t")
-                    t = tax.latest(fields[0])
-                    # Only record valid nodes on given taxonomy
-                    if t is not tax.undefined_node:
-                        v = int(fields[3])
-                        # Store genome size estimation for all leaf nodes available
-                        for leaf in tax.leaves(t):
-                            leaves_sizes[leaf] = v
+                    t = fields[0]
+                    v = int(fields[3])
+                    # Keep genome size info (even if not in taxonomy)
+                    leaves_sizes[t] = v
+                    # Store genome size estimation for all leaf nodes available in the taxonomy
+                    for leaf in tax.leaves(t):
+                        leaves_sizes[leaf] = v
 
     elif cfg.taxonomy == "gtdb":
         for file in files:
@@ -88,14 +88,12 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
                         for line in f:
                             fields = line.rstrip().split("\t")
                             t = fields[16].split(";")[-1]  # species taxid (leaf)
-                            # Only record valid nodes on given taxonomy
-                            if t is not tax.undefined_node:
-                                # In GTDB, several genome sizes are available for each node
-                                # accumulate them in a list and make average
-                                v = int(fields[13])
-                                if t not in leaves_sizes:
-                                    leaves_sizes[t] = []
-                                leaves_sizes[t].append(v)
+                            # In GTDB, several genome sizes are available for each node
+                            # accumulate them in a list and make average
+                            v = int(fields[13])
+                            if t not in leaves_sizes:
+                                leaves_sizes[t] = []
+                            leaves_sizes[t].append(v)
         # Average sizes
         for t in list(leaves_sizes.keys()):
             leaves_sizes[t] = int(sum(leaves_sizes[t])/len(leaves_sizes[t]))
@@ -103,6 +101,22 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
 
     return leaves_sizes
 
+def parse_genome_size_tax(tax_files):
+    """
+    Parse last column of a .tax file and retrieve genome_sizes to a dict {node: size}
+    If nodes are repeated among files with different sizes, keep largest
+    """
+    genome_sizes = {}
+    for f in tax_files:
+        with open(f, "r") as file:
+            for line in file:
+                node, _, _, _, gsize = line.rstrip().split("\t")
+                # keep largest genome size
+                gsize = int(gsize)
+                if node in genome_sizes and genome_sizes[node] > gsize:
+                    continue
+                genome_sizes[node] = gsize
+    return genome_sizes
 
 def get_genome_size(cfg, nodes, tax, build_output_folder):
     """
@@ -132,6 +146,10 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                         avg += leaves_sizes[leaf]
                 # If not information is availble, save as 0
                 genome_sizes[t] = int(avg / cnt) if cnt else 0
+
+    # If there is no matching between taxonomy and leaves, average the whole
+    if sum(genome_sizes.values())==0:
+        genome_sizes[tax.root_node] = int(sum(leaves_sizes.values())/len(leaves_sizes))
 
     # Check nodes without genome size info (0) and use closest value from parent lineage
     for node in nodes:

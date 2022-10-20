@@ -1,9 +1,11 @@
+import time
 import os
 from math import floor
 
+from copy import deepcopy
 from ganon.util import validate_input_files
 from ganon.util import print_log
-from ganon.tax_util import get_genome_size
+from ganon.tax_util import get_genome_size, parse_genome_size_tax
 
 from multitax import CustomTx, NcbiTx, GtdbTx
 
@@ -32,17 +34,15 @@ def report(cfg):
                        cols=["node", "parent", "rank", "name"],
                        **tax_args)
 
-        for f in dbp:
-            with open(f, "r") as file:
-                for line in file:
-                    node, _, _, _, gsize = line.rstrip().split("\t")
-                    # keep largest genome size
-                    gsize = int(gsize)
-                    if node in genome_sizes and genome_sizes[node] > gsize:
-                        continue
-                    genome_sizes[node] = int(gsize)
-
+        if cfg.report_type == "abundance":
+            # TODO, return empty if failed
+            try:
+                genome_sizes = parse_genome_size_tax(dbp)
+            except ValueError:
+                print_log("Failed to get genome sizes from .tax files")
+            
     else:
+        tx = time.time()
         if cfg.taxonomy_files:
             print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
         else:
@@ -53,7 +53,12 @@ def report(cfg):
         elif cfg.taxonomy == "gtdb":
             tax = GtdbTx(files=cfg.taxonomy_files, **tax_args)
 
+        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+    # In case no tax was provided or failed to parse genome sizes (ganon build older than 1.3.0)
+    if cfg.report_type == "abundance" and not genome_sizes:
         # TODO get_genome_size -- how to define used nodes?
+        genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
 
     # define fixed_ranks or leave it empty for all
@@ -169,7 +174,8 @@ def parse_rep(rep_file):
     return reports, counts
 
 
-def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, cfg):
+def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ranks, cfg):
+
 
     # total
     if cfg.report_type == "matches":
@@ -183,6 +189,12 @@ def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, c
     else:
         merged_rep = merge_reports(reports)
 
+    # Copy full tax and only keep used subset (for consistency with downloaded taxonomy)
+    tax = deepcopy(full_tax)
+    tax.filter(list(merged_rep.keys()))
+    # Pre-build lineages for performance
+    tax.build_lineages()
+
     # Re-distribute lca reads to leaf nodes based on unique matches or shared
     if cfg.report_type == "abundance":
         redistribute_shared_reads(merged_rep, tax)
@@ -190,7 +202,7 @@ def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, c
     # Count data from merged_rep into a final count per target, depending on report type
     target_counts = count_targets(merged_rep, cfg.report_type)
 
-    # Cumulatively sum leaf counts to its lineage parents
+    # Cummulatively sum leaf counts to its lineage parents
     tree_cum_counts = cummulative_sum_tree(target_counts, tax)
 
     if cfg.report_type == "abundance":
@@ -335,8 +347,9 @@ def redistribute_shared_reads(merged_rep, tax):
            
             # Get leaves or return itself in case of target is already a leaf
             leaves = tax.leaves(target)
-            # If returned itself, no redistribution necessary, skip
-            if leaves == [target]:
+
+            # If returned itself, no redistribution necessary / not found in tax, skip
+            if not leaves or leaves == [target]:
                 continue
 
             # Distribute shared reads among leaves with unique reads
@@ -355,6 +368,10 @@ def redistribute_shared_reads(merged_rep, tax):
                     if leaf in merged_rep and merged_rep[leaf]["direct_matches"] > 0:
                         leaves_unique.add(leaf)
                         total_leaves += merged_rep[leaf]["direct_matches"]
+
+            # If no leaves could be found, skip
+            if len(leaves_unique) == 0:
+                continue
 
             total_redist = 0
             for leaf in leaves_unique:
@@ -380,28 +397,31 @@ def adjust_perc_genome_size(tree_cum_counts, merged_rep, genome_sizes, total, ta
     Uses genome sizes to adjust percentage of assigned reads
     It only adjusts ranks with direct assignments (unique or lca)
     It adjusts based on percentage of assigned reads to the defined rank (not 100%)
+    If genome_size is not availble, uses the average size (root node)
     """
     tree_cum_perc = {}
     
-
     ranks_with_counts = set()
     for leaf, val in merged_rep.items():
-        if val['unique_reads'] > 0 and tax.rank(leaf) in fixed_ranks:
+        if val['unique_reads']+val['lca_reads'] > 0 and tax.rank(leaf) in fixed_ranks:
             ranks_with_counts.add(tax.rank(leaf))
     lowest_base_rank = fixed_ranks[min(map(fixed_ranks.index, ranks_with_counts))]
 
     total_rank_ratio = {r:0 for r in ranks_with_counts}
     total_rank_count = {r:0 for r in ranks_with_counts}
     for node, cum_count in tree_cum_counts.items():
-        if tax.rank(node) in ranks_with_counts:
-            total_rank_ratio[tax.rank(node)] += cum_count/genome_sizes[node]
-            total_rank_count[tax.rank(node)] += cum_count
+        rank_node = tax.rank(node)
+        if rank_node in ranks_with_counts:
+            gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+            total_rank_ratio[rank_node] += cum_count/gs
+            total_rank_count[rank_node] += cum_count
 
     base_perc = {}
     for node, cum_count in tree_cum_counts.items():
         rank_node = tax.rank(node)
         if rank_node in ranks_with_counts:
-            perc_adjusted = (cum_count/genome_sizes[node])/total_rank_ratio[rank_node]
+            gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+            perc_adjusted = (cum_count/gs)/total_rank_ratio[rank_node]
             tree_cum_perc[node] = (total_rank_count[rank_node]/total) * perc_adjusted
             if rank_node == lowest_base_rank:
                 base_perc[node] = tree_cum_perc[node]

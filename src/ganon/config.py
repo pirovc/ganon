@@ -28,6 +28,8 @@ class Config:
                                          description=logo(self.version),
                                          conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
+        parser.add_argument("--ncbi-url",   type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
+        parser.add_argument("--gtdb-url",   type=str,                    metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -104,8 +106,6 @@ class Config:
         build_update_other_args.add_argument("--verbose",    action="store_true", help="Verbose output mode")
         build_update_other_args.add_argument("--quiet",      action="store_true", help="Quiet output mode")
         build_update_other_args.add_argument("--keep-files", action="store_true", help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--ncbi-url",   type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--gtdb-url",   type=str,                    metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--ganon-path", type=str,                    metavar="", default="",                              help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-refs",     type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
@@ -153,9 +153,10 @@ class Config:
         report_group_required.add_argument("-o", "--output-prefix",   type=str, required=True,            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'")
 
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
-        report_group_dbtax.add_argument("-d", "--db-prefix",      type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
-        report_group_dbtax.add_argument("-x", "--taxonomy",       type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
-        report_group_dbtax.add_argument("-m", "--taxonomy-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
+        report_group_dbtax.add_argument("-d", "--db-prefix",         type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
+        report_group_dbtax.add_argument("-x", "--taxonomy",          type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
+        report_group_dbtax.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
+        report_group_dbtax.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for genome size estimation - otherwise files will be downloaded")
 
         report_group_output = report_parser.add_argument_group("output arguments")
         report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization.")

@@ -18,6 +18,7 @@ class TestReport(unittest.TestCase):
     default_params = {"db_prefix": data_dir+"report/bacteria_assembly",
                       "input": data_dir+"report/results.rep",
                       "output_format": "tsv",
+                      "report_type": "reads",
                       "verbose": True,
                       "quiet": False}
 
