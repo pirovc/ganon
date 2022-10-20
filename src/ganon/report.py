@@ -171,30 +171,34 @@ def parse_rep(rep_file):
 
 def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, cfg):
 
-
     # total
     if cfg.report_type == "matches":
         total = counts["total"]["matches"]
     else:
         total = counts["total"]["reads"] + counts["total"]["unclassified"]
 
+    # Merge .rep files into a dict {'unique_reads': 0, 'lca_reads': 0, 'direct_matches': 0}
     if len(reports) == 1:
         merged_rep = list(reports.values())[0]
     else:
         merged_rep = merge_reports(reports)
 
-    # Re-distribute lca reads
+    # Re-distribute lca reads to leaf nodes based on unique matches or shared
     if cfg.report_type == "abundance":
-        merged_rep = redistribute_shared_reads(merged_rep, tax)
+        redistribute_shared_reads(merged_rep, tax)
 
-    # Iterate over the taxonomic tree (all ranks) and sum the entries (cummulative)
-    # tree_cum_counts[node] = cum_count
-    tree_cum_counts = cummulative_count_tree(merged_rep, tax, cfg.report_type)
-    tree_cum_perc = cummulative_perc_tree(tree_cum_counts, total)
+    # Count data from merged_rep into a final count per target, depending on report type
+    target_counts = count_targets(merged_rep, cfg.report_type)
 
-    # Adjust percentages (tree_cum_perc) based on estimated genome sizes
+    # Cumulatively sum leaf counts to its lineage parents
+    tree_cum_counts = cummulative_sum_tree(target_counts, tax)
+
     if cfg.report_type == "abundance":
-        adjust_perc_genome_size(tree_cum_perc, tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks)
+        # Adjust percentages (tree_cum_perc) based on estimated genome sizes
+        tree_cum_perc = adjust_perc_genome_size(tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks)
+    else:        
+        # Simple percentage calculation
+        tree_cum_perc = cummulative_perc_tree(tree_cum_counts, total)
 
     # filter with fixed ranks and user parameters (names, taxid)
     # filtered_cum_counts[node] = cum_count
@@ -205,7 +209,7 @@ def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, c
 
     # sort entries based on report or user-defined
     # sorted_nodes = ["1", "1224", ...]
-    sorted_nodes = sort_report(filtered_cum_counts, cfg.sort, fixed_ranks, tax, merged_rep)
+    sorted_nodes = sort_report(filtered_cum_counts, tree_cum_perc, cfg.sort, fixed_ranks, tax, merged_rep)
 
     # Output file
     tre_file = open(output_file, 'w')
@@ -239,10 +243,10 @@ def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, c
             unique = merged_rep[node]['unique_reads'] 
             if cfg.report_type == "matches":
                 shared = merged_rep[node]['direct_matches'] - merged_rep[node]['unique_reads']
-                children = children - shared
             else:
                 shared = merged_rep[node]['lca_reads']
-                children = children - unique - shared
+        
+        children = children - unique - shared
 
         # Orphan node (not skipped in filter), reported directly to root as parent
         if tax.latest(node) == tax.undefined_node:
@@ -294,7 +298,7 @@ def build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, c
     return True
 
 
-def merge_reports(reports, report_type):
+def merge_reports(reports):
     merged_rep = {}
     for hierarchy_name, report in reports.items():
         for target, rep in report.items():
@@ -305,26 +309,40 @@ def merge_reports(reports, report_type):
             merged_rep[target]['direct_matches'] += rep['direct_matches']
     return merged_rep
 
+def count_targets(merged_rep, report_type):
+    res = {}
+    for target, v in merged_rep.items():
+        count = 0
+        if report_type == "matches":
+            count = v['direct_matches']
+        else:
+            count = v['unique_reads'] + v['lca_reads']
+        if count == 0:
+            continue
+        res[target] = count
+
+    return res
 
 def redistribute_shared_reads(merged_rep, tax):
-    dist_rep = {}
-    for target, v in merged_rep.items():
-        if target not in dist_rep:
-            dist_rep[target] = {'unique_reads': 0, 'lca_reads': 0, 'direct_matches': 0}
-
-        # always keep unique reads on their original targets
-        if v["unique_reads"] > 0:
-            dist_rep[target]['unique_reads'] += v["unique_reads"]
+    """
+    change merged_rep with redistributed reads
+    only move counts of lca_reads
+    """
+    for target in merged_rep.keys():
 
         # if there are shared reads to redistribute among leaves
-        if v["lca_reads"] > 0:
-            leaves_unique = set()
-            total_leaves = 0
+        if merged_rep[target]["lca_reads"] > 0:
+           
             # Get leaves or return itself in case of target is already a leaf
             leaves = tax.leaves(target)
-            
+            # If returned itself, no redistribution necessary, skip
+            if leaves == [target]:
+                continue
+
             # Distribute shared reads among leaves with unique reads
             redist_field = "unique_reads"
+            total_leaves = 0
+            leaves_unique = set()
             for leaf in leaves:
                 if leaf in merged_rep and merged_rep[leaf]["unique_reads"] > 0:
                     leaves_unique.add(leaf)
@@ -341,77 +359,63 @@ def redistribute_shared_reads(merged_rep, tax):
             total_redist = 0
             for leaf in leaves_unique:
                 # redistribue proportionally to the number of unique assignments (or matches) for each leaf
-                red = floor(v["lca_reads"]*(merged_rep[leaf][redist_field]/total_leaves))
+                red = floor(merged_rep[target]["lca_reads"]*(merged_rep[leaf][redist_field]/total_leaves))
                 total_redist += red
-                if leaf not in dist_rep:
-                    dist_rep[leaf] = {'unique_reads': 0, 'lca_reads': 0, 'direct_matches': 0}
-                dist_rep[leaf]['lca_reads'] += red
+                if leaf not in merged_rep:
+                    merged_rep[leaf] = {'unique_reads': 0, 'lca_reads': 0, 'direct_matches': 0}
+                merged_rep[leaf]['lca_reads'] += red
 
             # If there are left overs to redistribute
-            left_overs = v["lca_reads"] - total_redist
+            left_overs = merged_rep[target]["lca_reads"] - total_redist
             if left_overs:
                 # Distribute left_over for the top leaves (by unique, matches and follow by leaf name to keep consistency in case of tie)
                 for leaf in sorted(leaves_unique, key=lambda x: (-merged_rep[x]["unique_reads"], -merged_rep[x]["direct_matches"], x))[:left_overs]:
-                    dist_rep[leaf]['lca_reads'] += 1
+                    merged_rep[leaf]['lca_reads'] += 1
                 
-    return dist_rep
+            # Remove redistributed reads from target
+            merged_rep[target]["lca_reads"] = 0
 
-
-
-def adjust_perc_genome_size(tree_cum_perc, tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks):
+def adjust_perc_genome_size(tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks):
     """
     Uses genome sizes to adjust percentage of assigned reads
     It only adjusts ranks with direct assignments (unique or lca)
     It adjusts based on percentage of assigned reads to the defined rank (not 100%)
     """
+    tree_cum_perc = {}
+    
+
     ranks_with_counts = set()
     for leaf, val in merged_rep.items():
         if val['unique_reads'] > 0 and tax.rank(leaf) in fixed_ranks:
             ranks_with_counts.add(tax.rank(leaf))
-    
+    lowest_base_rank = fixed_ranks[min(map(fixed_ranks.index, ranks_with_counts))]
+
     total_rank_ratio = {r:0 for r in ranks_with_counts}
-    total_rank_count = {r:0 for r in ranks_with_counts} 
+    total_rank_count = {r:0 for r in ranks_with_counts}
     for node, cum_count in tree_cum_counts.items():
         if tax.rank(node) in ranks_with_counts:
             total_rank_ratio[tax.rank(node)] += cum_count/genome_sizes[node]
             total_rank_count[tax.rank(node)] += cum_count
 
+    base_perc = {}
     for node, cum_count in tree_cum_counts.items():
-        if tax.rank(node) in ranks_with_counts:
-            perc_adjusted = (cum_count/genome_sizes[node])/total_rank_ratio[tax.rank(node)]
-            tree_cum_perc[node] = (total_rank_count[tax.rank(node)]/total) * perc_adjusted
+        rank_node = tax.rank(node)
+        if rank_node in ranks_with_counts:
+            perc_adjusted = (cum_count/genome_sizes[node])/total_rank_ratio[rank_node]
+            tree_cum_perc[node] = (total_rank_count[rank_node]/total) * perc_adjusted
+            if rank_node == lowest_base_rank:
+                base_perc[node] = tree_cum_perc[node]
 
-    lowest_rank = fixed_ranks[min(map(fixed_ranks.index, ranks_with_counts))]
+    tree_cum_perc.update(cummulative_sum_tree(base_perc, tax))
 
-    # for node, adj_perc in tree_cum_perc[node].items():
-    #     if tax.rank(node) == lowest_rank:
-  
-    #     # Node not found in tax, account as orphan direct to root
-    #     if tax.latest(node) == tax.undefined_node:
-    #         lin = [tax.root_node, leaf]
-    #     else:
-    #         lin = tax.lineage(leaf)
+    return tree_cum_perc
 
-    #     # Cummulative sum of all nodes up to root
-    #     for t in lin:
-    #         if t not in filtered_cum_counts:
-    #             filtered_cum_counts[t] = 0
-    #         filtered_cum_counts[t] += sum_count
-
-
-def cummulative_count_tree(merged_rep, tax, report_type):
+def cummulative_sum_tree(target_count, tax):
     """
-    Iterate over the taxonomic tree and sum the entries (cummulative) for each leaf on the report
+    Iterate over the taxonomic tree and sum the values of a dict cummulatively {node: value}
     """
-    filtered_cum_counts = {}
-    for leaf in merged_rep.keys():
-        if report_type == "matches":
-            sum_count = merged_rep[leaf]['direct_matches'] - merged_rep[leaf]['unique_reads']
-        else:
-            sum_count = merged_rep[leaf]['unique_reads'] + merged_rep[leaf]['lca_reads']
-
-        if sum_count==0:
-            continue
+    cum_counts = {}
+    for leaf, count in target_count.items():
 
         # Node not found in tax, account as orphan direct to root
         if tax.latest(leaf) == tax.undefined_node:
@@ -421,11 +425,11 @@ def cummulative_count_tree(merged_rep, tax, report_type):
 
         # Cummulative sum of all nodes up to root
         for t in lin:
-            if t not in filtered_cum_counts:
-                filtered_cum_counts[t] = 0
-            filtered_cum_counts[t] += sum_count
+            if t not in cum_counts:
+                cum_counts[t] = 0
+            cum_counts[t] += count
 
-    return filtered_cum_counts
+    return cum_counts
 
 
 def cummulative_perc_tree(tree_cum_counts, total):
@@ -487,7 +491,7 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, cfg):
     return filtered_cum_counts
 
 
-def sort_report(filtered_cum_counts, sort, fixed_ranks, tax, merged_rep):
+def sort_report(filtered_cum_counts, tree_cum_perc, sort, fixed_ranks, tax, merged_rep):
 
     # Always keep root at the top
     # Sort report entries, return sorted keys of the dict
@@ -497,7 +501,7 @@ def sort_report(filtered_cum_counts, sort, fixed_ranks, tax, merged_rep):
                                   key=lambda k: tax.lineage(k))
         else:
             sorted_nodes = sorted(filtered_cum_counts,
-                                  key=lambda k: (fixed_ranks.index(tax.rank(k)), -filtered_cum_counts[k]),
+                                  key=lambda k: (fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
                                   reverse=False)
     else:  # user-defined
         if sort == "lineage":
@@ -506,17 +510,17 @@ def sort_report(filtered_cum_counts, sort, fixed_ranks, tax, merged_rep):
             # if sorting by rank showing all ranks, order of the ranks is not know, sort them alphabetically
             if not fixed_ranks:
                 sorted_nodes = sorted(filtered_cum_counts,
-                                      key=lambda k: (tax.rank(k), -filtered_cum_counts[k]),
+                                      key=lambda k: (tax.rank(k), -tree_cum_perc[k]),
                                       reverse=False)
             else:
                 sorted_nodes = sorted(filtered_cum_counts,
-                                      key=lambda k: (fixed_ranks.index(tax.rank(k)), -filtered_cum_counts[k]),
+                                      key=lambda k: (fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
                                       reverse=False)
         elif sort == "unique":
             sorted_nodes = sorted(filtered_cum_counts,
-                                  key=lambda k: (-merged_rep[k]['unique'] if k in merged_rep else 0, -filtered_cum_counts[k]),
+                                  key=lambda k: (-merged_rep[k]['unique'] if k in merged_rep else 0, -tree_cum_perc[k]),
                                   reverse=False)
-        else:  # sort=="count"
+        elif sort == "count":
             sorted_nodes = sorted(filtered_cum_counts,
                                   key=lambda k: -filtered_cum_counts[k],
                                   reverse=False)
