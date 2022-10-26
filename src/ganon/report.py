@@ -35,12 +35,11 @@ def report(cfg):
                        **tax_args)
 
         if cfg.report_type == "abundance":
-            # TODO, return empty if failed
             try:
                 genome_sizes = parse_genome_size_tax(dbp)
             except ValueError:
-                print_log("Failed to get genome sizes from .tax files")
-            
+                print_log("Failed to get genome sizes from .tax files, run ganon report without -d/--db-prefix")
+                return False
     else:
         tx = time.time()
         if cfg.taxonomy_files:
@@ -55,32 +54,27 @@ def report(cfg):
 
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    # In case no tax was provided or failed to parse genome sizes (ganon build older than 1.3.0)
-    if cfg.report_type == "abundance" and not genome_sizes:
-        # TODO get_genome_size -- how to define used nodes?
-        genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
+        # In case no tax was provided, generate genome sizes (for the full tree)
+        if cfg.report_type == "abundance":
+            genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
+    default_ranks = ["superkingdom",
+                     "phylum",
+                     "class",
+                     "order",
+                     "family",
+                     "genus",
+                     "species",
+                     "assembly"]
 
     # define fixed_ranks or leave it empty for all
     if cfg.ranks and cfg.ranks[0] == "all":
         fixed_ranks = []
     else:
         if not cfg.ranks or cfg.ranks == [""]:
-            fixed_ranks = [tax.name(tax.root_node),
-                           "superkingdom",
-                           "phylum",
-                           "class",
-                           "order",
-                           "family",
-                           "genus",
-                           "species",
-                           "assembly"]
+            fixed_ranks = [tax.name(tax.root_node)] + default_ranks
         else:
             fixed_ranks = [tax.name(tax.root_node)] + cfg.ranks
-
-        # If reporting orphan nodes, add at the end
-        if not cfg.no_orphan:
-            fixed_ranks.append(tax.undefined_rank)
 
     any_rep = False
     print_log("Generating report(s)", cfg.quiet)
@@ -108,7 +102,7 @@ def report(cfg):
             for h in reports:
                 if h not in cfg.skip_hierarchy:
                     output_file_h = output_file + "." + h + ".tre"
-                    r = build_report({h: reports[h]}, counts, tax, genome_sizes, output_file_h, fixed_ranks, cfg)
+                    r = build_report({h: reports[h]}, counts, tax, genome_sizes, output_file_h, fixed_ranks, default_ranks, cfg)
                     if not r:
                         print_log(" - nothing to report for hierarchy " + h + " in the " + rep_file, cfg.quiet)
                         continue
@@ -118,7 +112,7 @@ def report(cfg):
 
         else:
             output_file = output_file + ".tre"
-            r = build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, cfg)
+            r = build_report(reports, counts, tax, genome_sizes, output_file, fixed_ranks, default_ranks, cfg)
             if not r:
                 print_log(" - nothing to report for " + rep_file, cfg.quiet)
                 continue
@@ -174,7 +168,7 @@ def parse_rep(rep_file):
     return reports, counts
 
 
-def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ranks, cfg):
+def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ranks, default_ranks, cfg):
 
 
     # total
@@ -195,6 +189,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
     # Pre-build lineages for performance
     tax.build_lineages()
 
+
     # Re-distribute lca reads to leaf nodes based on unique matches or shared
     if cfg.report_type == "abundance":
         redistribute_shared_reads(merged_rep, tax)
@@ -206,9 +201,11 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
     tree_cum_counts = cummulative_sum_tree(target_counts, tax)
 
     if cfg.report_type == "abundance":
-        # Adjust percentages (tree_cum_perc) based on estimated genome sizes
-        tree_cum_perc = adjust_perc_genome_size(tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks)
-    else:        
+        # Adjust counts based on estimated genome sizes for ranks in fixed_ranks with counts
+        # returns tree_cum_counts with adjusted counts (float), used to calculate the abundances
+        adj_tree_cum_counts = adjust_genome_size(target_counts, genome_sizes, tax, default_ranks)
+        tree_cum_perc = cummulative_perc_tree(adj_tree_cum_counts, total)
+    else:
         # Simple percentage calculation
         tree_cum_perc = cummulative_perc_tree(tree_cum_counts, total)
 
@@ -304,7 +301,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
 
     if orphan_nodes and not cfg.no_orphan:
         print_log(" - " + str(orphan_nodes) + " orphan nodes not found in the taxonomy. " +
-                  "\n   Orphan nodes are reported as 'na' with root as direct parent. " +
+                  "\n   Orphan nodes are reported as 'na' with root as a direct parent node. " +
                   "\n   Too ommit them from the report, use --no-orphan", cfg.quiet)
     print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
     return True
@@ -392,43 +389,71 @@ def redistribute_shared_reads(merged_rep, tax):
             # Remove redistributed reads from target
             merged_rep[target]["lca_reads"] = 0
 
-def adjust_perc_genome_size(tree_cum_counts, merged_rep, genome_sizes, total, tax, fixed_ranks):
+def adjust_genome_size(target_counts, genome_sizes, tax, default_ranks):
     """
-    Uses genome sizes to adjust percentage of assigned reads
+    Uses genome sizes to adjust percentage of assigned reads for each taxa
+    Does it cumulatively from the bottom of the tree to the top
+    Only does it for default_ranks (independently from users fixed_ranks or ranks with counts)
     It only adjusts ranks with direct assignments (unique or lca)
-    It adjusts based on percentage of assigned reads to the defined rank (not 100%)
+    It adjusts based on assigned reads to a specific rank not total number of assigned reads overall
     If genome_size is not availble, uses the average size (root node)
     """
-    tree_cum_perc = {}
+    final_tree = {}
+
+    # Ranks with counts are usually the leaf rank used to create the database (--level)
+    # however, when using multiple databases configured at different levels, many ranks can contain counts
+    # Check which ranks got direct reads assigned
+    ranks_with_counts = set(tax.rank(t) for t in target_counts.keys())
+
+    # Calculate cummulative counts on the tree for all targets with reads assiged to it
+    # all ranks are accounted for
+    adj_tree_cum_counts = cummulative_sum_tree(target_counts, tax)
     
-    ranks_with_counts = set()
-    for leaf, val in merged_rep.items():
-        if val['unique_reads']+val['lca_reads'] > 0 and tax.rank(leaf) in fixed_ranks:
-            ranks_with_counts.add(tax.rank(leaf))
-    lowest_base_rank = fixed_ranks[min(map(fixed_ranks.index, ranks_with_counts))]
+    # just adjust values for default ranks from back to front (assembly, species, genus, ...)
+    # other ranks with counts will be cummulatively be accounted for
+    for rank in default_ranks[::-1]:
+        if rank in ranks_with_counts:
+            # Calculate proportion of matches based on this rank
+            total_rank_ratio = 0
+            total_rank_count = 0
+            for node, cum_count in adj_tree_cum_counts.items():
+                rank_node = tax.rank(node)
+                if rank_node == rank:
+                    gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+                    total_rank_ratio += cum_count/gs
+                    total_rank_count += cum_count
 
-    total_rank_ratio = {r:0 for r in ranks_with_counts}
-    total_rank_count = {r:0 for r in ranks_with_counts}
-    for node, cum_count in tree_cum_counts.items():
-        rank_node = tax.rank(node)
-        if rank_node in ranks_with_counts:
-            gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
-            total_rank_ratio[rank_node] += cum_count/gs
-            total_rank_count[rank_node] += cum_count
+            # Re-build tree with only the current rank (values adjusted)
+            # Keep original direct counts for other ranks (if higher and not yet accounted for)
+            for node, cum_count in adj_tree_cum_counts.items():
+                # Clear tree node
+                adj_tree_cum_counts[node] = 0
+                rank_node = tax.rank(node)
+                if rank_node == rank:
+                    # Adjust for this rank
+                    gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+                    count_adjusted = total_rank_count * ((cum_count/gs)/total_rank_ratio)
+                    # Update tree with adjusted values for next iteration
+                    adj_tree_cum_counts[node] = count_adjusted
+                    # Keep adjusted values for this rank
+                    final_tree[node] = count_adjusted
+                elif node in target_counts and node not in final_tree:
+                    # If node has direct counts and it was not yet adjusted
+                    # Check if adjusted rank is below the current node (not contained in the lineage)
+                    # if yes, keep original counts for on the tree
+                    # this can cause issues with ambiguos ranks (for example: NCBI no_rank) which are not recommended
+                    if rank not in tax.rank_lineage(node):
+                        adj_tree_cum_counts[node] = target_counts[node]
 
-    base_perc = {}
-    for node, cum_count in tree_cum_counts.items():
-        rank_node = tax.rank(node)
-        if rank_node in ranks_with_counts:
-            gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
-            perc_adjusted = (cum_count/gs)/total_rank_ratio[rank_node]
-            tree_cum_perc[node] = (total_rank_count[rank_node]/total) * perc_adjusted
-            if rank_node == lowest_base_rank:
-                base_perc[node] = tree_cum_perc[node]
+            # Re-build tree with cummulative counts for the next rank iteration
+            adj_tree_cum_counts = cummulative_sum_tree(adj_tree_cum_counts, tax)
 
-    tree_cum_perc.update(cummulative_sum_tree(base_perc, tax))
-
-    return tree_cum_perc
+    # Keep adjusted ranks and get cummulative counts from last iteration
+    for node in adj_tree_cum_counts.keys():
+        if node not in final_tree:
+            final_tree[node] = adj_tree_cum_counts[node]
+    
+    return final_tree
 
 def cummulative_sum_tree(target_count, tax):
     """
@@ -512,7 +537,6 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, cfg):
 
 
 def sort_report(filtered_cum_counts, tree_cum_perc, sort, fixed_ranks, tax, merged_rep):
-
     # Always keep root at the top
     # Sort report entries, return sorted keys of the dict
     if not sort:  # not user-defined, use defaults
@@ -520,8 +544,10 @@ def sort_report(filtered_cum_counts, tree_cum_perc, sort, fixed_ranks, tax, merg
             sorted_nodes = sorted(filtered_cum_counts,
                                   key=lambda k: tax.lineage(k))
         else:
+            # Add undefined node to fixed ranks in case of reporting
+            sort_fixed_ranks = fixed_ranks + [tax.undefined_rank]
             sorted_nodes = sorted(filtered_cum_counts,
-                                  key=lambda k: (fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
+                                  key=lambda k: (sort_fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
                                   reverse=False)
     else:  # user-defined
         if sort == "lineage":
@@ -533,8 +559,10 @@ def sort_report(filtered_cum_counts, tree_cum_perc, sort, fixed_ranks, tax, merg
                                       key=lambda k: (tax.rank(k), -tree_cum_perc[k]),
                                       reverse=False)
             else:
+                # Add undefined node to fixed ranks in case of reporting
+                sort_fixed_ranks = fixed_ranks + [tax.undefined_rank]
                 sorted_nodes = sorted(filtered_cum_counts,
-                                      key=lambda k: (fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
+                                      key=lambda k: (sort_fixed_ranks.index(tax.rank(k)), -tree_cum_perc[k]),
                                       reverse=False)
         elif sort == "unique":
             sorted_nodes = sorted(filtered_cum_counts,

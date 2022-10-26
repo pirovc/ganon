@@ -39,7 +39,7 @@ def parse_file_accession(input_files, info):
     info[["target", "file"]] = pd.DataFrame(assembly_accessions)
     return info
 
-def parse_genome_size_files(cfg, tax, build_output_folder):
+def parse_genome_size_files(cfg, build_output_folder):
     """
     Download and parse auxiliary files to determine approximate genome size for each taxa
     NCBI based on species_genome_size.txt and GTDB on _metadata.tar.gz files
@@ -68,13 +68,8 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
                 next(f)
                 for line in f:
                     fields = line.rstrip().split("\t")
-                    t = fields[0]
-                    v = int(fields[3])
-                    # Keep genome size info (even if not in taxonomy)
-                    leaves_sizes[t] = v
-                    # Store genome size estimation for all leaf nodes available in the taxonomy
-                    for leaf in tax.leaves(t):
-                        leaves_sizes[leaf] = v
+                    leaves_sizes[fields[0]] = int(fields[3])
+
 
     elif cfg.taxonomy == "gtdb":
         for file in files:
@@ -90,10 +85,9 @@ def parse_genome_size_files(cfg, tax, build_output_folder):
                             t = fields[16].split(";")[-1]  # species taxid (leaf)
                             # In GTDB, several genome sizes are available for each node
                             # accumulate them in a list and make average
-                            v = int(fields[13])
                             if t not in leaves_sizes:
                                 leaves_sizes[t] = []
-                            leaves_sizes[t].append(v)
+                            leaves_sizes[t].append(int(fields[13]))
         # Average sizes
         for t in list(leaves_sizes.keys()):
             leaves_sizes[t] = int(sum(leaves_sizes[t])/len(leaves_sizes[t]))
@@ -124,11 +118,22 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
     Only used nodes and lineage are calculated, based on the full set of values provided
     If information of a certain node is not provided, uses the closest estimate of parent nodes
     """
-    # Get sizes of the leaves on the tax tree
-    leaves_sizes = parse_genome_size_files(cfg, tax, build_output_folder)
+
+    # Download and parse auxiliary files containing genome sizes
+    leaves_sizes = parse_genome_size_files(cfg, build_output_folder)
 
     tx = time.time()
     print_log("Estimating genome sizes", cfg.quiet)
+
+    # Check if entries are on tax and distribute values to available tax. leaves
+    for t in list(leaves_sizes.keys()):
+        if not tax.latest(t):
+            del leaves_sizes[t]
+        else:
+            # Store genome size estimation for all leaf nodes available in the taxonomy
+            for leaf in tax.leaves(t):
+                leaves_sizes[leaf] = leaves_sizes[t]
+
     # Calculate genome size estimates for used nodes (and their lineage)
     # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
     genome_sizes = {}
@@ -144,13 +149,14 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                     if leaf in leaves_sizes:
                         cnt += 1
                         avg += leaves_sizes[leaf]
-                # If not information is availble, save as 0
                 genome_sizes[t] = int(avg / cnt) if cnt else 0
 
-    # If there is no matching between taxonomy and leaves, average the whole
+    # If there is no matching between taxonomy and leaves, average the whole and save to root to be redistributed in the next step
     if sum(genome_sizes.values())==0:
-        genome_sizes[tax.root_node] = int(sum(leaves_sizes.values())/len(leaves_sizes))
-
+        if leaves_sizes:
+            genome_sizes[tax.root_node] = int(sum(leaves_sizes.values())/len(leaves_sizes))
+        else:
+            genome_sizes[tax.root_node] = 1
     # Check nodes without genome size info (0) and use closest value from parent lineage
     for node in nodes:
         if genome_sizes[node] == 0:
