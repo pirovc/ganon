@@ -58,7 +58,8 @@ def report(cfg):
         if cfg.report_type == "abundance":
             genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
-    default_ranks = ["superkingdom",
+    default_ranks = [tax.root_name,
+                     "superkingdom",
                      "phylum",
                      "class",
                      "order",
@@ -72,9 +73,9 @@ def report(cfg):
         fixed_ranks = []
     else:
         if not cfg.ranks or cfg.ranks == [""]:
-            fixed_ranks = [tax.name(tax.root_node)] + default_ranks
+            fixed_ranks = default_ranks
         else:
-            fixed_ranks = [tax.name(tax.root_node)] + cfg.ranks
+            fixed_ranks = [tax.root_name] + cfg.ranks
 
     any_rep = False
     print_log("Generating report(s)", cfg.quiet)
@@ -188,7 +189,6 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
     tax.filter(list(merged_rep.keys()))
     # Pre-build lineages for performance
     tax.build_lineages()
-
 
     # Re-distribute lca reads to leaf nodes based on unique matches or shared
     if cfg.report_type == "abundance":
@@ -390,70 +390,111 @@ def redistribute_shared_reads(merged_rep, tax):
             merged_rep[target]["lca_reads"] = 0
 
 def adjust_genome_size(target_counts, genome_sizes, tax, default_ranks):
-    """
-    Uses genome sizes to adjust percentage of assigned reads for each taxa
-    Does it cumulatively from the bottom of the tree to the top
-    Only does it for default_ranks (independently from users fixed_ranks or ranks with counts)
-    It only adjusts ranks with direct assignments (unique or lca)
-    It adjusts based on assigned reads to a specific rank not total number of assigned reads overall
-    If genome_size is not availble, uses the average size (root node)
-    """
-    final_tree = {}
 
-    # Ranks with counts are usually the leaf rank used to create the database (--level)
-    # however, when using multiple databases configured at different levels, many ranks can contain counts
-    # Check which ranks got direct reads assigned
-    ranks_with_counts = set(tax.rank(t) for t in target_counts.keys())
+    adj_counts = {}
+    total_rank_ratio = {r:0 for r in default_ranks}
+    total_rank_count = {r:0 for r in default_ranks}
+    for target, count in target_counts.items():
+        print(target, count, "\t".join(tax.lineage(target, ranks=default_ranks)), sep="\t")
+        closest_parent = tax.closest_parent(target, ranks=default_ranks)
+        if closest_parent not in adj_counts:
+            adj_counts[closest_parent] = 0
+        adj_counts[closest_parent] += count
 
-    # Calculate cummulative counts on the tree for all targets with reads assiged to it
-    # all ranks are accounted for
-    adj_tree_cum_counts = cummulative_sum_tree(target_counts, tax)
+        closest_rank = tax.rank(closest_parent)
+        gs = genome_sizes[closest_parent] if closest_parent in genome_sizes else genome_sizes[tax.root_node]
+        total_rank_ratio[closest_rank] += count/gs
+        total_rank_count[closest_rank] += count
+
+    for node in adj_counts.keys():
+        rank_node = tax.rank(node)
+        gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+        print(node,adj_counts[node],total_rank_count[rank_node] * ((adj_counts[node]/gs)/total_rank_ratio[rank_node]))
+        adj_counts[node] = total_rank_count[rank_node] * ((adj_counts[node]/gs)/total_rank_ratio[rank_node])
+
+    return cummulative_sum_tree(adj_counts, tax)
     
-    # just adjust values for default ranks from back to front (assembly, species, genus, ...)
-    # other ranks with counts will be cummulatively be accounted for
-    for rank in default_ranks[::-1]:
-        if rank in ranks_with_counts:
-            # Calculate proportion of matches based on this rank
-            total_rank_ratio = 0
-            total_rank_count = 0
-            for node, cum_count in adj_tree_cum_counts.items():
-                rank_node = tax.rank(node)
-                if rank_node == rank:
-                    gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
-                    total_rank_ratio += cum_count/gs
-                    total_rank_count += cum_count
 
-            # Re-build tree with only the current rank (values adjusted)
-            # Keep original direct counts for other ranks (if higher and not yet accounted for)
-            for node, cum_count in adj_tree_cum_counts.items():
-                # Clear tree node
-                adj_tree_cum_counts[node] = 0
-                rank_node = tax.rank(node)
-                if rank_node == rank:
-                    # Adjust for this rank
-                    gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
-                    count_adjusted = total_rank_count * ((cum_count/gs)/total_rank_ratio)
-                    # Update tree with adjusted values for next iteration
-                    adj_tree_cum_counts[node] = count_adjusted
-                    # Keep adjusted values for this rank
-                    final_tree[node] = count_adjusted
-                elif node in target_counts and node not in final_tree:
-                    # If node has direct counts and it was not yet adjusted
-                    # Check if adjusted rank is below the current node (not contained in the lineage)
-                    # if yes, keep original counts for on the tree
-                    # this can cause issues with ambiguos ranks (for example: NCBI no_rank) which are not recommended
-                    if rank not in tax.rank_lineage(node):
-                        adj_tree_cum_counts[node] = target_counts[node]
+    # """
+    # Uses genome sizes to adjust percentage of assigned reads for each taxa
+    # Does it cumulatively from the bottom of the tree to the top
+    # Only does it for default_ranks (independently from users fixed_ranks or ranks with counts)
+    # It only adjusts ranks with direct assignments (unique or lca)
+    # It adjusts based on assigned reads to a specific rank not total number of assigned reads overall
+    # If genome_size is not availble, uses the average size (root node)
+    # """
+    # final_tree = {}
 
-            # Re-build tree with cummulative counts for the next rank iteration
-            adj_tree_cum_counts = cummulative_sum_tree(adj_tree_cum_counts, tax)
+    # # Ranks with counts are usually the leaf rank used to create the database (--level)
+    # # however, when using multiple databases configured at different levels, many ranks can contain counts
+    # # Check which ranks got direct reads assigned
+    # ranks_with_counts = set(tax.rank(t) for t in target_counts.keys())
 
-    # Keep adjusted ranks and get cummulative counts from last iteration
-    for node in adj_tree_cum_counts.keys():
-        if node not in final_tree:
-            final_tree[node] = adj_tree_cum_counts[node]
+    # #print(ranks_with_counts)
+    # # Calculate cummulative counts on the tree for all targets with reads assiged to it
+    # # all ranks are accounted for
+    # adj_tree_cum_counts = cummulative_sum_tree(target_counts, tax)
+
+    # # just adjust values for default ranks from back to front (assembly, species, genus, ...)
+    # # other ranks with counts will be cummulatively be accounted for
+    # for rank in default_ranks[::-1]:
+    #     print(rank)
+    #     if rank in ranks_with_counts:
+    #         # Calculate total and proportion of count of the rank
+    #         total_rank_ratio = 0
+    #         total_rank_count = 0
+    #         for node, cum_count in adj_tree_cum_counts.items():
+    #             rank_node = tax.rank(node)
+    #             if rank_node == rank:
+    #                 gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+    #                 total_rank_ratio += cum_count/gs
+    #                 total_rank_count += cum_count
+
+    #         ignored_counts=0
+    #         print(rank, total_rank_count)
+    #         # Re-build tree with only the current rank (values adjusted)
+    #         # Keep original direct counts for other ranks (if higher and not yet accounted for)
+    #         for node, cum_count in adj_tree_cum_counts.items():
+    #             # Clear tree node (either parents or children of the current rank)
+    #             adj_tree_cum_counts[node] = 0
+    #             rank_node = tax.rank(node)
+    #             if rank_node == rank:
+    #                 # Adjust for this rank
+    #                 gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
+    #                 count_adjusted = total_rank_count * ((cum_count/gs)/total_rank_ratio)
+    #                 # Update tree with adjusted values for next iteration
+    #                 adj_tree_cum_counts[node] = count_adjusted
+    #                 # Keep adjusted values for this rank in the final tree
+    #                 final_tree[node] = count_adjusted
+    #                 #print("=rank=", node, cum_count, count_adjusted)
+    #             elif node in target_counts and node not in final_tree:
+    #                 # If node has direct counts and it was not yet adjusted
+    #                 # Check if adjusted rank is below the current node (not contained in the lineage)
+    #                 # if yes, keep original counts on the tree
+    #                 # this can cause issues with ambiguos ranks (for example: NCBI no_rank)
+    #                 # but won't happen since the adjustment happens only on default_ranks
+    #                 if rank not in tax.rank_lineage(node):
+    #                     adj_tree_cum_counts[node] = target_counts[node]
+    #                     #print(node, target_counts[node], sep="\t")
+    #                 else:
+    #                     ignored_counts += target_counts[node]
+    #                     print(rank, node, rank_node, "|".join(tax.rank_lineage(node)), target_counts[node], cum_count, sep="\t")
+    #             #print(rank, node, rank_node, cum_count, adj_tree_cum_counts[node])
+
+    #         # Re-build tree with cummulative counts for the next rank iteration
+    #         # parent levels are going to have their direct counts (from target_counts) + adjusted values from children
+    #         print("total sum counts",rank, sum(v for k,v in adj_tree_cum_counts.items()))
+    #         print("ignored counts",rank, ignored_counts)
+    #         adj_tree_cum_counts = cummulative_sum_tree(adj_tree_cum_counts, tax)
+
     
-    return final_tree
+
+    # # Keep adjusted ranks and get cummulative counts from last iteration
+    # for node in adj_tree_cum_counts.keys():
+    #     if node not in final_tree:
+    #         final_tree[node] = adj_tree_cum_counts[node]
+    
+    # return final_tree
 
 def cummulative_sum_tree(target_count, tax):
     """

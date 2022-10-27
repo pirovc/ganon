@@ -386,9 +386,9 @@ class Config:
                         print_log("File not found: " + file)
                         return False
 
-            if self.report_type == "abundance" and self.ranks == ["all"]:
-                print_log("Specific ranks have to be defined for --report-type abundance")
-                return False
+            # if self.report_type == "abundance" and self.ranks == ["all"]:
+            #     print_log("Specific ranks have to be defined for --report-type abundance")
+            #     return False
 
         elif self.which == "table":
             pass

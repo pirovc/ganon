@@ -507,27 +507,27 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
-    # def test_na(self):
-    #     """
-    #     Test run reporting missing taxa
-    #     """
-    #     params = self.default_params.copy()
-    #     params["output_prefix"] = self.results_dir + "test_na"
-    #     params["db_prefix"] = ""
-    #     params["ranks"] = "all"
-    #     params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+    def test_na(self):
+        """
+        Test run reporting missing taxa
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_na"
+        params["db_prefix"] = ""
+        params["ranks"] = "all"
+        params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
 
-    #     # Build config from params
-    #     cfg = Config("report", **params)
-    #     # Run
-    #     self.assertTrue(
-    #         run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
-    #     # General sanity check of results
-    #     res = report_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon report has inconsistent results")
-    #     # check if reported any "na" rank
-    #     self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
-    #                     "ganon report did not report the correct ranks")
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "na" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
+                        "ganon report did not report the correct ranks")
 
     # def test_na_ranks(self):
     #     """
