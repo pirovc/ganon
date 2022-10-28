@@ -200,17 +200,19 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
 
 Each line in this report is a taxonomic entry, with the following fields: 
 
-  1) taxonomic rank *(e.g. phylum, species, ...)*
-  2) target *(e.g. taxid/specialization)*
-  3) target lineage *(e.g 1|2|1224|...)*
-  4) target name *(e.g. Paenibacillus polymyxa)*
-  5) \# unique assignments *(number of reads that matched exclusively to this target)*
-  6) \# shared assignments *(number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (`--report-type reads`), re-assigned matches (`--report-type abundance`) or shared matches (`--report-type matches`))*
-  7) \# children assignments *(number of unique and shared assignments to all children nodes of this target)*
-  8) \# cumulative assignments *(the sum of the unique, shared and children assignments up-to this target)*
-  9) \% cumulative assignments or estimated relative abundance for `--report-type abundance`
+| col | field        | obs                                                                                                                                                                                                                            | example                                       |
+|-----|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
+| 1   | rank         |                                                                                                                                                                                                                                | phylum                                        |
+| 2   | target       | taxonomic id. or specialization (assembly id.)                                                                                                                                                                                 | 562                                           |
+| 3   | lineage      |                                                                                                                                                                                                                                | 1\|131567\|2\|1224\|28211\|766\|942\|768\|769 |
+| 4   | name         |                                                                                                                                                                                                                                | Chromobacterium rhizoryzae                    |
+| 5   | # unique     | number of reads that matched exclusively to this target                                                                                                                                                                        | 5                                             |
+| 6   | # shared     | number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (`--report-type reads`), re-assigned matches (`--report-type abundance/dist`) or shared matches (`--report-type matches`) | 10                                            |
+| 7   | # children   | number of unique and shared assignments to all children nodes of this target                                                                                                                                                   | 20                                            |
+| 8   | # cumulative | the sum of the unique, shared and children assignments up-to this target                                                                                                                                                       | 35                                            |
+| 9   | % cumulative | estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
 
-- Using `--report-type reads` or `--report-type abundance` the first line of the file will show the number of unclassified reads
+- Using `--report-type reads` or `abundance` or `dist` the first line of the file will show the number of unclassified reads
 
 - The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
