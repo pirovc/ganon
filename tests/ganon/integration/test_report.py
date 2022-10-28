@@ -262,28 +262,23 @@ class TestReport(unittest.TestCase):
         params["output_prefix"] = self.results_dir + "test_ranks_all_abundance"
         params["report_type"] = "abundance"
         params["ranks"] = "all"
-
-        # Build config from params
         cfg = Config("report", **params)
-        # Fail with abundance
-        self.assertFalse(
-            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "no rank" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
+                         "ganon report did not report the correct ranks")
         
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_ranks_all_reads"
         params["report_type"] = "reads"
         params["ranks"] = "all"
-
-        # Build config from params
         cfg = Config("report", **params)
-
-        self.assertTrue(
-            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
-
-        # # General sanity check of results
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         res = report_sanity_check_and_parse(vars(cfg))
-        # self.assertIsNotNone(res, "ganon report has inconsistent results")
-        # # check if reported any "no rank" rank
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "no rank" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
                          "ganon report did not report the correct ranks")
 
@@ -529,27 +524,27 @@ class TestReport(unittest.TestCase):
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
                         "ganon report did not report the correct ranks")
 
-    # def test_na_ranks(self):
-    #     """
-    #     Test run reporting missing taxa
-    #     """
-    #     params = self.default_params.copy()
-    #     params["output_prefix"] = self.results_dir + "test_na_ranks"
-    #     params["db_prefix"] = ""
-    #     params["ranks"] = ["genus", "species"]
-    #     params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+    def test_na_ranks(self):
+        """
+        Test run reporting missing taxa
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_na_ranks"
+        params["db_prefix"] = ""
+        params["ranks"] = ["genus", "species", "na"]
+        params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
 
-    #     # Build config from params
-    #     cfg = Config("report", **params)
-    #     # Run
-    #     self.assertTrue(
-    #         run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
-    #     # General sanity check of results
-    #     res = report_sanity_check_and_parse(vars(cfg))
-    #     self.assertIsNotNone(res, "ganon report has inconsistent results")
-    #     # check if reported any "na" rank
-    #     self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
-    #                     "ganon report did not report the correct ranks")
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "na" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
+                        "ganon report did not report the correct ranks")
 
 
 if __name__ == '__main__':

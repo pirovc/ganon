@@ -20,7 +20,8 @@ class Config:
     choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb",
                                   "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
-
+    choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
+    choices_report_type = ["reads", "matches", "abundance", "dist"]
     def __init__(self, which: str=None, **kwargs):
 
         parser = argparse.ArgumentParser(prog="ganon",
@@ -132,9 +133,9 @@ class Config:
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
-        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,    help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
-        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="",               help="Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). This file can be re-generated with the 'ganon report' command")
+        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
+        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
+        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ",".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
         
@@ -160,8 +161,8 @@ class Config:
 
         report_group_output = report_parser.add_argument_group("output arguments")
         report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization.")
-        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report to generate [abundance, reads, matches].")
-        report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],          help="Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Please avoid the use of ambiguos ranks (e.g. 'no rank' from NCBI)")
+        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report [" + ",".join(self.choices_report_type) + "]. 'abundance' -> tax. abundance, 'reads' -> sequence abundance, 'matches' -> report all matches, 'dist' -> sequence abundance with re-distribution of shared reads", choices=self.choices_report_type)
+        report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],          help="Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks [" + ",".join(self.choices_default_ranks) + "].")
         report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",          help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
         report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                                 help="Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent.")
         report_group_output.add_argument("-y", "--split-hierarchy", action="store_true",                                 help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
@@ -386,9 +387,11 @@ class Config:
                         print_log("File not found: " + file)
                         return False
 
-            # if self.report_type == "abundance" and self.ranks == ["all"]:
-            #     print_log("Specific ranks have to be defined for --report-type abundance")
-            #     return False
+            # if self.report_type == "abundance":
+            #     for r in self.ranks:
+            #         if r not in self.choices_default_ranks:
+            #             print_log("Only default ranks [" + ",".join(self.choices_default_ranks) + "] can be used for --report-type abundance")
+            #             return False
 
         elif self.which == "table":
             pass
