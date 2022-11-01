@@ -656,6 +656,52 @@ class TestReport(unittest.TestCase):
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
                         "ganon report did not report the correct ranks")
 
+    def test_no_orphan(self):
+        """
+        Test run reporting missing taxa and not reporting them
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_no_orphan"
+        params["db_prefix"] = ""
+        params["ranks"] = "all"
+        params["no_orphan"] = True
+        params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # Should not report any "na"
+        self.assertFalse((res["tre_pd"][~res["idx_base"]]["rank"] == "na").any(),
+                         "ganon report did not report the correct ranks")
+
+    def test_only_orphan(self):
+        """
+        Test run reporting missing taxa and reporting only orphan
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_only_orphan"
+        params["db_prefix"] = ""
+        params["ranks"] = "na"
+        params["no_orphan"] = False
+        params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # Should not report any "na"
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").all(),
+                        "ganon report did not report the correct ranks")
+
 
 if __name__ == '__main__':
     unittest.main()

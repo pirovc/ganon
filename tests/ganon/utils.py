@@ -298,8 +298,8 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
                     parent = lineage[node_idx-1]
                     # If parent is reported
                     if parent in target_perc and target_perc[lineage[node_idx]] > target_perc[parent]:
-                        print("Inconsistent percentage")
-                        return None 
+                        #print(lineage[node_idx], parent, target_perc[lineage[node_idx]], target_perc[parent])
+                        print("Inconsistent percentage among children")
 
         multi_res[out_tre] = res
 

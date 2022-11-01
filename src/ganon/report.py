@@ -296,9 +296,10 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
         tre_file.close()
 
     if orphan_nodes and not cfg.no_orphan:
-        print_log(" - " + str(len(orphan_nodes)) + " orphan nodes not found in the taxonomy. " +
-                  "\n   Orphan nodes are reported as 'na' with root as a direct parent node. " +
-                  "\n   Too ommit them from the report, use --no-orphan", cfg.quiet)
+        print_log(" - " + str(len(orphan_nodes)) + " not found in the taxonomy (orphan nodes). " +
+                  "\n   Orphan nodes are reported with 'na' rank with root as a direct parent node. " +
+                  "\n   Too show them, use 'na' in --ranks or set --ranks all"
+                  "\n   Too ommit them, use --no-orphan", cfg.quiet)
     print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
     return True
 
@@ -430,11 +431,13 @@ def correct_genome_size(target_counts, genome_sizes, tax, default_ranks):
     # They can be either leaf or ranks in between default ranks (e.g. strain or suborder)
     # Step necessary to report any rank in abundance node (default rank nodes are unchanged)
     for target, closest_parent in lost_targets.items():
-        # In case of a leaf node, re-add to the tree
-        if target not in corr_tree:
-            corr_tree[target] = 0
-        # Sum proportional amount of reads of default parent node to itself
-        corr_tree[target] += target_counts[target] * (corr_counts[closest_parent]/ranked_counts[closest_parent])
+        # all ranks in between default ranks will receive proportional counts from parent
+        for t in tax.lineage(target, root_node=closest_parent)[1:]:
+            # In case of a leaf node, re-add to the tree
+            if t not in corr_tree:
+                corr_tree[t] = 0
+            # Sum proportional amount of reads of default parent node to all nodes in between
+            corr_tree[t] += target_counts[target] * (corr_counts[closest_parent]/ranked_counts[closest_parent])
 
     return corr_tree
 
