@@ -81,7 +81,6 @@ class TestReport(unittest.TestCase):
         self.assertIsNotNone(classify_sanity_check_and_parse(
             vars(classify_cfg)), "ganon classify sanity check failed")
 
-
         classify_params = {"db_prefix": [self.results_dir + "base_build2",
                                          self.results_dir + "base_build"],
                            "hierarchy_labels": ["C", "D"],
@@ -192,6 +191,27 @@ class TestReport(unittest.TestCase):
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative_perc"] <= (params["max_count"]*100)).all(),
                         "ganon report failed filtering with --max-count")
 
+    def test_report_type_abundance(self):
+        """
+        Test run with report_type abundance
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + \
+            "test_report_type_abundance"
+        params["report_type"] = "abundance"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # Re-distribution and genome correction, shared sum bigger then 0
+        self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(
+        ) > 0, "ganon report has wrong output for --report_type abundance")
 
     def test_report_type_reads(self):
         """
@@ -234,6 +254,48 @@ class TestReport(unittest.TestCase):
         self.assertFalse((res["tre_pd"]['rank'] == "unclassified").any(),
                          "ganon report has wrong output for --report_type matches")
 
+    def test_report_type_corr(self):
+        """
+        Test run with report_type abundance
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_report_type_corr"
+        params["report_type"] = "corr"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # No re-distribution, shared sum to 0
+        self.assertEqual(res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(
+        ), 0, "ganon report has wrong output for --report_type corr")
+
+    def test_report_type_dist(self):
+        """
+        Test run with report_type abundance
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_report_type_dist"
+        params["report_type"] = "dist"
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # Re-distribution, shared sum bigger then 0
+        self.assertTrue(res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(
+        ) > 0, "ganon report has wrong output for --report_type dist")
+
     def test_ranks(self):
         """
         Test run with limited ranks
@@ -263,24 +325,65 @@ class TestReport(unittest.TestCase):
         params["report_type"] = "abundance"
         params["ranks"] = "all"
         cfg = Config("report", **params)
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "no rank" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
-                         "ganon report did not report the correct ranks")
-        
+                        "ganon report did not report the correct ranks")
+
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_ranks_all_reads"
         params["report_type"] = "reads"
         params["ranks"] = "all"
         cfg = Config("report", **params)
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # check if reported any "no rank" rank
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
-                         "ganon report did not report the correct ranks")
+                        "ganon report did not report the correct ranks")
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_ranks_all_matches"
+        params["report_type"] = "matches"
+        params["ranks"] = "all"
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "no rank" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
+                        "ganon report did not report the correct ranks")
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_ranks_all_corr"
+        params["report_type"] = "corr"
+        params["ranks"] = "all"
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "no rank" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
+                        "ganon report did not report the correct ranks")
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_ranks_all_dist"
+        params["report_type"] = "dist"
+        params["ranks"] = "all"
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if reported any "no rank" rank
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "no rank").any(),
+                        "ganon report did not report the correct ranks")
 
     def test_skip_hierachy(self):
         """
@@ -359,7 +462,8 @@ class TestReport(unittest.TestCase):
         Test run with multiple rep files as input
         """
         params = self.default_params.copy()
-        params["input"] = [self.results_dir + "base_classify.rep", self.results_dir + "base_classify2.rep"] 
+        params["input"] = [self.results_dir + "base_classify.rep",
+                           self.results_dir + "base_classify2.rep"]
         params["output_prefix"] = self.results_dir + "test_multiple_rep_files"
 
         # Build config from params
@@ -379,8 +483,10 @@ class TestReport(unittest.TestCase):
         Test run with multiple rep files as input
         """
         setup_dir(self.results_dir + "multi_files")
-        shutil.copy(self.results_dir + "base_classify.rep", self.results_dir + "multi_files/")
-        shutil.copy(self.results_dir + "base_classify2.rep", self.results_dir + "multi_files/")
+        shutil.copy(self.results_dir + "base_classify.rep",
+                    self.results_dir + "multi_files/")
+        shutil.copy(self.results_dir + "base_classify2.rep",
+                    self.results_dir + "multi_files/")
 
         params = self.default_params.copy()
         params["input"] = [self.results_dir + "multi_files"]
@@ -402,12 +508,16 @@ class TestReport(unittest.TestCase):
         Test run with multiple rep files as input
         """
         setup_dir(self.results_dir + "multi_files")
-        shutil.copy(self.results_dir + "base_classify.rep", self.results_dir + "multi_files/")
-        shutil.copy(self.results_dir + "base_classify2.rep", self.results_dir + "multi_files/")
+        shutil.copy(self.results_dir + "base_classify.rep",
+                    self.results_dir + "multi_files/")
+        shutil.copy(self.results_dir + "base_classify2.rep",
+                    self.results_dir + "multi_files/")
 
         params = self.default_params.copy()
-        params["input"] = [self.results_dir + "base_classify.rep", self.results_dir + "base_classify2.rep"]
-        params["output_prefix"] = self.results_dir + "test_multiple_rep_files_split_hierachy_"
+        params["input"] = [self.results_dir + "base_classify.rep",
+                           self.results_dir + "base_classify2.rep"]
+        params["output_prefix"] = self.results_dir + \
+            "test_multiple_rep_files_split_hierachy_"
         params["split_hierarchy"] = True
 
         # Build config from params

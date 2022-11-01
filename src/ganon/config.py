@@ -21,7 +21,8 @@ class Config:
                                   "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
     choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
-    choices_report_type = ["reads", "matches", "abundance", "dist"]
+    choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
+
     def __init__(self, which: str=None, **kwargs):
 
         parser = argparse.ArgumentParser(prog="ganon",
@@ -161,7 +162,7 @@ class Config:
 
         report_group_output = report_parser.add_argument_group("output arguments")
         report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization.")
-        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report [" + ",".join(self.choices_report_type) + "]. 'abundance' -> tax. abundance, 'reads' -> sequence abundance, 'matches' -> report all matches, 'dist' -> sequence abundance with re-distribution of shared reads", choices=self.choices_report_type)
+        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report [" + ",".join(self.choices_report_type) + "]. 'abundance' -> tax. abundance (re-distribute reads and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all matches, 'dist' -> like reads with re-distribution of shared reads only, 'corr' -> like reads with correction by genome size only", choices=self.choices_report_type)
         report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],          help="Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks [" + ",".join(self.choices_default_ranks) + "].")
         report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",          help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
         report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                                 help="Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent.")

@@ -285,6 +285,22 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
             print("Inconsistent counts")
             return None 
 
+        # Check if percentage/abundance is consistent
+        # nodes cannot have higher percentage than parents
+        target_perc = dict(zip(res["tre_pd"]["target"], res["tre_pd"]["cumulative_perc"]))
+        for l in res["tre_pd"]["lineage"]:
+            # skip empty nodes (e.g 241||412412 -> 241|412412)
+            lineage = [n for n in l.split("|") if n]
+            # From leaf to root
+            for node_idx in list(range(len(lineage)))[::-1]:
+                # if node_idx is not latest (0 -> no parent) and if node is reported
+                if node_idx and lineage[node_idx] in target_perc:
+                    parent = lineage[node_idx-1]
+                    # If parent is reported
+                    if parent in target_perc and target_perc[lineage[node_idx]] > target_perc[parent]:
+                        print("Inconsistent percentage")
+                        return None 
+
         multi_res[out_tre] = res
 
     # If only one output, return directly

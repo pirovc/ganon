@@ -177,18 +177,24 @@ ganon build-custom --db-prefix seq_target --input myfiles/2022-06-28_10-02-14/fi
 Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter index file
- - {prefix}**.tax**: taxonomy *(fields: target/node, parent, rank, name, genome size)* (only if `--taxonomy` is used)
- - {prefix}**_files/**: folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
+ - {prefix}**.tax**: taxonomy tree, only generated if `--taxonomy` is used *(fields: target/node, parent, rank, name, genome size)*.
+ - {prefix}**_files/**: (`ganon build` only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
 
 *Obs: Database files generated with version 1.2.0 or higher are not compatible with older versions.*
 
 ### classify
  
- - {prefix}**.tre**: report file (see below)
- - {prefix}**.rep**: plain report of the run with only targets that received a match *(fields: 1) hierarchy_label, 2) target, 3) total matches, 4) unique reads, 5) lca reads, 6) rank, 7) name)*. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+ - {prefix}**.tre**: full report file (see below)
+ - {prefix}**.rep**: plain report of the run with only targets that received a match. Can be used to re-generate full reports (.tre) with `ganon report`. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`. Fields:
+   - 1: hierarchy label
+   - 2: target
+   - 3: # total matches
+   - 4: # unique reads
+   - 5: # lca reads
+   - 6: rank
+   - 7: name
  - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
  - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer/minimizer count)*
-
 
 ### report
 
@@ -210,7 +216,7 @@ Each line in this report is a taxonomic entry, with the following fields:
 | 6   | # shared     | number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (`--report-type reads`), re-assigned matches (`--report-type abundance/dist`) or shared matches (`--report-type matches`) | 10                                            |
 | 7   | # children   | number of unique and shared assignments to all children nodes of this target                                                                                                                                                   | 20                                            |
 | 8   | # cumulative | the sum of the unique, shared and children assignments up-to this target                                                                                                                                                       | 35                                            |
-| 9   | % cumulative | estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
+| 9   | % cumulative | percentage of assignments or estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
 
 - Using `--report-type reads` or `abundance` or `dist` the first line of the file will show the number of unclassified reads
 
