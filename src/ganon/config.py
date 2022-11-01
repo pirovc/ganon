@@ -20,6 +20,8 @@ class Config:
     choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb",
                                   "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
+    choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
+    choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -28,6 +30,8 @@ class Config:
                                          description=logo(self.version),
                                          conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
+        parser.add_argument("--ncbi-url",   type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
+        parser.add_argument("--gtdb-url",   type=str,                    metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -56,11 +60,12 @@ class Config:
         build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")
 
         build_download_args = build_parser.add_argument_group("download arguments")
-        build_download_args.add_argument("-b", "--source",           type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
-        build_download_args.add_argument("-o", "--top",              type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
-        build_download_args.add_argument("-c", "--complete-genomes", action="store_true",                                         help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-u", "--genome-updater",   type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
-        build_download_args.add_argument("-m", "--taxonomy-files",   type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ",".join(self.choices_db_source) + "]", choices=self.choices_db_source)
+        build_download_args.add_argument("-o", "--top",               type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
+        build_download_args.add_argument("-c", "--complete-genomes",  action="store_true",                                         help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-u", "--genome-updater",    type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
+        build_download_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_download_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                     help="Specific files for genome size estimation - otherwise files will be downloaded")
 
         ####################################################################################################
 
@@ -71,11 +76,12 @@ class Config:
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
-        build_custom_args.add_argument("-n", "--input-file",       type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
-        build_custom_args.add_argument("-a", "--input-target",     type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
-        build_custom_args.add_argument("-l", "--level",            type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
-        build_custom_args.add_argument("-m", "--taxonomy-files",   type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
-
+        build_custom_args.add_argument("-n", "--input-file",        type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
+        build_custom_args.add_argument("-a", "--input-target",      type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-l", "--level",             type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
+        build_custom_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
+        build_custom_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="", help="Specific files for genome size estimation - otherwise files will be downloaded")
+        
         build_custom_args.add_argument("--write-info-file",      action="store_true",                     help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
         ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                               metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
@@ -102,7 +108,6 @@ class Config:
         build_update_other_args.add_argument("--verbose",    action="store_true", help="Verbose output mode")
         build_update_other_args.add_argument("--quiet",      action="store_true", help="Quiet output mode")
         build_update_other_args.add_argument("--keep-files", action="store_true", help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--ncbi-ftp",   type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--ganon-path", type=str,                    metavar="", default="",                              help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-refs",     type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
@@ -129,9 +134,9 @@ class Config:
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
-        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,    help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",               help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
-        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="",               help="Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). This file can be re-generated with the 'ganon report' command")
+        classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
+        classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
+        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ",".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
         
@@ -150,19 +155,20 @@ class Config:
         report_group_required.add_argument("-o", "--output-prefix",   type=str, required=True,            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'")
 
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
-        report_group_dbtax.add_argument("-d", "--db-prefix",      type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
-        report_group_dbtax.add_argument("-x", "--taxonomy",       type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
-        report_group_dbtax.add_argument("-m", "--taxonomy-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
+        report_group_dbtax.add_argument("-d", "--db-prefix",         type=str,         nargs="*", metavar="", default=[],     help="Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided, new taxonomy will be downloaded. Mutually exclusive with --taxonomy.")
+        report_group_dbtax.add_argument("-x", "--taxonomy",          type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ",".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
+        report_group_dbtax.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
+        report_group_dbtax.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for genome size estimation - otherwise files will be downloaded")
 
         report_group_output = report_parser.add_argument_group("output arguments")
-        report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",   help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization. Default: tsv")
-        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="reads", help="Type of report to generate [reads, matches]. Default: reads")
-        report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],      help="Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks (superkingdom phylum class order family genus species assembly). Default: """)
-        report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",      help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
-        report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                             help="Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent")
-        report_group_output.add_argument("-y", "--split-hierarchy", action="store_true",                             help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
-        report_group_output.add_argument("-p", "--skip-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
-        report_group_output.add_argument("-k", "--keep-hierarchy", type=str, nargs="*", metavar="", default=[],      help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
+        report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization.")
+        report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report [" + ",".join(self.choices_report_type) + "]. 'abundance' -> tax. abundance (re-distribute read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only, 'corr' -> like abundance without re-distribution of shared read counts", choices=self.choices_report_type)
+        report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],          help="Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks [" + ",".join(self.choices_default_ranks) + "].")
+        report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",          help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")
+        report_group_output.add_argument("-a", "--no-orphan",       action="store_true",                                 help="Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the db/tax) are reported as 'na' with root as direct parent.")
+        report_group_output.add_argument("-y", "--split-hierarchy", action="store_true",                                 help="Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the output files will be named as '{output_prefix}.{hierarchy}.tre'")
+        report_group_output.add_argument("-p", "--skip-hierarchy", type=str, nargs="*", metavar="", default=[],          help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
+        report_group_output.add_argument("-k", "--keep-hierarchy", type=str, nargs="*", metavar="", default=[],          help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
 
         report_group_optional = report_parser.add_argument_group("optional arguments")
         report_group_optional.add_argument("--verbose", action="store_true", default=False, help="Verbose output mode")
@@ -381,6 +387,12 @@ class Config:
                     if not check_file(file):
                         print_log("File not found: " + file)
                         return False
+
+            # if self.report_type == "abundance":
+            #     for r in self.ranks:
+            #         if r not in self.choices_default_ranks:
+            #             print_log("Only default ranks [" + ",".join(self.choices_default_ranks) + "] can be used for --report-type abundance")
+            #             return False
 
         elif self.which == "table":
             pass

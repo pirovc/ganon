@@ -144,6 +144,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -155,6 +156,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -227,6 +230,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -239,6 +243,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -257,6 +263,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg), skipped_targets=True)  # may skip targets without genus entry
@@ -272,6 +279,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -292,6 +301,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -304,6 +314,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -331,6 +343,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -343,6 +356,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -357,6 +372,7 @@ class TestBuildCustom(unittest.TestCase):
         params["level"] = "custom"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -372,6 +388,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
+                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -396,6 +414,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -413,6 +432,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg), skipped_targets=True)  # may skip targets without genus entry
@@ -432,6 +452,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -448,6 +469,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -461,6 +483,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = [data_dir + "build-custom/nucl_gb.accession2taxid.gz",
                                         data_dir + "build-custom/nucl_gb.accession2taxid.gz"]
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -474,6 +497,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = [data_dir + "build-custom/assembly_summary.txt",
                                         data_dir + "build-custom/nucl_gb.accession2taxid.gz"]
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -486,6 +510,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_sequence_info"] = data_dir + "build-custom/assembly_summary.txt"  # wrong, should fail
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
 
@@ -500,6 +525,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -513,6 +539,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = [data_dir + "build-custom/assembly_summary.txt",
                                     data_dir + "build-custom/assembly_summary.txt"]
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -526,6 +553,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = [data_dir + "build-custom/nucl_gb.accession2taxid.gz",
                                     data_dir + "build-custom/assembly_summary.txt"]
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -538,6 +566,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["ncbi_file_info"] = data_dir + "build-custom/nucl_gb.accession2taxid.gz"  # wrong, should fail
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
 
