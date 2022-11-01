@@ -58,7 +58,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
 - report the lowest common ancestor (LCA) but also multiple and unique matches for every read
-- report sequence and/or taxonomic abundances
+- [report](#report) sequence or taxonomic abundances as well as total number of matches
 - generate reports and tables for multi-sample studies with filters and further customizations
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
@@ -478,6 +478,12 @@ The `--level` parameter defines the max. depth of the database for classificatio
 
 Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
 
+#### Genome sizes (--genome-size-files)
+
+Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/) is used. For `--taxonomy gtdb` the [\*_metadata.tar.gz](https://data.gtdb.ecogenomic.org/releases/latest/) files are used. Those files can be directly provided with the `--genome-size-files` argument.
+
+Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](#buildupdate).
+
 #### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
 
 Further taxonomy and assembly linking information has to be collected to properly build the database. `--ncbi-sequence-info` and `--ncbi-file-info` allow customizations on this step.
@@ -485,6 +491,23 @@ Further taxonomy and assembly linking information has to be collected to properl
 `--ncbi-sequence-info` (used when `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
 
 `--ncbi-file-info` (used when `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
+
+
+### ganon report
+
+#### report type (--report-type)
+
+Several reports are availble with `--report-type`: `reads`, `abundance`, `dist`, `corr`, `matches`. By default, `abundance` is reported.
+
+`reads` reports **sequence abundances** which are the basic proportion of reads classified in the sample.
+
+`abundance` will convert sequence abundance into **taxonomic abundances** by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on [NCBI or GTDB auxiliary files](#genome-sizes---genome-size-files). Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.
+
+`dist` is the same of `reads` with read count re-distribution
+
+`corr` is the same of `reads` with correction by genome size
+
+`matches` will report the total number of matches classified, either unique or shared. *This report will output the total number of matches instead the total number of reads reported in all other reports.*
 
 ## Parameters
 
@@ -494,7 +517,7 @@ usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.2.0
+   _|   v. 1.3.0
 - - - - - - - - - -
 
 positional arguments:
@@ -516,8 +539,8 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k]
-                   [-w] [-s] [--restart] [--verbose] [--quiet]
+usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
+                   [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -543,6 +566,8 @@ download arguments:
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 important arguments:
   -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
@@ -571,8 +596,8 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [--write-info-file] [-r [...]] [-q [...]] -d
-                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
+usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [--write-info-file] [-r [...]]
+                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -601,6 +626,8 @@ custom arguments:
                         (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
   --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
                         further attempts. (default: False)
 
@@ -714,9 +741,10 @@ other arguments:
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
   -r [ ...], --ranks [ ...]
-                        Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom
-                        phylum class order family genus species assembly). This file can be re-generated with the 'ganon
-                        report' command (default: None)
+                        Ranks to report taxonomic abundances (.tre). empty will report default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly]. This file can be re-generated
+                        with the 'ganon report' command for other types of abundances (reads, matches) with further
+                        filtration and output options (default: [])
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -727,8 +755,8 @@ other arguments:
   <summary>ganon report</summary>
 
 ```
-usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-f] [-t] [-r [...]]
-                    [-s] [-a] [-y] [-p [...]] [-k [...]] [--verbose] [--quiet] [--min-count] [--max-count]
+usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]] [-f] [-t]
+                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [--verbose] [--quiet] [--min-count] [--max-count]
                     [--names [...]] [--names-with [...]] [--taxids [...]]
 
 options:
@@ -752,19 +780,24 @@ db/tax arguments:
   -x , --taxonomy       Taxonomy database to use [ncbi,gtdb,skip]. Mutually exclusive with --db-prefix. (default: ncbi)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 output arguments:
   -f , --output-format 
                         Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better
-                        visualization. Default: tsv (default: tsv)
-  -t , --report-type    Type of report to generate [reads, matches]. Default: reads (default: reads)
+                        visualization. (default: tsv)
+  -t , --report-type    Type of report [abundance,reads,matches,dist,corr]. 'abundance' -> tax. abundance (re-distribute
+                        read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all
+                        unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only,
+                        'corr' -> like abundance without re-distribution of shared read counts (default: abundance)
   -r [ ...], --ranks [ ...]
-                        Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks
-                        (superkingdom phylum class order family genus species assembly). Default: (default: [])
+                        Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly]. (default: [])
   -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
-                        db/tax) are reported as 'na' with root as direct parent (default: False)
+                        db/tax) are reported as 'na' with root as direct parent. (default: False)
   -y, --split-hierarchy
                         Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the
                         output files will be named as '{output_prefix}.{hierarchy}.tre' (default: False)
