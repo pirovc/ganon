@@ -5,6 +5,7 @@ from utils import build_sanity_check_and_parse
 from utils import classify_sanity_check_and_parse
 from utils import list_files_folder
 from ganon.config import Config
+from math import ceil
 import unittest
 import sys
 import shutil
@@ -576,7 +577,7 @@ class TestReport(unittest.TestCase):
 
     def test_taxids(self):
         """
-        Test run filtering for names with
+        Test run filtering for taxids
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_taxids"
@@ -593,6 +594,54 @@ class TestReport(unittest.TestCase):
         # should have only matches with pattern
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["lineage"].str.contains(params["taxids"][0])).all(),
                         "ganon report did not filter by taxids")
+
+    def test_top_percentile(self):
+        """
+        Test --top-percentile
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + \
+            "test_top_percentile_default"
+        params["top_percentile"] = 0
+
+        # Build config from params
+        cfg = Config("report", **params)
+        # Run
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # count output taxa by rank
+        total_by_rank = res["tre_pd"][~res["idx_base"]].groupby([
+                                                                'rank']).size()
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_top_percentile_50"
+        params["top_percentile"] = 0.5
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if only half of taxa is reported
+        self.assertTrue((total_by_rank/2).apply(ceil).equals(
+            res["tre_pd"][~res["idx_base"]].groupby(['rank']).size()),
+            "percentile reporting wrong number of taxa")
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_top_percentile_25"
+        params["top_percentile"] = 0.25
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if only a quarter of taxa is reported
+        self.assertTrue((total_by_rank/4).apply(ceil).equals(
+            res["tre_pd"][~res["idx_base"]].groupby(['rank']).size()),
+            "percentile reporting wrong number of taxa")
 
     def test_taxdump_file(self):
         """
