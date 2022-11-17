@@ -10,8 +10,6 @@ base_dir = "tests/ganon/"
 sys.path.append(base_dir)
 from utils import run_ganon
 from utils import setup_dir
-from utils import list_files_folder
-from utils import list_sequences
 from utils import build_sanity_check_and_parse
 data_dir = base_dir + "data/"
 
@@ -46,10 +44,14 @@ class TestBuild(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_og_all"
 
+        cfg = Config("build", **params)
+        cfg.path_exec["genome_updater"] = "libs/genome_updater/genome_updater.sh"
+
         # Run ganon build
         self.assertTrue(run_ganon(Config("build", **params), params["db_prefix"]), "ganon build run failed")
         # Load config from written file (to get all arguments generated on build)
         cfg = pickle.load(open(params["db_prefix"] + "_files/config.pkl", "rb"))
+
         res = build_sanity_check_and_parse(cfg)
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
