@@ -6,25 +6,25 @@ matrix:
     - name: "linux gcc-8"
       os: linux
       addons:
-        apt: { packages: [g++-8] }
+        apt: { packages: [g++-8, parallel] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-9"
       os: linux
       addons:
-        apt: { packages: [g++-9] }
+        apt: { packages: [g++-9, parallel] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
     - name: "linux gcc-10"
       os: linux
       addons:
-        apt: { packages: [g++-10] }
+        apt: { packages: [g++-10, parallel] }
       env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov] }
+        apt: { packages: [g++-8, lcov, parallel] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
 before_install:
