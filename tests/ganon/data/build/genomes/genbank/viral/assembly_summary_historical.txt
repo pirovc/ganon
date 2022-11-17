@@ -1,0 +1,3 @@
+#   See ftp://ftp.ncbi.nlm.nih.gov/genomes/README_assembly_summary.txt for a description of the columns in this file.
+# assembly_accession	bioproject	biosample	wgs_master	refseq_category	taxid	species_taxid	organism_name	infraspecific_name	isolate	version_status	assembly_level	release_type	genome_rep	seq_rel_date	asm_name	submitter	gbrs_paired_asm	paired_asm_comp	ftp_path	excluded_from_refseq	relation_to_type_material	asm_not_live_date
+GCA_004132065.1				na	2161879	2161879	Coconut foliar decay alphasatellite 6		CFDA6-[VU-88]	latest	Complete Genome	Major	Full	2018/04/15	ASM413206v1		GCF_004132065.1	identical	https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/004/132/065/GCA_004132065.1_ASM413206v1			na

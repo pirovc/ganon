@@ -52,7 +52,7 @@ def build(cfg):
                                            "-f 'genomic.fna.gz'",
                                            "-t " + str(cfg.threads),
                                            "-o " + files_output_folder,
-                                           "-M " + cfg.taxonomy if cfg.taxonomy else "",
+                                           "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
                                            "-m",
                                            "-i" if resume_download else "",
                                            "-s" if cfg.quiet else "",
@@ -84,7 +84,9 @@ def build(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
 
     build_custom_params.update(build_default_params)
 
@@ -139,7 +141,9 @@ def update(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
     build_custom_params.update(build_default_params)
 
     loaded_params = load_config(files_output_folder + "config.pkl")

@@ -1,0 +1,3 @@
+#   See ftp://ftp.ncbi.nlm.nih.gov/genomes/README_assembly_summary.txt for a description of the columns in this file.
+# assembly_accession	bioproject	biosample	wgs_master	refseq_category	taxid	species_taxid	organism_name	infraspecific_name	isolate	version_status	assembly_level	release_type	genome_rep	seq_rel_date	asm_name	submitter	gbrs_paired_asm	paired_asm_comp	ftp_path	excluded_from_refseq	relation_to_type_material	asm_not_live_date
+GCA_000147015.1	PRJNA51243	SAMN02604227		na	871271	884215	Candidatus Zinderia insecticola CARI	strain=CARI		latest	Complete Genome	Major	Full	2010/09/09	ASM14701v1	University of Montana	GCF_000147015.1	identical	https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/147/015/GCA_000147015.1_ASM14701v1	genome length too small		na

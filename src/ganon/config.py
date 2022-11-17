@@ -82,8 +82,7 @@ class Config:
         build_custom_args.add_argument("-l", "--level",             type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ",".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
         build_custom_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
         build_custom_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="", help="Specific files for genome size estimation - otherwise files will be downloaded")
-        
-        build_custom_args.add_argument("--write-info-file",      action="store_true",                     help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
+
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
         ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                               metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ",".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
         ncbi_args.add_argument("-q", "--ncbi-file-info",     type=str, nargs="*", default=self.choices_ncbi_file_info[0:2], metavar="", help="Downloads assembly_summary files to extract target information. [" + ",".join(self.choices_ncbi_file_info) + " or one or more assembly_summary files from https://ftp.ncbi.nlm.nih.gov/genomes/]")
@@ -105,13 +104,14 @@ class Config:
         build_update_parser = argparse.ArgumentParser(add_help=False)
 
         build_update_other_args = build_update_parser.add_argument_group("optional arguments")
-        build_update_other_args.add_argument("--restart",    action="store_true", help="Restart build/update from scratch, do not try to resume from the latest possible step. {db_prefix}_files/ will be deleted if present.")
-        build_update_other_args.add_argument("--verbose",    action="store_true", help="Verbose output mode")
-        build_update_other_args.add_argument("--quiet",      action="store_true", help="Quiet output mode")
-        build_update_other_args.add_argument("--keep-files", action="store_true", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--restart",         action="store_true", help="Restart build/update from scratch, do not try to resume from the latest possible step. {db_prefix}_files/ will be deleted if present.")
+        build_update_other_args.add_argument("--verbose",         action="store_true", help="Verbose output mode")
+        build_update_other_args.add_argument("--quiet",           action="store_true", help="Quiet output mode")
+        build_update_other_args.add_argument("--keep-files",      action="store_true", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--write-info-file", action="store_true", help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
         build_update_other_args.add_argument("--ganon-path", type=str,                    metavar="", default="",                              help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-refs",     type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                             help=argparse.SUPPRESS)
 
         ####################################################################################################
 
