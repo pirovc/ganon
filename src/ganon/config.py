@@ -347,8 +347,10 @@ class Config:
                     return False
 
         elif self.which == "classify":
-            if not all([check_file(prefix + ".ibf") for prefix in self.db_prefix]):
-                return False
+            for prefix in self.db_prefix:
+                if not check_file(prefix + ".ibf"):
+                    print_log("File not found: " + prefix + ".ibf")
+                    return False
 
             if not self.single_reads and not self.paired_reads:
                 print_log("Please provide file[s] with --single-reads or --paired-reads")
@@ -388,12 +390,6 @@ class Config:
                     if not check_file(file):
                         print_log("File not found: " + file)
                         return False
-
-            # if self.report_type == "abundance":
-            #     for r in self.ranks:
-            #         if r not in self.choices_default_ranks:
-            #             print_log("Only default ranks [" + ",".join(self.choices_default_ranks) + "] can be used for --report-type abundance")
-            #             return False
 
         elif self.which == "table":
             pass
