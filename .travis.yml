@@ -46,12 +46,12 @@ script:
   - ganon-build -h  # ret 0
   - ganon-classify -h  # ret 0
   - cd ..
-  - python3 setup.py install --user;
-  - ganon -h;
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
     else
       python3 -m unittest discover -s tests/ganon/integration/ -v;
+      python3 setup.py install --user;
+      ganon -h;
     fi
 
 after_success:
