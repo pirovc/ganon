@@ -651,6 +651,8 @@ class TestReport(unittest.TestCase):
         params["output_prefix"] = self.results_dir + "test_taxdump_file"
         params["db_prefix"] = ""
         params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+        params["genome_size_files"] = [data_dir +
+                                       "build-custom/species_genome_size.txt.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -670,6 +672,8 @@ class TestReport(unittest.TestCase):
         params["db_prefix"] = ""
         params["ranks"] = "all"
         params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+        params["genome_size_files"] = [data_dir +
+                                       "build-custom/species_genome_size.txt.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -692,6 +696,8 @@ class TestReport(unittest.TestCase):
         params["db_prefix"] = ""
         params["ranks"] = ["genus", "species", "na"]
         params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+        params["genome_size_files"] = [data_dir +
+                                       "build-custom/species_genome_size.txt.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -715,6 +721,8 @@ class TestReport(unittest.TestCase):
         params["ranks"] = "all"
         params["no_orphan"] = True
         params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+        params["genome_size_files"] = [data_dir +
+                                       "build-custom/species_genome_size.txt.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -738,6 +746,8 @@ class TestReport(unittest.TestCase):
         params["ranks"] = "na"
         params["no_orphan"] = False
         params["taxonomy_files"] = [data_dir + "build-custom/taxdump.tar.gz"]
+        params["genome_size_files"] = [data_dir +
+                                       "build-custom/species_genome_size.txt.gz"]
 
         # Build config from params
         cfg = Config("report", **params)
@@ -750,6 +760,86 @@ class TestReport(unittest.TestCase):
         # Should not report any "na"
         self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"] == "na").all(),
                         "ganon report did not report the correct ranks")
+
+    def test_output_format_tsv(self):
+        """
+        Test run with --output-format tsv
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_output_format_tsv"
+        params["output_format"] = "tsv"
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+    def test_output_format_csv(self):
+        """
+        Test run with --output-format csv
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_output_format_csv"
+        params["output_format"] = "csv"
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+    def test_output_format_text(self):
+        """
+        Test run with --output-format text
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_output_format_text"
+        params["output_format"] = "text"
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+    def test_output_format_bioboxes(self):
+        """
+        Test run with --output-format bioboxes
+        """
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + \
+            "test_output_format_bioboxes_base"
+        params["output_format"] = "tsv"
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + \
+            "test_output_format_bioboxes"
+        params["output_format"] = "bioboxes"
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        taxid = []
+        perc = []
+        with open(params["output_prefix"] + ".tre", "r") as file:
+            for line in file:
+                if line[0] == "@":
+                    continue
+                taxid.append(line.rstrip().split("\t")[0])
+                perc.append(float(line.rstrip().split("\t")[4]))
+
+        # Check if output has same taxids and percentages
+        self.assertTrue(res["tre_pd"][~res["idx_base"]]["target"].isin(taxid).all(),
+                        "ganon report inconsistend on bioboxes output format")
+        self.assertTrue(res["tre_pd"][~res["idx_base"]]["cumulative_perc"].isin(perc).all(),
+                        "ganon report inconsistend on bioboxes output format")
 
 
 if __name__ == '__main__':

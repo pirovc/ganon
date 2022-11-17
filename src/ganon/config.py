@@ -22,6 +22,7 @@ class Config:
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
     choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
+    choices_report_output = ["text", "tsv", "csv", "bioboxes"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -161,7 +162,7 @@ class Config:
         report_group_dbtax.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for genome size estimation - otherwise files will be downloaded")
 
         report_group_output = report_parser.add_argument_group("output arguments")
-        report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better visualization.")
+        report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [" + ",".join(self.choices_report_output) + "]. text outputs a tabulated formatted text file for better visualization. bioboxes is the the CAMI challenge profiling format (only percentage/abundances are reported).", choices=self.choices_report_output)
         report_group_output.add_argument("-t", "--report-type",    type=str,            metavar="", default="abundance", help="Type of report [" + ",".join(self.choices_report_type) + "]. 'abundance' -> tax. abundance (re-distribute read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only, 'corr' -> like abundance without re-distribution of shared read counts", choices=self.choices_report_type)
         report_group_output.add_argument("-r", "--ranks",          type=str, nargs="*", metavar="", default=[],          help="Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks [" + ",".join(self.choices_default_ranks) + "].")
         report_group_output.add_argument("-s", "--sort",           type=str,            metavar="", default="",          help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)")

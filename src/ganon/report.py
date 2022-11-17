@@ -101,7 +101,7 @@ def report(cfg):
                 if h not in cfg.skip_hierarchy:
                     output_file_h = output_file + "." + h + ".tre"
                     r = build_report(
-                        {h: reports[h]}, counts, tax, genome_sizes, output_file_h, fixed_ranks, default_ranks, cfg)
+                        {h: reports[h]}, counts, tax, genome_sizes, output_file_h, fixed_ranks, default_ranks, cfg, rep_file)
                     if not r:
                         print_log(" - nothing to report for hierarchy " +
                                   h + " in the " + rep_file, cfg.quiet)
@@ -114,7 +114,7 @@ def report(cfg):
         else:
             output_file = output_file + ".tre"
             r = build_report(reports, counts, tax, genome_sizes,
-                             output_file, fixed_ranks, default_ranks, cfg)
+                             output_file, fixed_ranks, default_ranks, cfg, rep_file)
             if not r:
                 print_log(" - nothing to report for " + rep_file, cfg.quiet)
                 continue
@@ -170,7 +170,7 @@ def parse_rep(rep_file):
     return reports, counts
 
 
-def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ranks, default_ranks, cfg):
+def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ranks, default_ranks, cfg, rep_file):
 
     # total
     if cfg.report_type == "matches":
@@ -235,76 +235,106 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
 
     # Output file
     tre_file = open(output_file, 'w')
-    output_rows = []
 
-    # Reporting reads, first line prints unclassified entries
-    if cfg.report_type != "matches":
-        unclassified_line = ["unclassified",
-                             "-",
-                             "-",
-                             "unclassified",
-                             "0",
-                             "0",
-                             "0",
-                             str(counts["total"]["unclassified"]),
-                             str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
-        if cfg.output_format in ["tsv", "csv"]:
-            print(*unclassified_line, file=tre_file,
-                  sep="\t" if cfg.output_format == "tsv" else ",")
-        else:
-            output_rows.append(unclassified_line)
+    if cfg.output_format == "bioboxes":
+        print("@Version:0.10.0", file=tre_file)
+        print("@SampleID:" + rep_file + " " + ",".join(reports.keys()), file=tre_file)
+        print("@Ranks:" + "|".join(fixed_ranks[1:]), file=tre_file)
+        print("@Taxonomy:" + ",".join(tax.sources), file=tre_file)
+        print("@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE", file=tre_file)
+        for node in sorted_nodes:
+            cum_perc = tree_cum_perc[node]*100
+            # Do not report root
+            if node == tax.root_node:
+                continue
 
-    # All entries
-    for node in sorted_nodes:
-        cum_count = filtered_cum_counts[node]
-        cum_perc = tree_cum_perc[node]*100
-        unique = 0
-        shared = 0
-        children = cum_count
-        if node in merged_rep:
-            unique = merged_rep[node]['unique_reads']
-            if cfg.report_type == "matches":
-                shared = merged_rep[node]['direct_matches'] - \
-                    merged_rep[node]['unique_reads']
+            cum_perc = tree_cum_perc[node]*100
+
+            if fixed_ranks:
+                r = fixed_ranks.index(tax.rank(node))
+                lineage = tax.lineage(node, ranks=fixed_ranks[:r+1])
+                name_lineage = tax.name_lineage(node, ranks=fixed_ranks[:r+1])
             else:
-                shared = merged_rep[node]['lca_reads']
+                lineage = tax.lineage(node)
+                name_lineage = tax.name_lineage(node)
 
-        children = children - unique - shared
+            out_line = [node,
+                        tax.rank(node),
+                        "|".join(lineage[1:]), #ignore root
+                        "|".join(name_lineage[1:]), #ignore root
+                        str("%.5f" % cum_perc)]
+            print(*out_line, file=tre_file, sep="\t")
 
-        if fixed_ranks:
-            r = fixed_ranks.index(tax.rank(node))
-            lineage = tax.lineage(node, ranks=fixed_ranks[:r+1])
-        else:
-            lineage = tax.lineage(node)
+    else:
+        output_rows = []
+        # Reporting reads, first line prints unclassified entries
+        if cfg.report_type != "matches":
+            unclassified_line = ["unclassified",
+                                 "-",
+                                 "-",
+                                 "unclassified",
+                                 "0",
+                                 "0",
+                                 "0",
+                                 str(counts["total"]["unclassified"]),
+                                 str("%.5f" % ((counts["total"]["unclassified"]/total)*100))]
+            if cfg.output_format in ["tsv", "csv"]:
+                print(*unclassified_line, file=tre_file,
+                      sep="\t" if cfg.output_format == "tsv" else ",")
+            else:
+                output_rows.append(unclassified_line)
 
-        out_line = [tax.rank(node),
-                    node,
-                    "|".join(lineage),
-                    tax.name(node),
-                    str(unique),
-                    str(shared),
-                    str(children),
-                    str(cum_count),
-                    str("%.5f" % cum_perc)]
-        if cfg.output_format in ["tsv", "csv"]:
-            print(*out_line, file=tre_file,
-                  sep="\t" if cfg.output_format == "tsv" else ",")
-        else:
-            output_rows.append(out_line)
+        # All entries
+        for node in sorted_nodes:
+            cum_count = filtered_cum_counts[node]
+            cum_perc = tree_cum_perc[node]*100
+            unique = 0
+            shared = 0
+            children = cum_count
+            if node in merged_rep:
+                unique = merged_rep[node]['unique_reads']
+                if cfg.report_type == "matches":
+                    shared = merged_rep[node]['direct_matches'] - \
+                        merged_rep[node]['unique_reads']
+                else:
+                    shared = merged_rep[node]['lca_reads']
 
-    # Print formated text
-    if cfg.output_format == "text":
-        # Check max width for each col
-        max_width = [0]*len(output_rows[0])
-        for row in output_rows:
-            for i, w in enumerate(max_width):
-                l = len(row[i])
-                if l > w:
-                    max_width[i] = l
-        # apply format when printing with max_width
-        for row in output_rows:
-            print("\t".join(['{0: <{width}}'.format(field, width=max_width[i]) for i, field in enumerate(row)]),
-                  file=tre_file)
+            children = children - unique - shared
+
+            if fixed_ranks:
+                r = fixed_ranks.index(tax.rank(node))
+                lineage = tax.lineage(node, ranks=fixed_ranks[:r+1])
+            else:
+                lineage = tax.lineage(node)
+
+            out_line = [tax.rank(node),
+                        node,
+                        "|".join(lineage),
+                        tax.name(node),
+                        str(unique),
+                        str(shared),
+                        str(children),
+                        str(cum_count),
+                        str("%.5f" % cum_perc)]
+            if cfg.output_format in ["tsv", "csv"]:
+                print(*out_line, file=tre_file,
+                      sep="\t" if cfg.output_format == "tsv" else ",")
+            else:
+                output_rows.append(out_line)
+
+        # Print formated text
+        if cfg.output_format == "text":
+            # Check max width for each col
+            max_width = [0]*len(output_rows[0])
+            for row in output_rows:
+                for i, w in enumerate(max_width):
+                    l = len(row[i])
+                    if l > w:
+                        max_width[i] = l
+            # apply format when printing with max_width
+            for row in output_rows:
+                print("\t".join(['{0: <{width}}'.format(field, width=max_width[i]) for i, field in enumerate(row)]),
+                      file=tre_file)
 
     if output_file:
         tre_file.close()

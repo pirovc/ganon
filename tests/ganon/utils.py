@@ -71,10 +71,10 @@ def parse_info(info_file):
     return pd.read_table(info_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
-def parse_tre(tre_file):
+def parse_tre(tre_file, output_format: str="tsv"):
     colums = ['rank', 'target', 'lineage', 'name', 'unique', 'shared', 'children', 'cumulative', 'cumulative_perc']
     types = {'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'uint64', 'shared': 'uint64', 'children': 'uint64', 'cumulative': 'uint64', 'cumulative_perc': 'float'}
-    return pd.read_table(tre_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
+    return pd.read_table(tre_file, sep="," if output_format=="csv" else "\t", header=None, skiprows=0, names=colums, dtype=types)
 
 
 def parse_tsv(tsv_file):
@@ -250,10 +250,11 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         res = {}
         # Sequence information from database to be updated
-        res["tre_pd"] = parse_tre(out_tre)
+        res["tre_pd"] = parse_tre(out_tre, params["output_format"])
 
         # get idx for root (idx_root) and root + unclassified (idx_base)
-        res["idx_root"] = res["tre_pd"]['rank'] == "root"
+        # strip white spaces for output_format text
+        res["idx_root"] = res["tre_pd"]['rank'].str.strip() == "root"
         if params["report_type"] == "matches":
             res["idx_base"] = res["idx_root"]
         else:

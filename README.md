@@ -194,7 +194,7 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
    - 6: rank
    - 7: name
  - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer/minimizer count)*
+ - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: read identifier, target, k-mer/minimizer count)*
 
 ### report
 
@@ -220,6 +220,8 @@ Each line in this report is a taxonomic entry (including the root node), with th
 | 9   | % cumulative | percentage of assignments or estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches`)
+
+- The report can be generated in the CAMI challenge (bioboxes format)[https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd] using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) aer reported. The root node and unclassified entries are ommited.
 
 - The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
@@ -285,6 +287,24 @@ genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Pa
 species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  0  0   57  57.57576
 ```
 
+with `--output-format bioboxes` 
+
+```
+@Version:0.10.0
+@SampleID:example.rep H1
+@Ranks:superkingdom|phylum|class|order|family|genus|species|assembly
+@Taxonomy:db.tax
+@@TAXID  RANK          TAXPATH   TAXPATHSN                 PERCENTAGE
+2        superkingdom  2         Bacteria                  100.00000
+1224     phylum        2|1224    Bacteria|Proteobacteria   56.89782
+201174   phylum        2|201174  Bacteria|Actinobacteria   21.84869
+1239     phylum        2|1239    Bacteria|Firmicutes       9.75197
+976      phylum        2|976     Bacteria|Bacteroidota     6.15297
+1117     phylum        2|1117    Bacteria|Cyanobacteria    2.23146
+203682   phylum        2|203682  Bacteria|Planctomycetota  1.23353
+57723    phylum        2|57723   Bacteria|Acidobacteria    0.52549
+200795   phylum        2|200795  Bacteria|Chloroflexi      0.31118
+```
 </details>
 
 ## Building customized databases
