@@ -44,8 +44,12 @@ class TestBuild(unittest.TestCase):
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_og_all"
 
+
         cfg = Config("build", **params)
         cfg.path_exec["genome_updater"] = "libs/genome_updater/genome_updater.sh"
+
+        os.system(cfg.path_exec["genome_updater"] + " -Z")
+
         # Run ganon build
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build run failed")
         # Load config from written file (to get all arguments generated on build for build custom)
