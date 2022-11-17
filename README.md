@@ -221,7 +221,7 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches`)
 
-- The report can be generated in the CAMI challenge (bioboxes format)[https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd] using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) aer reported. The root node and unclassified entries are ommited.
+- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd) is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) aer reported. The root node and unclassified entries are ommited.
 
 - The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
