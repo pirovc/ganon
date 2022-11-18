@@ -47,20 +47,20 @@ script:
   - ganon-classify -h  # ret 0
   - cd ..
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
+      python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v
     else
-      python3 -m unittest discover -s tests/ganon/integration/ -v;
-      python3 setup.py install --user;
-      ganon -h;
+      python3 -m unittest discover -s tests/ganon/integration/ -v &&
+      python3 setup.py install --user &&
+      ganon -h
     fi
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      python3 -m coverage xml -o coverage_py.xml;
-      curl -Os https://uploader.codecov.io/latest/linux/codecov;
-      chmod +x codecov;
-      ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
+      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov &&
+      python3 -m coverage xml -o coverage_py.xml &&
+      curl -Os https://uploader.codecov.io/latest/linux/codecov &&
+      chmod +x codecov &&
+      ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov
     fi
 
 notifications:
