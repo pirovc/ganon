@@ -38,7 +38,7 @@ cat taxids.txt | xargs -I {} grep "^{}[^0-9]" base_files/names.dmp >>  names.dmp
 touch merged.dmp
 tar -czf taxdump.tar.gz nodes.dmp names.dmp merged.dmp
 rm nodes.dmp names.dmp merged.dmp taxids.txt
-# create simulated species_genome_size.txt.gz (all genomes length 5M)
+# create simulated species_genome_size.txt.gz
 echo "#species_taxid	min_ungapped_length	max_ungapped_length	expected_ungapped_length	number_of_genomes	method_determined" > species_genome_size.txt
 cut -f 7 assembly_summary.txt | awk -v base=985251 'BEGIN{OFS="\t"}{print $1, base*NR, base*NR, base*NR, 1, "automatic"}' >> species_genome_size.txt
 gzip species_genome_size.txt
