@@ -53,6 +53,7 @@ cut -f 1,6 ${outfld}genomes/*/assembly_summary_*.txt ${outfld}genomes/*/*/assemb
 wget --quiet --show-progress --output-document "${outfld}new_taxdump.tar.gz" "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz"
 tar xf "${outfld}new_taxdump.tar.gz" -C "${outfld}" taxidlineage.dmp rankedlineage.dmp
 mkdir -p "${outfld}pub/taxonomy/new_taxdump/"
+cat "${outfld}accessions_taxids.txt" | xargs -l bash -c 'grep "^${1}[^0-9]" "'${outfld}'taxidlineage.dmp"' > "${outfld}pub/taxonomy/new_taxdump/taxidlineage.dmp"
 cat "${outfld}accessions_taxids.txt" | xargs -l bash -c 'grep "[^0-9]${1}[^0-9]" "'${outfld}'taxidlineage.dmp"' >> "${outfld}pub/taxonomy/new_taxdump/taxidlineage.dmp"
 cat "${outfld}accessions_taxids.txt" | xargs -l bash -c 'grep "^${1}[^0-9]" "'${outfld}'rankedlineage.dmp"' >> "${outfld}pub/taxonomy/new_taxdump/rankedlineage.dmp"
 find "${outfld}pub/taxonomy/new_taxdump/" -printf "%P\n" | tar -czf "${outfld}pub/taxonomy/new_taxdump/new_taxdump.tar.gz" --no-recursion -C "${outfld}pub/taxonomy/new_taxdump/" -T -
