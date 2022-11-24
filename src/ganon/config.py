@@ -31,8 +31,6 @@ class Config:
                                          description=logo(self.version),
                                          conflict_handler="resolve")
         parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
-        parser.add_argument("--ncbi-url",   type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
-        parser.add_argument("--gtdb-url",   type=str,                    metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -112,6 +110,8 @@ class Config:
         build_update_other_args.add_argument("--ganon-path", type=str,                    metavar="", default="",                              help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-refs",     type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                             help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--ncbi-url",             type=str,                              metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--gtdb-url",             type=str,                              metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -175,6 +175,8 @@ class Config:
         report_group_optional = report_parser.add_argument_group("optional arguments")
         report_group_optional.add_argument("--verbose", action="store_true", default=False, help="Verbose output mode")
         report_group_optional.add_argument("--quiet",   action="store_true", default=False, help="Quiet output mode")
+        report_group_optional.add_argument("--ncbi-url",             type=str,                              metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
+        report_group_optional.add_argument("--gtdb-url",             type=str,                              metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 

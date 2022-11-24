@@ -340,3 +340,27 @@ def table_sanity_check_and_parse(params):
 
     return res
 
+def download_bulk_files(download_dir):
+
+    bulk_files = {"https://ftp.ncbi.nlm.nih.gov/": 
+                     ["pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz",
+                      "pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
+                      "genomes/refseq/assembly_summary_refseq.txt",
+                      "genomes/refseq/assembly_summary_refseq_historical.txt",
+                      "genomes/genbank/assembly_summary_genbank.txt",
+                      "genomes/genbank/assembly_summary_genbank_historical.txt",
+                      "genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"],
+                  "https://data.gtdb.ecogenomic.org/releases/latest/":
+                      ["ar53_metadata.tar.gz",
+                      "bac120_metadata.tar.gz"]
+                  }
+
+    for url, files in bulk_files.items():
+        for file in files:
+            if os.path.isfile(download_dir + file):
+                print("File found: " + download_dir + file)
+            else:
+                p = os.path.dirname(file)
+                print("Downloading " + url + file + " -> " + download_dir + p + file)
+                os.makedirs(download_dir + p, exist_ok=True)
+                download([url + file], download_dir + p + "/")
