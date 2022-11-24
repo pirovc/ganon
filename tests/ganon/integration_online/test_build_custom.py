@@ -11,6 +11,7 @@ sys.path.append(base_dir)
 from utils import run_ganon
 from utils import setup_dir
 from utils import build_sanity_check_and_parse
+from utils import download_bulk_files
 data_dir = base_dir + "data/"
 
 
@@ -22,7 +23,8 @@ class TestBuildCustom(unittest.TestCase):
     default_params = {"input": data_dir + "build-custom/files/",
                       "taxonomy": "skip",
                       "threads": 1,
-                      "ncbi_ftp": "file://" + os.path.abspath(download_dir),
+                      "ncbi_url": "file://" + os.path.abspath(download_dir),
+                      "gtdb_url": "file://" + os.path.abspath(download_dir),
                       "write_info_file": True,
                       "keep_files": True,
                       "verbose": True,
@@ -32,23 +34,9 @@ class TestBuildCustom(unittest.TestCase):
     def setUpClass(self):
         setup_dir(self.results_dir)
 
-        # Download ncbi files only once and set --ncbi-ftp to local dir (local download)
-        ftp_ncbi = "https://ftp.ncbi.nlm.nih.gov/"
-        ncbi_files = ["pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz",
-                      "pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
-                      "genomes/refseq/assembly_summary_refseq.txt",
-                      "genomes/refseq/assembly_summary_refseq_historical.txt",
-                      "genomes/genbank/assembly_summary_genbank.txt",
-                      "genomes/genbank/assembly_summary_genbank_historical.txt"]
+        # Download full files once (and simulate download by setting ncbi_url and gtdb_url on params)
+        download_bulk_files(self.download_dir)
 
-        for file in ncbi_files:
-            if os.path.isfile(self.download_dir + file):
-                print("File found: " + self.download_dir + file)
-            else:
-                print("Downloading: " + ftp_ncbi + file + " to " + self.download_dir + file)
-                p = os.path.dirname(file)
-                os.makedirs(self.download_dir + p, exist_ok=True)
-                download([ftp_ncbi + file], self.download_dir + p + "/")
 
     def test_taxonomy(self):
         """

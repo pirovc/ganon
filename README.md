@@ -1,17 +1,8 @@
 # ganon [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458)
 
-ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
+ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used repositories (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates taxonomic and/or sequence abundance reports, generates contingency tables among many other [features](#Features).
 
 ---
-
-- [Quick install/usage guide](#quick-installusage-guide)
-- [Details](#details)
-- [Examples](#examples)
-- [Output files](#output-files)
-- [Building customized databases](#building-customized-databases)
-- [Multiple and Hierarchical classification](#multiple-and-hierarchical-classification)
-- [Choosing and explaining parameters](#choosing-and-explaining-parameters)
-- [Parameters](#parameters)
 
 ## Quick install/usage guide
 
@@ -43,15 +34,23 @@ ganon table --input classify_results.tre filtered_report.tre --output-file outpu
 ganon update --db-prefix arc_cg_rs --threads 12
 ```
 
-[More examples](#Examples)
+---
+
+- [Details](#details)
+- [Examples](#examples)
+- [Output files](#output-files)
+- [Building customized databases](#building-customized-databases)
+- [Multiple and Hierarchical classification](#multiple-and-hierarchical-classification)
+- [Choosing and explaining parameters](#choosing-and-explaining-parameters)
+- [Parameters](#parameters)
 
 ## Details
 
-ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references.
+ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
 
 ### Features
 
-- NCBI and GTDB native support for taxonomic classification
+- NCBI and GTDB native support for taxonomic classification (but also runs without taxonomy)
 - integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
 - update indices incrementally (`ganon update`)
 - customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
@@ -59,7 +58,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
 - [report](#report) the lowest common ancestor (LCA) but also multiple and unique matches for every read
 - [report](#report) sequence or taxonomic abundances as well as total number of matches
-- generate reports and tables for multi-sample studies with filters and further customizations
+- generate reports and contingency tables for multi-sample studies with several filter options
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -88,11 +87,11 @@ System packages:
 System packages:
 - python >=3.6
 - pandas >=1.1.0
-- multitax >=1.1.1
+- [multitax](https://github.com/pirovc/multitax) >=1.2.1
 
 ```bash
 python3 -V # >=3.6
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.1.1"
+python3 -m pip install "pandas>=1.1.0" "multitax>=1.2.1"
 ```
 
 #### Downloading and building ganon + submodules
@@ -133,19 +132,15 @@ ctest -VV .
 
 ## Examples
 
-### Commonly used reference set for metagenomics analysis (complete genomes, NCBI RefSeq, archaea+bacteria+fungi+viral)
+### Commonly used reference set for metagenomics analysis (archaea+bacteria+fungi+viral from NCBI RefSeq, complete genomes, one assembly per taxa)
+
 ```bash
-ganon build --db-prefix abfv_rs_cg --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12
+ganon build --db-prefix abfv_rs_cg_t1a --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12 --top 1
 ```
 
-### Top 3 bacterial genomes (for each taxa) from NCBI RefSeq
+### GTDB database, one assembly per taxa
 ```bash
-ganon build --db-prefix bac_rs_top3 --organism-group bacteria --source refseq --taxonomy ncbi --top 3 --threads 12
-```
-
-### Complete GTDB database
-```bash
-ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12
+ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12 --top 1
 ```
 
 ### Database based on specific taxonomic identifiers (203492 - Fusobacteriaceae)
@@ -161,7 +156,7 @@ ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq 
 ganon build-custom --db-prefix my_db --input my_big_fasta_file.fasta.gz --level assembly --threads 12
 ```
 
-### Customized database at species level build based on files previously downloaded with genome_updater
+### Customized database at species level build based on files previously downloaded with [genome_updater](https://github.com/pirovc/genome_updater)
 ```bash
 ganon build-custom --db-prefix custom_db_gu --input myfiles/2022-06-28_10-02-14/files/ --level species --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --threads 12
 ```
@@ -509,10 +504,11 @@ Genome sizes of parent nodes are calculated as the average of the respective chi
 
 Further taxonomy and assembly linking information has to be collected to properly build the database. `--ncbi-sequence-info` and `--ncbi-file-info` allow customizations on this step.
 
-`--ncbi-sequence-info` (used when `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
+When `--input-target sequence`, `--ncbi-sequence-info` argument allows the use of NCBI e-utils webservices (`eutils`) or downloads accession2taxid files to extract target information (options `nucl_gb` `nucl_wgs` `nucl_est` `nucl_gss` `pdb` `prot` `dead_nucl` `dead_wgs` `dead_prot`). By default, ganon uses `eutils` up-to 50000 input sequences, otherwise it downloads `nucl_gb` `nucl_wgs` from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. Previously downloaded files can be directly provided with this argument.
 
-`--ncbi-file-info` (used when `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
+When `--input-target file`, `--ncbi-file-info` uses `assembly_summary.txt` from https://ftp.ncbi.nlm.nih.gov/genomes/ to extract target information (options `refseq` `genbank` `refseq_historical` `genbank_historical`. Previously downloaded files can be directly provided with this argument.
 
+If you are using outdated, removed or inactive assembly or sequence files and accessions from NCBI, make sure to include `dead_nucl` `dead_wgs` for `--ncbi-sequence-info` or `refseq_historical` `genbank_historical` for `--ncbi-file-info`. `eutils` option does not work with outdated accessions.
 
 ### ganon report
 
@@ -561,7 +557,7 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
+                   [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -609,6 +605,8 @@ optional arguments:
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -617,8 +615,8 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [--write-info-file] [-r [...]]
-                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
+usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
+                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -649,8 +647,6 @@ custom arguments:
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
-  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
-                        further attempts. (default: False)
 
 ncbi arguments:
   -r [ ...], --ncbi-sequence-info [ ...]
@@ -683,6 +679,8 @@ optional arguments:
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -691,7 +689,7 @@ optional arguments:
   <summary>ganon update</summary>
 
 ```
-usage: ganon update [-h] -d DB_PREFIX [-o] [-t] [--restart] [--verbose] [--quiet]
+usage: ganon update [-h] -d DB_PREFIX [-o] [-t] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -711,6 +709,8 @@ optional arguments:
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -777,8 +777,8 @@ other arguments:
 
 ```
 usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]] [-f] [-t]
-                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [--verbose] [--quiet] [--min-count] [--max-count]
-                    [--names [...]] [--names-with [...]] [--taxids [...]]
+                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose] [--quiet] [--min-count]
+                    [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
 
 options:
   -h, --help            show this help message and exit
@@ -806,8 +806,9 @@ db/tax arguments:
 
 output arguments:
   -f , --output-format 
-                        Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better
-                        visualization. (default: tsv)
+                        Output format [text,tsv,csv,bioboxes]. text outputs a tabulated formatted text file for better
+                        visualization. bioboxes is the the CAMI challenge profiling format (only percentage/abundances
+                        are reported). (default: tsv)
   -t , --report-type    Type of report [abundance,reads,matches,dist,corr]. 'abundance' -> tax. abundance (re-distribute
                         read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all
                         unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only,
@@ -828,6 +829,9 @@ output arguments:
   -k [ ...], --keep-hierarchy [ ...]
                         One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels) (default:
                         [])
+  -c , --top-percentile 
+                        Top percentile filter, based on percentage/relative abundance. Applied only at default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly] (default: 0)
 
 optional arguments:
   --verbose             Verbose output mode (default: False)
