@@ -47,8 +47,8 @@ class Config:
         build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=0.05, help="Max. false positive rate for bloom filters Mutually exclusive --filter-size.")
         build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,    help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
         build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,   help="The k-mer size to split sequences.")
-        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=32,   help="The window-size to build filter with minimizers.")
-        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=0,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,   help="The window-size to build filter with minimizers.")
+        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
 
         ####################################################################################################
 
@@ -125,7 +125,7 @@ class Config:
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
         classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.0],  help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
