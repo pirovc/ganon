@@ -52,7 +52,7 @@ def build(cfg):
                                            "-f 'genomic.fna.gz'",
                                            "-t " + str(cfg.threads),
                                            "-o " + files_output_folder,
-                                           "-M " + cfg.taxonomy if cfg.taxonomy else "",
+                                           "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
                                            "-m",
                                            "-i" if resume_download else "",
                                            "-s" if cfg.quiet else "",
@@ -65,11 +65,11 @@ def build(cfg):
     # get current version from assembly_summary
     input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
 
-    build_custom_params = {"input": input_folder,
+    build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
                            "input_target": "file",
                            "level": "assembly",
-                           "ncbi_file_info": assembly_summary}
+                           "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.db_prefix,
                             "taxonomy": cfg.taxonomy,
@@ -84,7 +84,9 @@ def build(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
 
     build_custom_params.update(build_default_params)
 
@@ -127,11 +129,11 @@ def update(cfg):
     assembly_summary = files_output_folder + "assembly_summary.txt"
     input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
 
-    build_custom_params = {"input": input_folder,
+    build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
                            "input_target": "file",
                            "level": "assembly",
-                           "ncbi_file_info": assembly_summary}
+                           "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
                             "threads": cfg.threads,
@@ -139,7 +141,9 @@ def update(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
     build_custom_params.update(build_default_params)
 
     loaded_params = load_config(files_output_folder + "config.pkl")
@@ -156,15 +160,29 @@ def update(cfg):
                              which_call="update")
 
     if ret_build:
+        new_files_output_folder = None
+        if cfg.output_db_prefix:
+            new_files_output_folder = set_output_folder(cfg.output_db_prefix)
+            
+        # Change input config to new folder    
+        if new_files_output_folder:
+            build_custom_config.input = [new_files_output_folder + get_gu_current_version(assembly_summary) + "/files/"]
+            build_custom_config.ncbi_file_info = [new_files_output_folder + "assembly_summary.txt"]
+
         # Save config again (change on db_prefix, input folders)
         save_config(build_custom_config, files_output_folder + "config.pkl")
 
         # Remove save states from finished update (from base folder)
         clear_states("update", files_output_folder)
 
-        if cfg.output_db_prefix:
+        if new_files_output_folder:
+            if os.path.isfile(new_files_output_folder + "build/target_info.tsv"):
+                # Move target_info.tsv created in the new folder to the old and remove empty folder
+                shutil.move(new_files_output_folder + "build/target_info.tsv",
+                            files_output_folder + "build/target_info.tsv")
+                shutil.rmtree(set_output_folder(cfg.output_db_prefix) + "build/")
             # Move files folder to new output_db_prefix
-            os.rename(set_output_folder(cfg.db_prefix), set_output_folder(cfg.output_db_prefix))
+            os.rename(set_output_folder(cfg.db_prefix), new_files_output_folder)
 
     return ret_build
 

@@ -6,32 +6,32 @@ matrix:
     - name: "linux gcc-8"
       os: linux
       addons:
-        apt: { packages: [g++-8] }
+        apt: { packages: [g++-8, parallel] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
 
     - name: "linux gcc-9"
       os: linux
       addons:
-        apt: { packages: [g++-9] }
+        apt: { packages: [g++-9, parallel] }
       env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
 
     - name: "linux gcc-10"
       os: linux
       addons:
-        apt: { packages: [g++-10] }
+        apt: { packages: [g++-10, parallel] }
       env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
 
     - name: "linux gcc-8 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov] }
+        apt: { packages: [g++-8, lcov, parallel] }
       env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
 
 before_install:
   - eval "${MATRIX_EVAL}"
   - python3 -m pip install --upgrade pip
   - python3 -m pip install "pandas>=1.1.0"
-  - python3 -m pip install "multitax>=1.1.1"
+  - python3 -m pip install "multitax>=1.2.1"
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install coverage;
     fi
@@ -49,17 +49,17 @@ script:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
     else
-      python3 -m unittest discover -s tests/ganon/integration/ -v;
-      python3 setup.py install --user;
+      python3 -m unittest discover -s tests/ganon/integration/ -v &&
+      python3 setup.py install --user &&
       ganon -h;
     fi
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov;
-      python3 -m coverage xml -o coverage_py.xml;
-      curl -Os https://uploader.codecov.io/latest/linux/codecov;
-      chmod +x codecov;
+      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov &&
+      python3 -m coverage xml -o coverage_py.xml &&
+      curl -Os https://uploader.codecov.io/latest/linux/codecov &&
+      chmod +x codecov &&
       ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
     fi
 
