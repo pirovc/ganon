@@ -538,12 +538,12 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, default_rank
             if rank in default_ranks:
                 rank_perc[rank].append(perc)
         # Define threhsold for percentile
+
         for rank, perc_list in rank_perc.items():
-            if len(perc_list) > 1:
-                rank_cutoff_percentile[rank] = perc_list[ceil(
-                    cfg.top_percentile * len(perc_list))]
-            else:
-                rank_cutoff_percentile[rank] = perc_list[0]
+            top = ceil(cfg.top_percentile * len(perc_list))
+            if top < len(perc_list):
+                rank_cutoff_percentile[rank] = perc_list[top]
+
 
     for node, cum_count in tree_cum_counts.items():
         rank = tax.rank(node)
