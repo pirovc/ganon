@@ -28,7 +28,7 @@ public:
     std::vector< std::string > hierarchy_labels{ "H1" };
 
     std::vector< double > rel_cutoff{ 0.2 };
-    std::vector< double > rel_filter{ 0.1 };
+    std::vector< double > rel_filter{ 0.0 };
 
     std::string output_prefix       = "";
     bool        output_lca          = false;

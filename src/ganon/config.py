@@ -124,8 +124,8 @@ class Config:
         classify_group_required.add_argument("-p", "--paired-reads", type=str, nargs="*", required=False, metavar="reads.1.fq[.gz] reads.2.fq[.gz]", help="Multi-fastq[.gz] pairs of file[s] to classify")
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
-        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.2],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.0],  help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
+        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.0],   help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
@@ -188,14 +188,14 @@ class Config:
         table_group_required.add_argument("-o", "--output-file",     type=str,          required=True,                            help="Output filename for the table")
 
         table_group_output = table_parser.add_argument_group("output arguments")
-        table_group_output.add_argument("-l", "--output-value",  type=str,                    metavar="", default="counts", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]. Default: counts")
-        table_group_output.add_argument("-f", "--output-format", type=str,                    metavar="", default="tsv",    help="Output format [tsv, csv]. Default: tsv")
+        table_group_output.add_argument("-l", "--output-value",  type=str,                    metavar="", default="counts", help="Output value on the table [percentage, counts]. percentage values are reported between [0-1]")
+        table_group_output.add_argument("-f", "--output-format", type=str,                    metavar="", default="tsv",    help="Output format [tsv, csv]")
         table_group_output.add_argument("-t", "--top-sample",    type=unsigned_int(minval=0), metavar="", default=0,        help="Top hits of each sample individually")
         table_group_output.add_argument("-a", "--top-all",       type=unsigned_int(minval=0), metavar="", default=0,        help="Top hits of all samples (ranked by percentage)")
         table_group_output.add_argument("-m", "--min-frequency", type=int_or_float(minval=0), metavar="", default=0,        help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
         table_group_output.add_argument("-r", "--rank",          type=str,             metavar="", default=None,     help="Define specific rank to report. Empty will report all ranks.")
         table_group_output.add_argument("-n", "--no-root",       action="store_true",    default=False,              help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
-        table_group_output.add_argument("--header",              type=str,   metavar="", default="name",             help="Header information [name, taxid, lineage]. Default: name")
+        table_group_output.add_argument("--header",              type=str,   metavar="", default="name",             help="Header information [name, taxid, lineage]")
         table_group_output.add_argument("--unclassified-label",  type=str,   metavar="", default=None,               help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
         table_group_output.add_argument("--filtered-label",      type=str,   metavar="", default=None,               help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
         table_group_output.add_argument("--skip-zeros",          action="store_true",    default=False,              help="Do not print lines with only zero count/percentage")

@@ -530,7 +530,7 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, default_rank
 
     filter_counts_msg = {}
     filter_counts_msg["orphan"] = {"count": 0, "msg": "orphan entries removed"}
-    filter_counts_msg["ranks"] = {"count": 0, "msg": "entries removed not in --ranks [" + ",".join(fixed_ranks[1:]) if fixed_ranks else "" + "]"}
+    filter_counts_msg["ranks"] = {"count": 0, "msg": "entries removed not in --ranks [" + (",".join(fixed_ranks[1:]) if fixed_ranks else "") + "]"}
     filter_counts_msg["percentile"] = {"count": 0, "msg": "entries removed with --top-percentile " + str(cfg.top_percentile)}
     filter_counts_msg["min_count"] = {"count": 0, "msg": "entries removed with --min-count " + str(cfg.min_count)}
     filter_counts_msg["max_count"] = {"count": 0, "msg": "entries removed with --max-count " + str(cfg.min_count)}
