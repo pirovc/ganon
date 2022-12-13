@@ -410,15 +410,15 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 ## Choosing and explaining parameters
 
-The most important parameters and expected effects and trade-offs are:
+The most important parameters and trade-offs are:
 
-- `ganon build --window-size --kmer-size`: window should always be same or larger than kmer. The higher the difference between them, the smaller the database size will be, with some loss of sensitivity/precision when using the database for classification.
-- `ganon classify --rel-cutoff`: will define the percentage of matches between read and database. higher values will improve precision with a loss of sensitivity with a decrease in unique matches but an increase in overall matches.
-- `ganon classify --rel-filter`: filter matches after cutoff is applied. Usually set between `0` and `0.2`. Will allow further good scoring matches to be considered. 
-- `ganon report --report-type`: ...
-- `ganon report --min-count`: ...
+- `ganon build` `--window-size --kmer-size`: the *window* value should always be same or larger than *kmer* value. The larger the difference between them, the smaller the database size will be. However, some loss of sensitivity/precision is expected when using the database for classification. Larger kmer values (e.g. `31`) will improve classification, specially read binning, at a cost of larger database sizes.
+- `ganon classify` `--rel-cutoff`: will define the matches between reads and database. Higher `--rel-cutoff` values will improve precision with some loss of sensitivity with a decrease in unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For using the read classification/binning output, lower values between `0.2` and `0.4` are recommended.
+- `ganon classify` `--rel-filter`: filter matches after cutoff is applied. Usually set between `0` and `0.2`. With higher filter values, further good scoring matches will be reported.
+- `ganon report` `--report-type`: reports either taxonomic, sequence or matches abundances. Use `corr` or `abundance` for taxonomic profiling, `reads` or `dist` for sequence profiling and `matches` to report a summary of all matches.
+- `ganon report` `--min-count`: cutoff to discard underrepresented taxa. will remove the common long tail of false positives when performing classification. Values between `0.0001` (0.01%) and `0.001` (0.1%) are good safe points. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively `--top-percentile` can be used to keep a relative amount of taxa instead a hard cutoff.
 
-ganon default parameters are optimized for **taxonomic profiling**. If you want to use ganon as a read binning/classified, you may want to set `ganon classify --rel-cutoff` to a lower value (e.g. `0.2`), activate the `--output-lca/--output-all` and when reporting use `ganon report --report-type` to `reads`.
+The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an [issue](https://github.com/pirovc/ganon/issues).
 
 Below, a more in-depth explanation of important parameters:
 
@@ -607,10 +607,10 @@ advanced arguments:
   -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
-  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 0)
+                        (default: 4)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -681,10 +681,10 @@ advanced arguments:
   -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
-  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 0)
+                        (default: 4)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -750,11 +750,11 @@ cutoff/filter arguments:
   -c [ ...], --rel-cutoff [ ...]
                         Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider
                         a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g.
-                        0.7 1 0.25). 0 for no cutoff (default: [0.2])
+                        0.7 1 0.25). 0 for no cutoff (default: [0.75])
   -e [ ...], --rel-filter [ ...]
                         Additional relative percentage of minimizers (relative to the best match) to keep a match.
                         Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
-                        0). 1 for no filter (default: [0.1])
+                        0). 1 for no filter (default: [0.0])
 
 output arguments:
   -o , --output-prefix 
@@ -882,10 +882,10 @@ required arguments:
                         Output filename for the table (default: None)
 
 output arguments:
-  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1].
-                        Default: counts (default: counts)
+  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1]
+                        (default: counts)
   -f , --output-format 
-                        Output format [tsv, csv]. Default: tsv (default: tsv)
+                        Output format [tsv, csv] (default: tsv)
   -t , --top-sample     Top hits of each sample individually (default: 0)
   -a , --top-all        Top hits of all samples (ranked by percentage) (default: 0)
   -m , --min-frequency 
@@ -894,7 +894,7 @@ output arguments:
   -r , --rank           Define specific rank to report. Empty will report all ranks. (default: None)
   -n, --no-root         Do not report root node entry and lineage. Direct and shared matches to root will be accounted
                         as unclassified (default: False)
-  --header              Header information [name, taxid, lineage]. Default: name (default: name)
+  --header              Header information [name, taxid, lineage] (default: name)
   --unclassified-label 
                         Add column with unclassified count/percentage with the chosen label. May be the same as
                         --filtered-label (e.g. unassigned) (default: None)
