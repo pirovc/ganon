@@ -410,6 +410,18 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 ## Choosing and explaining parameters
 
+The most important parameters and expected effects and trade-offs are:
+
+- `ganon build --window-size --kmer-size`: window should always be same or larger than kmer. The higher the difference between them, the smaller the database size will be, with some loss of sensitivity/precision when using the database for classification.
+- `ganon classify --rel-cutoff`: will define the percentage of matches between read and database. higher values will improve precision with a loss of sensitivity with a decrease in unique matches but an increase in overall matches.
+- `ganon classify --rel-filter`: filter matches after cutoff is applied. Usually set between `0` and `0.2`. Will allow further good scoring matches to be considered. 
+- `ganon report --report-type`: ...
+- `ganon report --min-count`: ...
+
+ganon default parameters are optimized for **taxonomic profiling**. If you want to use ganon as a read binning/classified, you may want to set `ganon classify --rel-cutoff` to a lower value (e.g. `0.2`), activate the `--output-lca/--output-all` and when reporting use `ganon report --report-type` to `reads`.
+
+Below, a more in-depth explanation of important parameters:
+
 ### ganon build 
 
 #### filter false positive and size (--max-fp, --filter-size)
