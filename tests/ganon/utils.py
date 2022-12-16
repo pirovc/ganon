@@ -10,7 +10,7 @@ from multitax import CustomTx
 
 sys.path.append('src')
 from ganon import ganon
-
+from ganon.config import Config
 
 def run_ganon(cfg, prefix):
     """
@@ -276,10 +276,11 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
             print("Inconsistent percentage (>100%)")
             return None
 
-        # check if sum of percentage for each rank (excluding "no rank") is equal or lower than 100 (floor for rounding errors)
-        if(res["tre_pd"][res["tre_pd"]["rank"]!="no rank"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
-            print("Inconsistent percentage by rank (>100%)")
-            return None
+        # check if sum of percentage for each default rank is equal or lower than 100 (floor for rounding errors)
+        for rank, val in res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor).items():
+            if rank in Config.choices_default_ranks and val>100:
+                print("Inconsistent percentage by rank (>100%)")
+                return None
 
         # Check if counts are consistent
         if ((res["tre_pd"]["unique"] + res["tre_pd"]["shared"] + res["tre_pd"]["children"]) > res["tre_pd"]["cumulative"]).any():

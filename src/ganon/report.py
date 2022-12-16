@@ -344,7 +344,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
                   "\n   Orphan nodes are reported with 'na' rank with root as a direct parent node. " +
                   "\n   Too show them, use 'na' in --ranks or set --ranks all"
                   "\n   Too ommit them, use --no-orphan", cfg.quiet)
-    print_log(" - " + str(len(sorted_nodes)) + " taxa reported", cfg.quiet)
+    print_log(" - " + str(len(sorted_nodes)) + " entries reported", cfg.quiet)
     return True
 
 
@@ -528,6 +528,17 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, default_rank
     """
     filtered_cum_counts = {}
 
+    filter_counts_msg = {}
+    filter_counts_msg["orphan"] = {"count": 0, "msg": "orphan entries removed"}
+    filter_counts_msg["ranks"] = {"count": 0, "msg": "entries removed not in --ranks [" + (",".join(fixed_ranks[1:]) if fixed_ranks else "") + "]"}
+    filter_counts_msg["percentile"] = {"count": 0, "msg": "entries removed with --top-percentile " + str(cfg.top_percentile)}
+    filter_counts_msg["min_count"] = {"count": 0, "msg": "entries removed with --min-count " + str(cfg.min_count)}
+    filter_counts_msg["max_count"] = {"count": 0, "msg": "entries removed with --max-count " + str(cfg.min_count)}
+    filter_counts_msg["taxids"] = {"count": 0, "msg": "entries removed not in --taxids [" + ",".join(cfg.taxids) + "]"}
+    filter_counts_msg["names"] = {"count": 0, "msg": "entries removed not in --names [" + ",".join(cfg.names) + "]"}
+    filter_counts_msg["names_with"] = {"count": 0, "msg": "entries removed not in --names-with [" + ",".join(cfg.names_with) + "]"}
+
+
     rank_cutoff_percentile = {}
     # Detect cut-off for top percentile
     if cfg.top_percentile:
@@ -538,12 +549,11 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, default_rank
             if rank in default_ranks:
                 rank_perc[rank].append(perc)
         # Define threhsold for percentile
+
         for rank, perc_list in rank_perc.items():
-            if len(perc_list) > 1:
-                rank_cutoff_percentile[rank] = perc_list[ceil(
-                    cfg.top_percentile * len(perc_list))]
-            else:
-                rank_cutoff_percentile[rank] = perc_list[0]
+            top = ceil(cfg.top_percentile * len(perc_list))
+            if top < len(perc_list):
+                rank_cutoff_percentile[rank] = perc_list[top]
 
     for node, cum_count in tree_cum_counts.items():
         rank = tax.rank(node)
@@ -554,39 +564,54 @@ def filter_report(tree_cum_counts, tree_cum_perc, tax, fixed_ranks, default_rank
 
         # Skip orphan nodes
         if node in orphan_nodes and cfg.no_orphan:
+            filter_counts_msg["orphan"]["count"]+=1
             continue
 
         # skip if not in fixed ranks
         if fixed_ranks and rank not in fixed_ranks:
+            filter_counts_msg["ranks"]["count"]+=1
             continue
 
         # Filter by top percentile (if rank_cutoff_percentile is populated)
         if rank in rank_cutoff_percentile and tree_cum_perc[node] <= rank_cutoff_percentile[rank]:
+            filter_counts_msg["percentile"]["count"]+=1
             continue
 
         # Filter by value
         if cfg.min_count:
             if cfg.min_count > 1 and cum_count < cfg.min_count:
+                filter_counts_msg["min_count"]["count"]+=1
                 continue
             elif cfg.min_count < 1 and tree_cum_perc[node] < cfg.min_count:
+                filter_counts_msg["min_count"]["count"]+=1
                 continue
 
         if cfg.max_count:
             if cfg.max_count > 1 and cum_count > cfg.max_count:
+                filter_counts_msg["max_count"]["count"]+=1
                 continue
             elif cfg.max_count < 1 and tree_cum_perc[node] > cfg.max_count:
+                filter_counts_msg["max_count"]["count"]+=1
                 continue
 
         if cfg.taxids and not any(t in cfg.taxids for t in tax.lineage(node)):
+            filter_counts_msg["taxids"]["count"]+=1
             continue
 
         if cfg.names and not tax.name(node) in cfg.names:
+            filter_counts_msg["names"]["count"]+=1
             continue
 
         if cfg.names_with and not any(n in tax.name(node) for n in cfg.names_with):
+            filter_counts_msg["names_with"]["count"]+=1
             continue
 
         filtered_cum_counts[node] = cum_count
+
+
+    for f in filter_counts_msg.keys():
+        if filter_counts_msg[f]["count"] > 0:
+            print_log(" - " + str(filter_counts_msg[f]["count"]) + " " + filter_counts_msg[f]["msg"])
 
     return filtered_cum_counts
 
