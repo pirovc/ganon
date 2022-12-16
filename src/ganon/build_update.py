@@ -18,6 +18,7 @@ from ganon.tax_util import get_file_info
 from ganon.tax_util import get_sequence_info
 from ganon.tax_util import parse_sequence_accession
 from ganon.tax_util import parse_file_accession
+from ganon.tax_util import get_genome_size
 
 from multitax import NcbiTx, GtdbTx
 
@@ -51,7 +52,7 @@ def build(cfg):
                                            "-f 'genomic.fna.gz'",
                                            "-t " + str(cfg.threads),
                                            "-o " + files_output_folder,
-                                           "-M " + cfg.taxonomy if cfg.taxonomy else "",
+                                           "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
                                            "-m",
                                            "-i" if resume_download else "",
                                            "-s" if cfg.quiet else "",
@@ -64,11 +65,11 @@ def build(cfg):
     # get current version from assembly_summary
     input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
 
-    build_custom_params = {"input": input_folder,
+    build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
                            "input_target": "file",
                            "level": "assembly",
-                           "ncbi_file_info": assembly_summary}
+                           "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.db_prefix,
                             "taxonomy": cfg.taxonomy,
@@ -83,7 +84,9 @@ def build(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
 
     build_custom_params.update(build_default_params)
 
@@ -126,11 +129,11 @@ def update(cfg):
     assembly_summary = files_output_folder + "assembly_summary.txt"
     input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
 
-    build_custom_params = {"input": input_folder,
+    build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
                            "input_target": "file",
                            "level": "assembly",
-                           "ncbi_file_info": assembly_summary}
+                           "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
                             "threads": cfg.threads,
@@ -138,7 +141,9 @@ def update(cfg):
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
                             "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches}
+                            "n_batches": cfg.n_batches,
+                            "write_info_file": cfg.write_info_file,
+                            "keep_files": cfg.keep_files}
     build_custom_params.update(build_default_params)
 
     loaded_params = load_config(files_output_folder + "config.pkl")
@@ -155,15 +160,29 @@ def update(cfg):
                              which_call="update")
 
     if ret_build:
+        new_files_output_folder = None
+        if cfg.output_db_prefix:
+            new_files_output_folder = set_output_folder(cfg.output_db_prefix)
+            
+        # Change input config to new folder    
+        if new_files_output_folder:
+            build_custom_config.input = [new_files_output_folder + get_gu_current_version(assembly_summary) + "/files/"]
+            build_custom_config.ncbi_file_info = [new_files_output_folder + "assembly_summary.txt"]
+
         # Save config again (change on db_prefix, input folders)
         save_config(build_custom_config, files_output_folder + "config.pkl")
 
         # Remove save states from finished update (from base folder)
         clear_states("update", files_output_folder)
 
-        if cfg.output_db_prefix:
+        if new_files_output_folder:
+            if os.path.isfile(new_files_output_folder + "build/target_info.tsv"):
+                # Move target_info.tsv created in the new folder to the old and remove empty folder
+                shutil.move(new_files_output_folder + "build/target_info.tsv",
+                            files_output_folder + "build/target_info.tsv")
+                shutil.rmtree(set_output_folder(cfg.output_db_prefix) + "build/")
             # Move files folder to new output_db_prefix
-            os.rename(set_output_folder(cfg.db_prefix), set_output_folder(cfg.output_db_prefix))
+            os.rename(set_output_folder(cfg.db_prefix), new_files_output_folder)
 
     return ret_build
 
@@ -243,8 +262,10 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Filter and write taxonomy
         if tax:
+            # Get estimates of genome sizes
+            genome_sizes = get_genome_size(cfg, info["node"].unique(), tax, build_output_folder)
             tax.filter(info["node"].unique())  # filter only used tax. nodes
-            write_tax(cfg.db_prefix + ".tax", info, tax, user_bins_col, cfg.level, cfg.input_target)
+            write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
 
         # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
@@ -391,7 +412,7 @@ def load_taxonomy(cfg, build_output_folder):
     return tax
 
 
-def write_tax(tax_file, info, tax, user_bins_col, level, input_target):
+def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_target):
     """
     write tabular taxonomy file .tax
     may include specialization as nodes
@@ -405,13 +426,17 @@ def write_tax(tax_file, info, tax, user_bins_col, level, input_target):
     if user_bins_col != "node":
         # Set rank to level or input_target
         rank = level if level else input_target
-
         with open(tax_file, "a") as outf:
             for target, row in info.iterrows():
                 t = row[user_bins_col] if user_bins_col != "target" else target
                 n = row["specialization_name"] if user_bins_col == "specialization" else t
                 print(t, row["node"], rank, n, sep="\t", end="\n", file=outf)
 
+    # add genome_sizes col, either from node or parent (specialization)
+    tax_df = pd.read_csv(tax_file, names=["node", "parent", "rank", "name"], delimiter='\t', dtype=str)
+    # Get estimated genome size from parent in case of specialization 
+    tax_df["genome_size"] = tax_df.apply(lambda d: genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent], axis=1)
+    tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
 
 def write_target_info(info, input_target, user_bins_col, target_info_file):
     """

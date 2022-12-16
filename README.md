@@ -1,17 +1,8 @@
 # ganon [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458)
 
-ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used datasets (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates custom reports and tables among many other [features](#Features).
+ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used repositories (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates taxonomic and/or sequence abundance reports, generates contingency tables among many other [features](#Features).
 
 ---
-
-- [Quick install/usage guide](#quick-installusage-guide)
-- [Details](#details)
-- [Examples](#examples)
-- [Output files](#output-files)
-- [Building customized databases](#building-customized-databases)
-- [Multiple and Hierarchical classification](#multiple-and-hierarchical-classification)
-- [Choosing and explaining parameters](#choosing-and-explaining-parameters)
-- [Parameters](#parameters)
 
 ## Quick install/usage guide
 
@@ -43,22 +34,31 @@ ganon table --input classify_results.tre filtered_report.tre --output-file outpu
 ganon update --db-prefix arc_cg_rs --threads 12
 ```
 
-[More examples](#Examples)
+---
+
+- [Details](#details)
+- [Examples](#examples)
+- [Output files](#output-files)
+- [Building customized databases](#building-customized-databases)
+- [Multiple and Hierarchical classification](#multiple-and-hierarchical-classification)
+- [Choosing and explaining parameters](#choosing-and-explaining-parameters)
+- [Parameters](#parameters)
 
 ## Details
 
-ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references.
+ganon is designed to index large sets of genomic reference sequences and to classify short reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign short fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
 
 ### Features
 
-- NCBI and GTDB native support for taxonomic classification
+- NCBI and GTDB native support for taxonomic classification (but also runs without taxonomy)
 - integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
 - update indices incrementally (`ganon update`)
 - customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
 - build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
-- report the lowest common ancestor (LCA) but also multiple and unique matches for every read
-- generate reports and tables for multi-sample studies with filters and further customizations
+- [report](#report) the lowest common ancestor (LCA) but also multiple and unique matches for every read
+- [report](#report) sequence or taxonomic abundances as well as total number of matches
+- generate reports and contingency tables for multi-sample studies with several filter options
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -87,11 +87,11 @@ System packages:
 System packages:
 - python >=3.6
 - pandas >=1.1.0
-- multitax >=1.1.1
+- [multitax](https://github.com/pirovc/multitax) >=1.2.1
 
 ```bash
 python3 -V # >=3.6
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.1.1"
+python3 -m pip install "pandas>=1.1.0" "multitax>=1.2.1"
 ```
 
 #### Downloading and building ganon + submodules
@@ -132,19 +132,15 @@ ctest -VV .
 
 ## Examples
 
-### Commonly used reference set for metagenomics analysis (complete genomes, NCBI RefSeq, archaea+bacteria+fungi+viral)
+### Commonly used reference set for metagenomics analysis (archaea+bacteria+fungi+viral from NCBI RefSeq, complete genomes, one assembly per taxa)
+
 ```bash
-ganon build --db-prefix abfv_rs_cg --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12
+ganon build --db-prefix abfv_rs_cg_t1a --organism-group archaea bacteria fungi viral --source refseq --taxonomy ncbi --complete-genomes --threads 12 --top 1
 ```
 
-### Top 3 bacterial genomes (for each taxa) from NCBI RefSeq
+### GTDB database, one assembly per taxa
 ```bash
-ganon build --db-prefix bac_rs_top3 --organism-group bacteria --source refseq --taxonomy ncbi --top 3 --threads 12
-```
-
-### Complete GTDB database
-```bash
-ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12
+ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12 --top 1
 ```
 
 ### Database based on specific taxonomic identifiers (203492 - Fusobacteriaceae)
@@ -160,7 +156,7 @@ ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq 
 ganon build-custom --db-prefix my_db --input my_big_fasta_file.fasta.gz --level assembly --threads 12
 ```
 
-### Customized database at species level build based on files previously downloaded with genome_updater
+### Customized database at species level build based on files previously downloaded with [genome_updater](https://github.com/pirovc/genome_updater)
 ```bash
 ganon build-custom --db-prefix custom_db_gu --input myfiles/2022-06-28_10-02-14/files/ --level species --ncbi-file-info outfolder/2022-06-28_10-02-14/assembly_summary.txt --threads 12
 ```
@@ -176,37 +172,55 @@ ganon build-custom --db-prefix seq_target --input myfiles/2022-06-28_10-02-14/fi
 Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate the following database files:
 
  - {prefix}**.ibf**: main interleaved bloom filter index file
- - {prefix}**.tax**: taxonomic tree *(fields: target/node, parent, rank, name)* (only if `--taxonomy` is used)
- - {prefix}**_files/**: folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
+ - {prefix}**.tax**: taxonomy tree, only generated if `--taxonomy` is used *(fields: target/node, parent, rank, name, genome size)*.
+ - {prefix}**_files/**: (`ganon build` only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
 
 *Obs: Database files generated with version 1.2.0 or higher are not compatible with older versions.*
 
 ### classify
  
- - {prefix}**.rep**: plain report of the run with only targets that received a match *(fields: 1) hierarchy_label, 2) target, 3) total matches, 4) unique reads, 5) lca reads, 6) rank, 7) name)*. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`
+ - {prefix}**.tre**: full report file (see below)
+ - {prefix}**.rep**: plain report of the run with only targets that received a match. Can be used to re-generate full reports (.tre) with `ganon report`. At the end prints 2 extra lines with `#total_classified` and `#total_unclassified`. Fields:
+   - 1: hierarchy label
+   - 2: target
+   - 3: # total matches
+   - 4: # unique reads
+   - 5: # lca reads
+   - 6: rank
+   - 7: name
  - {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
- - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: 1) read identifier, 2) target, 3) k-mer/minimizer count)*
-  - {prefix}**.tre**: report file (see below)
+ - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: read identifier, target, k-mer/minimizer count)*
 
 ### report
 
- - {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. By default, this is a read-based report where each read classified is counted once. It is possible to generate this for all read matches (`ganon report --report-type matches`). In this case, single and shared matches are reported to their target. Each line in this report is a taxonomic entry, with the following fields: 
+ - {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible `--report-type`. More information on the different types of reports can be found [here](#report-type---report-type):
+   - *abundance*: will attempt to estimate **taxonomic abundances** by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes.
+   - *reads*: **sequence abundances**, reports the proportion of sequences assigned to a taxa, each read classified is counted once.
+   - *dist*: like *reads* with read count re-distribution.
+   - *corr*: like *reads* with correction by genome size.
+   - *matches*: every match is reported to their original target, including multiple and shared matches.
 
-  1) taxonomic rank *(e.g. phylum, species, ...)*
-  2) target *(e.g. taxid/specialization)*
-  3) target lineage *(e.g 1|2|1224|...)*
-  4) target name *(e.g. Paenibacillus polymyxa)*
-  5) \# unique assignments *(number of reads that matched exclusively to this target)*
-  6) \# shared assignments *(number of reads with non-unique matches directly assigned to this target. Represents the lca matches (`--report-type reads`) or shared matches (`--report-type matches`))*
-  7) \# children assignments *(number of reads assigned to all children nodes of this target)*
-  8) \# cumulative assignments *(the sum of the unique, shared and children reads/matches assigned up-to this target)*
-  9) \% cumulative assignments
+Each line in this report is a taxonomic entry (including the root node), with the following fields: 
 
-- Using `--report-type reads` the first line of the file will show the number of unclassified reads
+| col | field        | obs                                                                                                                                                                                                                            | example                                       |
+|-----|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
+| 1   | rank         |                                                                                                                                                                                                                                | phylum                                        |
+| 2   | target       | taxonomic id. or specialization (assembly id.)                                                                                                                                                                                 | 562                                           |
+| 3   | lineage      |                                                                                                                                                                                                                                | 1\|131567\|2\|1224\|28211\|766\|942\|768\|769 |
+| 4   | name         |                                                                                                                                                                                                                                | Chromobacterium rhizoryzae                    |
+| 5   | # unique     | number of reads that matched exclusively to this target                                                                                                                                                                        | 5                                             |
+| 6   | # shared     | number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (`--report-type reads`), re-assigned matches (`--report-type abundance/dist`) or shared matches (`--report-type matches`) | 10                                            |
+| 7   | # children   | number of unique and shared assignments to all children nodes of this target                                                                                                                                                   | 20                                            |
+| 8   | # cumulative | the sum of the unique, shared and children assignments up-to this target                                                                                                                                                       | 35                                            |
+| 9   | % cumulative | percentage of assignments or estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
 
-- The sum of cumulative assignments for the unclassified and root lines should be 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
+- The first line of the report file will show the number of unclassified reads (not for `--report-type matches`)
 
-- When `--report-type reads` only taxa that received direct read matches, either unique or through lca, are considered. Some reads may have only shared matches and will not be reported directly (but will be accounted on some parent level). To access those matches, create a report with `--report-type matches` or use directly the file {prefix}**.rep**.
+- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd) is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) aer reported. The root node and unclassified entries are ommited.
+
+- The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
+
+- For all report type but `matches`, only taxa that received direct read matches, either unique or by LCA assignment, are considered. Some reads may have only shared matches and will not be reported directly but will be accounted for on some parent level. To visualize those matches, create a report with `--report-type matches` or use directly the file {prefix}**.rep**.
 
 ### table
 
@@ -268,6 +282,24 @@ genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Pa
 species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  0  0   57  57.57576
 ```
 
+with `--output-format bioboxes` 
+
+```
+@Version:0.10.0
+@SampleID:example.rep H1
+@Ranks:superkingdom|phylum|class|order|family|genus|species|assembly
+@Taxonomy:db.tax
+@@TAXID  RANK          TAXPATH   TAXPATHSN                 PERCENTAGE
+2        superkingdom  2         Bacteria                  100.00000
+1224     phylum        2|1224    Bacteria|Proteobacteria   56.89782
+201174   phylum        2|201174  Bacteria|Actinobacteria   21.84869
+1239     phylum        2|1239    Bacteria|Firmicutes       9.75197
+976      phylum        2|976     Bacteria|Bacteroidota     6.15297
+1117     phylum        2|1117    Bacteria|Cyanobacteria    2.23146
+203682   phylum        2|203682  Bacteria|Planctomycetota  1.23353
+57723    phylum        2|57723   Bacteria|Acidobacteria    0.52549
+200795   phylum        2|200795  Bacteria|Chloroflexi      0.31118
+```
 </details>
 
 ## Building customized databases
@@ -378,6 +410,18 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 ## Choosing and explaining parameters
 
+The most important parameters and trade-offs are:
+
+- `ganon build` `--window-size --kmer-size`: the *window* value should always be the same or larger than the *kmer* value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small *kmer* and/or large *window*. Larger *kmer* values (e.g. `31`) will improve classification, specially read binning, at a cost of way bigger databases.
+- `ganon classify` `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher `--rel-cutoff` values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read classification/binning, lower values between `0.2` and `0.4` are recommended.
+- `ganon classify` `--rel-filter`: further filter top matches after cutoff is applied. Usually set between `0` and `0.2`.
+- `ganon report` `--report-type`: reports either taxonomic, sequence or matches abundances. Use `corr` or `abundance` for taxonomic profiling, `reads` or `dist` for sequence profiling and `matches` to report a summary of all matches.
+- `ganon report` `--min-count`: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between `0.0001` (0.01%) and `0.001` (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively `--top-percentile` can be used to keep a relative amount of taxa instead a hard cutoff.
+
+The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an [issue](https://github.com/pirovc/ganon/issues).
+
+Below, a more in-depth explanation of important parameters:
+
 ### ganon build 
 
 #### filter false positive and size (--max-fp, --filter-size)
@@ -462,13 +506,37 @@ The `--level` parameter defines the max. depth of the database for classificatio
 
 Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
 
+#### Genome sizes (--genome-size-files)
+
+Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/) is used. For `--taxonomy gtdb` the [\*_metadata.tar.gz](https://data.gtdb.ecogenomic.org/releases/latest/) files are used. Those files can be directly provided with the `--genome-size-files` argument.
+
+Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](#buildupdate).
+
 #### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
 
 Further taxonomy and assembly linking information has to be collected to properly build the database. `--ncbi-sequence-info` and `--ncbi-file-info` allow customizations on this step.
 
-`--ncbi-sequence-info` (used when `--input-target sequence`) allows the use of NCBI e-utils webservices or downloads accession2taxid files to extract target information. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ otherwise. Previously downloaded files can be directly provided.
+When `--input-target sequence`, `--ncbi-sequence-info` argument allows the use of NCBI e-utils webservices (`eutils`) or downloads accession2taxid files to extract target information (options `nucl_gb` `nucl_wgs` `nucl_est` `nucl_gss` `pdb` `prot` `dead_nucl` `dead_wgs` `dead_prot`). By default, ganon uses `eutils` up-to 50000 input sequences, otherwise it downloads `nucl_gb` `nucl_wgs` from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. Previously downloaded files can be directly provided with this argument.
 
-`--ncbi-file-info` (used when `--input-target file`) downloads assembly_summary.txt files to extract target information from https://ftp.ncbi.nlm.nih.gov/genomes/. Previously downloaded files can be directly provided.
+When `--input-target file`, `--ncbi-file-info` uses `assembly_summary.txt` from https://ftp.ncbi.nlm.nih.gov/genomes/ to extract target information (options `refseq` `genbank` `refseq_historical` `genbank_historical`. Previously downloaded files can be directly provided with this argument.
+
+If you are using outdated, removed or inactive assembly or sequence files and accessions from NCBI, make sure to include `dead_nucl` `dead_wgs` for `--ncbi-sequence-info` or `refseq_historical` `genbank_historical` for `--ncbi-file-info`. `eutils` option does not work with outdated accessions.
+
+### ganon report
+
+#### report type (--report-type)
+
+Several reports are availble with `--report-type`: `reads`, `abundance`, `dist`, `corr`, `matches`:
+
+`reads` reports **sequence abundances** which are the basic proportion of reads classified in the sample.
+
+`abundance` will convert sequence abundance into **taxonomic abundances** by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on [NCBI or GTDB auxiliary files](#genome-sizes---genome-size-files). Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.
+
+`dist` is the same of `reads` with read count re-distribution
+
+`corr` is the same of `reads` with correction by genome size
+
+`matches` will report the total number of matches classified, either unique or shared. *This report will output the total number of matches instead the total number of reads reported in all other reports.*
 
 ## Parameters
 
@@ -478,7 +546,7 @@ usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.2.0
+   _|   v. 1.3.0
 - - - - - - - - - -
 
 positional arguments:
@@ -500,8 +568,8 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k]
-                   [-w] [-s] [--restart] [--verbose] [--quiet]
+usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
+                   [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -527,6 +595,8 @@ download arguments:
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 important arguments:
   -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
@@ -537,16 +607,18 @@ advanced arguments:
   -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
-  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 0)
+                        (default: 4)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -555,8 +627,8 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [--write-info-file] [-r [...]] [-q [...]] -d
-                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet]
+usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
+                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -585,8 +657,8 @@ custom arguments:
                         (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
-  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
-                        further attempts. (default: False)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 ncbi arguments:
   -r [ ...], --ncbi-sequence-info [ ...]
@@ -609,16 +681,18 @@ advanced arguments:
   -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
-  -w , --window-size    The window-size to build filter with minimizers. (default: 32)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 0)
+                        (default: 4)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -627,7 +701,7 @@ optional arguments:
   <summary>ganon update</summary>
 
 ```
-usage: ganon update [-h] -d DB_PREFIX [-o] [-t] [--restart] [--verbose] [--quiet]
+usage: ganon update [-h] -d DB_PREFIX [-o] [-t] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -647,6 +721,8 @@ optional arguments:
                         {db_prefix}_files/ will be deleted if present. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
+  --write-info-file     Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for
+                        further attempts. (default: False)
 ```
 
 </details>
@@ -674,11 +750,11 @@ cutoff/filter arguments:
   -c [ ...], --rel-cutoff [ ...]
                         Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider
                         a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g.
-                        0.7 1 0.25). 0 for no cutoff (default: [0.2])
+                        0.7 1 0.25). 0 for no cutoff (default: [0.75])
   -e [ ...], --rel-filter [ ...]
                         Additional relative percentage of minimizers (relative to the best match) to keep a match.
                         Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
-                        0). 1 for no filter (default: [0.1])
+                        0). 1 for no filter (default: [0.0])
 
 output arguments:
   -o , --output-prefix 
@@ -698,9 +774,10 @@ other arguments:
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
   -r [ ...], --ranks [ ...]
-                        Ranks to report (.tre). 'all' for all possible ranks. empty for default ranks (superkingdom
-                        phylum class order family genus species assembly). This file can be re-generated with the 'ganon
-                        report' command (default: None)
+                        Ranks to report taxonomic abundances (.tre). empty will report default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly]. This file can be re-generated
+                        with the 'ganon report' command for other types of abundances (reads, matches) with further
+                        filtration and output options (default: [])
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -711,9 +788,9 @@ other arguments:
   <summary>ganon report</summary>
 
 ```
-usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-f] [-t] [-r [...]]
-                    [-s] [-a] [-y] [-p [...]] [-k [...]] [--verbose] [--quiet] [--min-count] [--max-count]
-                    [--names [...]] [--names-with [...]] [--taxids [...]]
+usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]] [-f] [-t]
+                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose] [--quiet] [--min-count]
+                    [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
 
 options:
   -h, --help            show this help message and exit
@@ -736,19 +813,25 @@ db/tax arguments:
   -x , --taxonomy       Taxonomy database to use [ncbi,gtdb,skip]. Mutually exclusive with --db-prefix. (default: ncbi)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
+  -z [ ...], --genome-size-files [ ...]
+                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 output arguments:
   -f , --output-format 
-                        Output format [text, tsv, csv]. text outputs a tabulated formatted text file for better
-                        visualization. Default: tsv (default: tsv)
-  -t , --report-type    Type of report to generate [reads, matches]. Default: reads (default: reads)
+                        Output format [text,tsv,csv,bioboxes]. text outputs a tabulated formatted text file for better
+                        visualization. bioboxes is the the CAMI challenge profiling format (only percentage/abundances
+                        are reported). (default: tsv)
+  -t , --report-type    Type of report [abundance,reads,matches,dist,corr]. 'abundance' -> tax. abundance (re-distribute
+                        read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all
+                        unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only,
+                        'corr' -> like abundance without re-distribution of shared read counts (default: abundance)
   -r [ ...], --ranks [ ...]
-                        Ranks to report ['', 'all', custom list] 'all' for all possible ranks. empty for default ranks
-                        (superkingdom phylum class order family genus species assembly). Default: (default: [])
+                        Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly]. (default: [])
   -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
-                        db/tax) are reported as 'na' with root as direct parent (default: False)
+                        db/tax) are reported as 'na' with root as direct parent. (default: False)
   -y, --split-hierarchy
                         Split output reports by hierarchy (from ganon classify --hierarchy-labels). If activated, the
                         output files will be named as '{output_prefix}.{hierarchy}.tre' (default: False)
@@ -758,6 +841,9 @@ output arguments:
   -k [ ...], --keep-hierarchy [ ...]
                         One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels) (default:
                         [])
+  -c , --top-percentile 
+                        Top percentile filter, based on percentage/relative abundance. Applied only at default ranks
+                        [superkingdom,phylum,class,order,family,genus,species,assembly] (default: 0)
 
 optional arguments:
   --verbose             Verbose output mode (default: False)
@@ -796,10 +882,10 @@ required arguments:
                         Output filename for the table (default: None)
 
 output arguments:
-  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1].
-                        Default: counts (default: counts)
+  -l , --output-value   Output value on the table [percentage, counts]. percentage values are reported between [0-1]
+                        (default: counts)
   -f , --output-format 
-                        Output format [tsv, csv]. Default: tsv (default: tsv)
+                        Output format [tsv, csv] (default: tsv)
   -t , --top-sample     Top hits of each sample individually (default: 0)
   -a , --top-all        Top hits of all samples (ranked by percentage) (default: 0)
   -m , --min-frequency 
@@ -808,7 +894,7 @@ output arguments:
   -r , --rank           Define specific rank to report. Empty will report all ranks. (default: None)
   -n, --no-root         Do not report root node entry and lineage. Direct and shared matches to root will be accounted
                         as unclassified (default: False)
-  --header              Header information [name, taxid, lineage]. Default: name (default: name)
+  --header              Header information [name, taxid, lineage] (default: name)
   --unclassified-label 
                         Add column with unclassified count/percentage with the chosen label. May be the same as
                         --filtered-label (e.g. unassigned) (default: None)

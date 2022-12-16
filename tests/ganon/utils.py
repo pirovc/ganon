@@ -10,7 +10,7 @@ from multitax import CustomTx
 
 sys.path.append('src')
 from ganon import ganon
-
+from ganon.config import Config
 
 def run_ganon(cfg, prefix):
     """
@@ -71,10 +71,10 @@ def parse_info(info_file):
     return pd.read_table(info_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
-def parse_tre(tre_file):
+def parse_tre(tre_file, output_format: str="tsv"):
     colums = ['rank', 'target', 'lineage', 'name', 'unique', 'shared', 'children', 'cumulative', 'cumulative_perc']
     types = {'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'uint64', 'shared': 'uint64', 'children': 'uint64', 'cumulative': 'uint64', 'cumulative_perc': 'float'}
-    return pd.read_table(tre_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
+    return pd.read_table(tre_file, sep="," if output_format=="csv" else "\t", header=None, skiprows=0, names=colums, dtype=types)
 
 
 def parse_tsv(tsv_file):
@@ -250,14 +250,16 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         res = {}
         # Sequence information from database to be updated
-        res["tre_pd"] = parse_tre(out_tre)
+        res["tre_pd"] = parse_tre(out_tre, params["output_format"])
 
         # get idx for root (idx_root) and root + unclassified (idx_base)
-        res["idx_root"] = res["tre_pd"]['rank'] == "root"
-        if params["report_type"] == "reads":
-            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
-        else:
+        # strip white spaces for output_format text
+        res["idx_root"] = res["tre_pd"]['rank'].str.strip() == "root"
+        if params["report_type"] == "matches":
             res["idx_base"] = res["idx_root"]
+        else:
+            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
+            
 
         # Check if total is 100%
         if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
@@ -274,15 +276,32 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
             print("Inconsistent percentage (>100%)")
             return None
 
-        # check if sum of percentage for each rank (excluding "no rank") is equal or lower than 100 (floor for rounding errors)
-        if(res["tre_pd"][res["tre_pd"]["rank"]!="no rank"].groupby(by="rank")["cumulative_perc"].sum().apply(floor)>100).any():
-            print("Inconsistent percentage by rank (>100%)")
-            return None
+        # check if sum of percentage for each default rank is equal or lower than 100 (floor for rounding errors)
+        for rank, val in res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor).items():
+            if rank in Config.choices_default_ranks and val>100:
+                print("Inconsistent percentage by rank (>100%)")
+                return None
 
         # Check if counts are consistent
         if ((res["tre_pd"]["unique"] + res["tre_pd"]["shared"] + res["tre_pd"]["children"]) > res["tre_pd"]["cumulative"]).any():
             print("Inconsistent counts")
             return None 
+
+        # Check if percentage/abundance is consistent
+        # nodes cannot have higher percentage than parents
+        target_perc = dict(zip(res["tre_pd"]["target"], res["tre_pd"]["cumulative_perc"]))
+        for l in res["tre_pd"]["lineage"]:
+            # skip empty nodes (e.g 241||412412 -> 241|412412)
+            lineage = [n for n in l.split("|") if n]
+            # From leaf to root
+            for node_idx in list(range(len(lineage)))[::-1]:
+                # if node_idx is not latest (0 -> no parent) and if node is reported
+                if node_idx and lineage[node_idx] in target_perc:
+                    parent = lineage[node_idx-1]
+                    # If parent is reported
+                    if parent in target_perc and target_perc[lineage[node_idx]] > target_perc[parent]:
+                        #print(lineage[node_idx], parent, target_perc[lineage[node_idx]], target_perc[parent])
+                        print("Inconsistent percentage among children")
 
         multi_res[out_tre] = res
 
@@ -322,3 +341,27 @@ def table_sanity_check_and_parse(params):
 
     return res
 
+def download_bulk_files(download_dir):
+
+    bulk_files = {"https://ftp.ncbi.nlm.nih.gov/": 
+                     ["pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz",
+                      "pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
+                      "genomes/refseq/assembly_summary_refseq.txt",
+                      "genomes/refseq/assembly_summary_refseq_historical.txt",
+                      "genomes/genbank/assembly_summary_genbank.txt",
+                      "genomes/genbank/assembly_summary_genbank_historical.txt",
+                      "genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"],
+                  "https://data.gtdb.ecogenomic.org/releases/latest/":
+                      ["ar53_metadata.tar.gz",
+                      "bac120_metadata.tar.gz"]
+                  }
+
+    for url, files in bulk_files.items():
+        for file in files:
+            if os.path.isfile(download_dir + file):
+                print("File found: " + download_dir + file)
+            else:
+                p = os.path.dirname(file)
+                print("Downloading " + url + file + " -> " + download_dir + p + file)
+                os.makedirs(download_dir + p, exist_ok=True)
+                download([url + file], download_dir + p + "/")
