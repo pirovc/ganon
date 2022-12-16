@@ -828,18 +828,15 @@ class TestReport(unittest.TestCase):
         self.assertTrue(
             run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
         taxid = []
-        perc = []
+
         with open(params["output_prefix"] + ".tre", "r") as file:
             for line in file:
                 if line[0] == "@":
                     continue
                 taxid.append(line.rstrip().split("\t")[0])
-                perc.append(float(line.rstrip().split("\t")[4]))
 
-        # Check if output has same taxids and percentages
+        # Check if output has same taxids
         self.assertTrue(res["tre_pd"][~res["idx_base"]]["target"].isin(taxid).all(),
-                        "ganon report inconsistend on bioboxes output format")
-        self.assertTrue(res["tre_pd"][~res["idx_base"]]["cumulative_perc"].isin(perc).all(),
                         "ganon report inconsistend on bioboxes output format")
 
 
