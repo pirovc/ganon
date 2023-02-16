@@ -339,24 +339,12 @@ uint64_t number_of_bins( THashesCount const& hashes_count, uint64_t n_hashes )
 }
 
 
-// double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions)
-//{
-//    /*
-//     * calculates the rate that a bin size should increase to accomodate the multiple error
-//     * problem created by splitting a target into many bins
-//     * There may be a overestimation of this rate due to floating point precision (when hash_functions > 1)
-//     * this will cause the correction to be slightly higher than necessary
-//     */
-//    return std::log( 1.0 - std::exp( std::log( 1.0 - std::pow( 1.0 - max_fp, max_split_bins ) ) / hash_functions ) )
-//           / std::log( 1.0 - std::exp( std::log( max_fp ) / hash_functions ) );
-//}
-
-
 double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions, uint64_t n_hashes )
 {
     /*
      * calculates the rate that a bin size should increase to accomodate the multiple error
-     * problem created by splitting a target into many bins
+     * problem created by splitting a target into many bins. Based on target splitted amongs
+     * the most bins
      */
 
     double const target_fpr        = 1.0 - std::exp( std::log( 1.0 - max_fp ) / max_split_bins );
