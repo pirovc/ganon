@@ -339,17 +339,20 @@ uint64_t number_of_bins( THashesCount const& hashes_count, uint64_t n_hashes )
 }
 
 
-double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions )
+double correction_rate( uint64_t max_split_bins, double max_fp, uint8_t hash_functions, uint64_t n_hashes )
 {
     /*
      * calculates the rate that a bin size should increase to accomodate the multiple error
-     * problem created by splitting a target into many bins
-     * There may be a overestimation of this rate due to floating point precision (when hash_functions > 1)
-     * this will cause the correction to be slightly higher than necessary
+     * problem created by splitting a target into many bins. Based on target splitted amongs
+     * the most bins
      */
-    return std::log( 1.0 - std::exp( std::log( 1.0 - std::pow( 1.0 - max_fp, max_split_bins ) ) / hash_functions ) )
-           / std::log( 1.0 - std::exp( std::log( max_fp ) / hash_functions ) );
+
+    double const target_fpr        = 1.0 - std::exp( std::log( 1.0 - max_fp ) / max_split_bins );
+    size_t const new_bin_size      = bin_size( target_fpr, n_hashes, hash_functions );
+    size_t const original_bin_size = bin_size( max_fp, n_hashes, hash_functions );
+    return static_cast< double >( new_bin_size ) / original_bin_size;
 }
+
 
 inline uint64_t optimal_bins( uint64_t n_bins )
 {
@@ -538,7 +541,7 @@ void optimal_hashes_fp( double const        max_fp,
             approx_fp = max_fp;
 
         // correction rate based on the max. number of splits of a single target
-        double crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions );
+        double crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions, n_hashes );
         // apply to the bin size
         bin_size_bits = bin_size_bits * crate;
         // Calculate final filter size
@@ -797,10 +800,15 @@ bool run( Config config )
     timeEstimateParams.stop();
 
     // Print verbose arguments for ibf
-    if ( config.verbose ){
+    if ( config.verbose )
+    {
         std::cerr << ibf_config;
-        std::cerr << "Filter size: " << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits ) << " Bits";
-        std::cerr  << " (" << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits ) / static_cast< double >( 8388608u ) << " Megabytes)" << std::endl;
+        std::cerr << "Filter size: " << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits )
+                  << " Bits";
+        std::cerr << " ("
+                  << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits )
+                         / static_cast< double >( 8388608u )
+                  << " Megabytes)" << std::endl;
     }
 
     // Split hashes into optimal size creating technical bins
