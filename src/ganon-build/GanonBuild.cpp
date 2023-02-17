@@ -547,6 +547,14 @@ void optimal_hashes_fp( double const        max_fp,
         // Calculate final filter size
         uint64_t filter_size_bits = bin_size_bits * optimal_bins( n_bins );
 
+
+        std::cout << "n_hashes: " << n_hashes << '\t';
+        std::cout << "n_bins: " << n_bins << '\t';
+        std::cout << "bin_size_bits: " << bin_size_bits << '\t';
+        std::cout << "max_split_bins: " << max_split_bins << '\t';
+        std::cout << "crate: " << crate << '\t';
+        std::cout << "filter_size_bits: " << filter_size_bits << '\n';
+        
         // values too small or big due to small n_hashes, break
         if ( filter_size_bits == 0 || std::isinf( crate ) )
             break;
