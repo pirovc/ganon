@@ -148,7 +148,7 @@ class TestBuildCustom(unittest.TestCase):
         # Simulate download from local files (assembly_summary and species_genome_size)
         params["ncbi_url"] = "file://" + os.path.abspath(data_dir) + "/build-custom/remote/"
         params["ncbi_file_info"] = ["refseq", "genbank"]
-        
+
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -161,7 +161,7 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
 
-        # Simulate download from local files (ar and bac taxonomy and metadata)
+        # Simulate download from local files (ar and bac metadata)
         params["gtdb_url"] = "file://" + os.path.abspath(data_dir) + "/build-custom/"
 
         cfg = Config("build-custom", **params)
@@ -495,7 +495,7 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_ncbi_sequence_info(self):
         """
-        ganon build-custom --ncbi-sequence-info files
+        ganon build-custom --ncbi-sequence-info local files
         """
         # one accession2taxid
         params = self.default_params.copy()
@@ -548,6 +548,27 @@ class TestBuildCustom(unittest.TestCase):
         params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+
+    def test_ncbi_sequence_info_download(self):
+        """
+        ganon build-custom --ncbi-sequence-info files simulating download
+        """
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_ncbi_sequence_info_download"
+        params["input_target"] = "sequence"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+
+        # Simulate download from local files (nucl_gb and species_genome_size)
+        params["ncbi_url"] = "file://" + os.path.abspath(data_dir) + "/build-custom/remote/"
+        params["ncbi_sequence_info"] = ["nucl_gb"]
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
 
     def test_ncbi_file_info(self):
         """
