@@ -526,6 +526,7 @@ def validate_taxonomy(info, tax, cfg):
 
     # Skip invalid nodes (na == tax.undefined_node (None))
     na_entries = info["node"].isna().sum()
+
     if na_entries > 0:
         info.dropna(subset=["node"], inplace=True)
         print_log(" - " + str(na_entries) + " entries without valid taxonomic nodes skipped", cfg.quiet)

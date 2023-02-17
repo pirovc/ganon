@@ -188,13 +188,6 @@ def get_file_info(cfg, info, tax, build_output_folder):
             tx = time.time()
             print_log("Downloading assembly_summary files", cfg.quiet)
             assembly_summary_files.extend(download(assembly_summary_urls, build_output_folder))
-            # Skip headers (first 2 lines) so pandas.read_csv read it properly
-            for f in assembly_summary_files:
-                with open(f, 'r+') as fp:
-                    lines = fp.readlines()
-                    fp.seek(0)
-                    fp.truncate()
-                    fp.writelines(lines[2:])
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
         tx = time.time()
@@ -349,10 +342,19 @@ def parse_assembly_summary(info, assembly_summary_files, level):
     unique_acc = set(info.index)
 
     for assembly_summary in assembly_summary_files:
+        # Detect header lines beforehand, so pandas.read_csv can read it properly
+        header_lines = 0
+        with open(assembly_summary, 'r') as ass_sum:
+            for line in ass_sum:
+                if line[0] == "#":
+                    header_lines += 1
+                else:
+                    break
+
         tmp_acc_node = pd.read_csv(assembly_summary,
                                    sep="\t",
                                    header=None,
-                                   # skiprows=2, do not skiprows (no header from genome_updater or skipped before)
+                                   skiprows=header_lines,
                                    # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
                                    usecols=[0, 5, 7, 8],
                                    names=["target", "node", "organism_name", "infraspecific_name"],
