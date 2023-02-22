@@ -436,39 +436,45 @@ inline uint64_t get_max_hashes( THashesCount const& hashes_count )
     return max_hashes;
 }
 
-void optimal_hashes_size( double const        filter_size,
-                          IBFConfig&          ibf_config,
-                          THashesCount const& hashes_count,
-                          uint8_t const       hash_functions,
-                          uint8_t const       max_hash_functions,
-                          std::string const   mode )
+void optimal_hashes( double const        max_fp,
+                     double const        filter_size,
+                     IBFConfig&          ibf_config,
+                     THashesCount const& hashes_count,
+                     uint8_t const       hash_functions,
+                     uint8_t const       max_hash_functions,
+                     std::string const   mode )
 {
+
     /*
-     * given a fixed filter size, iterate over possible capacities for a bin (single bloom filter)
-     * and calculate the respective false positive, considering split bins
-     * selects the parameters generating the smallest fp and fill the ibf_config struct
+     * given a max. false positive or filter_size, iterate over possible capacities for a bin (single bloom filter)
+     * and calculate the respective size, considering split bins
+     * selects the parameters generating the "best" between smallest filter/fp and n. of bins and fill the ibf_config
+     * struct
      */
 
     // Target with the highest number of minimizers
     uint64_t max_hashes = get_max_hashes( hashes_count );
-    // target value to be chosen (the smallest)
-    double   min_fp   = 1;
-    uint64_t min_bins = 0;
 
-    // simulation on every 100th n. of elements
-    size_t iter = 100;
-    // check if max_hashes not smaller than iteration
-    if ( max_hashes < iter )
-        iter = max_hashes;
+    // save minimal values for average
+    uint64_t min_filter_size = 0;
+    uint64_t min_bins        = 0;
+    double   min_fp          = 1;
 
     // save simulations for average
     struct SimParam
     {
         uint64_t n_hashes;
         uint64_t n_bins;
+        uint64_t filter_size_bits;
         double   fp;
     };
     std::vector< SimParam > simulations;
+
+    // simulation on every 100th n. of elements
+    size_t iter = 100;
+    // check if max_hashes not smaller than iteration
+    if ( max_hashes < iter )
+        iter = max_hashes;
 
     // (total + 1) to deal with zero index
     for ( size_t n = max_hashes + 1; n > iter; n -= iter )
@@ -479,213 +485,140 @@ void optimal_hashes_size( double const        filter_size,
         // actual number of bins based on targets and elements (not multiple of 64)
         uint64_t n_bins = number_of_bins( hashes_count, n_hashes );
 
-        // size of each bin based on fixed final size
-        int64_t bin_size_bits = ( filter_size / static_cast< double >( optimal_bins( n_bins ) ) ) * 8388608u;
-
-        // define optimal hash functions (if 0) or set provided
-        uint8_t optimal_hash_functions =
-            get_optimal_hash_functions( bin_size_bits, n_hashes, hash_functions, max_hash_functions );
-
-        // max. times a target is split into several bins number of splits for one target
-        uint64_t max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
-
-        // false positive for the current values, considering split bins
-        double real_fp =
-            1 - std::pow( 1.0 - false_positive( bin_size_bits, optimal_hash_functions, n_hashes ), max_split_bins );
-
-        // Save simulation values
-        simulations.emplace_back( SimParam{ n_hashes, n_bins, real_fp } );
-
-        if ( real_fp < min_fp )
-            min_fp = real_fp;
-
-        if ( n_bins < min_bins || min_bins == 0 )
-            min_bins = n_bins;
-    }
-
-
-    // Select "optimal" hashes as a harmonic mean of n_bins and fp
-    // considering their difference to possible minimal values
-    double min_avg = 0;
-
-    // default mode avg, harmonic mean between ratios
-    double mode_val = 1;
-    double fp_val   = 1;
-    double bins_val = 1;
-
-    // if special mode is selected, mean is deviated by a factor (smaller is better for ratios, so 0.5)
-    // 0 means that the metric is ignored and just the other used (fastest or smallest)
-    if ( mode == "smaller" || mode == "faster" )
-        mode_val = 0.5;
-    else if ( mode == "smallest" || mode == "fastest" )
-        mode_val = 0;
-
-    if ( mode == "smaller" || mode == "smallest" )
-        fp_val = mode_val;
-    else if ( mode == "faster" || mode == "fastest" )
-        bins_val = mode_val;
-
-
-    for ( auto const& params : simulations )
-    {
-        double const fp_ratio   = params.fp / min_fp;
-        double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
-        double const avg        = ( 1 + std::pow( mode_val, 2 ) )
-                           * ( ( fp_ratio * bins_ratio ) / ( ( fp_val * fp_ratio ) + ( bins_val * bins_ratio ) ) );
-
-
-        if ( avg < min_avg || min_avg == 0 )
+        int64_t bin_size_bits          = 0;
+        uint8_t optimal_hash_functions = 0;
+        if ( filter_size )
         {
-            min_avg                   = avg;
-            ibf_config.max_hashes_bin = params.n_hashes;
-            ibf_config.bin_size_bits =
-                ( filter_size / static_cast< double >( optimal_bins( params.n_bins ) ) ) * 8388608u;
-            ibf_config.n_bins         = params.n_bins;
-            ibf_config.hash_functions = get_optimal_hash_functions(
-                ibf_config.bin_size_bits, params.n_hashes, hash_functions, max_hash_functions );
-            ibf_config.max_fp = params.fp;
-        }
-    }
-}
-
-void optimal_hashes_fp( double const        max_fp,
-                        IBFConfig&          ibf_config,
-                        THashesCount const& hashes_count,
-                        uint8_t const       hash_functions,
-                        uint8_t const       max_hash_functions,
-                        std::string const   mode )
-{
-    /*
-     * given a max. false positive, iterate over possible capacities for a bin (single bloom filter)
-     * and calculate the respective size, considering split bins
-     * selects the parameters generating the "best" between smallest filter and n. of bins and fill the ibf_config struct
-     */
-
-    // user provided fixed target max. fp
-    ibf_config.max_fp = max_fp;
-
-    // Target with the highest number of minimizers
-    uint64_t max_hashes = get_max_hashes( hashes_count );
-
-    // save minimal values for average
-    uint64_t min_filter_size = 0;
-    uint64_t min_bins        = 0;
-
-    // save simulations for average
-    struct SimParam
-    {
-        uint64_t n_hashes;
-        uint64_t n_bins;
-        uint64_t filter_size_bits;
-    };
-    std::vector< SimParam > simulations;
-
-    // simulation on every 100th n. of elements
-    size_t iter = 100;
-    // check if max_hashes not smaller than iteration
-    if ( max_hashes < iter )
-        iter = max_hashes;
-
-    // (total + 1) to deal with zero index
-    for ( size_t n = max_hashes + 1; n > iter; n -= iter )
-    {
-        // number of elements to be inserted in a bin
-        uint64_t const n_hashes = n - 1;
-
-        // actual number of bins based on targets and elements (not multiple of 64)
-        uint64_t const n_bins = number_of_bins( hashes_count, n_hashes );
-
-        // Define size based on max.fp and elements (and h.functions if provided)
-        uint64_t bin_size_bits          = 0;
-        uint8_t  optimal_hash_functions = 0;
-        // If there's no defined n. of hash, get size based on fp and hashes
-        if ( hash_functions == 0 )
-        {
-            // First define size and than n. hash functions
-            bin_size_bits = bin_size( max_fp, n_hashes );
+            // if filter_size is provided, simple calculation
+            bin_size_bits = ( filter_size / static_cast< double >( optimal_bins( n_bins ) ) ) * 8388608u;
             optimal_hash_functions =
                 get_optimal_hash_functions( bin_size_bits, n_hashes, hash_functions, max_hash_functions );
         }
         else
         {
-            // n. hash functions provided, define best bin size with it
-            optimal_hash_functions =
-                get_optimal_hash_functions( bin_size_bits, n_hashes, hash_functions, max_hash_functions );
-            bin_size_bits = bin_size( max_fp, n_hashes, optimal_hash_functions );
+            if ( hash_functions == 0 )
+            {
+                // First define size and than n. hash functions
+                bin_size_bits = bin_size( max_fp, n_hashes );
+                optimal_hash_functions =
+                    get_optimal_hash_functions( bin_size_bits, n_hashes, hash_functions, max_hash_functions );
+            }
+            else
+            {
+                // n. hash functions provided, define best bin size with it
+                optimal_hash_functions =
+                    get_optimal_hash_functions( bin_size_bits, n_hashes, hash_functions, max_hash_functions );
+                bin_size_bits = bin_size( max_fp, n_hashes, optimal_hash_functions );
+            }
         }
 
         // max. times a target is split into several bins number of splits for one target
         uint64_t const max_split_bins = std::ceil( max_hashes / static_cast< double >( n_hashes ) );
-        // number of elements actually inserted to each bin
-        uint64_t const avg_n_hashes = std::ceil( max_hashes / static_cast< double >( max_split_bins ) );
-        // Approximate real false positive based on average n_hashes per split bin
-        // if not applied, can overestimate the correction rate if bins are not completely "full"
-        double approx_fp = false_positive( bin_size_bits, optimal_hash_functions, avg_n_hashes );
-        // if approx is higher (precision calculations) set back
-        if ( approx_fp > max_fp )
-            approx_fp = max_fp;
 
-        // correction rate based on the max. number of splits of a single target
-        double const crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions, n_hashes );
-        // apply to the bin size
-        bin_size_bits = bin_size_bits * crate;
-        // Calculate final filter size
-        uint64_t const filter_size_bits = bin_size_bits * optimal_bins( n_bins );
+        // Calculate either fp if filter_size is provided or filter_size if max_fp is provided
+        double   fp               = 0;
+        uint64_t filter_size_bits = 0;
+        if ( filter_size )
+        {
+            // false positive for the current values, considering split bins
+            fp =
+                1 - std::pow( 1.0 - false_positive( bin_size_bits, optimal_hash_functions, n_hashes ), max_split_bins );
 
-        // values too small or big due to small n_hashes or too high crate break loop
-        if ( filter_size_bits == 0 || std::isinf( crate ) )
-            break;
+            // save minimal value
+            if ( fp < min_fp )
+                min_fp = fp;
+        }
+        else
+        {
+
+            // number of elements actually inserted to each bin
+            uint64_t const avg_n_hashes = std::ceil( max_hashes / static_cast< double >( max_split_bins ) );
+            // Approximate real false positive based on average n_hashes per split bin
+            // if not applied, can overestimate the correction rate if bins are not completely "full"
+            double approx_fp = false_positive( bin_size_bits, optimal_hash_functions, avg_n_hashes );
+            // if approx is higher (precision calculations) set back
+            if ( approx_fp > max_fp )
+                approx_fp = max_fp;
+
+            // correction rate based on the max. number of splits of a single target
+            double const crate = correction_rate( max_split_bins, approx_fp, optimal_hash_functions, n_hashes );
+            // apply to the bin size
+            bin_size_bits = bin_size_bits * crate;
+            // Calculate final filter size
+            filter_size_bits = bin_size_bits * optimal_bins( n_bins );
+
+            // values too small or big due to small n_hashes or too high crate break loop
+            if ( filter_size_bits == 0 || std::isinf( crate ) )
+                break;
+
+            // save minimal value
+            if ( filter_size_bits < min_filter_size || min_filter_size == 0 )
+                min_filter_size = filter_size_bits;
+        }
 
         // Save simulation values
-        simulations.emplace_back( SimParam{ n_hashes, n_bins, filter_size_bits } );
+        simulations.emplace_back( SimParam{ n_hashes, n_bins, filter_size_bits, fp } );
 
-        // Define min. value for filter size and number of bins, to calculate ratio later
-        if ( filter_size_bits < min_filter_size || min_filter_size == 0 )
-            min_filter_size = filter_size_bits;
+        // save minimal value
         if ( n_bins < min_bins || min_bins == 0 )
             min_bins = n_bins;
     }
 
     // Select "optimal" hashes as a harmonic mean of n_bins and filter_size
     // considering their difference to possible minimal values
-    double min_avg = 0;
-
-    // default mode avg, harmonic mean between ratios
-    double mode_val = 1;
-    double size_val = 1;
-    double bins_val = 1;
-
     // if special mode is selected, mean is deviated by a factor (smaller is better for ratios, so 0.5)
     // 0 means that the metric is ignored and just the other used (fastest or smallest)
+    double mode_val = 1; // 1 is default mode avg, harmonic mean between ratios
     if ( mode == "smaller" || mode == "faster" )
         mode_val = 0.5;
     else if ( mode == "smallest" || mode == "fastest" )
         mode_val = 0;
 
+    // used either for fp or filter_size_bits, depending on what is provided
+    double var_val = 1;
+    // used for bin ratios
+    double bins_val = 1;
     if ( mode == "smaller" || mode == "smallest" )
-        size_val = mode_val;
+        var_val = mode_val;
     else if ( mode == "faster" || mode == "fastest" )
         bins_val = mode_val;
 
+    double min_avg = 0;
     for ( auto const& params : simulations )
     {
-        double const size_ratio = params.filter_size_bits / static_cast< double >( min_filter_size );
+        double var_ratio = 0;
+        if ( filter_size )
+            var_ratio = params.fp / min_fp;
+        else
+            var_ratio = params.filter_size_bits / static_cast< double >( min_filter_size );
+
         double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
-        double const avg =
-            ( 1 + std::pow( mode_val, 2 ) )
-            * ( ( size_ratio * bins_ratio ) / ( ( size_val * size_ratio ) + ( bins_val * bins_ratio ) ) );
+        double const avg        = ( 1 + std::pow( mode_val, 2 ) )
+                           * ( ( var_ratio * bins_ratio ) / ( ( var_val * var_ratio ) + ( bins_val * bins_ratio ) ) );
 
         if ( avg < min_avg || min_avg == 0 )
         {
-            min_avg                   = avg;
+            min_avg = avg;
+            if ( filter_size )
+            {
+                ibf_config.bin_size_bits =
+                    ( filter_size / static_cast< double >( optimal_bins( params.n_bins ) ) ) * 8388608u;
+                ibf_config.max_fp = params.fp;
+            }
+            else
+            {
+                ibf_config.bin_size_bits = params.filter_size_bits / optimal_bins( params.n_bins );
+                ibf_config.max_fp        = max_fp;
+            }
+
             ibf_config.max_hashes_bin = params.n_hashes;
-            ibf_config.bin_size_bits  = params.filter_size_bits / optimal_bins( params.n_bins );
             ibf_config.n_bins         = params.n_bins;
             ibf_config.hash_functions = get_optimal_hash_functions(
                 ibf_config.bin_size_bits, params.n_hashes, hash_functions, max_hash_functions );
         }
     }
 }
+
 
 TBinMapHash create_bin_map_hash( IBFConfig const& ibf_config, THashesCount const& hashes_count )
 {
@@ -907,22 +840,14 @@ bool run( Config config )
     // Define optimal parameters based on provided filter size or max.fp
     // fills ibf_config with optimal value
     timeEstimateParams.start();
-    if ( config.filter_size > 0 )
-    {
-        // Optimal max hashes per bin based on filter size (smallest harm.mean between fp and n. bins)
-        detail::optimal_hashes_size( config.filter_size,
-                                     ibf_config,
-                                     hashes_count,
-                                     config.hash_functions,
-                                     config.max_hash_functions,
-                                     config.mode );
-    }
-    else
-    {
-        // Optimal max hashes per bin based on max_fp (smallest harm.mean between filter size and n. bins)
-        detail::optimal_hashes_fp(
-            config.max_fp, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions, config.mode );
-    }
+    // Optimal max hashes per bin based on filter size (smallest harm.mean between fp and n. bins)
+    detail::optimal_hashes( config.max_fp,
+                            config.filter_size,
+                            ibf_config,
+                            hashes_count,
+                            config.hash_functions,
+                            config.max_hash_functions,
+                            config.mode );
     // Calculate true final fp and average based on selected ibf_config params
     std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) = detail::true_false_positive(
         hashes_count, ibf_config.max_hashes_bin, ibf_config.bin_size_bits, ibf_config.hash_functions );
