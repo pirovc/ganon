@@ -113,7 +113,7 @@ GanonBuild::Config defaultConfig( const std::string prefix )
     cfg.quiet          = true;
     cfg.kmer_size      = 19;
     cfg.window_size    = 32;
-    cfg.hash_functions = 0;
+    cfg.hash_functions = 4;
     cfg.max_fp         = 0.05;
     return cfg;
 }
@@ -235,8 +235,8 @@ SCENARIO( "building indices", "[ganon-build]" )
 
 
         std::string prefix2{ folder_prefix + "max_fp_0.5" };
-        auto        cfg2 = config_build::defaultConfig( prefix2 );
-        cfg2.max_fp      = 0.5;
+        auto        cfg2    = config_build::defaultConfig( prefix2 );
+        cfg2.max_fp         = 0.5;
 
         auto seqtarget2 = aux::SeqTarget( prefix2, seqs );
         seqtarget2.write_input_file( cfg2.input_file );
