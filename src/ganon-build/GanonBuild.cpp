@@ -451,13 +451,23 @@ void optimal_hashes_size( double const        filter_size,
     // Target with the highest number of minimizers
     uint64_t max_hashes = get_max_hashes( hashes_count );
     // target value to be chosen (the smallest)
-    double min_fp = 1;
+    double   min_fp   = 1;
+    uint64_t min_bins = 0;
 
     // simulation on every 100th n. of elements
     size_t iter = 100;
     // check if max_hashes not smaller than iteration
     if ( max_hashes < iter )
         iter = max_hashes;
+
+    // save simulations for average
+    struct SimParam
+    {
+        uint64_t n_hashes;
+        uint64_t n_bins;
+        double   fp;
+    };
+    std::vector< SimParam > simulations;
 
     // (total + 1) to deal with zero index
     for ( size_t n = max_hashes + 1; n > iter; n -= iter )
@@ -482,14 +492,35 @@ void optimal_hashes_size( double const        filter_size,
         double real_fp =
             1 - std::pow( 1.0 - false_positive( bin_size_bits, optimal_hash_functions, n_hashes ), max_split_bins );
 
+        // Save simulation values
+        simulations.emplace_back( SimParam{ n_hashes, n_bins, real_fp } );
+
         if ( real_fp < min_fp )
+            min_fp = real_fp;
+
+        if ( n_bins < min_bins || min_bins == 0 )
+            min_bins = n_bins;
+    }
+
+    // Select "optimal" hashes as a harmonic mean of n_bins and fp
+    // considering their difference to possible minimal values
+    double min_avg = 0;
+    for ( auto const& params : simulations )
+    {
+        double const fp_ratio   = params.fp / min_fp;
+        double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
+        double const avg        = 2 * ( ( fp_ratio * bins_ratio ) / ( fp_ratio + bins_ratio ) );
+
+        if ( avg < min_avg || min_avg == 0 )
         {
-            min_fp                    = real_fp;
-            ibf_config.max_hashes_bin = n_hashes;
-            ibf_config.bin_size_bits  = bin_size_bits;
-            ibf_config.hash_functions = optimal_hash_functions;
-            ibf_config.max_fp         = real_fp;
-            ibf_config.n_bins         = n_bins;
+            min_avg                   = avg;
+            ibf_config.max_hashes_bin = params.n_hashes;
+            ibf_config.bin_size_bits =
+                ( filter_size / static_cast< double >( optimal_bins( params.n_bins ) ) ) * 8388608u;
+            ibf_config.n_bins         = params.n_bins;
+            ibf_config.hash_functions = get_optimal_hash_functions(
+                ibf_config.bin_size_bits, params.n_hashes, hash_functions, max_hash_functions );
+            ibf_config.max_fp = params.fp;
         }
     }
 }
@@ -591,7 +622,7 @@ void optimal_hashes_fp( double const        max_fp,
             min_bins = n_bins;
     }
 
-    // Select "optimal" filter size as a harmonic mean of n_bins and filter_size
+    // Select "optimal" hashes as a harmonic mean of n_bins and filter_size
     // considering their difference to possible minimal values
     double min_avg = 0;
     for ( auto const& params : simulations )
@@ -834,13 +865,13 @@ bool run( Config config )
     timeEstimateParams.start();
     if ( config.filter_size > 0 )
     {
-        // Optimal max hashes per bin based on filter size (smallest fp)
+        // Optimal max hashes per bin based on filter size (smallest harm.mean between fp and n. bins)
         detail::optimal_hashes_size(
             config.filter_size, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
     }
     else
     {
-        // Optimal max hashes per bin based on max_fp (smallest harm.average filter size and n. bins)
+        // Optimal max hashes per bin based on max_fp (smallest harm.mean between filter size and n. bins)
         detail::optimal_hashes_fp(
             config.max_fp, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
     }
