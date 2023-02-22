@@ -23,6 +23,7 @@ class Config:
     choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
+    choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -44,11 +45,12 @@ class Config:
         build_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
-        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=0.05, help="Max. false positive rate for bloom filters Mutually exclusive --filter-size.")
-        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,    help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
-        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,   help="The k-mer size to split sequences.")
-        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,   help="The window-size to build filter with minimizers.")
-        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,    help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=0.05,  help="Max. false positive rate for bloom filters Mutually exclusive --filter-size.")
+        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,     help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
+        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,    help="The k-mer size to split sequences.")
+        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
+        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="", choices=self.choices_mode)
 
         ####################################################################################################
 

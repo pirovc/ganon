@@ -80,6 +80,7 @@ def build(cfg):
                             "kmer_size": cfg.kmer_size,
                             "window_size": cfg.window_size,
                             "hash_functions": cfg.hash_functions,
+                            "mode": cfg.mode,
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
@@ -153,6 +154,7 @@ def update(cfg):
     build_custom_params["kmer_size"] = loaded_params["kmer_size"]
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
+    build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
@@ -287,6 +289,7 @@ def build_custom(cfg, which_call: str="build_custom"):
                                        "--kmer-size " + str(cfg.kmer_size),
                                        "--window-size " + str(cfg.window_size),
                                        "--hash-functions " + str(cfg.hash_functions),
+                                       "--mode " + cfg.mode,
                                        "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
                                        "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
                                        "--tmp-output-folder '" + build_output_folder + "'",

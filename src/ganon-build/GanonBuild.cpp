@@ -440,7 +440,8 @@ void optimal_hashes_size( double const        filter_size,
                           IBFConfig&          ibf_config,
                           THashesCount const& hashes_count,
                           uint8_t const       hash_functions,
-                          uint8_t const       max_hash_functions )
+                          uint8_t const       max_hash_functions,
+                          std::string const   mode )
 {
     /*
      * given a fixed filter size, iterate over possible capacities for a bin (single bloom filter)
@@ -502,14 +503,36 @@ void optimal_hashes_size( double const        filter_size,
             min_bins = n_bins;
     }
 
+
     // Select "optimal" hashes as a harmonic mean of n_bins and fp
     // considering their difference to possible minimal values
     double min_avg = 0;
+
+    // default mode avg, harmonic mean between ratios
+    double mode_val = 1;
+    double fp_val   = 1;
+    double bins_val = 1;
+
+    // if special mode is selected, mean is deviated by a factor (smaller is better for ratios, so 0.5)
+    // 0 means that the metric is ignored and just the other used (fastest or smallest)
+    if ( mode == "smaller" || mode == "faster" )
+        mode_val = 0.5;
+    else if ( mode == "smallest" || mode == "fastest" )
+        mode_val = 0;
+
+    if ( mode == "smaller" || mode == "smallest" )
+        fp_val = mode_val;
+    else if ( mode == "faster" || mode == "fastest" )
+        bins_val = mode_val;
+
+
     for ( auto const& params : simulations )
     {
         double const fp_ratio   = params.fp / min_fp;
         double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
-        double const avg        = 2 * ( ( fp_ratio * bins_ratio ) / ( fp_ratio + bins_ratio ) );
+        double const avg        = ( 1 + std::pow( mode_val, 2 ) )
+                           * ( ( fp_ratio * bins_ratio ) / ( ( fp_val * fp_ratio ) + ( bins_val * bins_ratio ) ) );
+
 
         if ( avg < min_avg || min_avg == 0 )
         {
@@ -529,7 +552,8 @@ void optimal_hashes_fp( double const        max_fp,
                         IBFConfig&          ibf_config,
                         THashesCount const& hashes_count,
                         uint8_t const       hash_functions,
-                        uint8_t const       max_hash_functions )
+                        uint8_t const       max_hash_functions,
+                        std::string const   mode )
 {
     /*
      * given a max. false positive, iterate over possible capacities for a bin (single bloom filter)
@@ -625,11 +649,31 @@ void optimal_hashes_fp( double const        max_fp,
     // Select "optimal" hashes as a harmonic mean of n_bins and filter_size
     // considering their difference to possible minimal values
     double min_avg = 0;
+
+    // default mode avg, harmonic mean between ratios
+    double mode_val = 1;
+    double size_val = 1;
+    double bins_val = 1;
+
+    // if special mode is selected, mean is deviated by a factor (smaller is better for ratios, so 0.5)
+    // 0 means that the metric is ignored and just the other used (fastest or smallest)
+    if ( mode == "smaller" || mode == "faster" )
+        mode_val = 0.5;
+    else if ( mode == "smallest" || mode == "fastest" )
+        mode_val = 0;
+
+    if ( mode == "smaller" || mode == "smallest" )
+        size_val = mode_val;
+    else if ( mode == "faster" || mode == "fastest" )
+        bins_val = mode_val;
+
     for ( auto const& params : simulations )
     {
         double const size_ratio = params.filter_size_bits / static_cast< double >( min_filter_size );
         double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
-        double const avg        = 2 * ( ( size_ratio * bins_ratio ) / ( size_ratio + bins_ratio ) );
+        double const avg =
+            ( 1 + std::pow( mode_val, 2 ) )
+            * ( ( size_ratio * bins_ratio ) / ( ( size_val * size_ratio ) + ( bins_val * bins_ratio ) ) );
 
         if ( avg < min_avg || min_avg == 0 )
         {
@@ -866,14 +910,18 @@ bool run( Config config )
     if ( config.filter_size > 0 )
     {
         // Optimal max hashes per bin based on filter size (smallest harm.mean between fp and n. bins)
-        detail::optimal_hashes_size(
-            config.filter_size, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
+        detail::optimal_hashes_size( config.filter_size,
+                                     ibf_config,
+                                     hashes_count,
+                                     config.hash_functions,
+                                     config.max_hash_functions,
+                                     config.mode );
     }
     else
     {
         // Optimal max hashes per bin based on max_fp (smallest harm.mean between filter size and n. bins)
         detail::optimal_hashes_fp(
-            config.max_fp, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions );
+            config.max_fp, ibf_config, hashes_count, config.hash_functions, config.max_hash_functions, config.mode );
     }
     // Calculate true final fp and average based on selected ibf_config params
     std::tie( ibf_config.true_max_fp, ibf_config.true_avg_fp ) = detail::true_false_positive(
