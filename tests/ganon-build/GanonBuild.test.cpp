@@ -235,8 +235,8 @@ SCENARIO( "building indices", "[ganon-build]" )
 
 
         std::string prefix2{ folder_prefix + "max_fp_0.5" };
-        auto        cfg2    = config_build::defaultConfig( prefix2 );
-        cfg2.max_fp         = 0.5;
+        auto        cfg2 = config_build::defaultConfig( prefix2 );
+        cfg2.max_fp      = 0.5;
 
         auto seqtarget2 = aux::SeqTarget( prefix2, seqs );
         seqtarget2.write_input_file( cfg2.input_file );
