@@ -453,7 +453,7 @@ void optimal_hashes( double const        max_fp,
      */
 
     // Target with the highest number of minimizers
-    uint64_t max_hashes = get_max_hashes( hashes_count );
+    uint64_t const max_hashes = get_max_hashes( hashes_count );
 
     // save minimal values for average
     uint64_t min_filter_size = 0;
@@ -480,10 +480,10 @@ void optimal_hashes( double const        max_fp,
     for ( size_t n = max_hashes + 1; n > iter; n -= iter )
     {
         // number of elements to be inserted in a bin
-        uint64_t n_hashes = n - 1;
+        uint64_t const n_hashes = n - 1;
 
         // actual number of bins based on targets and elements (not multiple of 64)
-        uint64_t n_bins = number_of_bins( hashes_count, n_hashes );
+        uint64_t const n_bins = number_of_bins( hashes_count, n_hashes );
 
         int64_t bin_size_bits          = 0;
         uint8_t optimal_hash_functions = 0;
