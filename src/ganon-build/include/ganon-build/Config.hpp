@@ -70,12 +70,16 @@ public:
             return false;
         }
 
-        // Skip variables if updating, loads from existing filter file
         if ( filter_size == 0 && max_fp == 0 )
         {
             if ( !quiet )
                 std::cerr << "--false-positive or --filter-size is mandatory" << std::endl;
             return false;
+        }
+
+        if ( filter_size > 0 )
+        {
+            max_fp = 0;
         }
 
         if ( window_size < kmer_size )
