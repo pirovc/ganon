@@ -559,6 +559,12 @@ void optimal_hashes( double const        max_fp,
         // Save simulation values
         simulations.emplace_back( SimParam{ n_hashes, n_bins, filter_size_bits, fp } );
 
+        /*        std::cout << "n_hashes: " << n_hashes << '\t';
+                std::cout << "n_bins: " << n_bins << '\t';
+                std::cout << "filter_size_bits: " << filter_size_bits << '\t';
+                std::cout << "fp: " << fp << '\t';
+                std::cout << "hash_functions: " << unsigned( optimal_hash_functions ) << '\n';*/
+
         // save minimal value
         if ( n_bins < min_bins || min_bins == 0 )
             min_bins = n_bins;
@@ -595,6 +601,7 @@ void optimal_hashes( double const        max_fp,
         double const bins_ratio = params.n_bins / static_cast< double >( min_bins );
         double const avg        = ( 1 + std::pow( mode_val, 2 ) )
                            * ( ( var_ratio * bins_ratio ) / ( ( var_val * var_ratio ) + ( bins_val * bins_ratio ) ) );
+
 
         if ( avg < min_avg || min_avg == 0 )
         {

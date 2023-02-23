@@ -95,6 +95,20 @@ inline std::vector< std::vector< std::string > > parse_tsv( const std::string& f
     return parsed;
 }
 
+inline IBFConfig load_ibf_config( const std::string& file )
+{
+    std::ifstream              is( file, std::ios::binary );
+    cereal::BinaryInputArchive archive( is );
+
+    std::tuple< int, int, int > parsed_version;
+    IBFConfig                   ibf_config;
+
+    archive( parsed_version );
+    archive( ibf_config );
+
+    return ibf_config;
+}
+
 inline seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > load_ibf(
     const std::string& file, IBFConfig& ibf_config, std::vector< std::tuple< uint64_t, std::string > >& bin_map )
 {
@@ -226,6 +240,5 @@ struct SeqTarget
     bool                               sequence_as_target = false;
     bool                               custom_targets     = false;
 };
-
 
 } // namespace aux
