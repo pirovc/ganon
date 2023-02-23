@@ -546,7 +546,7 @@ usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.3.0
+   _|   v. 1.4.0
 - - - - - - - - - -
 
 positional arguments:
@@ -569,16 +569,16 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [-p] [-f] [-k] [-w] [-s] [-j] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
 
 required arguments:
   -g [ ...], --organism-group [ ...]
-                        One or more organism groups to download [archaea,bacteria,fungi,human,invertebrate,metagenomes,o
-                        ther,plant,protozoa,vertebrate_mammalian,vertebrate_other,viral]. Mutually exclusive --taxid
-                        (default: None)
+                        One or more organism groups to download [archaea, bacteria, fungi, human, invertebrate,
+                        metagenomes, other, plant, protozoa, vertebrate_mammalian, vertebrate_other, viral]. Mutually
+                        exclusive --taxid (default: None)
   -a [ ...], --taxid [ ...]
                         One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x
                         gtdb). Mutually exclusive --organism-group (default: None)
@@ -587,7 +587,7 @@ required arguments:
 
 download arguments:
   -b [ ...], --source [ ...]
-                        Source to download [refseq,genbank] (default: ['refseq'])
+                        Source to download [refseq, genbank] (default: ['refseq'])
   -o , --top            Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
                         Download only sub-set of complete genomes (default: False)
@@ -599,7 +599,7 @@ download arguments:
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
 
 important arguments:
-  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
+  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
                         ncbi)
   -t , --threads 
 
@@ -611,6 +611,10 @@ advanced arguments:
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
+                        respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
+                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
+                        to balance classification speed and database size. (default: avg)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -628,7 +632,7 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
-                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [--restart] [--verbose] [--quiet] [--write-info-file]
+                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -652,7 +656,7 @@ custom arguments:
                         will speed-up the building process (default: None)
   -l , --level          Use a specialized target to build the database. By default, --level is the --input-target.
                         Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy).
-                        Further specialization options [assembly,custom]. assembly will retrieve and use the assembly
+                        Further specialization options [assembly, custom]. assembly will retrieve and use the assembly
                         accession and name. custom requires and uses the specialization field in the --input-file.
                         (default: None)
   -m [ ...], --taxonomy-files [ ...]
@@ -663,17 +667,17 @@ custom arguments:
 ncbi arguments:
   -r [ ...], --ncbi-sequence-info [ ...]
                         Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information.
-                        [eutils,nucl_gb,nucl_wgs,nucl_est,nucl_gss,pdb,prot,dead_nucl,dead_wgs,dead_prot or one or more
-                        accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By
-                        default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise. (default:
+                        [eutils, nucl_gb, nucl_wgs, nucl_est, nucl_gss, pdb, prot, dead_nucl, dead_wgs, dead_prot or one
+                        or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/].
+                        By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise. (default:
                         [])
   -q [ ...], --ncbi-file-info [ ...]
-                        Downloads assembly_summary files to extract target information.
-                        [refseq,genbank,refseq_historical,genbank_historical or one or more assembly_summary files from
+                        Downloads assembly_summary files to extract target information. [refseq, genbank,
+                        refseq_historical, genbank_historical or one or more assembly_summary files from
                         https://ftp.ncbi.nlm.nih.gov/genomes/] (default: ['refseq', 'genbank'])
 
 important arguments:
-  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi,gtdb,skip] (default:
+  -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
                         ncbi)
   -t , --threads 
 
@@ -685,6 +689,10 @@ advanced arguments:
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
+                        respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
+                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
+                        to balance classification speed and database size. (default: avg)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -774,10 +782,10 @@ other arguments:
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
   -r [ ...], --ranks [ ...]
-                        Ranks to report taxonomic abundances (.tre). empty will report default ranks
-                        [superkingdom,phylum,class,order,family,genus,species,assembly]. This file can be re-generated
-                        with the 'ganon report' command for other types of abundances (reads, matches) with further
-                        filtration and output options (default: [])
+                        Ranks to report taxonomic abundances (.tre). empty will report default ranks [superkingdom,
+                        phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
+                        'ganon report' command for other types of abundances (reads, matches) with further filtration
+                        and output options (default: [])
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -810,7 +818,8 @@ db/tax arguments:
   -d [ ...], --db-prefix [ ...]
                         Database prefix(es) used for classification. Only '.tax' file(s) are required. If not provided,
                         new taxonomy will be downloaded. Mutually exclusive with --taxonomy. (default: [])
-  -x , --taxonomy       Taxonomy database to use [ncbi,gtdb,skip]. Mutually exclusive with --db-prefix. (default: ncbi)
+  -x , --taxonomy       Taxonomy database to use [ncbi, gtdb, skip]. Mutually exclusive with --db-prefix. (default:
+                        ncbi)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
@@ -818,16 +827,17 @@ db/tax arguments:
 
 output arguments:
   -f , --output-format 
-                        Output format [text,tsv,csv,bioboxes]. text outputs a tabulated formatted text file for better
-                        visualization. bioboxes is the the CAMI challenge profiling format (only percentage/abundances
-                        are reported). (default: tsv)
-  -t , --report-type    Type of report [abundance,reads,matches,dist,corr]. 'abundance' -> tax. abundance (re-distribute
-                        read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all
-                        unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only,
-                        'corr' -> like abundance without re-distribution of shared read counts (default: abundance)
+                        Output format [text, tsv, csv, bioboxes]. text outputs a tabulated formatted text file for
+                        better visualization. bioboxes is the the CAMI challenge profiling format (only
+                        percentage/abundances are reported). (default: tsv)
+  -t , --report-type    Type of report [abundance, reads, matches, dist, corr]. 'abundance' -> tax. abundance (re-
+                        distribute read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' ->
+                        report all unique and shared matches, 'dist' -> like reads with re-distribution of shared read
+                        counts only, 'corr' -> like abundance without re-distribution of shared read counts (default:
+                        abundance)
   -r [ ...], --ranks [ ...]
                         Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks
-                        [superkingdom,phylum,class,order,family,genus,species,assembly]. (default: [])
+                        [superkingdom, phylum, class, order, family, genus, species, assembly]. (default: [])
   -s , --sort           Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
@@ -843,7 +853,7 @@ output arguments:
                         [])
   -c , --top-percentile 
                         Top percentile filter, based on percentage/relative abundance. Applied only at default ranks
-                        [superkingdom,phylum,class,order,family,genus,species,assembly] (default: 0)
+                        [superkingdom, phylum, class, order, family, genus, species, assembly] (default: 0)
 
 optional arguments:
   --verbose             Verbose output mode (default: False)

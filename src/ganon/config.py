@@ -50,7 +50,7 @@ class Config:
         build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,    help="The k-mer size to split sequences.")
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
-        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at a cost of classification speed or size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller or smallest refers to the false positive rate. By default, an average value is calculated to balance speed and size.", choices=self.choices_mode)
+        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
 
         ####################################################################################################
 
