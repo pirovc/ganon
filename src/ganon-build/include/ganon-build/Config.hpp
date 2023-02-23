@@ -13,6 +13,7 @@ public:
     std::string input_file;
     std::string output_file;
     std::string tmp_output_folder = "";
+    std::string mode              = "avg";
     double      max_fp            = 0.05;
     double      filter_size       = 0;
     uint8_t     kmer_size         = 19;
@@ -73,7 +74,7 @@ public:
         if ( filter_size == 0 && max_fp == 0 )
         {
             if ( !quiet )
-                std::cerr << "--false-positive or --filter-size is mandatory" << std::endl;
+                std::cerr << "--max-fp or --filter-size is mandatory" << std::endl;
             return false;
         }
 
@@ -86,6 +87,13 @@ public:
         {
             if ( !quiet )
                 std::cerr << "--window-size has to be >= --kmer-size" << std::endl;
+            return false;
+        }
+
+        if ( mode != "avg" && mode != "smaller" && mode != "smallest" && mode != "faster" && mode != "fastest" )
+        {
+            if ( !quiet )
+                std::cerr << "Invalid --mode" << std::endl;
             return false;
         }
 
@@ -113,6 +121,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--kmer-size         " << unsigned( config.kmer_size ) << newl;
     stream << "--window-size       " << config.window_size << newl;
     stream << "--hash-functions    " << unsigned( config.hash_functions ) << newl;
+    stream << "--mode              " << config.mode << newl;
     stream << "--threads           " << config.threads << newl;
     stream << "--verbose           " << config.verbose << newl;
     stream << "--quiet             " << config.quiet << newl;

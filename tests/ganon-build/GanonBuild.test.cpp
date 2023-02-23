@@ -51,7 +51,6 @@ void validate_filter( const GanonBuild::Config cfg )
     }
 }
 
-
 void validate_elements( const GanonBuild::Config cfg, const aux::SeqTarget& seqtarget )
 {
     /*
@@ -281,6 +280,80 @@ SCENARIO( "building indices", "[ganon-build]" )
         // check if changed filter size
         REQUIRE( aux::fileSizeBytes( cfg.output_file ) < aux::fileSizeBytes( cfg2.output_file ) );
     }
+
+    SECTION( "--mode" )
+    {
+
+        SECTION( "--max-fp" )
+        {
+
+            // AVG
+            std::string prefix_avg{ folder_prefix + "mode_avg_max_fp" };
+            auto        cfg_avg = config_build::defaultConfig( prefix_avg );
+            cfg_avg.input_file  = "mode_input.tsv";
+            cfg_avg.max_fp      = 0.001;
+            cfg_avg.mode        = "avg";
+
+            REQUIRE( GanonBuild::run( cfg_avg ) );
+            config_build::validate_filter( cfg_avg );
+
+            // SMALLEST
+            std::string prefix_smallest{ folder_prefix + "mode_smallest_max_fp" };
+            auto        cfg_smallest = config_build::defaultConfig( prefix_smallest );
+            cfg_smallest.input_file  = "mode_input.tsv";
+            cfg_avg.max_fp           = 0.001;
+            cfg_smallest.mode        = "smallest";
+
+            REQUIRE( GanonBuild::run( cfg_smallest ) );
+            config_build::validate_filter( cfg_smallest );
+
+            REQUIRE( aux::fileSizeBytes( cfg_smallest.output_file ) < aux::fileSizeBytes( cfg_avg.output_file ) );
+        }
+
+        SECTION( "--filter-size" )
+        {
+
+            // AVG
+            std::string prefix_avg{ folder_prefix + "mode_avg_filter_size" };
+            auto        cfg_avg = config_build::defaultConfig( prefix_avg );
+            cfg_avg.input_file  = "mode_input.tsv";
+            cfg_avg.filter_size = 1;
+            cfg_avg.mode        = "avg";
+
+            REQUIRE( GanonBuild::run( cfg_avg ) );
+            config_build::validate_filter( cfg_avg );
+            auto ibf_config_avg = aux::load_ibf_config( cfg_avg.output_file );
+
+            // SMALLEST
+            std::string prefix_smallest{ folder_prefix + "mode_smallest_filter_size" };
+            auto        cfg_smallest = config_build::defaultConfig( prefix_smallest );
+            cfg_smallest.input_file  = "mode_input.tsv";
+            cfg_smallest.filter_size = 1;
+            cfg_smallest.mode        = "smallest";
+
+            REQUIRE( GanonBuild::run( cfg_smallest ) );
+            config_build::validate_filter( cfg_smallest );
+            auto ibf_config_smallest = aux::load_ibf_config( cfg_smallest.output_file );
+
+            // FASTEST
+            std::string prefix_fastest{ folder_prefix + "mode_fastest_filter_size" };
+            auto        cfg_fastest = config_build::defaultConfig( prefix_fastest );
+            cfg_fastest.input_file  = "mode_input.tsv";
+            cfg_fastest.filter_size = 1;
+            cfg_fastest.mode        = "fastest";
+
+            REQUIRE( GanonBuild::run( cfg_fastest ) );
+            config_build::validate_filter( cfg_fastest );
+            auto ibf_config_fastest = aux::load_ibf_config( cfg_fastest.output_file );
+
+            // Avg < smaller (generates smaller fp, same sized filters)
+            REQUIRE( ibf_config_smallest.max_fp < ibf_config_avg.max_fp );
+
+            // Avg < smaller (less bins, same sized filters)
+            REQUIRE( ibf_config_fastest.n_bins < ibf_config_avg.n_bins );
+        }
+    }
+
 
     SECTION( "--hash-functions" )
     {
