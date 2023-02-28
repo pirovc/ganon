@@ -13,7 +13,7 @@ def read(filename):
 
 setup(
     name="ganon",
-    version="1.4.0",
+    version="1.5.0",
     url="https://www.github.com/pirovc/ganon",
     license='MIT',
     author="Vitor C. Piro",
@@ -29,5 +29,6 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10'
     ],
 )
