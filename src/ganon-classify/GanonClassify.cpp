@@ -575,6 +575,8 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     uint8_t                                   parts;
     bool                                      compressed;
     std::vector< std::vector< std::string > > bin_path{};
+    double                                    fpr{};
+    bool                                      is_hibf{};
 
     archive( parsed_version );
     archive( window_size );
@@ -582,6 +584,8 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     archive( parts );
     archive( compressed );
     archive( bin_path );
+    archive( fpr );
+    archive( is_hibf );
     archive( filter );
 
     // load ibf_config from raptor params
