@@ -85,8 +85,10 @@ def build(cfg):
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
+                            "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
+                            "hibf": cfg.hibf,
                             "write_info_file": cfg.write_info_file,
                             "keep_files": cfg.keep_files}
 
@@ -142,6 +144,7 @@ def update(cfg):
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
+                            "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
                             "write_info_file": cfg.write_info_file,
@@ -156,6 +159,7 @@ def update(cfg):
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
     build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
+    build_custom_params["hibf"] = loaded_params["hibf"]
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
