@@ -280,7 +280,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Save file to use for hibf
         if cfg.hibf:
-            write_info_file(info, files_output_folder + cfg.db_prefix + ".info.tsv")
+            write_info_file(info, files_output_folder + "info.tsv")
 
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
@@ -296,13 +296,13 @@ def build_custom(cfg, which_call: str="build_custom"):
         if cfg.hibf:
 
             # Count number of files = bins
-            with open(files_output_folder + cfg.db_prefix + ".info.tsv", 'r') as fp:
+            with open(files_output_folder + "info.tsv", 'r') as fp:
                 n_bins = len(fp.readlines())
 
             print_log("raptor layout", cfg.quiet)
             # Use info file as input for raptor 
             run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
-                                              "--input-file '" + files_output_folder + cfg.db_prefix + ".info.tsv" + "'",
+                                              "--input-file '" + files_output_folder + "info.tsv" + "'",
                                               "--tmax " + str(math.ceil(math.sqrt(n_bins) /64.0 ) * 64),
                                               "--kmer-size " + str(cfg.kmer_size),
                                               "--num-hash-functions " + str(cfg.hash_functions),
