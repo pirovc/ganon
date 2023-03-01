@@ -297,7 +297,25 @@ class Config:
         elif self.quiet is True:
             self.verbose = False
 
-        if self.which == "build" or self.which == "build-custom":
+        if self.which == "build":
+
+            if not self.organism_group and not self.taxid:
+                print_log("--organism-group or --taxid is required")
+                return False
+
+            if self.organism_group and self.taxid:
+                print_log("--organism-group is mutually exclusive with --taxid")
+                return False
+
+        elif self.which == "build-custom":
+
+            if self.input_file and self.input:
+                print_log("--input-file is mutually exclusive with --input")
+                return False
+
+            if self.level == "custom" and not self.input_file:
+                print_log("--level custom requires --input-file")
+                return False
 
             if self.hibf:
                 if self.input_target == "sequence":
@@ -307,42 +325,22 @@ class Config:
                     print_log("--hibf is only supported without --level or with --level assembly")
                     return False
 
-            if self.which == "build":
+            if self.level and self.level not in self.choices_level and self.taxonomy == "none":
+                print_log("--taxonomy is required for --level " + self.level)
+                return False
 
-                if not self.organism_group and not self.taxid:
-                    print_log("--organism-group or --taxid is required")
-                    return False
+            if self.taxonomy == "ncbi":
+                for entry in self.ncbi_sequence_info:
+                    if entry not in self.choices_ncbi_sequence_info and not check_file(entry):
+                        print_log("Invalid --get-sequence-info. Should be a valid file or: " +
+                                  " ".join(self.choices_ncbi_sequence_info))
+                        return False
 
-                if self.organism_group and self.taxid:
-                    print_log("--organism-group is mutually exclusive with --taxid")
-                    return False
-
-            elif self.which == "build-custom":
-
-                if self.input_file and self.input:
-                    print_log("--input-file is mutually exclusive with --input")
-                    return False
-
-                if self.level == "custom" and not self.input_file:
-                    print_log("--level custom requires --input-file")
-                    return False
-
-                if self.level and self.level not in self.choices_level and self.taxonomy == "none":
-                    print_log("--taxonomy is required for --level " + self.level)
-                    return False
-
-                if self.taxonomy == "ncbi":
-                    for entry in self.ncbi_sequence_info:
-                        if entry not in self.choices_ncbi_sequence_info and not check_file(entry):
-                            print_log("Invalid --get-sequence-info. Should be a valid file or: " +
-                                      " ".join(self.choices_ncbi_sequence_info))
-                            return False
-
-                    for entry in self.ncbi_file_info:
-                        if entry not in self.choices_ncbi_file_info and not check_file(entry):
-                            print_log("Invalid --get-file-info. Should be a valid file or: " +
-                                      " ".join(self.choices_ncbi_file_info))
-                            return False
+                for entry in self.ncbi_file_info:
+                    if entry not in self.choices_ncbi_file_info and not check_file(entry):
+                        print_log("Invalid --get-file-info. Should be a valid file or: " +
+                                  " ".join(self.choices_ncbi_file_info))
+                        return False
 
         elif self.which == "update":
             if not check_folder(set_output_folder(self.db_prefix)):
