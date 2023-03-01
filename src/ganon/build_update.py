@@ -302,10 +302,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished - skipping", cfg.quiet)
     else:
 
-
-
         if cfg.hibf:
-
             tx = time.time()
             print_log("Building index (raptor)", cfg.quiet)
 
