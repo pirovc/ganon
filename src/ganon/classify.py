@@ -4,6 +4,11 @@ from ganon.config import Config
 
 
 def classify(cfg):
+
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     print_log("Classifying reads (ganon-classify)", cfg.quiet)
 
     filter_files = []

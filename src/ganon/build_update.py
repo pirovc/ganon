@@ -25,6 +25,11 @@ from multitax import NcbiTx, GtdbTx
 
 
 def build(cfg):
+    
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)
     if cfg.restart:
         restart_build(files_output_folder)
@@ -110,6 +115,11 @@ def build(cfg):
 
 
 def update(cfg):
+
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)
     if cfg.restart:
         restart_update(files_output_folder)
@@ -195,6 +205,11 @@ def update(cfg):
 
 
 def build_custom(cfg, which_call: str="build_custom"):
+    
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)      # DB_PREFIX_files/
     build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
     target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
@@ -278,10 +293,6 @@ def build_custom(cfg, which_call: str="build_custom"):
         if cfg.write_info_file:
             write_info_file(info, cfg.db_prefix + ".info.tsv")
 
-        # Save file to use for hibf
-        if cfg.hibf:
-            write_info_file(info, files_output_folder + "info.tsv")
-
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
         save_state(which_call + "_parse", files_output_folder)
@@ -291,18 +302,21 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished - skipping", cfg.quiet)
     else:
 
-        tx = time.time()
-        print_log("Building index", cfg.quiet)
+
+
         if cfg.hibf:
 
+            tx = time.time()
+            print_log("Building index (raptor)", cfg.quiet)
+
             # Count number of files = bins
-            with open(files_output_folder + "info.tsv", 'r') as fp:
+            with open(target_info_file, 'r') as fp:
                 n_bins = len(fp.readlines())
 
             print_log("raptor layout", cfg.quiet)
             # Use info file as input for raptor 
             run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
-                                              "--input-file '" + files_output_folder + "info.tsv" + "'",
+                                              "--input-file '" + target_info_file + "'",
                                               "--tmax " + str(math.ceil(math.sqrt(n_bins) /64.0 ) * 64),
                                               "--kmer-size " + str(cfg.kmer_size),
                                               "--num-hash-functions " + str(cfg.hash_functions),
@@ -312,7 +326,9 @@ def build_custom(cfg, which_call: str="build_custom"):
                                               "--estimate-union",
                                               "--rearrange-user-bins"])
             run(run_raptor_layout_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+            tx = time.time()
             print_log("raptor build", cfg.quiet)
             run_raptor_build_cmd = " ".join([cfg.path_exec['raptor'], "build",
                                              "--kmer " + str(cfg.kmer_size),
@@ -324,10 +340,11 @@ def build_custom(cfg, which_call: str="build_custom"):
                                              "--verbose" if cfg.verbose else "",
                                              "'" + files_output_folder + "raptor_layout.binning.out'"])
             run(run_raptor_build_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
         else:
             tx = time.time()
-            print_log("Building index", cfg.quiet)
+            print_log("Building index (ganon-build)", cfg.quiet)
             run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
                                             "--input-file '" + target_info_file + "'",
                                             "--output-file '" + cfg.db_prefix + ".ibf" + "'",
@@ -342,8 +359,8 @@ def build_custom(cfg, which_call: str="build_custom"):
                                             "--verbose" if cfg.verbose else "",
                                             "--quiet" if cfg.quiet else ""])
             run(run_ganon_build_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         save_state(which_call + "_run", files_output_folder)
 
     # Set output database files

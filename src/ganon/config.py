@@ -412,18 +412,8 @@ class Config:
 
     def set_paths(self):
         missing_path = False
-        if self.which in ["build", "build-custom", "update"]:
-            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
-
-            # if path is given, look for binaries only there
-            ganon_build_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
-            for p in ganon_build_paths:
-                self.path_exec["build"] = shutil.which("ganon-build", path=p)
-                if self.path_exec["build"] is not None: break
-            if self.path_exec["build"] is None:
-                print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
-                missing_path = True
-
+        self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
+        if self.which in ["build", "update"]:
             ganon_get_seq_info_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
             for p in ganon_get_seq_info_paths:
                 self.path_exec["get_seq_info"] = shutil.which("ganon-get-seq-info.sh", path=p)
@@ -440,20 +430,29 @@ class Config:
                 print_log("genome_updater.sh was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-            if self.which in ["build", "build-custom"]:
-                if self.hibf:
-                    self.raptor_path = self.raptor_path + "/" if self.raptor_path else ""
-                    raptor_paths = [self.raptor_path, self.raptor_path+"build/bin/"] if self.raptor_path else [None, "build/"]
-                    for p in raptor_paths:
-                        self.path_exec["raptor"] = shutil.which("raptor", path=p)
-                        if self.path_exec["raptor"] is not None: break
-                    if self.path_exec["raptor"] is None:
-                        print_log("raptor binary was not found. Please inform a specific path with --raptor-path")
-                        missing_path = True
 
-        elif self.which in ["classify"]:
-            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
+        if self.which in ["build-custom"]:
+            # if path is given, look for binaries only there
+            ganon_build_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
+            for p in ganon_build_paths:
+                self.path_exec["build"] = shutil.which("ganon-build", path=p)
+                if self.path_exec["build"] is not None: break
+            if self.path_exec["build"] is None:
+                print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
 
+            if self.hibf:
+                self.raptor_path = self.raptor_path + "/" if self.raptor_path else ""
+                raptor_paths = [self.raptor_path, self.raptor_path+"build/bin/"] if self.raptor_path else [None, "build/"]
+                for p in raptor_paths:
+                    self.path_exec["raptor"] = shutil.which("raptor", path=p)
+                    if self.path_exec["raptor"] is not None: break
+                if self.path_exec["raptor"] is None:
+                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path")
+                    missing_path = True
+
+        
+        if self.which in ["classify"]:
             ganon_classify_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
             for p in ganon_classify_paths:
                 self.path_exec["classify"] = shutil.which("ganon-classify", path=p)
