@@ -51,7 +51,7 @@ class Config:
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper. --mode and --filter-size will be ignored.")
+        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored.")
 
         ####################################################################################################
 
@@ -148,7 +148,6 @@ class Config:
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="",       help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
-        classify_group_other.add_argument("--hibf",                      action="store_true",                     help="Uses HIBF filters")
 
         ####################################################################################################
 
@@ -365,8 +364,8 @@ class Config:
 
         elif self.which == "classify":
             for prefix in self.db_prefix:
-                if not check_file(prefix + ".hibf" if self.hibf else prefix + ".ibf"):
-                    print_log("File not found: " + prefix + (".hibf" if self.hibf else prefix + ".ibf"))
+                if not check_file(prefix + ".ibf") and not check_file(prefix + ".hibf"):
+                    print_log("File not found: " + prefix + ".ibf/.hibf" )
                     return False
 
             if not self.single_reads and not self.paired_reads:
