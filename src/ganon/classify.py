@@ -15,11 +15,11 @@ def classify(cfg):
     tax_files = []
     hibf = False
     for db_prefix in cfg.db_prefix:
-        if check_file(db_prefix + ".ibf"):
-            filter_files.append(db_prefix + ".ibf")
-        elif check_file(db_prefix + ".hibf"):
+        if check_file(db_prefix + ".hibf"):
             filter_files.append(db_prefix + ".hibf")
             hibf = True
+        elif check_file(db_prefix + ".ibf"):
+            filter_files.append(db_prefix + ".ibf")
 
         if check_file(db_prefix + ".tax"):
             tax_files.append(db_prefix + ".tax")

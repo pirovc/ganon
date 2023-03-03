@@ -313,10 +313,6 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
-            if self.level == "custom" and not self.input_file:
-                print_log("--level custom requires --input-file")
-                return False
-
             if self.hibf:
                 if self.input_target == "sequence":
                     print_log("--hibf is only supported with --input-target file")
@@ -324,6 +320,10 @@ class Config:
                 elif self.level and self.level != "assembly":
                     print_log("--hibf is only supported without --level or with --level assembly")
                     return False
+
+            if self.level == "custom" and not self.input_file:
+                print_log("--level custom requires --input-file")
+                return False
 
             if self.level and self.level not in self.choices_level and self.taxonomy == "none":
                 print_log("--taxonomy is required for --level " + self.level)
