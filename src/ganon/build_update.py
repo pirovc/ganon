@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import shutil
 import pickle
+import math
 
 from ganon.config import Config
 from ganon.util import check_file
@@ -24,6 +25,11 @@ from multitax import NcbiTx, GtdbTx
 
 
 def build(cfg):
+    
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)
     if cfg.restart:
         restart_build(files_output_folder)
@@ -84,8 +90,10 @@ def build(cfg):
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
+                            "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
+                            "hibf": cfg.hibf,
                             "write_info_file": cfg.write_info_file,
                             "keep_files": cfg.keep_files}
 
@@ -107,6 +115,11 @@ def build(cfg):
 
 
 def update(cfg):
+
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)
     if cfg.restart:
         restart_update(files_output_folder)
@@ -141,6 +154,7 @@ def update(cfg):
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
+                            "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
                             "write_info_file": cfg.write_info_file,
@@ -155,6 +169,7 @@ def update(cfg):
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
     build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
+    build_custom_params["hibf"] = loaded_params["hibf"]
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
@@ -190,6 +205,11 @@ def update(cfg):
 
 
 def build_custom(cfg, which_call: str="build_custom"):
+    
+    # Set paths
+    if not cfg.set_paths():
+        return False
+
     files_output_folder = set_output_folder(cfg.db_prefix)      # DB_PREFIX_files/
     build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
     target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
@@ -271,7 +291,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
-            write_info_file(info, cfg.db_prefix)
+            write_info_file(info, cfg.db_prefix + ".info.tsv")
 
         # Write aux file for ganon-build
         write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
@@ -281,27 +301,74 @@ def build_custom(cfg, which_call: str="build_custom"):
     if load_state(which_call + "_run", files_output_folder):
         print_log("Build finished - skipping", cfg.quiet)
     else:
-        tx = time.time()
-        print_log("Building index", cfg.quiet)
-        run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
-                                       "--input-file '" + target_info_file + "'",
-                                       "--output-file '" + cfg.db_prefix + ".ibf" + "'",
-                                       "--kmer-size " + str(cfg.kmer_size),
-                                       "--window-size " + str(cfg.window_size),
-                                       "--hash-functions " + str(cfg.hash_functions),
-                                       "--mode " + cfg.mode,
-                                       "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
-                                       "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
-                                       "--tmp-output-folder '" + build_output_folder + "'",
-                                       "--threads " + str(cfg.threads),
-                                       "--verbose" if cfg.verbose else "",
-                                       "--quiet" if cfg.quiet else ""])
-        run(run_ganon_build_cmd, quiet=cfg.quiet)
-        print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+        if cfg.hibf:
+            tx = time.time()
+            print_log("Building index (raptor)", cfg.quiet)
+
+            # Count number of files = bins
+            with open(target_info_file, 'r') as fp:
+                n_bins = len(fp.readlines())
+
+            print_log("raptor layout", cfg.quiet)
+            # Use info file as input for raptor 
+            run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
+                                              "--input-file '" + target_info_file + "'",
+                                              "--tmax " + str(math.ceil(math.sqrt(n_bins) /64.0 ) * 64),
+                                              "--kmer-size " + str(cfg.kmer_size),
+                                              "--num-hash-functions " + str(cfg.hash_functions),
+                                              "--false-positive-rate " + str(cfg.max_fp),
+                                              "--output-filename '" + files_output_folder + "raptor_layout.binning.out'",
+                                              "--threads " + str(cfg.threads),
+                                              "--estimate-union",
+                                              "--rearrange-user-bins"])
+            run(run_raptor_layout_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+            tx = time.time()
+            print_log("raptor build", cfg.quiet)
+            run_raptor_build_cmd = " ".join([cfg.path_exec['raptor'], "build",
+                                             "--kmer " + str(cfg.kmer_size),
+                                             "--window " + str(cfg.window_size),
+                                             "--hash " + str(cfg.hash_functions),
+                                             "--fpr " + str(cfg.max_fp),
+                                             "--output '" + cfg.db_prefix + ".hibf" + "'",
+                                             "--threads " + str(cfg.threads),
+                                             "--verbose" if cfg.verbose else "",
+                                             "'" + files_output_folder + "raptor_layout.binning.out'"])
+            run(run_raptor_build_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
+        else:
+            tx = time.time()
+            print_log("Building index (ganon-build)", cfg.quiet)
+            run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
+                                            "--input-file '" + target_info_file + "'",
+                                            "--output-file '" + cfg.db_prefix + ".ibf" + "'",
+                                            "--kmer-size " + str(cfg.kmer_size),
+                                            "--window-size " + str(cfg.window_size),
+                                            "--hash-functions " + str(cfg.hash_functions),
+                                            "--mode " + cfg.mode,
+                                            "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
+                                            "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
+                                            "--tmp-output-folder '" + build_output_folder + "'",
+                                            "--threads " + str(cfg.threads),
+                                            "--verbose" if cfg.verbose else "",
+                                            "--quiet" if cfg.quiet else ""])
+            run(run_ganon_build_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+
         save_state(which_call + "_run", files_output_folder)
 
     # Set output database files
-    db_files_ext = ["ibf"] if cfg.taxonomy == "skip" else ["ibf", "tax"]
+    db_files_ext = []
+    if cfg.hibf:
+        db_files_ext.append("hibf")
+    else:
+        db_files_ext.append("ibf")
+    if cfg.taxonomy != "skip":
+        db_files_ext.append("tax")
+
     print_log("Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]), cfg.quiet)
     if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
         # Do not delete temp (mostly tests, hidden param)
@@ -454,7 +521,7 @@ def write_target_info(info, input_target, user_bins_col, target_info_file):
                 print(row["file"], t, sep="\t", end="\n", file=outf)
 
 
-def write_info_file(info, db_prefix):
+def write_info_file(info, filename):
     """
     write tabular file to be re-used as --input-file (sort cols in the right order)
     db_prefix.info.tsv
@@ -463,7 +530,7 @@ def write_info_file(info, db_prefix):
                         'target',
                         'node',
                         'specialization',
-                        'specialization_name']].to_csv(db_prefix + ".info.tsv",
+                        'specialization_name']].to_csv(filename,
                                                        sep="\t",
                                                        header=False,
                                                        index=False)

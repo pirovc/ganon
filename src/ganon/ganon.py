@@ -23,10 +23,6 @@ def main(which: str=None, cfg=None, **kwargs):
     if not cfg.validate():
         return False
 
-    # Set paths
-    if not cfg.set_paths():
-        return False
-
     tx_total = time.time()
 
     print_log(logo(cfg.version), cfg.quiet)
