@@ -151,6 +151,23 @@ class Config:
 
         ####################################################################################################
 
+        reassign_parser = argparse.ArgumentParser(add_help=False)
+
+        # Required
+        reassign_group_required = reassign_parser.add_argument_group("required arguments")
+        reassign_group_required.add_argument("-i", "--input", type=str, required=True, nargs="*", metavar="", help="Input file(s) and/or folder(s). '.all' file(s) from ganon classify.")
+        reassign_group_required.add_argument("-o", "--output-prefix",   type=str, required=True,            help="Output prefix for reassigned file 'output_prefix.res'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.res'")
+   
+        reassign_em = reassign_parser.add_argument_group("EM arguments")
+        reassign_em.add_argument("-e", "--max-iter", type=unsigned_int(minval=1), metavar="", default=10, help="Max. number of iterations for the EM algorith.")
+        reassign_em.add_argument("-s", "--threshold",      type=int_or_float(minval=0), metavar="", default=0, help="Convergence threshold for the EM algorithm.")
+
+        reassign_group_other = reassign_parser.add_argument_group("other arguments")
+        reassign_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
+
+        ####################################################################################################
+
         report_parser = argparse.ArgumentParser(add_help=False)
 
         report_group_required = report_parser.add_argument_group("required arguments")
@@ -244,6 +261,12 @@ class Config:
                                          parents=[classify_parser],
                                          formatter_class=formatter_class)
         classify.set_defaults(which="classify")
+
+        reassign = subparsers.add_parser("reassign",
+                                         help="Reassign reads with multiple matches to their target with an EM algorith",
+                                         parents=[reassign_parser],
+                                         formatter_class=formatter_class)
+        reassign.set_defaults(which="reassign")
 
         report = subparsers.add_parser("report",
                                        help="Generate reports from classification results",
