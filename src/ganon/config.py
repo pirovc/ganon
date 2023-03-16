@@ -142,6 +142,8 @@ class Config:
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
+        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches. Will enforce --output-all and ignore --output-lca. This file can be re-generated with the 'ganon reassign'.")
+        
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
         
@@ -155,16 +157,16 @@ class Config:
 
         # Required
         reassign_group_required = reassign_parser.add_argument_group("required arguments")
-        reassign_group_required.add_argument("-i", "--input", type=str, required=True, nargs="*", metavar="", help="Input file(s) and/or folder(s). '.all' file(s) from ganon classify.")
-        reassign_group_required.add_argument("-o", "--output-prefix",   type=str, required=True,            help="Output prefix for reassigned file 'output_prefix.res'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.res'")
+        reassign_group_required.add_argument("-i", "--input",         type=str, required=True, metavar="", help="Prefix of output files from ganon classify.")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file 'output_prefix.res'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.res'")
    
         reassign_em = reassign_parser.add_argument_group("EM arguments")
         reassign_em.add_argument("-e", "--max-iter", type=unsigned_int(minval=1), metavar="", default=10, help="Max. number of iterations for the EM algorith.")
         reassign_em.add_argument("-s", "--threshold",      type=int_or_float(minval=0), metavar="", default=0, help="Convergence threshold for the EM algorithm.")
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
-        reassign_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
-        reassign_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
+        reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",           action="store_true", help="Quiet output mode")
 
         ####################################################################################################
 
