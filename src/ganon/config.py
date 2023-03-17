@@ -157,8 +157,8 @@ class Config:
 
         # Required
         reassign_group_required = reassign_parser.add_argument_group("required arguments")
-        reassign_group_required.add_argument("-i", "--input",         type=str, required=True, metavar="", help="Prefix of output files from ganon classify.")
-        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file 'output_prefix.res'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.res'")
+        reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file 'output_prefix.all'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
    
         reassign_em = reassign_parser.add_argument_group("EM arguments")
         reassign_em.add_argument("-e", "--max-iter", type=unsigned_int(minval=1), metavar="", default=10, help="Max. number of iterations for the EM algorith.")

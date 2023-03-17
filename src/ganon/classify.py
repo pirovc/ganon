@@ -1,5 +1,6 @@
 from ganon.util import run, print_log, check_file
 from ganon.report import report
+from ganon.reassign import reassign
 from ganon.config import Config
 
 
@@ -21,6 +22,7 @@ def classify(cfg):
         elif check_file(db_prefix + ".ibf"):
             filter_files.append(db_prefix + ".ibf")
 
+        # No need to send .tax when reassign is requested
         if check_file(db_prefix + ".tax"):
             tax_files.append(db_prefix + ".tax")
 
@@ -38,7 +40,7 @@ def classify(cfg):
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
                                    "--output-lca" if cfg.output_lca else "",
-                                   "--output-all" if cfg.output_all else "",
+                                   "--output-all" if cfg.output_all or cfg.reassign else "",
                                    "--output-unclassified" if cfg.output_unclassified else "",
                                    "--output-single" if cfg.output_single else "",
                                    "--threads " + str(cfg.threads) if cfg.threads else "",
@@ -51,6 +53,18 @@ def classify(cfg):
 
     if not cfg.output_prefix:
         print(stdout)
+
+    report_input = cfg.output_prefix + ".rep"
+    report_output = cfg.output_prefix
+    if cfg.reassign:
+        reassign_params = {"input_prefix": cfg.output_prefix,
+                           "output_prefix": cfg.output_prefix,
+                           "verbose": cfg.verbose,
+                           "quiet": cfg.quiet}
+        reassign_cfg = Config("reassign", **reassign_params)
+        ret = reassign(reassign_cfg)
+        if ret==False:
+            return ret
 
     if cfg.output_prefix and tax_files:
         report_params = {"db_prefix": cfg.db_prefix,
