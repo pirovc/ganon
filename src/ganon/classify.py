@@ -59,6 +59,7 @@ def classify(cfg):
     if cfg.reassign:
         reassign_params = {"input_prefix": cfg.output_prefix,
                            "output_prefix": cfg.output_prefix,
+                           "type": cfg.reassign,
                            "verbose": cfg.verbose,
                            "quiet": cfg.quiet}
         reassign_cfg = Config("reassign", **reassign_params)

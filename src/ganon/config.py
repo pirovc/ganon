@@ -142,7 +142,8 @@ class Config:
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
-        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches. Will enforce --output-all and ignore --output-lca. This file can be re-generated with the 'ganon reassign'.")
+        #classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches. Will enforce --output-all and ignore --output-lca. This file can be re-generated with the 'ganon reassign'.")
+        classify_group_other.add_argument("-a", "--reassign",            type=str, default="")
         
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
