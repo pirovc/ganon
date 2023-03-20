@@ -35,7 +35,7 @@ def reassign(cfg):
                 all_files[""] = cfg.input_prefix + ".all"
                 break
             else:
-                print_log("No matching files for given report hiearchy" + cfg.input_prefix, cfg.quiet)
+                print_log("No matching files for given report [" + cfg.input_prefix + ".all]", cfg.quiet)
                 return False
     else:
         print_log("No report file found " + rep_file, cfg.quiet)
@@ -50,6 +50,7 @@ def reassign(cfg):
 
     print_log("Reassigning reads", cfg.quiet)
     new_rep = []
+    init_var = 1 if cfg.type=="ones" else 0
     for hierarchy, af in all_files.items():
 
         print_log(af + (" [" + hierarchy + "]" if hierarchy else ""), cfg.quiet)
@@ -59,6 +60,8 @@ def reassign(cfg):
 
         read_matches = {}
         unique_matches = {}
+        
+        total_umatches = 0
         with open(af, "r") as all_file:
             for line in all_file:
                 readid, target, kcount = line.rstrip().split("\t")
@@ -68,15 +71,22 @@ def reassign(cfg):
 
                 # Not all targets have unique matches, initialize
                 if targets[target] not in unique_matches:
-                    unique_matches[targets[target]] = 0
-
-        total_umatches = 0
-        for matches in read_matches.values():
-            if len(matches) == 1:
-                total_umatches += 1
-                if matches[0][0] not in unique_matches:
-                    unique_matches[matches[0][0]] = 0
-                unique_matches[matches[0][0]] += 1
+                    unique_matches[targets[target]] = init_var
+                    total_umatches+=1
+        
+        
+        if cfg.type=="unique":
+            total_umatches = 0
+            for matches in read_matches.values():
+                if len(matches) == 1:
+                    total_umatches += 1
+                    unique_matches[matches[0][0]] += 1
+        elif cfg.type=="matches":
+            total_umatches = 0
+            for matches in read_matches.values():
+                for m, _ in matches:
+                    total_umatches += 1
+                    unique_matches[m] += 1
 
         # Calculate first probabilities based on unique matche
         prob = {}
@@ -108,6 +118,7 @@ def reassign(cfg):
                 total_reassigned += 1
 
             diff = 0
+            # Calculate new probabilities based on re-distribution
             for target, count in reassigned_matches.items():
                 new_prob = count / (total_umatches+total_reassigned)
                 diff += abs(prob[target] - new_prob)
@@ -134,7 +145,6 @@ def reassign(cfg):
                 if len(matches) == 1:
                     print(readid, targets_rev[matches[0][0]], matches[0]
                           [1], sep="\t", file=out_file)
-                    #reassigned_matches[matches[0][0]]+=1
                 else:
                     reassigned_reads += 1
                     max_target = matches[0][0]

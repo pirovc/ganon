@@ -163,6 +163,7 @@ class Config:
         reassign_em = reassign_parser.add_argument_group("EM arguments")
         reassign_em.add_argument("-e", "--max-iter", type=unsigned_int(minval=1), metavar="", default=10, help="Max. number of iterations for the EM algorith.")
         reassign_em.add_argument("-s", "--threshold",      type=int_or_float(minval=0), metavar="", default=0, help="Convergence threshold for the EM algorithm.")
+        reassign_em.add_argument("-p", "--type",      type=str, metavar="", default="unique")
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
         reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
