@@ -158,11 +158,11 @@ class Config:
         # Required
         reassign_group_required = reassign_parser.add_argument_group("required arguments")
         reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
-        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file 'output_prefix.all'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
    
         reassign_em = reassign_parser.add_argument_group("EM arguments")
-        reassign_em.add_argument("-e", "--max-iter", type=unsigned_int(minval=1), metavar="", default=10, help="Max. number of iterations for the EM algorith.")
-        reassign_em.add_argument("-s", "--threshold",      type=int_or_float(minval=0), metavar="", default=0, help="Convergence threshold for the EM algorithm.")
+        reassign_em.add_argument("-e", "--max-iter",  type=unsigned_int(minval=0), metavar="", default=10, help="Max. number of iterations for the EM algorithm. If 0, will run until convergence (check --threshold)")
+        reassign_em.add_argument("-s", "--threshold", type=int_or_float(minval=0), metavar="", default=0,  help="Convergence threshold limit to stop the EM algorithm.")
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
         reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")

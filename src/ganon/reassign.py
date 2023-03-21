@@ -14,6 +14,7 @@ def reassign(cfg):
     rep_file = cfg.input_prefix + ".rep"
     rep_file_out = cfg.output_prefix + ".rep"
     rep_file_info = []
+
     if check_file(rep_file):
 
         print_log("Report file found: " + rep_file, cfg.quiet)
@@ -84,11 +85,15 @@ def reassign(cfg):
                 total_initial_weight += 1
                 initial_weight[matches[0][0]] += 1
 
+        if total_initial_weight==0:
+            total_initial_weight=1
+
         for target, unique in initial_weight.items():
             prob[target] = unique / total_initial_weight
 
         # EM loop
-        for i in range(cfg.max_iter):
+        em_ite_cnt = 0
+        while True:
 
             # Make copy of initial weights
             reassigned_matches = initial_weight.copy()
@@ -107,12 +112,16 @@ def reassign(cfg):
                 diff += abs(prob[target] - new_prob)
                 prob[target] = new_prob
 
-            print_log(" - Iteration " + str(i+1) +
+            print_log(" - Iteration " + str(em_ite_cnt+1) +
                       " (" + str(round(diff, 6)) + ")", cfg.quiet)
 
             # If abs. difference among old and new probabilities already converged (no change)
             if diff <= cfg.threshold:
                 break
+            if cfg.max_iter > 0 and em_ite_cnt == cfg.max_iter-1:
+                break
+            
+            em_ite_cnt+=1
 
         # General output file
         if len(all_files) == 1:
@@ -163,9 +172,9 @@ def reassign(cfg):
 
 
 def get_top_match(matches, prob):
-
-    # Set first match as target, in case all targets have no unique matches
-    # loop will also randonly get one (last) if prob is equal
+    # Get top match based on prob
+    # In case all targets have equal probabilities (max_p==0 at the end)
+    # set first match as target (also the case for no unique matches)
     target = matches[0][0]
     kcount = matches[0][1]
     max_p = 0
