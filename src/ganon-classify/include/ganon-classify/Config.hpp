@@ -37,6 +37,7 @@ public:
     bool        output_single       = false;
 
     bool     hibf      = false;
+    bool     skip_lca  = false;
     uint16_t threads   = 1;
     uint32_t n_batches = 1000;
     uint32_t n_reads   = 400;
@@ -129,7 +130,14 @@ public:
             output_unclassified = false;
         }
 
-        return validate_hierarchy();
+        if ( validate_hierarchy() == false )
+            return false;
+
+        // Disable LCA without tax files
+        if ( tax.size() == 0 )
+            skip_lca = true;
+
+        return true;
     }
 
     bool validate_hierarchy()

@@ -39,6 +39,7 @@ def classify(cfg):
                                    "--rel-cutoff " + ",".join([str(rc) for rc in cfg.rel_cutoff]) if cfg.rel_cutoff else "",
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
+                                   "--skip-lca" if cfg.reassign and not cfg.output_lca else "",
                                    "--output-lca" if cfg.output_lca else "",
                                    "--output-all" if cfg.output_all or cfg.reassign else "",
                                    "--output-unclassified" if cfg.output_unclassified else "",
@@ -53,30 +54,28 @@ def classify(cfg):
 
     if not cfg.output_prefix:
         print(stdout)
-
-    report_input = cfg.output_prefix + ".rep"
-    report_output = cfg.output_prefix
-    if cfg.reassign:
-        reassign_params = {"input_prefix": cfg.output_prefix,
-                           "output_prefix": cfg.output_prefix,
-                           "verbose": cfg.verbose,
-                           "quiet": cfg.quiet}
-        reassign_cfg = Config("reassign", **reassign_params)
-        ret = reassign(reassign_cfg)
-        if ret==False:
+        return True
+    else:
+        report_input = cfg.output_prefix + ".rep"
+        report_output = cfg.output_prefix
+        if cfg.reassign:
+            reassign_params = {"input_prefix": cfg.output_prefix,
+                               "output_prefix": cfg.output_prefix,
+                               "verbose": cfg.verbose,
+                               "quiet": cfg.quiet}
+            reassign_cfg = Config("reassign", **reassign_params)
+            ret = reassign(reassign_cfg)
             return ret
 
-    if cfg.output_prefix and tax_files:
-        report_params = {"db_prefix": cfg.db_prefix,
-                         "input": cfg.output_prefix + ".rep",
-                         "output_prefix": cfg.output_prefix,
-                         "min_count": 0.0001,
-                         "ranks": cfg.ranks,
-                         "output_format": "tsv",
-                         "verbose": cfg.verbose,
-                         "quiet": cfg.quiet}
-        report_cfg = Config("report", **report_params)
-        ret = report(report_cfg)
-        return ret
-    else:
-        return True
+        if tax_files:
+            report_params = {"db_prefix": cfg.db_prefix,
+                             "input": cfg.output_prefix + ".rep",
+                             "output_prefix": cfg.output_prefix,
+                             "min_count": 0.0001,
+                             "ranks": cfg.ranks,
+                             "output_format": "tsv",
+                             "verbose": cfg.verbose,
+                             "quiet": cfg.quiet}
+            report_cfg = Config("report", **report_params)
+            ret = report(report_cfg)
+            return ret
