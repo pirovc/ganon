@@ -325,9 +325,14 @@ void select_matches( Filter< TIBF >&        filter,
         }
         if ( summed_count >= threshold_cutoff )
         {
-            matches[target] = summed_count;
-            if ( summed_count > max_kmer_count_read )
-                max_kmer_count_read = summed_count;
+            // ensure that count was not already found for target with higher count
+            // can happen in case of ambiguos targets in multiple filters
+            if ( summed_count > matches[target] )
+            {
+                matches[target] = summed_count;
+                if ( summed_count > max_kmer_count_read )
+                    max_kmer_count_read = summed_count;
+            }
         }
     }
 }
@@ -341,14 +346,22 @@ void select_matches( Filter< THIBF >&       filter,
 {
     // Count only matches above threhsold
     seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
+
+
     // Only one bin per target
     for ( auto const& [target, bins] : filter.map )
     {
         if ( counts[bins[0]] > 0 )
         {
-            matches[target] = counts[bins[0]];
-            if ( counts[bins[0]] > max_kmer_count_read )
-                max_kmer_count_read = counts[bins[0]];
+            const uint16_t count = counts[bins[0]];
+            // ensure that count was not already found for target with higher count
+            // can happen in case of ambiguos targets in multiple filters
+            if ( count > matches[target] )
+            {
+                matches[target] = count;
+                if ( count > max_kmer_count_read )
+                    max_kmer_count_read = count;
+            }
         }
     }
 }
@@ -414,6 +427,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
     {
         agents.push_back( filter.ibf.counting_agent() );
     }
+
 
     while ( true )
     {
