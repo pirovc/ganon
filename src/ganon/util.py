@@ -43,7 +43,7 @@ def logo(version):
     logo += "   _  _  _  _  _   \n"
     logo += "  (_|(_|| |(_)| |  \n"
     logo += "   _|   v. " + str(version) + "\n"
-    logo += "- - - - - - - - - -\n"
+    logo += "- - - - - - - - - -"
     return logo
 
 

@@ -10,19 +10,16 @@ def classify(cfg):
     if not cfg.set_paths():
         return False
 
-    print_log("Classifying reads (ganon-classify)", cfg.quiet)
+    print_log("Classifying reads", cfg.quiet)
 
     filter_files = []
     tax_files = []
-    hibf = False
     for db_prefix in cfg.db_prefix:
         if check_file(db_prefix + ".hibf"):
             filter_files.append(db_prefix + ".hibf")
-            hibf = True
         elif check_file(db_prefix + ".ibf"):
             filter_files.append(db_prefix + ".ibf")
 
-        # No need to send .tax when reassign is requested
         if check_file(db_prefix + ".tax"):
             tax_files.append(db_prefix + ".tax")
 
@@ -48,24 +45,23 @@ def classify(cfg):
                                    "--n-reads " + str(cfg.n_reads) if cfg.n_reads is not None else "",
                                    "--n-batches " + str(cfg.n_batches) if cfg.n_batches is not None else "",
                                    "--verbose" if cfg.verbose else "",
-                                   "--hibf" if hibf else "",
+                                   "--hibf" if cfg.hibf else "",
                                    "--quiet" if cfg.quiet else ""])
     stdout = run(run_ganon_classify, ret_stdout=True, quiet=cfg.quiet)
 
     if not cfg.output_prefix:
         print(stdout)
-        return True
     else:
-        report_input = cfg.output_prefix + ".rep"
-        report_output = cfg.output_prefix
         if cfg.reassign:
             reassign_params = {"input_prefix": cfg.output_prefix,
                                "output_prefix": cfg.output_prefix,
                                "verbose": cfg.verbose,
                                "quiet": cfg.quiet}
             reassign_cfg = Config("reassign", **reassign_params)
+            print_log("- - - - - - - - - -", cfg.quiet)
             ret = reassign(reassign_cfg)
-            return ret
+            if not ret:
+                return False
 
         if tax_files:
             report_params = {"db_prefix": cfg.db_prefix,
@@ -77,5 +73,9 @@ def classify(cfg):
                              "verbose": cfg.verbose,
                              "quiet": cfg.quiet}
             report_cfg = Config("report", **report_params)
+            print_log("- - - - - - - - - -", cfg.quiet)
             ret = report(report_cfg)
-            return ret
+            if not ret:
+                return False
+
+    return True

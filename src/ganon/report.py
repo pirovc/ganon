@@ -11,6 +11,9 @@ from multitax import CustomTx, NcbiTx, GtdbTx
 
 
 def report(cfg):
+    print_log("Generating report(s)", cfg.quiet)
+    print_log("", cfg.quiet)
+
     # validate input input files
     rep_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet)
 
@@ -74,11 +77,10 @@ def report(cfg):
             fixed_ranks = [tax.root_name] + cfg.ranks
 
     any_rep = False
-    print_log("Generating report(s)", cfg.quiet)
+    
     # Parse report file
     for rep_file in rep_files:
-        print_log("", cfg.quiet)
-
+        
         reports, counts = parse_rep(rep_file)
         if not reports:
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
@@ -121,6 +123,7 @@ def report(cfg):
             else:
                 print_log(" - report saved to " + output_file, cfg.quiet)
                 any_rep = True
+        print_log("", cfg.quiet)
 
     return True if any_rep else False
 

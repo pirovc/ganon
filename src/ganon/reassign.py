@@ -9,6 +9,9 @@ from collections import defaultdict
 
 def reassign(cfg):
 
+    print_log("Reassigning reads", cfg.quiet)
+    print_log("", cfg.quiet)
+
     # Look for .rep and match with .all files (in case of multi level hierarchy)
     all_files = {}
     rep_file = cfg.input_prefix + ".rep"
@@ -17,7 +20,7 @@ def reassign(cfg):
 
     if check_file(rep_file):
 
-        print_log("Report file found: " + rep_file, cfg.quiet)
+        print_log(".rep file found: " + rep_file, cfg.quiet)
         # look for hiearchies
         with open(rep_file) as rep:
             for line in rep:
@@ -37,10 +40,10 @@ def reassign(cfg):
                 break
             else:
                 print_log(
-                    "No matching files for given report [" + cfg.input_prefix + ".all]", cfg.quiet)
+                    "No matching files for given .rep [" + cfg.input_prefix + ".all]", cfg.quiet)
                 return False
     else:
-        print_log("No report file found " + rep_file, cfg.quiet)
+        print_log("No .rep file found " + rep_file, cfg.quiet)
         rep_file = ""
         rep_file_out = ""
         if check_file(cfg.input_prefix + ".all"):
@@ -51,7 +54,6 @@ def reassign(cfg):
                   cfg.input_prefix, cfg.quiet)
         return False
 
-    print_log("Reassigning reads", cfg.quiet)
     new_rep = []
     for hierarchy, af in all_files.items():
 
@@ -85,8 +87,8 @@ def reassign(cfg):
                 total_initial_weight += 1
                 initial_weight[matches[0][0]] += 1
 
-        if total_initial_weight==0:
-            total_initial_weight=1
+        if total_initial_weight == 0:
+            total_initial_weight = 1
 
         for target, unique in initial_weight.items():
             prob[target] = unique / total_initial_weight
@@ -120,8 +122,8 @@ def reassign(cfg):
                 break
             if cfg.max_iter > 0 and em_ite_cnt == cfg.max_iter-1:
                 break
-            
-            em_ite_cnt+=1
+
+            em_ite_cnt += 1
 
         # General output file
         if len(all_files) == 1:
@@ -166,7 +168,7 @@ def reassign(cfg):
                 print(*line, sep="\t", file=rep_out)
             for info in rep_file_info:
                 print(*info, sep="\t", file=rep_out)
-        print_log("New report file: " + rep_file_out, cfg.quiet)
+        print_log("New .rep file: " + rep_file_out, cfg.quiet)
 
     return True
 
