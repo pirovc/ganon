@@ -233,6 +233,24 @@ def classify_sanity_check_and_parse(params):
     return res
 
 
+def reassign_sanity_check_and_parse(params):
+    # Provide sanity checks for outputs (not specific to a test) and return loaded data
+    if not check_files(params["output_prefix"], ["all"]):
+        return None
+
+    res = {}
+
+    res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
+    if res["all_pd"].empty:
+        return None
+
+    if check_files(params["output_prefix"], ["rep"]):
+        res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
+        if res["rep_pd"].empty:
+            return None
+
+    return res
+
 def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
     # get all output files referent to the run by name

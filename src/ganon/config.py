@@ -142,12 +142,31 @@ class Config:
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
+        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM-algorithm. Will enforce --output-all. This file can be re-generated with the 'ganon reassign'.")
+
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
-        
+        classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="",       help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
+
+        ####################################################################################################
+
+        reassign_parser = argparse.ArgumentParser(add_help=False)
+
+        # Required
+        reassign_group_required = reassign_parser.add_argument_group("required arguments")
+        reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
+   
+        reassign_em = reassign_parser.add_argument_group("EM arguments")
+        reassign_em.add_argument("-e", "--max-iter",  type=unsigned_int(minval=0), metavar="", default=10, help="Max. number of iterations for the EM algorithm. If 0, will run until convergence (check --threshold)")
+        reassign_em.add_argument("-s", "--threshold", type=int_or_float(minval=0), metavar="", default=0,  help="Convergence threshold limit to stop the EM algorithm.")
+
+        reassign_group_other = reassign_parser.add_argument_group("other arguments")
+        reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",           action="store_true", help="Quiet output mode")
 
         ####################################################################################################
 
@@ -244,6 +263,12 @@ class Config:
                                          parents=[classify_parser],
                                          formatter_class=formatter_class)
         classify.set_defaults(which="classify")
+
+        reassign = subparsers.add_parser("reassign",
+                                         help="Reassign reads with multiple matches to their target with an EM algorith",
+                                         parents=[reassign_parser],
+                                         formatter_class=formatter_class)
+        reassign.set_defaults(which="reassign")
 
         report = subparsers.add_parser("report",
                                        help="Generate reports from classification results",
@@ -361,10 +386,31 @@ class Config:
                     return False
 
         elif self.which == "classify":
-            for prefix in self.db_prefix:
-                if not check_file(prefix + ".ibf") and not check_file(prefix + ".hibf"):
+            ibf = False
+            hibf = False
+            tax = 0
+            for db_prefix in self.db_prefix:
+                if check_file(db_prefix + ".hibf"):
+                    hibf = True
+                elif check_file(db_prefix + ".ibf"):
+                    ibf = True
+                else:
                     print_log("File not found: " + prefix + ".ibf/.hibf" )
                     return False
+
+                if check_file(db_prefix + ".tax"):
+                    tax += 1
+
+            # Define use of HIBF and set hidden var
+            if hibf and ibf:
+                print_log(".ibf and .hibf filters cannot be used together in the same run" )
+                return False
+            elif hibf:
+                self.hibf = True
+                
+            if tax < len(self.db_prefix) and tax > 0:
+                print_log(".tax file has to be present for every .ibf/.hibf or none of them" )
+                return False
 
             if not self.single_reads and not self.paired_reads:
                 print_log("Please provide file[s] with --single-reads or --paired-reads")
@@ -391,6 +437,10 @@ class Config:
             if len(self.single_reads) + len(self.paired_reads) == 0:
                 print_log("No valid input files to classify")
                 return False
+
+            if not self.output_prefix and (self.output_all or self.output_lca or self.output_unclassified or self.reassign):
+                    print_log("--output-all / --output-lca / --output-unclassified / --reassign requires --output-prefix to be set")
+                    return False
 
         elif self.which == "report":
 

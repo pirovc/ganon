@@ -30,7 +30,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "u,output-unclassified", "Outputs unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
         ( "s,output-single", "Do not split output files (lca and all) with multi-level --hierarchy-labels", cxxopts::value< bool >() )
         
-        ( "hibf", "Input is an Hierarchical IBF (.hibf) generated from raptor. Experimental.", cxxopts::value< bool >())
+        ( "hibf", "Input is an Hierarchical IBF (.hibf) generated from raptor.", cxxopts::value< bool >())
+        ( "skip-lca", "Skip LCA step.", cxxopts::value< bool >())
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
         ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
@@ -92,6 +93,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     if ( args.count( "hibf" ) )
         config.hibf = args["hibf"].as< bool >();
+    if ( args.count( "skip-lca" ) )
+        config.skip_lca = args["skip-lca"].as< bool >();
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "n-reads" ) )
