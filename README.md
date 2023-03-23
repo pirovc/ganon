@@ -2,11 +2,11 @@
 
 ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently.
 
-- It automatically downloads, builds and updates commonly used repositories (refseq/genbank).
+- automatically downloads, builds and updates commonly used repositories (refseq/genbank).
 
-- Classification can be used for binning and/or taxonomic profiling, with multi taxonomy integration (ncbi or gtdb) + LCA algorithm and/or a read reassignment EM algorithm. Hierarchical use of databases is possible.
+- binning and taxonomic profiling are supported + multi taxonomy integration (ncbi/gtdb) + LCA algorithm + read reassignment EM algorithm + hierarchical use of databases.
 
-- ganon generates taxonomic and/or sequence abundance reports with genome size correction, contingency tables and has many other [features](#Features)
+- ganon generates taxonomic and sequence abundance reports with genome size correction, contingency tables and has many other [features](#Features)
 
 ---
 
