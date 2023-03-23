@@ -4,6 +4,7 @@ import time
 
 from ganon.build_update import build, build_custom, update
 from ganon.classify import classify
+from ganon.reassign import reassign
 from ganon.report import report
 from ganon.table import table
 from ganon.config import Config
@@ -23,10 +24,6 @@ def main(which: str=None, cfg=None, **kwargs):
     if not cfg.validate():
         return False
 
-    # Set paths
-    if not cfg.set_paths():
-        return False
-
     tx_total = time.time()
 
     print_log(logo(cfg.version), cfg.quiet)
@@ -39,6 +36,8 @@ def main(which: str=None, cfg=None, **kwargs):
         ret = update(cfg)
     elif cfg.which == 'classify':
         ret = classify(cfg)
+    elif cfg.which == 'reassign':
+        ret = reassign(cfg)
     elif cfg.which == 'report':
         ret = report(cfg)
     elif cfg.which == 'table':

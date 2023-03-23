@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.4.0"
+    version = "1.5.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -51,6 +51,7 @@ class Config:
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
+        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored.")
 
         ####################################################################################################
 
@@ -109,11 +110,12 @@ class Config:
         build_update_other_args.add_argument("--quiet",           action="store_true", help="Quiet output mode")
         build_update_other_args.add_argument("--keep-files",      action="store_true", help=argparse.SUPPRESS)
         build_update_other_args.add_argument("--write-info-file", action="store_true", help="Save copy of target info generated to {db_prefix}.info.tsv. Can be re-used as --input-file for further attempts.")
-        build_update_other_args.add_argument("--ganon-path", type=str,                    metavar="", default="",                              help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--n-refs",     type=unsigned_int(minval=1), metavar="",                                          help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--n-batches",  type=unsigned_int(minval=1), metavar="",                                             help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--ncbi-url",             type=str,                              metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
-        build_update_other_args.add_argument("--gtdb-url",             type=str,                              metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--ganon-path",  type=str,                    metavar="", default="", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--raptor-path", type=str,                    metavar="", default="", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--n-refs",      type=unsigned_int(minval=1), metavar="",             help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--n-batches",   type=unsigned_int(minval=1), metavar="",             help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--ncbi-url",    type=str,                    metavar="", default="https://ftp.ncbi.nlm.nih.gov/", help=argparse.SUPPRESS)
+        build_update_other_args.add_argument("--gtdb-url",    type=str,                    metavar="", default="https://data.gtdb.ecogenomic.org/releases/latest/", help=argparse.SUPPRESS)
 
         ####################################################################################################
 
@@ -140,13 +142,31 @@ class Config:
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
+        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM-algorithm. Will enforce --output-all. This file can be re-generated with the 'ganon reassign'.")
+
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
-        
+        classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="",       help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
-        classify_group_other.add_argument("--hibf",                      action="store_true",                     help=argparse.SUPPRESS)
+
+        ####################################################################################################
+
+        reassign_parser = argparse.ArgumentParser(add_help=False)
+
+        # Required
+        reassign_group_required = reassign_parser.add_argument_group("required arguments")
+        reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
+   
+        reassign_em = reassign_parser.add_argument_group("EM arguments")
+        reassign_em.add_argument("-e", "--max-iter",  type=unsigned_int(minval=0), metavar="", default=10, help="Max. number of iterations for the EM algorithm. If 0, will run until convergence (check --threshold)")
+        reassign_em.add_argument("-s", "--threshold", type=int_or_float(minval=0), metavar="", default=0,  help="Convergence threshold limit to stop the EM algorithm.")
+
+        reassign_group_other = reassign_parser.add_argument_group("other arguments")
+        reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",           action="store_true", help="Quiet output mode")
 
         ####################################################################################################
 
@@ -244,6 +264,12 @@ class Config:
                                          formatter_class=formatter_class)
         classify.set_defaults(which="classify")
 
+        reassign = subparsers.add_parser("reassign",
+                                         help="Reassign reads with multiple matches to their target with an EM algorith",
+                                         parents=[reassign_parser],
+                                         formatter_class=formatter_class)
+        reassign.set_defaults(which="reassign")
+
         report = subparsers.add_parser("report",
                                        help="Generate reports from classification results",
                                        parents=[report_parser, filter_parser],
@@ -312,6 +338,14 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
+            if self.hibf:
+                if self.input_target == "sequence":
+                    print_log("--hibf is only supported with --input-target file")
+                    return False
+                elif self.level and self.level != "assembly":
+                    print_log("--hibf is only supported without --level or with --level assembly")
+                    return False
+
             if self.level == "custom" and not self.input_file:
                 print_log("--level custom requires --input-file")
                 return False
@@ -352,10 +386,31 @@ class Config:
                     return False
 
         elif self.which == "classify":
-            for prefix in self.db_prefix:
-                if not check_file(prefix + ".ibf"):
-                    print_log("File not found: " + prefix + ".ibf")
+            ibf = False
+            hibf = False
+            tax = 0
+            for db_prefix in self.db_prefix:
+                if check_file(db_prefix + ".hibf"):
+                    hibf = True
+                elif check_file(db_prefix + ".ibf"):
+                    ibf = True
+                else:
+                    print_log("File not found: " + prefix + ".ibf/.hibf" )
                     return False
+
+                if check_file(db_prefix + ".tax"):
+                    tax += 1
+
+            # Define use of HIBF and set hidden var
+            if hibf and ibf:
+                print_log(".ibf and .hibf filters cannot be used together in the same run" )
+                return False
+            elif hibf:
+                self.hibf = True
+                
+            if tax < len(self.db_prefix) and tax > 0:
+                print_log(".tax file has to be present for every .ibf/.hibf or none of them" )
+                return False
 
             if not self.single_reads and not self.paired_reads:
                 print_log("Please provide file[s] with --single-reads or --paired-reads")
@@ -383,6 +438,10 @@ class Config:
                 print_log("No valid input files to classify")
                 return False
 
+            if not self.output_prefix and (self.output_all or self.output_lca or self.output_unclassified or self.reassign):
+                    print_log("--output-all / --output-lca / --output-unclassified / --reassign requires --output-prefix to be set")
+                    return False
+
         elif self.which == "report":
 
             if self.skip_hierarchy and self.keep_hierarchy:
@@ -403,18 +462,8 @@ class Config:
 
     def set_paths(self):
         missing_path = False
-        if self.which in ["build", "build-custom", "update"]:
-            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
-
-            # if path is given, look for binaries only there
-            ganon_build_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
-            for p in ganon_build_paths:
-                self.path_exec["build"] = shutil.which("ganon-build", path=p)
-                if self.path_exec["build"] is not None: break
-            if self.path_exec["build"] is None:
-                print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
-                missing_path = True
-
+        self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
+        if self.which in ["build", "update"]:
             ganon_get_seq_info_paths = [self.ganon_path, self.ganon_path+"scripts/", self.ganon_path+"../scripts/"] if self.ganon_path else [None, "scripts/"]
             for p in ganon_get_seq_info_paths:
                 self.path_exec["get_seq_info"] = shutil.which("ganon-get-seq-info.sh", path=p)
@@ -431,9 +480,29 @@ class Config:
                 print_log("genome_updater.sh was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-        elif self.which in ["classify"]:
-            self.ganon_path = self.ganon_path + "/" if self.ganon_path else ""
 
+        if self.which in ["build-custom"]:
+            # if path is given, look for binaries only there
+            ganon_build_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
+            for p in ganon_build_paths:
+                self.path_exec["build"] = shutil.which("ganon-build", path=p)
+                if self.path_exec["build"] is not None: break
+            if self.path_exec["build"] is None:
+                print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
+                missing_path = True
+
+            if self.hibf:
+                self.raptor_path = self.raptor_path + "/" if self.raptor_path else ""
+                raptor_paths = [self.raptor_path, self.raptor_path+"build/bin/"] if self.raptor_path else [None, "build/"]
+                for p in raptor_paths:
+                    self.path_exec["raptor"] = shutil.which("raptor", path=p)
+                    if self.path_exec["raptor"] is not None: break
+                if self.path_exec["raptor"] is None:
+                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path")
+                    missing_path = True
+
+        
+        if self.which in ["classify"]:
             ganon_classify_paths = [self.ganon_path, self.ganon_path+"build/"] if self.ganon_path else [None, "build/"]
             for p in ganon_classify_paths:
                 self.path_exec["classify"] = shutil.which("ganon-classify", path=p)

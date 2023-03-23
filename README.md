@@ -1,6 +1,12 @@
 # ganon [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458)
 
-ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently. It automatically downloads, builds and updates commonly used repositories (refseq/genbank), performs taxonomic (ncbi or gtdb) and hierarchical classification, generates taxonomic and/or sequence abundance reports, generates contingency tables among many other [features](#Features).
+ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently.
+
+- automatically downloads, builds and updates commonly used repositories (refseq/genbank).
+
+- binning and taxonomic profiling are supported + multi taxonomy integration (ncbi/gtdb) + LCA algorithm + read reassignment EM algorithm + hierarchical use of databases.
+
+- ganon generates taxonomic and sequence abundance reports with genome size correction, contingency tables and has many other [features](#Features)
 
 ---
 
@@ -50,7 +56,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 
 ### Features
 
-- NCBI and GTDB native support for taxonomic classification (but also runs without taxonomy)
+- NCBI and GTDB native support for taxonomic classification (also runs without taxonomy)
 - integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
 - update indices incrementally (`ganon update`)
 - customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
@@ -58,6 +64,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
 - [report](#report) the lowest common ancestor (LCA) but also multiple and unique matches for every read
 - [report](#report) sequence or taxonomic abundances as well as total number of matches
+- reassignment of reads with multiple matches to a unique match with an EM algorithm
 - generate reports and contingency tables for multi-sample studies with several filter options
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
@@ -216,7 +223,7 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches`)
 
-- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd) is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) aer reported. The root node and unclassified entries are ommited.
+- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd) is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are ommited.
 
 - The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 
@@ -413,8 +420,9 @@ In this example, classification will be performed with different `--rel-cutoff` 
 The most important parameters and trade-offs are:
 
 - `ganon build` `--window-size --kmer-size`: the *window* value should always be the same or larger than the *kmer* value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small *kmer* and/or large *window*. Larger *kmer* values (e.g. `31`) will improve classification, specially read binning, at a cost of way bigger databases.
-- `ganon classify` `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher `--rel-cutoff` values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read classification/binning, lower values between `0.2` and `0.4` are recommended.
+- `ganon classify` `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher `--rel-cutoff` values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read binning, lower values between `0.2` and `0.4` are recommended.
 - `ganon classify` `--rel-filter`: further filter top matches after cutoff is applied. Usually set between `0` and `0.2`.
+- `ganon classify` `--reassign`: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with `ganon reassign`.
 - `ganon report` `--report-type`: reports either taxonomic, sequence or matches abundances. Use `corr` or `abundance` for taxonomic profiling, `reads` or `dist` for sequence profiling and `matches` to report a summary of all matches.
 - `ganon report` `--min-count`: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between `0.0001` (0.01%) and `0.001` (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively `--top-percentile` can be used to keep a relative amount of taxa instead a hard cutoff.
 
@@ -541,21 +549,24 @@ Several reports are availble with `--report-type`: `reads`, `abundance`, `dist`,
 ## Parameters
 
 ```
-usage: ganon [-h] [-v] {build,build-custom,update,classify,report,table} ...
+usage: ganon [-h] [-v]
+             {build,build-custom,update,classify,reassign,report,table} ...
 
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.4.0
+   _|   v. 1.5.0
 - - - - - - - - - -
 
 positional arguments:
-  {build,build-custom,update,classify,report,table}
+  {build,build-custom,update,classify,reassign,report,table}
     build               Download and build ganon default databases
                         (refseq/genbank)
     build-custom        Build custom ganon databases
     update              Update ganon default databases
     classify            Classify reads against built databases
+    reassign            Reassign reads with multiple matches with an EM
+                        algorithm
     report              Generate reports from classification results
     table               Generate table from reports
 
@@ -569,7 +580,7 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [-j] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -615,6 +626,8 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
+                        False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -632,7 +645,8 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
-                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--restart] [--verbose] [--quiet] [--write-info-file]
+                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet]
+                          [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -693,6 +707,8 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
+                        False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -741,7 +757,7 @@ optional arguments:
 ```
 usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
                       [-c [...]] [-e [...]] [-o] [--output-lca] [--output-all] [--output-unclassified] [--output-single]
-                      [-t] [-l [...]] [-r [...]] [--verbose] [--quiet]
+                      [-t] [-l [...]] [-r [...]] [-a] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -786,6 +802,36 @@ other arguments:
                         phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
                         'ganon report' command for other types of abundances (reads, matches) with further filtration
                         and output options (default: [])
+  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
+                        can be re-generated with the 'ganon reassign'. (default: False)
+  --verbose             Verbose output mode (default: False)
+  --quiet               Quiet output mode (default: False)
+```
+
+</details>
+
+<details>
+  <summary>ganon reassign</summary>
+
+```
+usage: ganon reassign [-h] -i  -o OUTPUT_PREFIX [-e] [-s] [--verbose] [--quiet]
+
+options:
+  -h, --help            show this help message and exit
+
+required arguments:
+  -i , --input-prefix   Input prefix to find files from ganon classify (.all and optionally .rep) (default: None)
+  -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
+                        Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the
+                        base input filename will be appended at the end of the output file 'output_prefix +
+                        FILENAME.all' (default: None)
+
+EM arguments:
+  -e , --max-iter       Max. number of iterations for the EM algorithm. If 0, will run until convergence (check
+                        --threshold) (default: 10)
+  -s , --threshold      Convergence threshold limit to stop the EM algorithm. (default: 0)
+
+other arguments:
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```

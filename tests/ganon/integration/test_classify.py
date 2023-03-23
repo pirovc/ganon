@@ -124,6 +124,27 @@ class TestClassify(unittest.TestCase):
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
 
+    def test_reassign(self):
+        """
+        Test ganon classify with --reassign active
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "reassign"
+        params["reassign"] = True
+        params["output_all"] = True
+        params["rel_cutoff"] = 0.001
+        params["rel_filter"] = 1
+
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        
+        # There are only single matches on output
+        self.assertEqual(len(res["all_pd"].readid), len(res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
 
 if __name__ == '__main__':
     unittest.main()

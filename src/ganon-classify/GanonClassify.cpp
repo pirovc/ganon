@@ -325,9 +325,14 @@ void select_matches( Filter< TIBF >&        filter,
         }
         if ( summed_count >= threshold_cutoff )
         {
-            matches[target] = summed_count;
-            if ( summed_count > max_kmer_count_read )
-                max_kmer_count_read = summed_count;
+            // ensure that count was not already found for target with higher count
+            // can happen in case of ambiguos targets in multiple filters
+            if ( summed_count > matches[target] )
+            {
+                matches[target] = summed_count;
+                if ( summed_count > max_kmer_count_read )
+                    max_kmer_count_read = summed_count;
+            }
         }
     }
 }
@@ -341,14 +346,22 @@ void select_matches( Filter< THIBF >&       filter,
 {
     // Count only matches above threhsold
     seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
+
+
     // Only one bin per target
     for ( auto const& [target, bins] : filter.map )
     {
         if ( counts[bins[0]] > 0 )
         {
-            matches[target] = counts[bins[0]];
-            if ( counts[bins[0]] > max_kmer_count_read )
-                max_kmer_count_read = counts[bins[0]];
+            const uint16_t count = counts[bins[0]];
+            // ensure that count was not already found for target with higher count
+            // can happen in case of ambiguos targets in multiple filters
+            if ( count > matches[target] )
+            {
+                matches[target] = count;
+                if ( count > max_kmer_count_read )
+                    max_kmer_count_read = count;
+            }
         }
     }
 }
@@ -396,8 +409,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                SafeQueue< ReadBatches >*         pointer_helper,
                HierarchyConfig const&            hierarchy_config,
                bool                              hierarchy_first,
-               bool                              hierarchy_last,
-               bool                              run_lca )
+               bool                              hierarchy_last )
 {
 
     // oner hash adaptor per thread
@@ -415,6 +427,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
     {
         agents.push_back( filter.ibf.counting_agent() );
     }
+
 
     while ( true )
     {
@@ -489,7 +502,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 // Filter matches
                 uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
 
-                if ( run_lca )
+                if ( !config.skip_lca )
                 {
                     ReadOut read_out_lca( rb.ids[readID] );
                     if ( count_filtered_matches == 1 )
@@ -547,7 +560,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
     }
 }
 
-void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label, bool run_lca )
+void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label )
 {
     for ( auto const& [target, report] : rep )
     {
@@ -555,7 +568,8 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
         {
             out_rep << hierarchy_label << '\t' << target << '\t' << report.matches << '\t' << report.unique_reads
                     << '\t' << report.lca_reads;
-            if ( run_lca )
+
+            if ( !tax.empty() )
             {
                 out_rep << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name;
             }
@@ -575,6 +589,8 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     uint8_t                                   parts;
     bool                                      compressed;
     std::vector< std::vector< std::string > > bin_path{};
+    double                                    fpr{};
+    bool                                      is_hibf{};
 
     archive( parsed_version );
     archive( window_size );
@@ -582,6 +598,8 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     archive( parts );
     archive( compressed );
     archive( bin_path );
+    archive( fpr );
+    archive( is_hibf );
     archive( filter );
 
     // load ibf_config from raptor params
@@ -651,7 +669,7 @@ TTax load_tax( std::string tax_file )
 }
 
 template < typename TFilter >
-bool load_files( std::vector< Filter< TFilter > >& filters, bool run_lca, std::vector< FilterConfig >& fconf )
+bool load_files( std::vector< Filter< TFilter > >& filters, std::vector< FilterConfig >& fconf )
 {
     uint16_t filter_cnt = 0;
     for ( auto& filter_config : fconf )
@@ -671,7 +689,7 @@ bool load_files( std::vector< Filter< TFilter > >& filters, bool run_lca, std::v
 
         filter_config.ibf_config = ibf_config;
 
-        if ( run_lca )
+        if ( filter_config.tax_file != "" )
             tax = load_tax( filter_config.tax_file );
 
         filters.push_back(
@@ -958,8 +976,6 @@ bool ganon_classify( Config config )
     // Classify reads iteractively for each hierarchy level
     uint16_t hierarchy_id   = 0;
     uint16_t hierarchy_size = parsed_hierarchy.size();
-    // Check if tax files are present to run lca
-    bool run_lca = config.tax.size();
     for ( auto& [hierarchy_label, hierarchy_config] : parsed_hierarchy )
     {
         ++hierarchy_id;
@@ -970,7 +986,7 @@ bool ganon_classify( Config config )
         LCA                                      lca;
 
         timeLoadFilters.start();
-        bool loaded = detail::load_files( filters, run_lca, parsed_hierarchy[hierarchy_label].filters );
+        bool loaded = detail::load_files( filters, parsed_hierarchy[hierarchy_label].filters );
         if ( !loaded )
         {
             std::cerr << "ERROR: loading ibf or tax files" << std::endl;
@@ -995,12 +1011,18 @@ bool ganon_classify( Config config )
             }
         }
 
-        if ( run_lca )
+
+        // Parse tax if provided
+        if ( filters[0].filter_config.tax_file != "" )
         {
             // merge repeated elements from multiple filters
             tax = detail::merge_tax( filters );
             // if target not found in tax, add node target with parent = "1" (root)
             detail::validate_targets_tax( filters, tax, config.quiet );
+        }
+
+        if ( !config.skip_lca )
+        {
             // pre-processing of nodes to generate LCA
             detail::pre_process_lca( lca, tax );
         }
@@ -1032,7 +1054,7 @@ bool ganon_classify( Config config )
 
         if ( !config.output_prefix.empty() )
         {
-            if ( config.output_lca && run_lca )
+            if ( config.output_lca && !config.skip_lca )
             {
                 if ( hierarchy_first || !config.output_single )
                     out_lca.open( hierarchy_config.output_file_lca );
@@ -1084,8 +1106,7 @@ bool ganon_classify( Config config )
                                             pointer_helper,
                                             hierarchy_config,
                                             hierarchy_first,
-                                            hierarchy_last,
-                                            run_lca ) );
+                                            hierarchy_last ) );
         }
 
         // Wait here until classification is over
@@ -1106,7 +1127,7 @@ bool ganon_classify( Config config )
         stats.add_reports( hierarchy_label, rep );
 
         // write reports
-        detail::write_report( rep, tax, out_rep, hierarchy_label, run_lca );
+        detail::write_report( rep, tax, out_rep, hierarchy_label );
 
         // Wait here until all files are written
         for ( auto&& task : write_tasks )

@@ -30,9 +30,9 @@ class TestBuild(unittest.TestCase):
     @classmethod
     def setUpClass(self):    
         # 3 small genomes from genbank (also on GTDB R207 for bac arc)
-        # archaea GCA_002254805.1
-        # bacteria GCA_000147015.1
-        # viral GCA_004132065.1
+        # archaea GCA_002254805.1 txid 2012515
+        # bacteria GCA_000147015.1 txid 871271
+        # viral GCA_004132065.1 txid 2161879
         # Export local_dir for genome_updater, uses local folder as repository
         os.environ["local_dir"] = os.path.abspath(data_dir + "build/")
         setup_dir(self.results_dir)
