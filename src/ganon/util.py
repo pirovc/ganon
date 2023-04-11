@@ -61,7 +61,7 @@ def rm_files(files):
             os.remove(f)
 
 
-def validate_input_files(input_files_folder, input_extension, quiet):
+def validate_input_files(input_files_folder, input_extension, quiet, input_recursive: bool = False):
     """
     given a list of input files and/or folders and an file extension
     check for valid files and return them in a set
@@ -75,13 +75,23 @@ def validate_input_files(input_files_folder, input_extension, quiet):
                 print_log("--input-extension is required when using folders in the --input. Skipping: " + i, quiet)
                 continue
             files_in_dir = 0
-            for file in os.listdir(i):
-                if file.endswith(input_extension):
-                    f = os.path.join(i, file)
+
+            if input_recursive:
+                for path in Path(i).rglob('*' + input_extension):
+                    f = str(path.joinpath())
                     if check_file(f):
                         files_in_dir += 1
                         valid_input_files.add(f)
+            else:
+                for file in os.listdir(i):
+                    if file.endswith(input_extension):
+                        f = os.path.join(i, file)
+                        if check_file(f):
+                            files_in_dir += 1
+                            valid_input_files.add(f)
+
             print_log(str(files_in_dir) + " valid file(s) [--input-extension " + input_extension +
+                      (", --input-recursive" if input_recursive else "") + 
                       "] found in " + i, quiet)
         else:
             print_log("Skipping invalid file/folder: " + i, quiet)

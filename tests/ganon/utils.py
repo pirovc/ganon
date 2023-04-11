@@ -37,11 +37,15 @@ def check_files(prefix, extensions):
     return True
 
 
-def list_files_folder(folder, ext: str=None):
+def list_files_folder(folder, ext: str="", recursive: bool=False):
     file_list = []
-    for file in os.listdir(folder):
-        if ext is None or file.endswith(ext):
-            file_list.append(folder + file)
+    if recursive:
+        for path in Path(folder).rglob('*' + ext):
+            file_list.append(str(path.joinpath()))
+    else:
+        for file in os.listdir(folder):
+            if ext is None or file.endswith(ext):
+                file_list.append(folder + file)
     return file_list
 
 
@@ -114,7 +118,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
             input_files = []
             for i in params["input"]:
                 if os.path.isdir(i):
-                    input_files.extend(list_files_folder(i, params["input_extension"]))
+                    input_files.extend(list_files_folder(i, ext=params["input_extension"], recursive=params["input_recursive"]))
                 else:
                     input_files.append(i)
 

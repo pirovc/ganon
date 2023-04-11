@@ -60,6 +60,7 @@ def build(cfg):
                                            "-o " + files_output_folder,
                                            "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
                                            "-m",
+                                           "-N",
                                            "-i" if resume_download else "",
                                            "-s" if cfg.quiet else "",
                                            "-w" if not cfg.verbose else "",
@@ -73,6 +74,7 @@ def build(cfg):
 
     build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
+                           "input_recursive": True,
                            "input_target": "file",
                            "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
@@ -133,6 +135,7 @@ def update(cfg):
         run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
                                            "-o " + files_output_folder,
                                            "-m",
+                                           "-N",
                                            "-s" if cfg.quiet else "",
                                            "-w" if not cfg.verbose else ""])
         run(run_genome_updater_cmd, quiet=cfg.quiet)
@@ -145,6 +148,7 @@ def update(cfg):
 
     build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
+                           "input_recursive": True,
                            "input_target": "file",
                            "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
@@ -231,7 +235,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Retrieve and check input files or folders
         if cfg.input:
-            input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet)
+            input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet, input_recursive=cfg.input_recursive)
             if not input_files:
                 print_log("ERROR: No valid input files found", cfg.quiet)
                 return False

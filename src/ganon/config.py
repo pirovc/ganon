@@ -76,6 +76,7 @@ class Config:
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
         build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s). Mutually exclusive --input-file.")
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
+        build_custom_required_args.add_argument("-c", "--input-recursive", action="store_true",                             help="Look for files recursively in folder(s) provided with --input")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",        type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")

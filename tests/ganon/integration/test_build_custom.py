@@ -33,7 +33,7 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_input_folder(self):
         """
-        ganon build-custom with folder as --input with --extension
+        ganon build-custom with folder as --input with --input-extension
         """
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_folder"
@@ -66,11 +66,34 @@ class TestBuildCustom(unittest.TestCase):
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom ran but it should fail")
 
+    def test_input_folder_recursive(self):
+        """
+        ganon build-custom with folder as --input with --input-extension and --input-recursive
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_folder_recursive"
+        params["input"] = data_dir + "build-custom/files/"
+        params["input_extension"] = "fna.gz"
+        params["input_recursive"] = True
+        
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # list files from base folder and "more" (got recursively)
+        files = list_files_folder(params["input"], ext=params["input_extension"], recursive=True)
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+
     def test_input_single_file(self):
         """
         ganon build-custom with one file as --input (will set --input-target sequence)
         """
-        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_single_file"
         params["input"] = files[0]
@@ -90,7 +113,7 @@ class TestBuildCustom(unittest.TestCase):
         """
         ganon build-custom with files as --input
         """
-        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_files"
         params["input"] = files
@@ -116,9 +139,9 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_input_folders_files(self):
         """
-        ganon build-custom with files and folders as --input with --extension
+        ganon build-custom with files and folders as --input with --input-extension
         """
-        files = list_files_folder(data_dir + "build-custom/files/", "fna.gz")
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
         folder = data_dir + "build-custom/files/more/"
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_folders_files"
@@ -129,7 +152,7 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
-        files.extend(list_files_folder(folder, params["input_extension"]))
+        files.extend(list_files_folder(folder, ext=params["input_extension"]))
         self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
         self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
         self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
@@ -220,7 +243,7 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
-        files = list_files_folder(params["input"], "fna.gz")
+        files = list_files_folder(params["input"], ext="fna.gz")
         self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
         self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
         self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
@@ -238,7 +261,7 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
-        sequences = list_sequences(list_files_folder(params["input"], "fna.gz"))
+        sequences = list_sequences(list_files_folder(params["input"], ext="fna.gz"))
         self.assertTrue(res["target"]["sequence"].isin(sequences).all(), "Files missing from target")
         self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of files on target")
         self.assertTrue(res["info"]["target"].isin(sequences).all(), "Files missing from info")

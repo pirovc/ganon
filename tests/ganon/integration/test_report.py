@@ -502,7 +502,7 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
         # should have two outputs
-        self.assertEqual(len(res), len(list_files_folder(params["input"][0], params["input_extension"])),
+        self.assertEqual(len(res), len(list_files_folder(params["input"][0], ext=params["input_extension"])),
                          "ganon report did not generate multiple report files")
 
     def test_multiple_rep_files_split_hierachy(self):

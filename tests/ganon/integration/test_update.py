@@ -60,12 +60,12 @@ class TestUpdate(unittest.TestCase):
         sleep(1)
 
         update_params = {"db_prefix": self.results_dir + "test_output_db_prefix",
-                        "output_db_prefix": self.results_dir + "test_output_db_prefix2",
-                        "threads": 1,
-                        "write_info_file": True,
-                        "keep_files": True,
-                        "verbose": True,
-                        "quiet": False}
+                         "output_db_prefix": self.results_dir + "test_output_db_prefix2",
+                         "threads": 1,
+                         "write_info_file": True,
+                         "keep_files": True,
+                         "verbose": True,
+                         "quiet": False}
         cfg = Config("update", **update_params)    
         # Run ganon build
         self.assertTrue(run_ganon(cfg, update_params["output_db_prefix"]), "ganon update run failed")
