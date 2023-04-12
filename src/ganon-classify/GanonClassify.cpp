@@ -17,6 +17,7 @@
 
 #include <seqan3/alphabet/views/complement.hpp>
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/exception.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
@@ -784,44 +785,62 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
 {
     for ( auto const& reads_file : config.single_reads )
     {
-        seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > > fin1{
-            reads_file
-        };
-        for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
+        try
         {
-            ReadBatches rb{ false };
-            for ( auto& [id, seq] : rec )
+            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                fin1{ reads_file };
+            for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
             {
-                rb.ids.push_back( std::move( id ) );
-                rb.seqs.push_back( std::move( seq ) );
+                ReadBatches rb{ false };
+                for ( auto& [id, seq] : rec )
+                {
+                    rb.ids.push_back( std::move( id ) );
+                    rb.seqs.push_back( std::move( seq ) );
+                }
+                stats.input_reads += rb.ids.size();
+                queue1.push( std::move( rb ) );
             }
-            stats.input_reads += rb.ids.size();
-            queue1.push( std::move( rb ) );
+        }
+        catch ( seqan3::parse_error const& e )
+        {
+            std::cerr << "Error parsing file [" << reads_file << "]. " << e.what() << std::endl;
+            continue;
         }
     }
     if ( config.paired_reads.size() > 0 )
     {
         for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
-            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                fin1{ config.paired_reads[pair_cnt] };
-            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                fin2{ config.paired_reads[pair_cnt + 1] };
-            for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
+            try
             {
-                ReadBatches rb{ true };
-                for ( auto& [id, seq] : rec )
+                seqan3::sequence_file_input< raptor::dna4_traits,
+                                             seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                    fin1{ config.paired_reads[pair_cnt] };
+                seqan3::sequence_file_input< raptor::dna4_traits,
+                                             seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                    fin2{ config.paired_reads[pair_cnt + 1] };
+                for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
                 {
-                    rb.ids.push_back( std::move( id ) );
-                    rb.seqs.push_back( std::move( seq ) );
+                    ReadBatches rb{ true };
+                    for ( auto& [id, seq] : rec )
+                    {
+                        rb.ids.push_back( std::move( id ) );
+                        rb.seqs.push_back( std::move( seq ) );
+                    }
+                    // loop in the second file and get same amount of reads
+                    for ( auto& [id, seq] : fin2 | std::views::take( config.n_reads ) )
+                    {
+                        rb.seqs2.push_back( std::move( seq ) );
+                    }
+                    stats.input_reads += rb.ids.size();
+                    queue1.push( std::move( rb ) );
                 }
-                // loop in the second file and get same amount of reads
-                for ( auto& [id, seq] : fin2 | std::views::take( config.n_reads ) )
-                {
-                    rb.seqs2.push_back( std::move( seq ) );
-                }
-                stats.input_reads += rb.ids.size();
-                queue1.push( std::move( rb ) );
+            }
+            catch ( seqan3::parse_error const& ext )
+            {
+                std::cerr << "Error parsing files [" << config.paired_reads[pair_cnt] << "/"
+                          << config.paired_reads[pair_cnt + 1] << "]. " << ext.what() << std::endl;
+                continue;
             }
         }
     }
