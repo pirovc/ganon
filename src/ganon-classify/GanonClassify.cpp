@@ -115,9 +115,9 @@ struct ReadOut
 struct Rep
 {
     // Report with counts of matches and reads assigned (unique or lca) for each target
-    uint64_t matches      = 0;
-    uint64_t lca_reads    = 0;
-    uint64_t unique_reads = 0;
+    size_t matches      = 0;
+    size_t lca_reads    = 0;
+    size_t unique_reads = 0;
 };
 
 typedef robin_hood::unordered_map< std::string, Rep >  TRep;
@@ -125,18 +125,18 @@ typedef robin_hood::unordered_map< std::string, Node > TTax;
 
 struct Total
 {
-    uint64_t reads_processed  = 0;
-    uint64_t length_processed = 0;
-    uint64_t reads_classified = 0;
-    uint64_t matches          = 0;
-    uint64_t unique_matches   = 0;
+    size_t reads_processed  = 0;
+    size_t length_processed = 0;
+    size_t reads_classified = 0;
+    size_t matches          = 0;
+    size_t unique_matches   = 0;
 };
 
 struct Stats
 {
     Total total;
     // number of reads in the input files
-    uint64_t input_reads = 0;
+    size_t input_reads = 0;
     // Total for each hierarchy
     std::map< std::string, Total > hierarchy_total;
 
@@ -213,11 +213,11 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
     std::vector< std::string > sorted_hierarchy = config.hierarchy_labels;
     std::sort( sorted_hierarchy.begin(), sorted_hierarchy.end() );
     // get unique hierarcy labels
-    uint16_t unique_hierarchy =
+    const size_t unique_hierarchy =
         std::unique( sorted_hierarchy.begin(), sorted_hierarchy.end() ) - sorted_hierarchy.begin();
 
-    uint16_t hierarchy_count = 0;
-    for ( uint16_t h = 0; h < config.hierarchy_labels.size(); ++h )
+    size_t hierarchy_count = 0;
+    for ( size_t h = 0; h < config.hierarchy_labels.size(); ++h )
     {
 
         auto filter_cfg = FilterConfig{ config.ibf[h], config.rel_cutoff[h] };
@@ -255,7 +255,7 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
     return parsed_hierarchy;
 }
 
-void print_hierarchy( Config const& config, std::map< std::string, HierarchyConfig > const& parsed_hierarchy )
+void print_hierarchy( Config const& config, auto const& parsed_hierarchy )
 {
 
     constexpr auto newl{ "\n" };
@@ -316,10 +316,10 @@ void select_matches( Filter< TIBF >&        filter,
     // Count every occurance on IBF
     seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes );
 
-    // Sum counts among bins (split target (user bins) into several tecnical bins)
     for ( auto const& [target, bins] : filter.map )
     {
-        uint16_t summed_count = 0;
+        // Sum counts among bins (split target (user bins) into several tecnical bins)
+        size_t summed_count = 0;
         for ( auto const& binno : bins )
         {
             summed_count += counts[binno];
@@ -367,7 +367,7 @@ void select_matches( Filter< THIBF >&       filter,
     }
 }
 
-uint32_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
+size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
 {
 
     for ( auto const& [target, kmer_count] : matches )
@@ -414,7 +414,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
 {
 
     // oner hash adaptor per thread
-    auto minimiser_hash =
+    const auto minimiser_hash =
         seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ hierarchy_config.kmer_size } },
                                        seqan3::window_size{ hierarchy_config.window_size },
                                        seqan3::seed{ raptor::adjust_seed( hierarchy_config.kmer_size ) } );
@@ -429,7 +429,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
         agents.push_back( filter.ibf.counting_agent() );
     }
 
-
     while ( true )
     {
         // Wait here until reads are available or push is over and queue is empty
@@ -442,27 +441,25 @@ void classify( std::vector< Filter< TFilter > >& filters,
         // store unclassified reads for next iteration
         ReadBatches left_over_reads{ rb.paired };
 
-        for ( uint32_t readID = 0; readID < rb.ids.size(); ++readID )
+        for ( size_t readID = 0; readID < rb.ids.size(); ++readID )
         {
             // read lenghts
-            uint16_t read1_len = rb.seqs[readID].size();
-            uint16_t read2_len = rb.paired ? rb.seqs2[readID].size() : 0;
+            const size_t read1_len = rb.seqs[readID].size();
+            const size_t read2_len = rb.paired ? rb.seqs2[readID].size() : 0;
 
             // Store matches for this read
             TMatches matches;
-
-            std::vector< size_t > hashes;
 
             // Best scoring kmer count
             uint16_t max_kmer_count_read = 0;
             if ( read1_len >= hierarchy_config.window_size )
             {
-                hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
+                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
                 // Count hashes from both pairs if second is given
                 if ( read2_len >= hierarchy_config.window_size )
                 {
                     // Add hashes of second pair
-                    auto h2 = rb.seqs2[readID] | minimiser_hash | std::views::common;
+                    const auto h2 = rb.seqs2[readID] | minimiser_hash | std::views::common;
                     hashes.insert( hashes.end(), h2.begin(), h2.end() );
                 }
 
@@ -474,7 +471,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 }
 
                 // For each filter in the hierarchy
-                for ( uint8_t i = 0; i < filters.size(); ++i )
+                for ( size_t i = 0; i < filters.size(); ++i )
                 {
                     // Calculate threshold for cutoff (keep matches above)
                     uint16_t threshold_cutoff = threshold_rel( hashes.size(), filters[i].filter_config.rel_cutoff );
@@ -497,11 +494,11 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 total.reads_classified++;
 
                 // Calculate threshold for filtering (keep matches above)
-                uint16_t threshold_filter =
+                const uint16_t threshold_filter =
                     max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
 
                 // Filter matches
-                uint32_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
+                const size_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter );
 
                 if ( !config.skip_lca )
                 {
@@ -536,9 +533,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
             // not classified
             if ( !hierarchy_last ) // if there is more levels, store read
             {
-                // seqan::appendValue( left_over_reads.ids, rb.ids[readID] );
-                // seqan::appendValue( left_over_reads.seqs, rb.seqs[readID] );
-                // MOVE?
                 left_over_reads.ids.push_back( rb.ids[readID] );
                 left_over_reads.seqs.push_back( rb.seqs[readID] );
 
@@ -672,7 +666,7 @@ TTax load_tax( std::string tax_file )
 template < typename TFilter >
 bool load_files( std::vector< Filter< TFilter > >& filters, std::vector< FilterConfig >& fconf )
 {
-    uint16_t filter_cnt = 0;
+    size_t filter_cnt = 0;
     for ( auto& filter_config : fconf )
     {
         TTax      tax;
@@ -712,7 +706,7 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
     std::cerr << std::endl;
 }
 
-void print_stats( Stats& stats, const StopClock& timeClassPrint, auto& parsed_hierarchy )
+void print_stats( Stats& stats, const StopClock& timeClassPrint, auto const& parsed_hierarchy )
 {
     const double elapsed_classification = timeClassPrint.elapsed();
     std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
@@ -736,7 +730,7 @@ void print_stats( Stats& stats, const StopClock& timeClassPrint, auto& parsed_hi
                             : 0;
     std::cerr << " - " << stats.total.matches << " matches (avg. " << avg_matches << " match/read classified)"
               << std::endl;
-    uint64_t total_reads_unclassified = stats.total.reads_processed - stats.total.reads_classified;
+    const size_t total_reads_unclassified = stats.total.reads_processed - stats.total.reads_classified;
     std::cerr << " - " << total_reads_unclassified << " reads unclassified ("
               << ( total_reads_unclassified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
               << std::endl;
@@ -809,7 +803,7 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
     }
     if ( config.paired_reads.size() > 0 )
     {
-        for ( uint16_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
+        for ( size_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
         {
             try
             {
@@ -854,7 +848,7 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& ou
         ReadOut ro = classified_queue.pop();
         if ( ro.readID != "" )
         {
-            for ( uint32_t i = 0; i < ro.matches.size(); ++i )
+            for ( size_t i = 0; i < ro.matches.size(); ++i )
             {
                 out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
             }
@@ -894,7 +888,7 @@ TTax merge_tax( std::vector< Filter< TFilter > > const& filters )
     else
     {
         TTax merged_tax = filters[0].tax;
-        for ( uint16_t i = 1; i < filters.size(); ++i )
+        for ( size_t i = 1; i < filters.size(); ++i )
         {
             // merge taxonomies keeping the first one as a default
             merged_tax.insert( filters[i].tax.begin(), filters[i].tax.end() );
@@ -993,8 +987,8 @@ bool ganon_classify( Config config )
 
 
     // Classify reads iteractively for each hierarchy level
-    uint16_t hierarchy_id   = 0;
-    uint16_t hierarchy_size = parsed_hierarchy.size();
+    size_t       hierarchy_id   = 0;
+    const size_t hierarchy_size = parsed_hierarchy.size();
     for ( auto& [hierarchy_label, hierarchy_config] : parsed_hierarchy )
     {
         ++hierarchy_id;
@@ -1005,7 +999,7 @@ bool ganon_classify( Config config )
         LCA                                      lca;
 
         timeLoadFilters.start();
-        bool loaded = detail::load_files( filters, parsed_hierarchy[hierarchy_label].filters );
+        const bool loaded = detail::load_files( filters, parsed_hierarchy[hierarchy_label].filters );
         if ( !loaded )
         {
             std::cerr << "ERROR: loading ibf or tax files" << std::endl;
@@ -1108,7 +1102,7 @@ bool ganon_classify( Config config )
         std::vector< std::future< void > > tasks;
         // Threads for classification
         timeClassPrint.start();
-        for ( uint16_t taskNo = 0; taskNo < config.threads; ++taskNo )
+        for ( size_t taskNo = 0; taskNo < config.threads; ++taskNo )
         {
 
             tasks.emplace_back( std::async( std::launch::async,
