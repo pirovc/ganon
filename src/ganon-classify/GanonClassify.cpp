@@ -41,11 +41,9 @@ namespace detail
 
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
-typedef robin_hood::unordered_map< std::string, uint16_t >                                 TMatches;
-
-typedef std::vector< std::tuple< uint64_t, std::string > > TBinMap;
-
-typedef robin_hood::unordered_map< std::string, std::vector< uint64_t > > TMap;
+typedef robin_hood::unordered_map< std::string, size_t >                                   TMatches;
+typedef std::vector< std::tuple< uint64_t, std::string > >                                 TBinMap;
+typedef robin_hood::unordered_map< std::string, std::vector< uint64_t > >                  TMap;
 
 struct Node
 {
@@ -94,7 +92,7 @@ struct ReadBatches
 struct ReadMatch
 {
     std::string target;
-    uint16_t    kmer_count;
+    size_t      kmer_count;
 };
 
 struct ReadOut
@@ -301,7 +299,7 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
     return report_sum;
 }
 
-inline uint16_t threshold_rel( uint16_t n_hashes, double p )
+inline size_t threshold_rel( size_t n_hashes, double p )
 {
     return std::ceil( n_hashes * p );
 }
@@ -310,8 +308,8 @@ void select_matches( Filter< TIBF >&        filter,
                      TMatches&              matches,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
-                     uint16_t               threshold_cutoff,
-                     uint16_t&              max_kmer_count_read )
+                     size_t                 threshold_cutoff,
+                     size_t&                max_kmer_count_read )
 {
     // Count every occurance on IBF
     seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes );
@@ -342,8 +340,8 @@ void select_matches( Filter< THIBF >&       filter,
                      TMatches&              matches,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
-                     uint16_t               threshold_cutoff,
-                     uint16_t&              max_kmer_count_read )
+                     size_t                 threshold_cutoff,
+                     size_t&                max_kmer_count_read )
 {
     // Count only matches above threhsold
     seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
@@ -354,7 +352,7 @@ void select_matches( Filter< THIBF >&       filter,
     {
         if ( counts[bins[0]] > 0 )
         {
-            const uint16_t count = counts[bins[0]];
+            const size_t count = counts[bins[0]];
             // ensure that count was not already found for target with higher count
             // can happen in case of ambiguos targets in multiple filters
             if ( count > matches[target] )
@@ -367,7 +365,7 @@ void select_matches( Filter< THIBF >&       filter,
     }
 }
 
-size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t threshold_filter )
+size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter )
 {
 
     for ( auto const& [target, kmer_count] : matches )
@@ -382,7 +380,7 @@ size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, uint16_t
     return read_out.matches.size();
 }
 
-void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, uint16_t max_kmer_count_read, LCA& lca, TRep& rep )
+void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_kmer_count_read, LCA& lca, TRep& rep )
 {
 
     std::vector< std::string > targets;
@@ -453,7 +451,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             TMatches matches;
 
             // Best scoring kmer count
-            uint16_t max_kmer_count_read = 0;
+            size_t max_kmer_count_read = 0;
 
             // if length is smaller than window, skip read
             if ( read1_len >= hierarchy_config.window_size )
@@ -483,7 +481,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     for ( size_t i = 0; i < filters.size(); ++i )
                     {
                         // Calculate threshold for cutoff (keep matches above)
-                        uint16_t threshold_cutoff = threshold_rel( n_hashes, filters[i].filter_config.rel_cutoff );
+                        size_t threshold_cutoff = threshold_rel( n_hashes, filters[i].filter_config.rel_cutoff );
 
                         // reset low threshold_cutoff to just one kmer (0 would match everywhere)
                         if ( threshold_cutoff == 0 )
@@ -504,7 +502,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 total.reads_classified++;
 
                 // Calculate threshold for filtering (keep matches above)
-                const uint16_t threshold_filter =
+                const size_t threshold_filter =
                     max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
 
                 // Filter matches
