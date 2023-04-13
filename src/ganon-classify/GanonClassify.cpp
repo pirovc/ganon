@@ -441,6 +441,8 @@ void classify( std::vector< Filter< TFilter > >& filters,
         // store unclassified reads for next iteration
         ReadBatches left_over_reads{ rb.paired };
 
+        const size_t hashes_limit = std::numeric_limits< uint16_t >::max();
+
         for ( size_t readID = 0; readID < rb.ids.size(); ++readID )
         {
             // read lenghts
@@ -452,8 +454,11 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
             // Best scoring kmer count
             uint16_t max_kmer_count_read = 0;
+
+            // if length is smaller than window, skip read
             if ( read1_len >= hierarchy_config.window_size )
             {
+                // Count hashes
                 std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
                 // Count hashes from both pairs if second is given
                 if ( read2_len >= hierarchy_config.window_size )
@@ -463,25 +468,30 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     hashes.insert( hashes.end(), h2.begin(), h2.end() );
                 }
 
-                // Sum sequence to totals
-                if ( hierarchy_first )
+                const size_t n_hashes = hashes.size();
+                // if n_hashes are bigger than int limit, skip read
+                if ( n_hashes <= hashes_limit )
                 {
-                    total.reads_processed++;
-                    total.length_processed += read1_len + read2_len;
-                }
+                    // Sum sequence to totals
+                    if ( hierarchy_first )
+                    {
+                        total.reads_processed++;
+                        total.length_processed += read1_len + read2_len;
+                    }
 
-                // For each filter in the hierarchy
-                for ( size_t i = 0; i < filters.size(); ++i )
-                {
-                    // Calculate threshold for cutoff (keep matches above)
-                    uint16_t threshold_cutoff = threshold_rel( hashes.size(), filters[i].filter_config.rel_cutoff );
+                    // For each filter in the hierarchy
+                    for ( size_t i = 0; i < filters.size(); ++i )
+                    {
+                        // Calculate threshold for cutoff (keep matches above)
+                        uint16_t threshold_cutoff = threshold_rel( n_hashes, filters[i].filter_config.rel_cutoff );
 
-                    // reset low threshold_cutoff to just one kmer (0 would match everywhere)
-                    if ( threshold_cutoff == 0 )
-                        threshold_cutoff = 1;
+                        // reset low threshold_cutoff to just one kmer (0 would match everywhere)
+                        if ( threshold_cutoff == 0 )
+                            threshold_cutoff = 1;
 
-                    // count and select matches
-                    select_matches( filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read );
+                        // count and select matches
+                        select_matches( filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read );
+                    }
                 }
             }
 
@@ -709,36 +719,34 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
 void print_stats( Stats& stats, const StopClock& timeClassPrint, auto const& parsed_hierarchy )
 {
     const double elapsed_classification = timeClassPrint.elapsed();
+    const double total_reads_processed  = stats.total.reads_processed > 0
+                                              ? static_cast< double >( stats.total.reads_processed )
+                                              : 1; // to not report nan on divisions
     std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
               << stats.total.length_processed / 1000000.0 << " Mbp) in " << elapsed_classification << " seconds ("
               << ( stats.total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
               << std::endl;
     std::cerr << " - " << stats.total.reads_classified << " reads classified ("
-              << ( stats.total.reads_classified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
-              << std::endl;
+              << ( stats.total.reads_classified / total_reads_processed ) * 100 << "%)" << std::endl;
     std::cerr << "   - " << stats.total.unique_matches << " with unique matches ("
-              << ( stats.total.unique_matches / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
-              << std::endl;
+              << ( stats.total.unique_matches / total_reads_processed ) * 100 << "%)" << std::endl;
     std::cerr << "   - " << stats.total.reads_classified - stats.total.unique_matches << " with multiple matches ("
-              << ( ( stats.total.reads_classified - stats.total.unique_matches )
-                   / static_cast< double >( stats.total.reads_processed ) )
-                     * 100
-              << "%)" << std::endl;
+              << ( ( stats.total.reads_classified - stats.total.unique_matches ) / total_reads_processed ) * 100 << "%)"
+              << std::endl;
 
-    float avg_matches = stats.total.reads_classified
-                            ? ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) )
-                            : 0;
+    double avg_matches = stats.total.reads_classified
+                             ? ( stats.total.matches / static_cast< double >( stats.total.reads_classified ) )
+                             : 0;
     std::cerr << " - " << stats.total.matches << " matches (avg. " << avg_matches << " match/read classified)"
               << std::endl;
     const size_t total_reads_unclassified = stats.total.reads_processed - stats.total.reads_classified;
     std::cerr << " - " << total_reads_unclassified << " reads unclassified ("
-              << ( total_reads_unclassified / static_cast< double >( stats.total.reads_processed ) ) * 100 << "%)"
-              << std::endl;
+              << ( total_reads_unclassified / total_reads_processed ) * 100 << "%)" << std::endl;
 
     if ( stats.total.reads_processed < stats.input_reads )
     {
         std::cerr << " - " << stats.input_reads - stats.total.reads_processed
-                  << " reads skipped (shorther than k-mer size)" << std::endl;
+                  << " reads skipped (too long or too short (< window size))" << std::endl;
     }
 
     if ( parsed_hierarchy.size() > 1 )
@@ -754,20 +762,16 @@ void print_stats( Stats& stats, const StopClock& timeClassPrint, auto const& par
                                               : 0;
             std::cerr << " - " << hierarchy_label << ": " << stats.hierarchy_total[hierarchy_label].reads_classified
                       << " classified ("
-                      << ( stats.hierarchy_total[hierarchy_label].reads_classified
-                           / static_cast< double >( stats.total.reads_processed ) )
-                             * 100
+                      << ( stats.hierarchy_total[hierarchy_label].reads_classified / total_reads_processed ) * 100
                       << "%) " << stats.hierarchy_total[hierarchy_label].unique_matches << " unique ("
-                      << ( stats.hierarchy_total[hierarchy_label].unique_matches
-                           / static_cast< double >( stats.total.reads_processed ) )
-                             * 100
+                      << ( stats.hierarchy_total[hierarchy_label].unique_matches / total_reads_processed ) * 100
                       << "%) "
                       << stats.hierarchy_total[hierarchy_label].reads_classified
                              - stats.hierarchy_total[hierarchy_label].unique_matches
                       << " multiple ("
                       << ( ( stats.hierarchy_total[hierarchy_label].reads_classified
                              - stats.hierarchy_total[hierarchy_label].unique_matches )
-                           / static_cast< double >( stats.total.reads_processed ) )
+                           / total_reads_processed )
                              * 100
                       << "%) " << stats.hierarchy_total[hierarchy_label].matches << " matches (avg. " << avg_matches
                       << ")" << std::endl;
