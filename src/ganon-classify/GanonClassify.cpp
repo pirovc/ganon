@@ -42,8 +42,8 @@ namespace detail
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
 typedef robin_hood::unordered_map< std::string, size_t >                                   TMatches;
-typedef std::vector< std::tuple< uint64_t, std::string > >                                 TBinMap;
-typedef robin_hood::unordered_map< std::string, std::vector< uint64_t > >                  TMap;
+typedef std::vector< std::tuple< size_t, std::string > >                                   TBinMap;
+typedef robin_hood::unordered_map< std::string, std::vector< size_t > >                    TMap;
 
 struct Node
 {
