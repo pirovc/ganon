@@ -33,11 +33,18 @@
 #include <type_traits>
 #include <vector>
 
+
 namespace GanonClassify
 {
 
 namespace detail
 {
+
+#ifdef LONGREADS
+typedef uint32_t TIntCount;
+#else
+typedef uint16_t TIntCount;
+#endif
 
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
@@ -312,7 +319,7 @@ void select_matches( Filter< TIBF >&        filter,
                      size_t&                max_kmer_count_read )
 {
     // Count every occurance on IBF
-    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes );
+    seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes );
 
     for ( auto const& [target, bins] : filter.map )
     {
@@ -344,7 +351,7 @@ void select_matches( Filter< THIBF >&       filter,
                      size_t&                max_kmer_count_read )
 {
     // Count only matches above threhsold
-    seqan3::counting_vector< uint16_t > counts = agent.bulk_count( hashes, threshold_cutoff );
+    seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes, threshold_cutoff );
 
 
     // Only one bin per target
@@ -419,12 +426,12 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
     // one agent per thread per filter
     using TAgent = std::conditional_t< std::same_as< TFilter, THIBF >,
-                                       THIBF::counting_agent_type< uint16_t >,
-                                       TIBF::counting_agent_type< uint16_t > >;
+                                       THIBF::counting_agent_type< detail::TIntCount >,
+                                       TIBF::counting_agent_type< detail::TIntCount > >;
     std::vector< TAgent > agents;
     for ( Filter< TFilter >& filter : filters )
     {
-        agents.push_back( filter.ibf.counting_agent() );
+        agents.push_back( filter.ibf.template counting_agent< detail::TIntCount >() );
     }
 
     while ( true )
@@ -439,7 +446,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
         // store unclassified reads for next iteration
         ReadBatches left_over_reads{ rb.paired };
 
-        const size_t hashes_limit = std::numeric_limits< uint16_t >::max();
+        const size_t hashes_limit = std::numeric_limits< detail::TIntCount >::max();
 
         for ( size_t readID = 0; readID < rb.ids.size(); ++readID )
         {
@@ -541,13 +548,13 @@ void classify( std::vector< Filter< TFilter > >& filters,
             // not classified
             if ( !hierarchy_last ) // if there is more levels, store read
             {
-                left_over_reads.ids.push_back( rb.ids[readID] );
-                left_over_reads.seqs.push_back( rb.seqs[readID] );
+                left_over_reads.ids.push_back( std::move( rb.ids[readID] ) );
+                left_over_reads.seqs.push_back( std::move( rb.seqs[readID] ) );
 
                 if ( rb.paired )
                 {
                     // seqan::appendValue( left_over_reads.seqs2, rb.seqs2[readID] );
-                    left_over_reads.seqs2.push_back( rb.seqs2[readID] );
+                    left_over_reads.seqs2.push_back( std::move( rb.seqs2[readID] ) );
                 }
             }
             else if ( config.output_unclassified ) // no more levels and no classification, add to
@@ -559,7 +566,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
         // if there are more levels to classify and something was left, keep reads in memory
         if ( !hierarchy_last && left_over_reads.ids.size() > 0 )
-            pointer_helper->push( left_over_reads );
+            pointer_helper->push( std::move( left_over_reads ) );
     }
 }
 
