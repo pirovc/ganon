@@ -36,13 +36,14 @@ public:
     bool        output_unclassified = false;
     bool        output_single       = false;
 
-    bool     hibf      = false;
-    bool     skip_lca  = false;
-    uint16_t threads   = 1;
-    uint32_t n_batches = 1000;
-    uint32_t n_reads   = 400;
-    bool     verbose   = false;
-    bool     quiet     = false;
+    bool        hibf          = false;
+    bool        skip_lca      = false;
+    std::string tax_root_node = "1";
+    uint16_t    threads       = 1;
+    size_t      n_batches     = 1000;
+    size_t      n_reads       = 400;
+    bool        verbose       = false;
+    bool        quiet         = false;
 
 
     bool check_files( std::vector< std::string > const& files )

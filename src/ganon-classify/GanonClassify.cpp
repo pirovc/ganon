@@ -907,7 +907,10 @@ TTax merge_tax( std::vector< Filter< TFilter > > const& filters )
 }
 
 template < typename TFilter >
-void validate_targets_tax( std::vector< Filter< TFilter > > const& filters, TTax& tax, bool quiet )
+void validate_targets_tax( std::vector< Filter< TFilter > > const& filters,
+                           TTax&                                   tax,
+                           bool                                    quiet,
+                           const std::string                       tax_root_node )
 {
     for ( auto const& filter : filters )
     {
@@ -915,22 +918,22 @@ void validate_targets_tax( std::vector< Filter< TFilter > > const& filters, TTax
         {
             if ( tax.count( target ) == 0 )
             {
-                tax[target] = Node{ "1", "no rank", target };
+                tax[target] = Node{ tax_root_node, "no rank", target };
                 if ( !quiet )
-                    std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent node to 1 (root)"
-                              << std::endl;
+                    std::cerr << "WARNING: target [" << target << "] without tax entry, setting parent as root node ["
+                              << tax_root_node << "]" << std::endl;
             }
         }
     }
 }
 
-void pre_process_lca( LCA& lca, TTax& tax )
+void pre_process_lca( LCA& lca, TTax& tax, std::string tax_root_node )
 {
     for ( auto const& [target, node] : tax )
     {
         lca.addEdge( node.parent, target );
     }
-    lca.doEulerWalk();
+    lca.doEulerWalk( tax_root_node );
 }
 
 } // namespace detail
@@ -1039,14 +1042,19 @@ bool ganon_classify( Config config )
         {
             // merge repeated elements from multiple filters
             tax = detail::merge_tax( filters );
-            // if target not found in tax, add node target with parent = "1" (root)
-            detail::validate_targets_tax( filters, tax, config.quiet );
+            // if target not found in tax, add node target with parent root
+            detail::validate_targets_tax( filters, tax, config.quiet, config.tax_root_node );
         }
 
         if ( !config.skip_lca )
         {
+            if ( tax.count( config.tax_root_node ) == 0 )
+            {
+                std::cerr << "Root node [" << config.tax_root_node << "] not found (--tax-root-node)" << std::endl;
+                return false;
+            }
             // pre-processing of nodes to generate LCA
-            detail::pre_process_lca( lca, tax );
+            detail::pre_process_lca( lca, tax, config.tax_root_node );
         }
 
 
