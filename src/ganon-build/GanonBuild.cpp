@@ -15,6 +15,7 @@
 #include <cereal/types/vector.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/exception.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
@@ -215,45 +216,53 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
         // For all files of a target
         for ( auto& [file, seqids] : ifm.files )
         {
-
-            // open file
-            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                fin{ file };
-
-            if ( seqids.empty() )
+            try
             {
-                robin_hood::unordered_set< uint64_t > hashes;
+                // open file
+                seqan3::sequence_file_input< raptor::dna4_traits,
+                                             seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                    fin{ file };
 
-                // File as target - generate all hashes from file with possible multiple sequences
-                // before counting and storing
-                for ( auto const& [header, seq] : fin )
+                if ( seqids.empty() )
                 {
-                    total.sequences++;
-                    total.length_bp += seq.size();
-                    const auto mh = seq | minimiser_view | std::views::common;
-                    hashes.insert( mh.begin(), mh.end() );
-                }
-                hashes_count[ifm.target] += hashes.size();
-                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
-            }
-            else
-            {
-                // Sequence as target - count and store hashes for each sequence
-                for ( auto const& [header, seq] : fin )
-                {
-                    const auto seqid = get_seqid( header );
-                    // If header is present for this target
-                    if ( seqids.count( seqid ) )
+                    robin_hood::unordered_set< uint64_t > hashes;
+
+                    // File as target - generate all hashes from file with possible multiple sequences
+                    // before counting and storing
+                    for ( auto const& [header, seq] : fin )
                     {
-                        robin_hood::unordered_set< uint64_t > hashes;
                         total.sequences++;
                         total.length_bp += seq.size();
                         const auto mh = seq | minimiser_view | std::views::common;
                         hashes.insert( mh.begin(), mh.end() );
-                        hashes_count[seqid] = hashes.size();
-                        detail::store_hashes( seqid, hashes, config.tmp_output_folder );
+                    }
+                    hashes_count[ifm.target] += hashes.size();
+                    detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                }
+                else
+                {
+                    // Sequence as target - count and store hashes for each sequence
+                    for ( auto const& [header, seq] : fin )
+                    {
+                        const auto seqid = get_seqid( header );
+                        // If header is present for this target
+                        if ( seqids.count( seqid ) )
+                        {
+                            robin_hood::unordered_set< uint64_t > hashes;
+                            total.sequences++;
+                            total.length_bp += seq.size();
+                            const auto mh = seq | minimiser_view | std::views::common;
+                            hashes.insert( mh.begin(), mh.end() );
+                            hashes_count[seqid] = hashes.size();
+                            detail::store_hashes( seqid, hashes, config.tmp_output_folder );
+                        }
                     }
                 }
+            }
+            catch ( seqan3::parse_error const& e )
+            {
+                std::cerr << "Error parsing file [" << file << "]. " << e.what() << std::endl;
+                continue;
             }
         }
     }
@@ -448,8 +457,8 @@ void optimal_hashes( double const        max_fp,
     /*
      * given a max. false positive or filter_size, iterate over possible capacities for a bin (single bloom filter)
      * and calculate the respective size, considering split bins
-     * selects the parameters generating the "best" between smallest filter/fp and n. of bins and fill the ibf_config
-     * struct
+     * selects the parameters generating the "best" between smallest filter/fp and n. of bins and fill the
+     * ibf_config struct
      */
 
     // Target with the highest number of minimizers

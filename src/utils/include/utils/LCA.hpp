@@ -8,14 +8,13 @@
 #include <string>
 #include <vector>
 
-// required: root node == "1" and father == "0"
 class LCA
 {
 public:
     LCA() = default;
 
     void        addEdge( const std::string& father, const std::string& son );
-    void        doEulerWalk();
+    void        doEulerWalk( const std::string& root_node );
     int         getLCA( unsigned int u, unsigned int v ) const;
     std::string getLCA( const std::vector< std::string >& taxIds ) const;
 
@@ -85,10 +84,10 @@ inline void LCA::depthFirstSearch( const std::string& current, unsigned int dept
     }
 }
 
-inline void LCA::doEulerWalk()
+inline void LCA::doEulerWalk( const std::string& root_node )
 {
     m_firstAppearance.resize( m_vertices, first_appearance_init );
-    depthFirstSearch( "1", 0 );
+    depthFirstSearch( root_node, 0 );
     preProcessRMQ();
 }
 
@@ -165,12 +164,7 @@ inline int LCA::getLCA( unsigned int u, unsigned int v ) const
 
 inline std::string LCA::getLCA( const std::vector< std::string >& taxIds ) const
 {
-
     assert( taxIds.size() > 1 ); // Ideally should return itself if size==1
-
-    // check for valid entries
-    // if ( std::any_of( taxIds.begin(), taxIds.end(), [&]( const auto& id ) { return m_encode.count( id ) == 0; } ) )
-    //    return "1";
 
     int lca = getLCA( m_encode.at( taxIds[0] ), m_encode.at( taxIds[1] ) );
     for ( unsigned int i = 2; i < taxIds.size(); ++i )

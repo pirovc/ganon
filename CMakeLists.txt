@@ -23,6 +23,7 @@ endif()
 
 option( VERBOSE_CONFIG "Verbose mode for quick build setup debugging" OFF )
 option( CONDA "Flag for compilation in conda env." OFF )
+option( LONGREADS "Uses uint32_t for count in ganon-classify. Useful for very long reads (>65535bp)" OFF )
 option( INCLUDE_DIRS "Include directories to look for libraries" "" )
 
 # -----------------------------------------------------------------------------
@@ -79,6 +80,10 @@ endif()
 
 if ( NOT CONDA )
 	add_compile_options( -static -march=native )
+endif()
+
+if( LONGREADS )
+    add_compile_options(-DLONGREADS) 
 endif()
 
 # -----------------------------------------------------------------------------
@@ -149,6 +154,7 @@ if( VERBOSE_CONFIG )
     message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
     message( STATUS "  CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}" )
     message( STATUS "  CONDA               : ${CONDA}" )
+    message( STATUS "  LONGREADS           : ${LONGREADS}" )
     get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
 

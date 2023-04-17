@@ -32,9 +32,10 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "hibf", "Input is an Hierarchical IBF (.hibf) generated from raptor.", cxxopts::value< bool >())
         ( "skip-lca", "Skip LCA step.", cxxopts::value< bool >())
+        ( "tax-root-node", "Define alternative root node for LCA. Default: 1", cxxopts::value< std::string >())
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
-        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< uint32_t >())
-        ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< uint32_t >())
+        ( "n-batches", "Number of batches of n-reads to hold in memory. Default: 1000", cxxopts::value< size_t >())
+        ( "n-reads", "Number of reads for each batch. Default: 400", cxxopts::value< size_t >())
         ( "verbose", "Verbose output mode", cxxopts::value< bool >())
         ( "quiet", "Quiet output mode (only outputs errors and warnings to the STDERR)", cxxopts::value< bool >())
         ( "h,help", "Print help" )
@@ -95,12 +96,14 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.hibf = args["hibf"].as< bool >();
     if ( args.count( "skip-lca" ) )
         config.skip_lca = args["skip-lca"].as< bool >();
+    if ( args.count( "tax-root-node" ) )
+        config.tax_root_node = args["tax-root-node"].as< std::string >();
     if ( args.count( "threads" ) )
         config.threads = args["threads"].as< uint16_t >();
     if ( args.count( "n-reads" ) )
-        config.n_reads = args["n-reads"].as< uint32_t >();
+        config.n_reads = args["n-reads"].as< size_t >();
     if ( args.count( "n-batches" ) )
-        config.n_batches = args["n-batches"].as< uint32_t >();
+        config.n_batches = args["n-batches"].as< size_t >();
     if ( args.count( "verbose" ) )
         config.verbose = args["verbose"].as< bool >();
     if ( args.count( "quiet" ) )
