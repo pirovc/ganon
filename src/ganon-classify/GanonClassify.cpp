@@ -532,10 +532,17 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     if ( config.output_lca )
                         classified_lca_queue.push( read_out_lca );
                 }
-                else if ( count_filtered_matches == 1 )
+                else 
                 {
                     // Not running lca and has unique match
-                    rep[read_out.matches[0].target].unique_reads++;
+                    if ( count_filtered_matches == 1 ){
+                        rep[read_out.matches[0].target].unique_reads++;
+                    }else{
+                        // without tax, no lca, count multi-matches to a root node
+                        // to keep consistency among reports (no. of classified reads)
+                        rep[config.tax_root_node].unique_reads++;
+                    }
+
                 }
 
                 if ( config.output_all )
