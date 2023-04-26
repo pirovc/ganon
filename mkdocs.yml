@@ -1,0 +1,6 @@
+site_name: ganon
+theme: readthedocs
+nav:
+    - ganon: index.md
+markdown_extensions:
+  - attr_list
