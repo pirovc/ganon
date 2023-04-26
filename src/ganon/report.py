@@ -82,6 +82,7 @@ def report(cfg):
     for rep_file in rep_files:
         
         reports, counts = parse_rep(rep_file)
+
         if not reports:
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
             continue
@@ -140,10 +141,11 @@ def parse_rep(rep_file):
             elif fields[0] == "#total_unclassified":
                 unclassified_reads = int(fields[1])
             else:
-                hierarchy_name, target, direct_matches, unique_reads, lca_reads, rank, name = fields
-                direct_matches = int(direct_matches)
-                unique_reads = int(unique_reads)
-                lca_reads = int(lca_reads)
+                hierarchy_name = fields[0]
+                target = fields[1]
+                direct_matches = int(fields[2])
+                unique_reads = int(fields[3])
+                lca_reads = int(fields[4])
 
                 if hierarchy_name not in reports:
                     reports[hierarchy_name] = {}
@@ -195,8 +197,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
     # Add orphan nodes to taxonomy
     for node in merged_rep.keys():
         if tax.latest(node) == tax.undefined_node:
-            tax._nodes[node] = tax.root_node
-            tax._ranks[node] = tax.undefined_rank
+            tax.add(node, tax.root_node)
             orphan_nodes.add(node)
     tax.check_consistency()
     # Pre-build lineages for performance
