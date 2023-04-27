@@ -2,5 +2,11 @@ site_name: ganon
 theme: readthedocs
 nav:
     - ganon: index.md
+    - Databases: databases.md
+    - Classification: classification.md
+    - Reports: reports.md
+    - Output files: outputfiles.md
+    - Tutorials: tutorials.md
 markdown_extensions:
   - attr_list
+  - admonition
