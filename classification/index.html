@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Classification - ganon</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Classification";
+        var mkdocs_page_input_path = "classification.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../databases/">Databases</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Classification</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#multiple-and-hierarchical-classification">Multiple and Hierarchical classification</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Classification</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="classification">Classification</h1>
+<h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification</h2>
+<p><code>ganon classify</code> can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. </p>
+<p>Multiple database classification can be performed providing several inputs for <code>--db-prefix</code>. They are required to be built with the same <code>--kmer-size</code> and <code>--window-size</code> values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.</p>
+<p>To classify reads in a hierarchical order, <code>--hierarchy-labels</code> should be provided. When using multiple hierarchical levels, output files will be generated for each level (use <code>--output-single</code> to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. <code>--rel-cutoff</code>) while others are set for each hierarchical level (e.g. <code>--rel-filter</code>)</p>
+<details>
+  <summary>Examples</summary>
+  <br>
+Classification against 3 database (as if they were one) using the same cutoff:
+
+
+<pre><code class="language-bash">ganon classify --db-prefix db1 db2 db3 \
+               --rel-cutoff 0.75 \
+               --single-reads reads.fq.gz
+</code></pre>
+
+
+Classification against 3 database (as if they were one) using different error rates for each:
+
+
+<pre><code class="language-bash">ganon classify --db-prefix  db1 db2 db3 \
+               --rel-cutoff 0.2 0.3 0.1 \
+               --single-reads reads.fq.gz
+</code></pre>
+
+
+In this example, reads are going to be classified first against db1 and db2. Reads without a valid match will be further classified against db3. `--hierarchy-labels` are strings and are going to be sorted to define the hierarchy order, disregarding input order:
+
+
+<pre><code class="language-bash">ganon classify --db-prefix            db1     db2      db3 \
+               --hierarchy-labels 1_first 1_first 2_second \
+               --single-reads reads.fq.gz
+</code></pre>
+
+
+In this example, classification will be performed with different `--rel-cutoff` for each database. For each hierarchy levels (`1_first` and `2_second`) a different `--rel-filter` will be used:
+
+
+<pre><code class="language-bash">ganon classify --db-prefix            db1     db2      db3 \
+               --hierarchy-labels 1_first 1_first 2_second \
+               --rel-cutoff             1     0.5     0.25 \
+               --rel-filter           0.1              0.5 \
+               --single-reads reads.fq.gz
+</code></pre>
+
+
+</details>
+<p><br></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../databases/" class="btn btn-neutral float-left" title="Databases"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../reports/" class="btn btn-neutral float-right" title="Reports">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../databases/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../reports/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

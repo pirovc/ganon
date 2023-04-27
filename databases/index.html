@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Databases - ganon</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Databases";
+        var mkdocs_page_input_path = "databases.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Databases</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#refseqgenbank">RefSeq/GenBank</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#more-filter-options">More filter options</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#gtdb">GTDB</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#update">Update</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#reducing-database-size">Reducing database size</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#custom-databases">Custom databases</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#humgut">HumGut</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#plasmid-plastid">Plasmid, Plastid</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#univec">UniVec</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../classification/">Classification</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Databases</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="databases">Databases</h1>
+<p>Databases are one of the most important elements when analyzing metagenomics data and should be chosen carefuly.</p>
+<p>ganon automates the download, update and build of databases based on NCBI RefSeq and GenBank genomes repositories wtih <code>ganon build</code> and <code>update</code> commands, for example:</p>
+<pre><code class="language-bash">ganon build -g archaea bacteria -d arc_bac -c -t 30
+</code></pre>
+<p>will download archaeal and bacterial complete genomes from RefSeq and build a database with 30 threads. Some day later, the database can be updated to include newest genomes with:</p>
+<pre><code class="language-bash">ganon update -d arc_bac -t 30
+</code></pre>
+<p>Additionally, <a href="#custom-databases">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.</p>
+</div>
+<h2 id="refseqgenbank">RefSeq/GenBank</h2>
+<p>NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can be confusing and drastically change the outcome of results. Listed below are some examples of commonly used sub-sets:</p>
+<table>
+<thead>
+<tr>
+<th>RefSeq</th>
+<th># assemblies</th>
+<th>Space/Mem</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complete</td>
+<td>295219</td>
+<td>xx-500G</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
+</tr>
+<tr>
+<td>One assembly for each species</td>
+<td>52779</td>
+<td>xx-98G</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s</code></details></td>
+</tr>
+<tr>
+<td>Complete genome assemblies (higher quality)</td>
+<td>44121</td>
+<td>xx-64G</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
+</tr>
+<tr>
+<td>One assembly for each species of complete genomes</td>
+<td>19713</td>
+<td>xx-27G</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s</code></details></td>
+</tr>
+<tr>
+<td>One representative assembly for each species</td>
+<td>18073</td>
+<td>xx-35G</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg</code></details></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>GenBank</th>
+<th># assemblies</th>
+<th>Space/Mem</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complete</td>
+<td>1595845</td>
+<td></td>
+<td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb</code></details></td>
+</tr>
+<tr>
+<td>One assembly for each species</td>
+<td>99505</td>
+<td>xx-420G</td>
+<td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s</code></details></td>
+</tr>
+<tr>
+<td>Complete genome assemblies (higher quality)</td>
+<td>92917</td>
+<td></td>
+<td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg</code></details></td>
+</tr>
+<tr>
+<td>One assembly for each species of complete genomes</td>
+<td>34497</td>
+<td></td>
+<td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s</code></details></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The <code># assemblies</code> were calculated on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.</p>
+</div>
+<ul>
+<li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
+<li>The <code>Space/Mem.</code> requirements are only approximations (calculated with default parameters) and <a href="#reducing-database-size">can be reduced with some trade-offs</a>.</li>
+<li>Databases can have a fixed <code>Space/Mem.</code> with <code>--filter-size</code> parameter. Beware that smaller filters will increase the false positive rates when classifying.</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>assemblies usually represent strains and can be used to do "strain-level classification"</p>
+</div>
+<h3 id="specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups</h3>
+<p>It is also possible to generate databases for specific organisms or taxonomic branches with <code>-a/--taxid</code>, for example:</p>
+<pre><code class="language-bash">ganon build --source refseq --taxid 562 317 --threads 48 --db-prefix coli_syringae
+</code></pre>
+<p>will download and build a database for all <em>Escherichia coli</em> (taxid:562) and <em>Pseudomonas syringae</em> (taxid:317) assemblies from RefSeq.</p>
+<h3 id="more-filter-options">More filter options</h3>
+<p>ganon uses <a href="https://github.com/pirovc/genome_updater">genome_updater</a> to manage downloads and further specific options and filters can be provided with the paramer <code>-u/--genome-updater</code>, for example:</p>
+<pre><code class="language-bash">ganon build -g bacteria -t 48 -d bac_refseq --genome-updater &quot;-A 'genus:3' -E 20230101&quot;
+</code></pre>
+<p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater">repository</a>.</p>
+<h2 id="gtdb">GTDB</h2>
+<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="gtdb.ecogenomic.org/">GTDB</a> is fully integrated and can be used with the parameter <code>--taxonomy gtdb</code>. Note that GTDB only support bacteria and archea groups but ganon filters the appropriate genomes once GTDB taxonomy is selected.</p>
+<h2 id="update">Update</h2>
+<h2 id="reducing-database-size">Reducing database size</h2>
+<ul>
+<li>Top organisms:</li>
+<li>Split groups</li>
+<li>IBF and HIBF</li>
+<li>k-mer and window size</li>
+<li>false positive rate</li>
+</ul>
+<h2 id="custom-databases">Custom databases</h2>
+<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases. </p>
+<p>To use custom sequences, just provide them with <code>--input</code>. ganon will try to retrieve all necessary information necessary to build a database.</p>
+<p><em>ganon expects assembly accessions if building by file (e.g. filename should be similar as <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>) or accession version if building by sequence (e.g. headers should look like <code>&gt;CP022124.1 Fusobacterium nu...</code>).</em> More information about building by file or sequence can be found <a href="#target-file-or-sequence---input-target">here</a>.</p>
+<p>It is also possible to use non-standard accessions and headers to build databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].</p>
+<details>
+  <summary>Examples of --input-file</summary>
+
+Using `--input-target sequence`:
+
+
+<pre><code>sequences.fasta HEADER1
+sequences.fasta HEADER2
+sequences.fasta HEADER3
+others.fasta HEADER4
+others.fasta HEADER5
+</code></pre>
+
+
+or using `--input-target file`:
+
+
+<pre><code>sequences.fasta FILE_A
+others.fasta FILE_B
+</code></pre>
+
+
+Nodes can be provided to link the data with taxonomy. For example (using `--taxonomy ncbi`):
+
+
+<pre><code>sequences.fasta HEADER1 562
+sequences.fasta HEADER2 562
+sequences.fasta HEADER3 562
+others.fasta HEADER4  623
+others.fasta HEADER5  623
+</code></pre>
+
+
+Specialization can be used to create a additional classification level after the taxonomic leaves. For example (using `--level custom`):
+
+
+<pre><code>sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
+sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
+sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
+others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
+others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
+</code></pre>
+
+</details>
+<p><br></p>
+<h3 id="humgut">HumGut</h3>
+<h3 id="plasmid-plastid">Plasmid, Plastid</h3>
+<h3 id="univec">UniVec</h3>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="ganon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../classification/" class="btn btn-neutral float-right" title="Classification">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../classification/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

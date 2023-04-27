@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Output files - ganon</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Output files";
+        var mkdocs_page_input_path = "outputfiles.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../databases/">Databases</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../classification/">Classification</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Output files</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#ganon-buildbuild-customupdate">ganon build/build-custom/update</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ganon-classify">ganon classify</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ganon-report">ganon report</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ganon-table">ganon table</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Output files</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="output-files">Output files</h1>
+<h2 id="ganon-buildbuild-customupdate">ganon build/build-custom/update</h2>
+<p>Every run on <code>ganon build</code>, <code>ganon build-custom</code> or <code>ganon update</code> will generate the following database files:</p>
+<ul>
+<li>{prefix}<strong>.ibf</strong>: main interleaved bloom filter index file</li>
+<li>{prefix}<strong>.tax</strong>: taxonomy tree, only generated if <code>--taxonomy</code> is used <em>(fields: target/node, parent, rank, name, genome size)</em>.</li>
+<li>{prefix}<strong>_files/</strong>: (<code>ganon build</code> only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Database files generated with version 1.2.0 or higher are not compatible with older versions.</p>
+</div>
+<h2 id="ganon-classify">ganon classify</h2>
+<ul>
+<li>{prefix}<strong>.tre</strong>: full report file (see below)</li>
+<li>{prefix}<strong>.rep</strong>: plain report of the run with only targets that received a match. Can be used to re-generate full reports (.tre) with <code>ganon report</code>. At the end prints 2 extra lines with <code>#total_classified</code> and <code>#total_unclassified</code>. Fields<ul>
+<li>1: hierarchy label</li>
+<li>2: target</li>
+<li>3: # total matches</li>
+<li>4: # unique reads</li>
+<li>5: # lca reads</li>
+<li>6: rank</li>
+<li>7: name</li>
+</ul>
+</li>
+<li>{prefix}<strong>.lca</strong>: output with one match for each classified read after LCA. Only generated with <code>--output-lca</code> active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca <em>(fields: read identifier, target, (max) k-mer/minimizer count)</em></li>
+<li>{prefix}<strong>.all</strong>: output with all matches for each read. Only generated with <code>--output-all</code> active <strong>Warning: file can be very large</strong>. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all <em>(fields: read identifier, target, k-mer/minimizer count)</em></li>
+</ul>
+<h2 id="ganon-report">ganon report</h2>
+<ul>
+<li>{prefix}<strong>.tre</strong>: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible <code>--report-type</code>. More information on the different types of reports can be found <a href="#report-type---report-type">here</a>:<ul>
+<li><em>abundance</em>: will attempt to estimate <strong>taxonomic abundances</strong> by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes.</li>
+<li><em>reads</em>: <strong>sequence abundances</strong>, reports the proportion of sequences assigned to a taxa, each read classified is counted once.</li>
+<li><em>dist</em>: like <em>reads</em> with read count re-distribution.</li>
+<li><em>corr</em>: like <em>reads</em> with correction by genome size.</li>
+<li><em>matches</em>: every match is reported to their original target, including multiple and shared matches.</li>
+</ul>
+</li>
+</ul>
+<p>Each line in this report is a taxonomic entry (including the root node), with the following fields: </p>
+<table>
+<thead>
+<tr>
+<th>col</th>
+<th>field</th>
+<th>obs</th>
+<th>example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>rank</td>
+<td></td>
+<td>phylum</td>
+</tr>
+<tr>
+<td>2</td>
+<td>target</td>
+<td>taxonomic id. or specialization (assembly id.)</td>
+<td>562</td>
+</tr>
+<tr>
+<td>3</td>
+<td>lineage</td>
+<td></td>
+<td>1|131567|2|1224|28211|766|942|768|769</td>
+</tr>
+<tr>
+<td>4</td>
+<td>name</td>
+<td></td>
+<td>Chromobacterium rhizoryzae</td>
+</tr>
+<tr>
+<td>5</td>
+<td># unique</td>
+<td>number of reads that matched exclusively to this target</td>
+<td>5</td>
+</tr>
+<tr>
+<td>6</td>
+<td># shared</td>
+<td>number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (<code>--report-type reads</code>), re-assigned matches (<code>--report-type abundance/dist</code>) or shared matches (<code>--report-type matches</code>)</td>
+<td>10</td>
+</tr>
+<tr>
+<td>7</td>
+<td># children</td>
+<td>number of unique and shared assignments to all children nodes of this target</td>
+<td>20</td>
+</tr>
+<tr>
+<td>8</td>
+<td># cumulative</td>
+<td>the sum of the unique, shared and children assignments up-to this target</td>
+<td>35</td>
+</tr>
+<tr>
+<td>9</td>
+<td>% cumulative</td>
+<td>percentage of assignments or estimated relative abundance for <code>--report-type abundance</code></td>
+<td>43.24</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<p>The first line of the report file will show the number of unclassified reads (not for <code>--report-type matches</code>)</p>
+</li>
+<li>
+<p>The CAMI challenge <a href="https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd">bioboxes profiling format</a> is supported using <code>--output-format bioboxes</code>. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are ommited.</p>
+</li>
+<li>
+<p>The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).</p>
+</li>
+<li>
+<p>For all report type but <code>matches</code>, only taxa that received direct read matches, either unique or by LCA assignment, are considered. Some reads may have only shared matches and will not be reported directly but will be accounted for on some parent level. To visualize those matches, create a report with <code>--report-type matches</code> or use directly the file {prefix}<strong>.rep</strong>.</p>
+</li>
+</ul>
+<h2 id="ganon-table">ganon table</h2>
+<ul>
+<li>{output_file}: a tab-separated file with counts/percentages of taxa for multiple samples</li>
+</ul>
+<details>
+  <summary>Examples of output files</summary>
+
+The main output file is the `{prefix}.tre` which will summarize the results:
+
+
+<pre><code>unclassified                                                 unclassified             0   0  0   2   2.02020
+root          1       1                                      root                     0   0  97  97  97.97980
+superkingdom  2       1|2                                    Bacteria                 0   0  97  97  97.97980
+phylum        1239    1|2|1239                               Firmicutes               0   0  57  57  57.57576
+phylum        1224    1|2|1224                               Proteobacteria           0   0  40  40  40.40404
+class         91061   1|2|1239|91061                         Bacilli                  0   0  57  57  57.57576
+class         28211   1|2|1224|28211                         Alphaproteobacteria      0   0  28  28  28.28283
+class         1236    1|2|1224|1236                          Gammaproteobacteria      0   0  12  12  12.12121
+order         1385    1|2|1239|91061|1385                    Bacillales               0   0  57  57  57.57576
+order         204458  1|2|1224|28211|204458                  Caulobacterales          0   0  28  28  28.28283
+order         72274   1|2|1224|1236|72274                    Pseudomonadales          0   0  12  12  12.12121
+family        186822  1|2|1239|91061|1385|186822             Paenibacillaceae         0   0  57  57  57.57576
+family        76892   1|2|1224|28211|204458|76892            Caulobacteraceae         0   0  28  28  28.28283
+family        468     1|2|1224|1236|72274|468                Moraxellaceae            0   0  12  12  12.12121
+genus         44249   1|2|1239|91061|1385|186822|44249       Paenibacillus            0   0  57  57  57.57576
+genus         75      1|2|1224|28211|204458|76892|75         Caulobacter              0   0  28  28  28.28283
+genus         469     1|2|1224|1236|72274|468|469            Acinetobacter            0   0  12  12  12.12121
+species       1406    1|2|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa   57  0  0   57  57.57576
+species       366602  1|2|1224|28211|204458|76892|75|366602  Caulobacter sp. K31      28  0  0   28  28.28283
+species       470     1|2|1224|1236|72274|468|469|470        Acinetobacter baumannii  12  0  0   12  12.12121
+</code></pre>
+
+
+running `ganon classify` or `ganon report` with `--ranks all`, the output will show all ranks used for classification and presented sorted by lineage (also available with `ganon report --sort lineage`):
+
+
+<pre><code>unclassified                                                                  unclassified                                   0   0  0   2   2.02020
+root           1        1                                                     root                                           0   0  97  97  97.97980
+no rank        131567   1|131567                                              cellular organisms                             0   0  97  97  97.97980
+superkingdom   2        1|131567|2                                            Bacteria                                       0   0  97  97  97.97980
+phylum         1224     1|131567|2|1224                                       Proteobacteria                                 0   0  40  40  40.40404
+class          1236     1|131567|2|1224|1236                                  Gammaproteobacteria                            0   0  12  12  12.12121
+order          72274    1|131567|2|1224|1236|72274                            Pseudomonadales                                0   0  12  12  12.12121
+family         468      1|131567|2|1224|1236|72274|468                        Moraxellaceae                                  0   0  12  12  12.12121
+genus          469      1|131567|2|1224|1236|72274|468|469                    Acinetobacter                                  0   0  12  12  12.12121
+species group  909768   1|131567|2|1224|1236|72274|468|469|909768             Acinetobacter calcoaceticus/baumannii complex  0   0  12  12  12.12121
+species        470      1|131567|2|1224|1236|72274|468|469|909768|470         Acinetobacter baumannii                        12  0  0   12  12.12121
+class          28211    1|131567|2|1224|28211                                 Alphaproteobacteria                            0   0  28  28  28.28283
+order          204458   1|131567|2|1224|28211|204458                          Caulobacterales                                0   0  28  28  28.28283
+family         76892    1|131567|2|1224|28211|204458|76892                    Caulobacteraceae                               0   0  28  28  28.28283
+genus          75       1|131567|2|1224|28211|204458|76892|75                 Caulobacter                                    0   0  28  28  28.28283
+species        366602   1|131567|2|1224|28211|204458|76892|75|366602          Caulobacter sp. K31                            28  0  0   28  28.28283
+no rank        1783272  1|131567|2|1783272                                    Terrabacteria group                            0   0  57  57  57.57576
+phylum         1239     1|131567|2|1783272|1239                               Firmicutes                                     0   0  57  57  57.57576
+class          91061    1|131567|2|1783272|1239|91061                         Bacilli                                        0   0  57  57  57.57576
+order          1385     1|131567|2|1783272|1239|91061|1385                    Bacillales                                     0   0  57  57  57.57576
+family         186822   1|131567|2|1783272|1239|91061|1385|186822             Paenibacillaceae                               0   0  57  57  57.57576
+genus          44249    1|131567|2|1783272|1239|91061|1385|186822|44249       Paenibacillus                                  0   0  57  57  57.57576
+species        1406     1|131567|2|1783272|1239|91061|1385|186822|44249|1406  Paenibacillus polymyxa                         57  0  0   57  57.57576
+</code></pre>
+
+
+with `--output-format bioboxes` 
+
+
+<pre><code>@Version:0.10.0
+@SampleID:example.rep H1
+@Ranks:superkingdom|phylum|class|order|family|genus|species|assembly
+@Taxonomy:db.tax
+@@TAXID  RANK          TAXPATH   TAXPATHSN                 PERCENTAGE
+2        superkingdom  2         Bacteria                  100.00000
+1224     phylum        2|1224    Bacteria|Proteobacteria   56.89782
+201174   phylum        2|201174  Bacteria|Actinobacteria   21.84869
+1239     phylum        2|1239    Bacteria|Firmicutes       9.75197
+976      phylum        2|976     Bacteria|Bacteroidota     6.15297
+1117     phylum        2|1117    Bacteria|Cyanobacteria    2.23146
+203682   phylum        2|203682  Bacteria|Planctomycetota  1.23353
+57723    phylum        2|57723   Bacteria|Acidobacteria    0.52549
+200795   phylum        2|200795  Bacteria|Chloroflexi      0.31118
+</code></pre>
+
+</details>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../reports/" class="btn btn-neutral float-left" title="Reports"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../tutorials/" class="btn btn-neutral float-right" title="Tutorials">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../reports/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../tutorials/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>
