@@ -74,17 +74,12 @@ will download top 3 archaeal assemblies for each genus with date before 2023-01-
 
 ## GTDB
 
-By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](gtdb.ecogenomic.org/) is fully supported and can be used with the parameter `--taxonomy gtdb`. To build a complete GTDB database, with one assembly per taxa:
+By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](gtdb.ecogenomic.org/) is fully supported and can be used with the parameter `--taxonomy gtdb`.
 
 | GTDB R214 | # assemblies | Space/Mem |  |
 |---|---|---|---|
 | Complete | 402709 | | <details><summary>cmd</summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
 | One assembly for each species | 85205 | | <details><summary>cmd</summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s`</details> |
-
-
-```bash
-ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12 --top 1
-``` 
 
 Filtering by taxonomic entries also work with GTDB, for example:
 
@@ -94,7 +89,6 @@ ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq 
 
 !!! warning
     GTDB contain only bacteria and archea groups
-
 
 ## Update
 
@@ -157,6 +151,9 @@ others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
 ```
 </details>
 <br>
+
+Below a list of few example of custom built databases from commonly used repositories:
+
 ### HumGut
 ### Plasmid, Plastid
 ### UniVec
