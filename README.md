@@ -2,13 +2,13 @@
 
 ganon classifies DNA sequences against large sets of genomic reference sequences efficiently. It features:
 
-- automatically downloads, builds and updates commonly used repositories (refseq/genbank).
+- automatic download, build and update for commonly used repos (refseq/genbank)
 - binning and taxonomic profiling
-- multi taxonomy integration (ncbi/gtdb)
+- multiple taxonomy integration (ncbi/gtdb)
 - LCA algorithm + read reassignment EM algorithm
 - hierarchical use of databases
 - taxonomic and sequence abundance reports with genome size correction
-- contingency tables and has many more
+- contingency tables and many more
 
 Documentation: https://pirovc.github.io/ganon/
 

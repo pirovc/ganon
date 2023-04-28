@@ -24,7 +24,7 @@ Additionally, [custom databases](#custom-databases) can be built with customized
 
 NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can be confusing and drastically change the outcome of results. Listed below are some examples of commonly used sub-sets:
 
-| RefSeq | # assemblies | Space/Mem |  |
+| RefSeq | # assemblies | Size (GB) |  |
 |---|---|---|---|
 | Complete | 295219 | xx-500G | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
 | One assembly for each species | 52779 | xx-98G | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
@@ -32,7 +32,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 | One assembly for each species of complete genomes | 19713 | xx-27G | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
 | One representative assembly for each species | 18073 | xx-35G | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg`</details> |
 
-| GenBank | # assemblies | Space/Mem |  |
+| GenBank | # assemblies | Size (GB) |  |
 |---|---|---|---|
 | Complete | 1595845 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
 | One assembly for each species | 99505 | xx-420G | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
@@ -42,9 +42,12 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 !!! warning
 	The `# assemblies` were calculated on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.
 
+!!! info
+    You can build one database for each organism group separately and use them together in `ganon classify` in any order or even stack them hierarchically. This way, several combinations of databases are possible for many use cases.
+
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
-- The `Space/Mem.` requirements are only approximations (calculated with default parameters) and [can be reduced with some trade-offs](#reducing-database-size).
-- Databases can have a fixed `Space/Mem.` with `--filter-size` parameter. Beware that smaller filters will increase the false positive rates when classifying.
+- The `Size (GB)` is the final size of the filter and the approximate amount of RAM necessary to build it (calculated with default parameters).
+- Databases can have a fixed size/RAM usage with the `--filter-size` parameter. Beware that smaller filters will increase the false positive rates when classifying. Other approaches [can reduce the size/RAM requirements with some trade-offs](#reducing-database-size).
 
 !!! tip
     assemblies usually represent strains and can be used to do "strain-level classification"
@@ -71,7 +74,27 @@ will download top 3 archaeal assemblies for each genus with date before 2023-01-
 
 ## GTDB
 
-By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](gtdb.ecogenomic.org/) is fully integrated and can be used with the parameter `--taxonomy gtdb`. Note that GTDB only support bacteria and archea groups but ganon filters the appropriate genomes once GTDB taxonomy is selected.
+By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](gtdb.ecogenomic.org/) is fully supported and can be used with the parameter `--taxonomy gtdb`. To build a complete GTDB database, with one assembly per taxa:
+
+| GTDB R214 | # assemblies | Space/Mem |  |
+|---|---|---|---|
+| Complete | 402709 | | <details><summary>cmd</summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
+| One assembly for each species | 85205 | | <details><summary>cmd</summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s`</details> |
+
+
+```bash
+ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12 --top 1
+``` 
+
+Filtering by taxonomic entries also work with GTDB, for example:
+
+```bash
+ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq genbank --taxonomy gtdb --threads 12
+```
+
+!!! warning
+    GTDB contain only bacteria and archea groups
+
 
 ## Update
 
