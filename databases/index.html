@@ -133,7 +133,7 @@
 <tr>
 <th>RefSeq</th>
 <th># assemblies</th>
-<th>Space/Mem</th>
+<th>Size (GB)</th>
 <th></th>
 </tr>
 </thead>
@@ -175,7 +175,7 @@
 <tr>
 <th>GenBank</th>
 <th># assemblies</th>
-<th>Space/Mem</th>
+<th>Size (GB)</th>
 <th></th>
 </tr>
 </thead>
@@ -210,10 +210,14 @@
 <p class="admonition-title">Warning</p>
 <p>The <code># assemblies</code> were calculated on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.</p>
 </div>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>You can build one database for each organism group separately and use them together in <code>ganon classify</code> in any order or even stack them hierarchically. This way, several combinations of databases are possible for many use cases.</p>
+</div>
 <ul>
 <li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
-<li>The <code>Space/Mem.</code> requirements are only approximations (calculated with default parameters) and <a href="#reducing-database-size">can be reduced with some trade-offs</a>.</li>
-<li>Databases can have a fixed <code>Space/Mem.</code> with <code>--filter-size</code> parameter. Beware that smaller filters will increase the false positive rates when classifying.</li>
+<li>The <code>Size (GB)</code> is the final size of the filter and the approximate amount of RAM necessary to build it (calculated with default parameters).</li>
+<li>Databases can have a fixed size/RAM usage with the <code>--filter-size</code> parameter. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -230,7 +234,40 @@
 </code></pre>
 <p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater">repository</a>.</p>
 <h2 id="gtdb">GTDB</h2>
-<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="gtdb.ecogenomic.org/">GTDB</a> is fully integrated and can be used with the parameter <code>--taxonomy gtdb</code>. Note that GTDB only support bacteria and archea groups but ganon filters the appropriate genomes once GTDB taxonomy is selected.</p>
+<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="gtdb.ecogenomic.org/">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. To build a complete GTDB database, with one assembly per taxa:</p>
+<table>
+<thead>
+<tr>
+<th>GTDB R214</th>
+<th># assemblies</th>
+<th>Space/Mem</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complete</td>
+<td>402709</td>
+<td></td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
+</tr>
+<tr>
+<td>One assembly for each species</td>
+<td>85205</td>
+<td></td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s</code></details></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash">ganon build --db-prefix complete_gtdb --organism-group archaea bacteria --source refseq genbank --taxonomy gtdb --threads 12 --top 1
+</code></pre>
+<p>Filtering by taxonomic entries also work with GTDB, for example:</p>
+<pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
+</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>GTDB contain only bacteria and archea groups</p>
+</div>
 <h2 id="update">Update</h2>
 <h2 id="reducing-database-size">Reducing database size</h2>
 <ul>
