@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Custom databases - ganon</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Custom databases";
+        var mkdocs_page_input_path = "custom_databases.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../default_databases/">Default databases</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Custom databases</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#non-standardcustom-accessions">Non-standard/custom accessions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#humgut">HumGut</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#plasmid-plastid-and-mitochondrion-from-refseq">Plasmid, Plastid and Mitochondrion from RefSeq</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#univec-univec_core">UniVec, UniVec_core</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#mgnify-genome-collections-mags">MGnify genome collections (MAGs)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#pathogens-ncbi">Pathogens NCBI</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#pathogen-detection-fda-argos">Pathogen detection FDA-ARGOS</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#reference-viral-database-rvdb">Reference Viral DataBase (RVDB)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#eupathdb">EuPathDB</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#blast-databases-nt-env_nt">BLAST databases (nt, env_nt, ...)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#from-genome_updater">From genome_updater</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../classification/">Classification</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Custom databases</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="custom-databases">Custom databases</h1>
+<h2 id="default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession</h2>
+<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local files.</p>
+<p>To use custom sequences, just provide them with <code>--input</code>. ganon will try to retrieve all necessary information necessary to build a database.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should look like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence---input-target">here</a>.</p>
+</div>
+<h2 id="non-standardcustom-accessions">Non-standard/custom accessions</h2>
+<p>It is also possible to use <strong>non-standard accessions and headers</strong> to build databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].</p>
+<details>
+  <summary>Examples of --input-file</summary>
+  <br>
+
+With --input-target file, where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
+
+
+<pre><code>sequences.fasta my_target_1
+others.fasta my_target_2
+</code></pre>
+
+
+With --input-target sequence, second column should match sequence headers on provided sequence files (that should be repeated for each header):
+
+
+<pre><code>sequences.fasta HEADER1
+sequences.fasta HEADER2
+sequences.fasta HEADER3
+others.fasta HEADER4
+others.fasta HEADER5
+</code></pre>
+
+
+A third column with taxonomic nodes can be provided to link the data with taxonomy. For example with --taxonomy ncbi:
+
+
+<pre><code>sequences.fasta FILE_A  562
+others.fasta FILE_B 623
+</code></pre>
+
+
+
+<pre><code>sequences.fasta HEADER1 562
+sequences.fasta HEADER2 562
+sequences.fasta HEADER3 562
+others.fasta HEADER4  623
+others.fasta HEADER5  623
+</code></pre>
+
+
+Further specializations can be used to create a additional classification level after the taxonomic leaves. For example (using --level custom):
+
+
+<pre><code>sequences.fasta FILE_A  562 ID44444 Escherichia coli TW10119
+others.fasta FILE_B 623 ID55555  Shigella flexneri 1a
+</code></pre>
+
+
+
+<pre><code>sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
+sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
+sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
+others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
+others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
+</code></pre>
+
+
+</details>
+<p><br></p>
+<h2 id="examples">Examples</h2>
+<p>Below a list of few example of custom databases from commonly used repositories:</p>
+<h3 id="humgut">HumGut</h3>
+<p>TODO description</p>
+<pre><code class="language-bash"># Download sequence files
+wget --quiet --show-progress &quot;http://arken.nmbu.no/~larssn/humgut/HumGut.tar.gz&quot;
+tar xf HumGut.tar.gz 
+
+# Download taxonomy and metadata files
+wget &quot;https://arken.nmbu.no/~larssn/humgut/ncbi_nodes.dmp&quot;
+wget &quot;https://arken.nmbu.no/~larssn/humgut/ncbi_names.dmp&quot;
+wget &quot;https://arken.nmbu.no/~larssn/humgut/HumGut.tsv&quot;
+# Generate --input-file from metadata
+tail -n+2 HumGut.tsv | awk -F&quot;\t&quot; '{print &quot;fna/&quot;$21&quot;\t&quot;$1&quot;\t&quot;$2}' &gt; HumGut_ganon_input_file.tsv
+
+# Build ganon database
+ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files ncbi_nodes.dmp ncbi_names.dmp --db-prefix HumGut --level strain --threads 32
+</code></pre>
+<p>Similarly using GTDB taxonomy files:</p>
+<pre><code class="language-bash"># Download taxonomy files
+wget &quot;https://arken.nmbu.no/~larssn/humgut/gtdb_nodes.dmp&quot;
+wget &quot;https://arken.nmbu.no/~larssn/humgut/gtdb_names.dmp&quot;
+
+# Build ganon database
+ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtdb_nodes.dmp gtdb_names.dmp --db-prefix HumGut_gtdb --level strain --threads 32
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There is no need to use ganon's gtdb integration here since GTDB files in NCBI format are available</p>
+</div>
+<h3 id="plasmid-plastid-and-mitochondrion-from-refseq">Plasmid, Plastid and Mitochondrion from RefSeq</h3>
+<p>TODO description</p>
+<pre><code class="language-bash"># Download sequence files
+wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/&quot;
+wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
+wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
+
+# Build ganon database
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --input-target sequence --level leaves --threads 32 
+</code></pre>
+<h3 id="univec-univec_core">UniVec, UniVec_core</h3>
+<p>TODO description</p>
+<pre><code class="language-bash"># UniVec
+wget -O &quot;UniVec.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec&quot; 
+grep -o '^&gt;[^ ]*' UniVec.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --input-target sequence --level leaves --threads 8
+
+# UniVec_Core
+wget -O &quot;UniVec_Core.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core&quot; 
+grep -o '^&gt;[^ ]*' UniVec_Core.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec_Core.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_Core_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --input-target sequence --level leaves --threads 8
+</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>All UniVec entries in the examples are categorized as <a href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&amp;id=81077">Artificial Sequence</a> (NCBI txid:81077). Some are completely artificial but others may be derived from real biological sources. More information in this <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.vector.origins">link</a>.</p>
+</div>
+<h3 id="mgnify-genome-collections-mags">MGnify genome collections (MAGs)</h3>
+<p>TODO description</p>
+<p>Note that the database will be build with GTDB taxonomy.</p>
+<pre><code class="language-bash"># Download metadata
+wget &quot;https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0/genomes-all_metadata.tsv&quot;
+
+# Download sequence files with 12 threads
+tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl --silent ${1}| gzip -d | sed -e &quot;1,/##FASTA/ d&quot; | gzip &gt; ${0}.fna.gz'
+
+# Generate ganon input file
+tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F&quot;\t&quot; '{tax=&quot;1&quot;;for(i=NF;i&gt;1;i--){if(length($i)&gt;3){tax=$i;break;}};print $1&quot;.fna.gz\t&quot;$1&quot;\t&quot;tax}' &gt; ganon_input_file.tsv
+
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
+</code></pre>
+<h3 id="pathogens-ncbi">Pathogens NCBI</h3>
+<ul>
+<li>https://ftp.ncbi.nlm.nih.gov/pathogen/</li>
+<li>https://www.ncbi.nlm.nih.gov/pathogens/</li>
+</ul>
+<h3 id="pathogen-detection-fda-argos">Pathogen detection FDA-ARGOS</h3>
+<ul>
+<li>https://www.ncbi.nlm.nih.gov/bioproject/231221</li>
+<li>https://pubmed.ncbi.nlm.nih.gov/31346170/</li>
+</ul>
+<h3 id="reference-viral-database-rvdb">Reference Viral DataBase (RVDB)</h3>
+<ul>
+<li>https://journals.asm.org/doi/10.1128/mSphereDirect.00069-18</li>
+<li>https://rvdb.dbi.udel.edu/</li>
+</ul>
+<h3 id="eupathdb">EuPathDB</h3>
+<ul>
+<li>https://veupathdb.org/veupathdb/app/</li>
+</ul>
+<h3 id="blast-databases-nt-env_nt">BLAST databases (nt, env_nt, ...)</h3>
+<ul>
+<li>https://ftp.ncbi.nlm.nih.gov/blast/db/</li>
+</ul>
+<h3 id="from-genome_updater">From genome_updater</h3>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../default_databases/" class="btn btn-neutral float-left" title="Default databases"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../classification/" class="btn btn-neutral float-right" title="Classification">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../default_databases/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../classification/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        };
+    </script>
+
+</body>
+</html>

@@ -45,19 +45,15 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#features">Features</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a>
+    <li class="toctree-l2"><a class="reference internal" href="#installation-with-conda">Installation with conda</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#installation-from-source">Installation from source</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#conda">conda</a>
+    <li class="toctree-l3"><a class="reference internal" href="#dependencies">Dependencies</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#compile-from-source">compile from source</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#dependencies">Dependencies</a>
+    <li class="toctree-l3"><a class="reference internal" href="#downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</a>
     </li>
-    <li class="toctree-l4"><a class="reference internal" href="#downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</a>
-    </li>
-    <li class="toctree-l4"><a class="reference internal" href="#running-tests">Running tests</a>
-    </li>
-        </ul>
+    <li class="toctree-l3"><a class="reference internal" href="#running-tests">Running tests</a>
     </li>
         </ul>
     </li>
@@ -67,7 +63,11 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="databases/">Databases</a>
+                <li class="toctree-l1"><a class="reference internal" href="default_databases/">Default databases</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="custom_databases/">Custom databases</a>
                 </li>
               </ul>
               <ul>
@@ -126,14 +126,13 @@
 <li>generate reports and contingency tables for multi-sample studies with several filter options</li>
 </ul>
 <p>ganon achieved very good results in <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458">our own evaluations</a> but also in independent evaluations: <a href="https://lemmi-v1.ezlab.org/">LEMMI</a>, <a href="https://lemmi.ezlab.org/">LEMMI v2</a> and <a href="https://dx.doi.org/10.1038/s41592-022-01431-4">CAMI2</a></p>
-<h2 id="installation">Installation</h2>
-<h3 id="conda">conda</h3>
+<h2 id="installation-with-conda">Installation with conda</h2>
 <p>The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:</p>
 <pre><code class="language-bash">conda install -c bioconda -c conda-forge ganon
 </code></pre>
 <p>However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:</p>
-<h3 id="compile-from-source">compile from source</h3>
-<h4 id="dependencies">Dependencies</h4>
+<h2 id="installation-from-source">Installation from source</h2>
+<h3 id="dependencies">Dependencies</h3>
 <ul>
 <li>gcc &gt;=7</li>
 <li>cmake &gt;=3.10</li>
@@ -145,31 +144,28 @@
 <pre><code class="language-bash">python3 -V # &gt;=3.6
 python3 -m pip install &quot;pandas&gt;=1.1.0&quot; &quot;multitax&gt;=1.3.1&quot;
 </code></pre>
-<h4 id="downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</h4>
+<h3 id="downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</h3>
 <pre><code class="language-bash">git clone --recurse-submodules https://github.com/pirovc/ganon.git
 </code></pre>
 <pre><code class="language-bash">cd ganon
-python3 setup.py install --record files.txt #optional
+python3 setup.py install --record files.txt  # optional
 mkdir build_cpp
 cd build_cpp
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
 make
-sudo make install #optional
+sudo make install  # optional
 </code></pre>
 <ul>
-<li>
-<p>to change install location (e.g. <code>/myprefix/bin/</code>), set the installation prefix in the cmake command with <code>-DCMAKE_INSTALL_PREFIX=/myprefix/</code></p>
-</li>
-<li>
-<p>use <code>-DINCLUDE_DIRS</code> to set alternative paths to cxxopts and Catch2 libs.</p>
-</li>
+<li>to change install location (e.g. <code>/myprefix/bin/</code>), set the installation prefix in the cmake command with <code>-DCMAKE_INSTALL_PREFIX=/myprefix/</code></li>
+<li>use <code>-DINCLUDE_DIRS</code> to set alternative paths to cxxopts and Catch2 libs.</li>
+<li>to classify extremely large reads (&gt;65000bp) use <code>-DLONGREADS=ÒN</code></li>
 </ul>
 <p>If everything was properly installed, the following commands should show the help pages without errors:</p>
 <pre><code class="language-bash">ganon -h
 </code></pre>
-<h4 id="running-tests">Running tests</h4>
+<h3 id="running-tests">Running tests</h3>
 <pre><code class="language-bash">python3 -m unittest discover -s tests/ganon/integration/
-python3 -m unittest discover -s tests/ganon/integration_online/ #optional - downloads large files
+python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build_cpp/
 ctest -VV .
 </code></pre>
@@ -609,7 +605,7 @@ filter arguments:
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="databases/" class="btn btn-neutral float-right" title="Databases">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="default_databases/" class="btn btn-neutral float-right" title="Default databases">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -633,7 +629,7 @@ filter arguments:
     
     
     
-      <span><a href="databases/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="default_databases/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
@@ -652,5 +648,5 @@ filter arguments:
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-04-28 12:30:09.730582+00:00
+Build Date UTC : 2023-05-03 15:31:32.559126+00:00
 -->

@@ -45,12 +45,20 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../databases/">Databases</a>
+                <li class="toctree-l1"><a class="reference internal" href="../default_databases/">Default databases</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../custom_databases/">Custom databases</a>
                 </li>
               </ul>
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Classification</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#binning">Binning</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#multiple-and-hierarchical-classification">Multiple and Hierarchical classification</a>
     </li>
     </ul>
@@ -92,6 +100,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="classification">Classification</h1>
+<h2 id="profiling">Profiling</h2>
+<h2 id="binning">Binning</h2>
 <h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification</h2>
 <p><code>ganon classify</code> can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. </p>
 <p>Multiple database classification can be performed providing several inputs for <code>--db-prefix</code>. They are required to be built with the same <code>--kmer-size</code> and <code>--window-size</code> values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.</p>
@@ -143,7 +153,7 @@ In this example, classification will be performed with different `--rel-cutoff` 
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../databases/" class="btn btn-neutral float-left" title="Databases"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../custom_databases/" class="btn btn-neutral float-left" title="Custom databases"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../reports/" class="btn btn-neutral float-right" title="Reports">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -167,7 +177,7 @@ In this example, classification will be performed with different `--rel-cutoff` 
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../databases/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../custom_databases/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../reports/" style="color: #fcfcfc">Next &raquo;</a></span>
