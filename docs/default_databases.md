@@ -1,7 +1,5 @@
 # Databases
 
-Databases are one of the most important elements when analyzing metagenomics data and should be chosen carefuly.
-
 ganon automates the download, update and build of databases based on NCBI RefSeq and GenBank genomes repositories wtih `ganon build` and `update` commands, for example:
 
 ```bash
@@ -20,9 +18,13 @@ Additionally, [custom databases](#custom-databases) can be built with customized
 !!! info
     We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.
 
+
+!!! warning
+    Databases are one of the most important elements when analyzing metagenomics data and should be chosen carefully based on the study data
+
 ## RefSeq/GenBank
 
-NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can be confusing and drastically change the outcome of results. Listed below are some examples of commonly used sub-sets:
+NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can drastically change the outcome of results. Listed below are some examples of commonly used sub-sets:
 
 | RefSeq | # assemblies | Size (GB) |  |
 |---|---|---|---|
@@ -40,10 +42,10 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 | One assembly for each species of complete genomes | 34497 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
 
 !!! warning
-	The `# assemblies` were calculated on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.
+	The `# assemblies` were obtained on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.
 
 !!! info
-    You can build one database for each organism group separately and use them together in `ganon classify` in any order or even stack them hierarchically. This way, several combinations of databases are possible for many use cases.
+    Alternatively, you can build one database for each organism group separately and use them in `ganon classify` in any order or even stack them hierarchically. This way combination of multiple databases are possible, extending use cases.
 
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
 - The `Size (GB)` is the final size of the filter and the approximate amount of RAM necessary to build it (calculated with default parameters).
@@ -99,63 +101,3 @@ ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq 
 - IBF and HIBF
 - k-mer and window size
 - false positive rate
-
-## Custom databases
-
-Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases. 
-
-To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
-
-*ganon expects assembly accessions if building by file (e.g. filename should be similar as `GCA_002211645.1_ASM221164v1_genomic.fna.gz`) or accession version if building by sequence (e.g. headers should look like `>CP022124.1 Fusobacterium nu...`).* More information about building by file or sequence can be found [here](#target-file-or-sequence---input-target).
-
-It is also possible to use non-standard accessions and headers to build databases with `--input-file`. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].
-
-<details>
-  <summary>Examples of --input-file</summary>
-
-Using `--input-target sequence`:
-
-```
-sequences.fasta HEADER1
-sequences.fasta HEADER2
-sequences.fasta HEADER3
-others.fasta HEADER4
-others.fasta HEADER5
-```
-
-or using `--input-target file`:
-
-```
-sequences.fasta FILE_A
-others.fasta FILE_B
-```
-
-Nodes can be provided to link the data with taxonomy. For example (using `--taxonomy ncbi`):
-
-```
-sequences.fasta HEADER1 562
-sequences.fasta HEADER2 562
-sequences.fasta HEADER3 562
-others.fasta HEADER4  623
-others.fasta HEADER5  623
-```
-
-Specialization can be used to create a additional classification level after the taxonomic leaves. For example (using `--level custom`):
-
-```
-sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
-sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
-sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
-others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
-others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
-```
-</details>
-<br>
-
-Below a list of few example of custom built databases from commonly used repositories:
-
-### HumGut
-### Plasmid, Plastid
-### UniVec
-
-

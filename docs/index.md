@@ -19,9 +19,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
-## Installation
-
-### conda
+## Installation with conda
 
 The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:
 
@@ -31,9 +29,9 @@ conda install -c bioconda -c conda-forge ganon
 
 However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:
 
-### compile from source
+## Installation from source
 
-#### Dependencies
+### Dependencies
 
 - gcc >=7
 - cmake >=3.10
@@ -47,7 +45,7 @@ python3 -V # >=3.6
 python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
 ```
 
-#### Downloading and building ganon + submodules
+### Downloading and building ganon + submodules
 
 ```bash
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
@@ -55,17 +53,17 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
   
 ```bash
 cd ganon
-python3 setup.py install --record files.txt #optional
+python3 setup.py install --record files.txt  # optional
 mkdir build_cpp
 cd build_cpp
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
 make
-sudo make install #optional
+sudo make install  # optional
 ```
 
 - to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `
-
 - use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
+- to classify extremely large reads (>65000bp) use `-DLONGREADS=ÒN`
 
 If everything was properly installed, the following commands should show the help pages without errors:
 
@@ -73,11 +71,11 @@ If everything was properly installed, the following commands should show the hel
 ganon -h
 ```
 
-#### Running tests
+### Running tests
 
 ```bash
 python3 -m unittest discover -s tests/ganon/integration/
-python3 -m unittest discover -s tests/ganon/integration_online/ #optional - downloads large files
+python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build_cpp/
 ctest -VV .
 ```

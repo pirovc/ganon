@@ -1,5 +1,9 @@
 # Classification
 
+## Profiling
+
+## Binning
+
 ## Multiple and Hierarchical classification
 
 `ganon classify` can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. 
