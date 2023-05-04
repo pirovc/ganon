@@ -59,6 +59,12 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Reports</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#report-type-report-type">report type (--report-type)</a>
+    </li>
+        </ul>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -93,7 +99,15 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="reports">Reports</h1>
+                <h1 id="reports">Reports<a class="headerlink" href="#reports" title="Permanent link">:)</a></h1>
+<h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
+<h3 id="report-type-report-type">report type (--report-type)<a class="headerlink" href="#report-type-report-type" title="Permanent link">:)</a></h3>
+<p>Several reports are availble with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
+<p><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</p>
+<p><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</p>
+<p><code>dist</code> is the same of <code>reads</code> with read count re-distribution</p>
+<p><code>corr</code> is the same of <code>reads</code> with correction by genome size</p>
+<p><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This report will output the total number of matches instead the total number of reads reported in all other reports.</em></p>
               
             </div>
           </div><footer>

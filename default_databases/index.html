@@ -47,8 +47,10 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Default databases</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#refseqgenbank">RefSeq/GenBank</a>
+    <li class="toctree-l2"><a class="reference internal" href="#refseq-and-genbank">RefSeq and GenBank</a>
         <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#commonly-used-sub-sets">Commonly used sub-sets</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#more-filter-options">More filter options</a>
@@ -59,7 +61,27 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#update">Update</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#reproducibility">Reproducibility</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#reducing-database-size">Reducing database size</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#ibf-and-hibf">IBF and HIBF</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#top-assemblies">Top assemblies</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#false-positive">False positive</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#fixed-size">Fixed size</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#mode">Mode</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#split-databases">Split databases</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#k-mer-and-window-size">k-mer and window size</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#example">Example</a>
+    </li>
+        </ul>
     </li>
     </ul>
                 </li>
@@ -107,14 +129,14 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="databases">Databases</h1>
+                <h1 id="databases">Databases<a class="headerlink" href="#databases" title="Permanent link">:)</a></h1>
 <p>ganon automates the download, update and build of databases based on NCBI RefSeq and GenBank genomes repositories wtih <code>ganon build</code> and <code>update</code> commands, for example:</p>
 <pre><code class="language-bash">ganon build -g archaea bacteria -d arc_bac -c -t 30
 </code></pre>
 <p>will download archaeal and bacterial complete genomes from RefSeq and build a database with 30 threads. Some day later, the database can be updated to include newest genomes with:</p>
 <pre><code class="language-bash">ganon update -d arc_bac -t 30
 </code></pre>
-<p>Additionally, <a href="#custom-databases">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
+<p>Additionally, <a href="../custom_databases">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.</p>
@@ -123,14 +145,15 @@
 <p class="admonition-title">Warning</p>
 <p>Databases are one of the most important elements when analyzing metagenomics data and should be chosen carefully based on the study data</p>
 </div>
-<h2 id="refseqgenbank">RefSeq/GenBank</h2>
-<p>NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can drastically change the outcome of results. Listed below are some examples of commonly used sub-sets:</p>
+<h2 id="refseq-and-genbank">RefSeq and GenBank<a class="headerlink" href="#refseq-and-genbank" title="Permanent link">:)</a></h2>
+<p>NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered in many ways. The choice of those filters can drastically change the outcome of results.</p>
+<h3 id="commonly-used-sub-sets">Commonly used sub-sets<a class="headerlink" href="#commonly-used-sub-sets" title="Permanent link">:)</a></h3>
 <table>
 <thead>
 <tr>
 <th>RefSeq</th>
 <th># assemblies</th>
-<th>Size (GB)</th>
+<th>Size (GB) *</th>
 <th></th>
 </tr>
 </thead>
@@ -138,31 +161,31 @@
 <tr>
 <td>Complete</td>
 <td>295219</td>
-<td>xx-500G</td>
+<td>xx - 500</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
 </tr>
 <tr>
 <td>One assembly for each species</td>
 <td>52779</td>
-<td>xx-98G</td>
+<td>40 - 98</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s</code></details></td>
 </tr>
 <tr>
 <td>Complete genome assemblies (higher quality)</td>
 <td>44121</td>
-<td>xx-64G</td>
+<td>19 - 64</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
 </tr>
 <tr>
 <td>One assembly for each species of complete genomes</td>
 <td>19713</td>
-<td>xx-27G</td>
+<td>8 - 27</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s</code></details></td>
 </tr>
 <tr>
 <td>One representative assembly for each species</td>
 <td>18073</td>
-<td>xx-35G</td>
+<td>21 - 35</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg</code></details></td>
 </tr>
 </tbody>
@@ -172,7 +195,7 @@
 <tr>
 <th>GenBank</th>
 <th># assemblies</th>
-<th>Size (GB)</th>
+<th>Size (GB) *</th>
 <th></th>
 </tr>
 </thead>
@@ -186,7 +209,7 @@
 <tr>
 <td>One assembly for each species</td>
 <td>99505</td>
-<td>xx-420G</td>
+<td>91 - 420</td>
 <td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s</code></details></td>
 </tr>
 <tr>
@@ -203,41 +226,39 @@
 </tr>
 </tbody>
 </table>
+<p>*  Size (GB) is the final size of the database and the approximate amount of RAM necessary to build it (calculated with default parameters). The two values represent databases built with and without the <code>--hibf</code> parameter, respectively. The trade-offs between those two modes are explained <a href="#ibf-and-hibf">here</a>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>The <code># assemblies</code> were obtained on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.</p>
 </div>
-<div class="admonition info">
-<p class="admonition-title">Info</p>
-<p>Alternatively, you can build one database for each organism group separately and use them in <code>ganon classify</code> in any order or even stack them hierarchically. This way combination of multiple databases are possible, extending use cases.</p>
-</div>
 <ul>
 <li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
-<li>The <code>Size (GB)</code> is the final size of the filter and the approximate amount of RAM necessary to build it (calculated with default parameters).</li>
 <li>Databases can have a fixed size/RAM usage with the <code>--filter-size</code> parameter. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
+<li>Further examples of commonly used database can be found <a href="../custom_databases/#examples">here</a>.</li>
+<li>Alternatively, you can build one database for each organism group separately and use them in <code>ganon classify</code> in any order or even stack them hierarchically. This way combination of multiple databases are possible, extending use cases.</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>assemblies usually represent strains and can be used to do "strain-level classification"</p>
 </div>
-<h3 id="specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups</h3>
+<h3 id="specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups<a class="headerlink" href="#specific-organisms-or-taxonomic-groups" title="Permanent link">:)</a></h3>
 <p>It is also possible to generate databases for specific organisms or taxonomic branches with <code>-a/--taxid</code>, for example:</p>
 <pre><code class="language-bash">ganon build --source refseq --taxid 562 317 --threads 48 --db-prefix coli_syringae
 </code></pre>
 <p>will download and build a database for all <em>Escherichia coli</em> (taxid:562) and <em>Pseudomonas syringae</em> (taxid:317) assemblies from RefSeq.</p>
-<h3 id="more-filter-options">More filter options</h3>
+<h3 id="more-filter-options">More filter options<a class="headerlink" href="#more-filter-options" title="Permanent link">:)</a></h3>
 <p>ganon uses <a href="https://github.com/pirovc/genome_updater">genome_updater</a> to manage downloads and further specific options and filters can be provided with the paramer <code>-u/--genome-updater</code>, for example:</p>
 <pre><code class="language-bash">ganon build -g bacteria -t 48 -d bac_refseq --genome-updater &quot;-A 'genus:3' -E 20230101&quot;
 </code></pre>
 <p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater">repository</a>.</p>
-<h2 id="gtdb">GTDB</h2>
+<h2 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h2>
 <p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="gtdb.ecogenomic.org/">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>.</p>
 <table>
 <thead>
 <tr>
 <th>GTDB R214</th>
 <th># assemblies</th>
-<th>Space/Mem</th>
+<th>Size (GB)</th>
 <th></th>
 </tr>
 </thead>
@@ -259,19 +280,112 @@
 <p>Filtering by taxonomic entries also work with GTDB, for example:</p>
 <pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
 </code></pre>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>GTDB covers only bacteria and archaea groups and has assemblies from both RefSeq and GenBank.</p>
+</div>
+<h2 id="update">Update<a class="headerlink" href="#update" title="Permanent link">:)</a></h2>
+<p>Default ganon databases generated with the <code>ganon build</code> can be updated with <code>ganon update</code>. This procedure will download new files and re-generate the ganon database with the updated entries.</p>
+<p>For example, a database generated with the following command:</p>
+<pre><code class="language-bash">ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --complete-genomes --threads 12
+</code></pre>
+<p>will contain all archaeal complete genomes from NCBI RefSeq at the time of running. Some days later, the database can be updated, fetching only new sequences added to the NCBI repository with the command:</p>
+<pre><code class="language-bash">ganon update --db-prefix arc_cg_rs --threads 12
+</code></pre>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To not overwrite the current database and create a new one with the updated files, use the <code>--output-db-prefix</code> parameter.</p>
+</div>
+<h2 id="reproducibility">Reproducibility<a class="headerlink" href="#reproducibility" title="Permanent link">:)</a></h2>
+<p>If you use ganon with default databases and want to re-generate it later or keep track of the content for reproducibility purposes, you can save the <code>assembly_summary.txt</code> file located inside the <code>{output_prefix}_files/</code> directory. To re-download the exact same snapshot of files used, one could use <a href="https://github.com/pirovc/genome_updater">genome_updater</a>, for example:</p>
+<pre><code class="language-bash">genome_updater.sh -e assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o recovered_files -m -t 12 
+</code></pre>
+<h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
+<h3 id="ibf-and-hibf">IBF and HIBF<a class="headerlink" href="#ibf-and-hibf" title="Permanent link">:)</a></h3>
+<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides <em>smaller</em> databases with <em>faster</em> query times. However, the HIBF takes longer to build and has less flexibility regarding size. The HIBF can be generated in <code>ganon build</code> with the <code>--hibf</code> parameter.</p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<ul>
+<li>For larger reference sets, huge amount of reads to query or production level analysis -&gt; HIBF</li>
+<li>For quick build and analysis with smaller data -&gt; IBF</li>
+</ul>
+</div>
+<h3 id="top-assemblies">Top assemblies<a class="headerlink" href="#top-assemblies" title="Permanent link">:)</a></h3>
+<p>RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can not only bias analysis but also brings redundancy to the database. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed <a href="#refseq-and-genbank">above</a>) and use the full set of assemblies for specific clade analysis.</p>
+<div class="admonition example">
+<p class="admonition-title">Example</p>
+<ul>
+<li><code>ganon build --top 1</code> will select one assembly for each taxonomic leaf (NCBI taxonomy still has strain, sub-species, ...)</li>
+<li><code>ganon build --genome-updater "-A 'species:1'"</code> will select one assembly for each species</li>
+<li><code>ganon build --genome-updater "-A 'genus:3'"</code> will select three assemblies for each genus</li>
+</ul>
+</div>
+<h3 id="false-positive">False positive<a class="headerlink" href="#false-positive" title="Permanent link">:)</a></h3>
+<p>A higher <code>--max-fp</code> value will generate a smaller database but with a higher number of false positive matches on classification. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>. Values between <code>0.01</code> and <code>0.3</code> are generally used.</p>
+<h3 id="fixed-size">Fixed size<a class="headerlink" href="#fixed-size" title="Permanent link">:)</a></h3>
+<p>A fixed size for the database filter can be defined with <code>--filter-size</code>. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>.</p>
+<h3 id="mode">Mode<a class="headerlink" href="#mode" title="Permanent link">:)</a></h3>
+<p><code>--mode</code> offers 5 different categories to build a database controlling the trade-off between size and classification speed.</p>
+<ul>
+<li><code>avg</code>: Balanced mode</li>
+<li><code>smaller</code> or <code>smallest</code>: create smaller databases with slower classification speed</li>
+<li><code>fast</code> or <code>fastest</code>: create bigger databases with faster classification speed</li>
+</ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>GTDB contain only bacteria and archea groups</p>
+<p>If <code>--filter-size</code> is used, <code>smaller</code> and <code>smallest</code> to the false positive and not to the database size which is fixed.</p>
 </div>
-<h2 id="update">Update</h2>
-<h2 id="reducing-database-size">Reducing database size</h2>
+<h3 id="split-databases">Split databases<a class="headerlink" href="#split-databases" title="Permanent link">:)</a></h3>
+<p>Ganon allows classification with multiple databases in one level or in an hierarchy (<a href="../classification/#multiple-and-hierarchical-classification">More details</a>). This means that databases can be built separately and used in any combination as desired. There are usually some benefits of doing so:</p>
 <ul>
-<li>Top organisms:</li>
-<li>Split groups</li>
-<li>IBF and HIBF</li>
-<li>k-mer and window size</li>
-<li>false positive rate</li>
+<li>Smaller databases when building by organism group, for example: one for bacteria, another for viruses, ... since average genome sizes are quite different.</li>
+<li>Easier to maintain and update.</li>
+<li>Extend use cases and avoid misclassification due to contaminated databases.</li>
+<li>Use databases as quality control, for example: remove reads matching one database of host or vectors (check out <code>ganon report --skip-hierarchy</code>).</li>
 </ul>
+<h3 id="k-mer-and-window-size">k-mer and window size<a class="headerlink" href="#k-mer-and-window-size" title="Permanent link">:)</a></h3>
+<p>Define how much unique information is stored in the database. <a href="../custom_databases/#minimizers-window-size-kmer-size">More details</a></p>
+<ul>
+<li>The smaller the <code>--kmer-size</code>, the less unique they will be, reducing database size but also sensitivity in classification. </li>
+<li>The bigger the <code>--window-size</code>, the less information needs to be stored resulting in smaller databases but with decrease classification accuracy.</li>
+</ul>
+<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">:)</a></h3>
+<p>The full RefSeq repository for archaea, bacteria, fungi and viral groups from 2023-03-14 contains 295219 assemblies and needs around 500GB to build. This can be further reduced with the following strategies:</p>
+<table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Size (GB)</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--genome-updater "-A 'species:1'"</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>--mode smaller</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>--hibf</code></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td><code>--max-fp 0.1 --window-size 35</code></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is an illustrative example that will change drastically the contents of the database (with only one assembly for each species) and every reduction step will affect the sensitivity and precision of the results.</p>
+</div>
               
             </div>
           </div><footer>

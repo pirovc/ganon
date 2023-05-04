@@ -61,6 +61,14 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#multiple-and-hierarchical-classification">Multiple and Hierarchical classification</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#reads-single-reads-paired-reads">reads (--single-reads, --paired-reads)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#cutoff-and-filter-rel-cutoff-rel-filter">cutoff and filter (--rel-cutoff, --rel-filter)</a>
+    </li>
+        </ul>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -99,10 +107,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="classification">Classification</h1>
-<h2 id="profiling">Profiling</h2>
-<h2 id="binning">Binning</h2>
-<h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification</h2>
+                <h1 id="classification">Classification<a class="headerlink" href="#classification" title="Permanent link">:)</a></h1>
+<h2 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">:)</a></h2>
+<h2 id="binning">Binning<a class="headerlink" href="#binning" title="Permanent link">:)</a></h2>
+<h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification<a class="headerlink" href="#multiple-and-hierarchical-classification" title="Permanent link">:)</a></h2>
 <p><code>ganon classify</code> can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. </p>
 <p>Multiple database classification can be performed providing several inputs for <code>--db-prefix</code>. They are required to be built with the same <code>--kmer-size</code> and <code>--window-size</code> values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.</p>
 <p>To classify reads in a hierarchical order, <code>--hierarchy-labels</code> should be provided. When using multiple hierarchical levels, output files will be generated for each level (use <code>--output-single</code> to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. <code>--rel-cutoff</code>) while others are set for each hierarchical level (e.g. <code>--rel-filter</code>)</p>
@@ -149,6 +157,128 @@ In this example, classification will be performed with different `--rel-cutoff` 
 
 </details>
 <p><br></p>
+<h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
+<h3 id="reads-single-reads-paired-reads">reads (--single-reads, --paired-reads)<a class="headerlink" href="#reads-single-reads-paired-reads" title="Permanent link">:)</a></h3>
+<p>ganon accepts single-end and paired-end reads. Both types can be use at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535 (accounting both reads in paired mode).</p>
+<h3 id="cutoff-and-filter-rel-cutoff-rel-filter">cutoff and filter (--rel-cutoff, --rel-filter)<a class="headerlink" href="#cutoff-and-filter-rel-cutoff-rel-filter" title="Permanent link">:)</a></h3>
+<p>ganon has two parameters to control a match between reads and references: <code>--rel-cutoff</code> and <code>--rel-filter</code>.</p>
+<p>Every read can be classified against none, one or more references. What will be reported is the remaining matches after <code>cutoff</code> and <code>filter</code> thresholds are applied, based on the number of shared minimizers (or k-mers) between sequences.</p>
+<p>The <code>cutoff</code> is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the <code>filter</code> is applied to the remaining matches. <code>filter</code> thresholds are relative to the best scoring match and control how far from the best match further matches are allowed. <code>cutoff</code> can be interpreted as the lower bound to discard spurious matches and <code>filter</code> as the fine tuning to control what to keep.</p>
+<p>For example, using <code>--kmer-size 19</code> (and <code>--window-size 19</code> to simplify the example), a certain read (100bp) has the following matches with the 5 references (<code>ref1..5</code>), sorted by shared k-mers:</p>
+<table>
+<thead>
+<tr>
+<th>reference</th>
+<th>shared k-mers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ref1</td>
+<td>82</td>
+</tr>
+<tr>
+<td>ref2</td>
+<td>68</td>
+</tr>
+<tr>
+<td>ref3</td>
+<td>44</td>
+</tr>
+<tr>
+<td>ref4</td>
+<td>25</td>
+</tr>
+<tr>
+<td>ref5</td>
+<td>20</td>
+</tr>
+</tbody>
+</table>
+<p>this read can have at most 82 shared k-mers (<code>100-19+1=82</code>). With <code>--rel-cutoff 0.25</code>, the following matches will be discarded:</p>
+<table>
+<thead>
+<tr>
+<th>reference</th>
+<th>shared k-mers</th>
+<th>--rel-cutoff 0.25</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ref1</td>
+<td>82</td>
+<td></td>
+</tr>
+<tr>
+<td>ref2</td>
+<td>68</td>
+<td></td>
+</tr>
+<tr>
+<td>ref3</td>
+<td>44</td>
+<td></td>
+</tr>
+<tr>
+<td>ref4</td>
+<td>25</td>
+<td></td>
+</tr>
+<tr>
+<td>~~ref5~~</td>
+<td>~~20~~</td>
+<td>X</td>
+</tr>
+</tbody>
+</table>
+<p>since the <code>--rel-cutoff</code> threshold is <code>82 * 0.25 = 21</code> (ceiling is applied). Further, with <code>--rel-filter 0.3</code>, the following matches will be discarded:</p>
+<table>
+<thead>
+<tr>
+<th>reference</th>
+<th>shared k-mers</th>
+<th>--rel-cutoff 0.25</th>
+<th>--rel-filter 0.3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ref1</td>
+<td>82</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>ref2</td>
+<td>68</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>~~ref3~~</td>
+<td>~~44~~</td>
+<td></td>
+<td>X</td>
+</tr>
+<tr>
+<td>~~ref4~~</td>
+<td>~~25~~</td>
+<td></td>
+<td>X</td>
+</tr>
+<tr>
+<td>~~ref5~~</td>
+<td>~~20~~</td>
+<td>X</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>since best match is 82, the filter parameter is removing any match below <code>0.3 * 82 = 57</code> (ceiling is applied) shared k-mers. <code>ref1</code> and <code>ref2</code> are reported as matches.</p>
+<p>For databases built with <code>--window-size</code>, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of unique minimizers extracted from the read.</p>
+<p>A different <code>cutoff</code> can be set for every database in a multiple or hierarchical database classification. A different <code>filter</code> can be set for every level of a hierarchical database classification.</p>
+<p>Note that reads that remain with only one reference match (after <code>cutoff</code> and <code>filter</code> are applied) are considered a unique match.</p>
               
             </div>
           </div><footer>

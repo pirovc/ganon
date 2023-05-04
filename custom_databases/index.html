@@ -63,19 +63,29 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#univec-univec_core">UniVec, UniVec_core</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#mgnify-genome-collections-mags">MGnify genome collections (MAGs)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#pathogens-ncbi">Pathogens NCBI</a>
+    <li class="toctree-l3"><a class="reference internal" href="#mgnify-genome-catalogues-mags">MGnify genome catalogues (MAGs)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#pathogen-detection-fda-argos">Pathogen detection FDA-ARGOS</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#reference-viral-database-rvdb">Reference Viral DataBase (RVDB)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#blast-databases-nt-env_nt-nt_prok">BLAST databases (nt, env_nt, nt_prok, ...)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#eupathdb">EuPathDB</a>
+    <li class="toctree-l3"><a class="reference internal" href="#files-from-genome_updater">Files from genome_updater</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#blast-databases-nt-env_nt">BLAST databases (nt, env_nt, ...)</a>
+        </ul>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#from-genome_updater">From genome_updater</a>
+    <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#false-positive-and-size-max-fp-filter-size">False positive and size (--max-fp, --filter-size)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#minimizers-window-size-kmer-size">minimizers (--window-size, --kmer-size)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#target-file-or-sequence-input-target">Target file or sequence (--input-target)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#build-level-level">Build level (--level)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#genome-sizes-genome-size-files">Genome sizes (--genome-size-files)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#retrieving-info-ncbi-sequence-info-ncbi-file-info">Retrieving info (--ncbi-sequence-info, --ncbi-file-info)</a>
     </li>
         </ul>
     </li>
@@ -121,15 +131,15 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="custom-databases">Custom databases</h1>
-<h2 id="default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession</h2>
+                <h1 id="custom-databases">Custom databases<a class="headerlink" href="#custom-databases" title="Permanent link">:)</a></h1>
+<h2 id="default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession<a class="headerlink" href="#default-ncbi-assembly-or-sequence-accession" title="Permanent link">:)</a></h2>
 <p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local files.</p>
 <p>To use custom sequences, just provide them with <code>--input</code>. ganon will try to retrieve all necessary information necessary to build a database.</p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should look like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence---input-target">here</a>.</p>
+<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should look like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence-input-target">here</a>.</p>
 </div>
-<h2 id="non-standardcustom-accessions">Non-standard/custom accessions</h2>
+<h2 id="non-standardcustom-accessions">Non-standard/custom accessions<a class="headerlink" href="#non-standardcustom-accessions" title="Permanent link">:)</a></h2>
 <p>It is also possible to use <strong>non-standard accessions and headers</strong> to build databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].</p>
 <details>
   <summary>Examples of --input-file</summary>
@@ -190,10 +200,10 @@ others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
 
 </details>
 <p><br></p>
-<h2 id="examples">Examples</h2>
-<p>Below a list of few example of custom databases from commonly used repositories:</p>
-<h3 id="humgut">HumGut</h3>
-<p>TODO description</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">:)</a></h2>
+<p>Some examples with download and build commands for custom ganon databases from useful and commonly used repositories and datasets for metagenomics analysis:</p>
+<h3 id="humgut">HumGut<a class="headerlink" href="#humgut" title="Permanent link">:)</a></h3>
+<p>Collection of &gt;30000 genomes from healthy human metagenomes. <a href="https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-021-01114-w">Article</a>/<a href="https://arken.nmbu.no/~larssn/humgut/">Website</a>.</p>
 <pre><code class="language-bash"># Download sequence files
 wget --quiet --show-progress &quot;http://arken.nmbu.no/~larssn/humgut/HumGut.tar.gz&quot;
 tar xf HumGut.tar.gz 
@@ -220,8 +230,8 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 <p class="admonition-title">Note</p>
 <p>There is no need to use ganon's gtdb integration here since GTDB files in NCBI format are available</p>
 </div>
-<h3 id="plasmid-plastid-and-mitochondrion-from-refseq">Plasmid, Plastid and Mitochondrion from RefSeq</h3>
-<p>TODO description</p>
+<h3 id="plasmid-plastid-and-mitochondrion-from-refseq">Plasmid, Plastid and Mitochondrion from RefSeq<a class="headerlink" href="#plasmid-plastid-and-mitochondrion-from-refseq" title="Permanent link">:)</a></h3>
+<p>Extra repositories from RefSeq release not included as default databases. <a href="https://www.ncbi.nlm.nih.gov/refseq/">Website</a>.</p>
 <pre><code class="language-bash"># Download sequence files
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/&quot;
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
@@ -230,8 +240,8 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.n
 # Build ganon database
 ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --input-target sequence --level leaves --threads 32 
 </code></pre>
-<h3 id="univec-univec_core">UniVec, UniVec_core</h3>
-<p>TODO description</p>
+<h3 id="univec-univec_core">UniVec, UniVec_core<a class="headerlink" href="#univec-univec_core" title="Permanent link">:)</a></h3>
+<p>"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv">Website</a>. Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.</p>
 <pre><code class="language-bash"># UniVec
 wget -O &quot;UniVec.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec&quot; 
 grep -o '^&gt;[^ ]*' UniVec.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_ganon_input_file.tsv
@@ -242,13 +252,13 @@ wget -O &quot;UniVec_Core.fasta&quot; --quiet --show-progress &quot;ftp://ftp.nc
 grep -o '^&gt;[^ ]*' UniVec_Core.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec_Core.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_Core_ganon_input_file.tsv
 ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --input-target sequence --level leaves --threads 8
 </code></pre>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p>All UniVec entries in the examples are categorized as <a href="https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&amp;id=81077">Artificial Sequence</a> (NCBI txid:81077). Some are completely artificial but others may be derived from real biological sources. More information in this <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.vector.origins">link</a>.</p>
 </div>
-<h3 id="mgnify-genome-collections-mags">MGnify genome collections (MAGs)</h3>
-<p>TODO description</p>
-<p>Note that the database will be build with GTDB taxonomy.</p>
+<h3 id="mgnify-genome-catalogues-mags">MGnify genome catalogues (MAGs)<a class="headerlink" href="#mgnify-genome-catalogues-mags" title="Permanent link">:)</a></h3>
+<p>"Genome catalogues are biome-specific collections of metagenomic-assembled and isolate genomes". <a href="https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/">Article</a>/<a href="https://www.ebi.ac.uk/metagenomics/browse/genomes">Website</a>/<a href="https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/">FTP</a>.</p>
+<p>There are currently (2023-05-04) 8 genome catalogues available: chicken-gut, human-gut, human-oral, marine, non-model-fish-gut, pig-gut and zebrafish-fecal. An example below how to download and build the human-oral catalog:</p>
 <pre><code class="language-bash"># Download metadata
 wget &quot;https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0/genomes-all_metadata.tsv&quot;
 
@@ -258,32 +268,118 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 # Generate ganon input file
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F&quot;\t&quot; '{tax=&quot;1&quot;;for(i=NF;i&gt;1;i--){if(length($i)&gt;3){tax=$i;break;}};print $1&quot;.fna.gz\t&quot;$1&quot;\t&quot;tax}' &gt; ganon_input_file.tsv
 
+# Build ganon database
 ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
 </code></pre>
-<h3 id="pathogens-ncbi">Pathogens NCBI</h3>
-<ul>
-<li>https://ftp.ncbi.nlm.nih.gov/pathogen/</li>
-<li>https://www.ncbi.nlm.nih.gov/pathogens/</li>
-</ul>
-<h3 id="pathogen-detection-fda-argos">Pathogen detection FDA-ARGOS</h3>
-<ul>
-<li>https://www.ncbi.nlm.nih.gov/bioproject/231221</li>
-<li>https://pubmed.ncbi.nlm.nih.gov/31346170/</li>
-</ul>
-<h3 id="reference-viral-database-rvdb">Reference Viral DataBase (RVDB)</h3>
-<ul>
-<li>https://journals.asm.org/doi/10.1128/mSphereDirect.00069-18</li>
-<li>https://rvdb.dbi.udel.edu/</li>
-</ul>
-<h3 id="eupathdb">EuPathDB</h3>
-<ul>
-<li>https://veupathdb.org/veupathdb/app/</li>
-</ul>
-<h3 id="blast-databases-nt-env_nt">BLAST databases (nt, env_nt, ...)</h3>
-<ul>
-<li>https://ftp.ncbi.nlm.nih.gov/blast/db/</li>
-</ul>
-<h3 id="from-genome_updater">From genome_updater</h3>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>MGnify genomes catalogues will be build with GTDB taxonomy.</p>
+</div>
+<h3 id="pathogen-detection-fda-argos">Pathogen detection FDA-ARGOS<a class="headerlink" href="#pathogen-detection-fda-argos" title="Permanent link">:)</a></h3>
+<p>A collection of &gt;1400 "microbes that include biothreat microorganisms, common clinical pathogens and closely related species". <a href="https://www.ncbi.nlm.nih.gov/bioproject/231221">Article</a>/<a href="https://www.ncbi.nlm.nih.gov/bioproject/231221">Website</a>/<a href="https://www.ncbi.nlm.nih.gov/bioproject/231221">BioProject</a>.</p>
+<pre><code class="language-bash"># Download sequence files
+wget https://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt
+grep &quot;strain=FDAARGOS&quot; assembly_summary_refseq.txt &gt; fdaargos_assembly_summary.txt
+genome_updater.sh -e fdaargos_assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o download -m -t 12
+
+# Build ganon database
+ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --ncbi-file-info download/assembly_summary.txt --level assembly --threads 32
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The example above uses <a href="https://github.com/pirovc/genome_updater">genome_updater</a> to download files</p>
+</div>
+<h3 id="blast-databases-nt-env_nt-nt_prok">BLAST databases (nt, env_nt, nt_prok, ...)<a class="headerlink" href="#blast-databases-nt-env_nt-nt_prok" title="Permanent link">:)</a></h3>
+<p>BLAST databases. <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi">Website</a>/<a href="https://ftp.ncbi.nlm.nih.gov/blast/db/">FTP</a>.</p>
+<details>
+  <summary>Current available databases (2023-05-04)</summary>
+  <br>
+16S_ribosomal_RNA, 
+18S_fungal_sequences, 
+28S_fungal_sequences, 
+Betacoronavirus, 
+env_nt, 
+human_genome, 
+ITS_eukaryote_sequences, 
+ITS_RefSeq_Fungi, 
+LSU_eukaryote_rRNA, 
+LSU_prokaryote_rRNA, 
+mito, 
+mouse_genome, 
+nt, 
+nt_euk, 
+nt_others, 
+nt_prok, 
+nt_viruses, 
+patnt, 
+pdbnt, 
+ref_euk_rep_genomes, 
+ref_prok_rep_genomes, 
+refseq_rna, 
+refseq_select_rna, 
+ref_viroids_rep_genomes, 
+ref_viruses_rep_genomes, 
+SSU_eukaryote_rRNA, 
+tsa_nt
+</details>
+<p><br></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>List currently available nucleotide databases <code>curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort</code></p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some <a href="../default_databases/#reducing-database-size">reduction strategies</a></p>
+</div>
+<p>The example below extracts sequences and information from a BLAST db to build a ganon database:</p>
+<pre><code class="language-bash"># Define BLAST db
+db=&quot;16S_ribosomal_RNA&quot;
+
+# Download BLAST db
+wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz&quot;
+
+# Merge and extract BLAST db files
+cat &quot;${db}.tar.gz&quot; | tar xvfz - &gt; ex_files.txt
+ex_file=$(head -n 1 ex_files.txt)
+dbprefix=&quot;${ex_file%%.*}&quot;
+
+# Generate sequences from BLAST db
+blastdbcmd -entry all -db &quot;${dbprefix}&quot; -out &quot;${db}.fna&quot;
+
+# Generate ganon input file
+blastdbcmd -entry all -db &quot;${dbprefix}&quot; -outfmt &quot;%a %X&quot; | awk -v file=&quot;${db}.fna&quot; '{print file&quot;\t&quot;$1&quot;\t&quot;$2 }' &gt; &quot;${db}_ganon_input_file.tsv&quot;
+
+# Build ganon database
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --input-target sequence --level leaves --threads 32
+</code></pre>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>blastdbcmd</code> is a command from BLAST software suite and should be installed separately</p>
+</div>
+<h3 id="files-from-genome_updater">Files from genome_updater<a class="headerlink" href="#files-from-genome_updater" title="Permanent link">:)</a></h3>
+<p>If you have files downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>, building a ganon custom database is easy:</p>
+<pre><code class="language-bash">ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
+</code></pre>
+<h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
+<h3 id="false-positive-and-size-max-fp-filter-size">False positive and size (--max-fp, --filter-size)<a class="headerlink" href="#false-positive-and-size-max-fp-filter-size" title="Permanent link">:)</a></h3>
+<p>ganon indices are based on bloom filters and can have false positive matches. This can be controlled with <code>--max-fp</code> parameter. The lower the <code>--max-fp</code>, the less chances of false positives matches on classification, but the larger the database size will be. For example, with <code>--max-fp 0.01</code> the database will be build so any target (defined by <code>--level</code>) will have 1 in a 100 change of reporting a false k-mer match. The false positive of the query (all k-mers of the reads) is higher but directly affected.</p>
+<p>Alternatively, one can set a specific size for the final index with <code>--filter-size</code>. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.</p>
+<h3 id="minimizers-window-size-kmer-size">minimizers (--window-size, --kmer-size)<a class="headerlink" href="#minimizers-window-size-kmer-size" title="Permanent link">:)</a></h3>
+<p>in <code>ganon build</code>, when <code>--window-size</code> &gt; <code>--kmer-size</code> minimizers are used. That means that for a every window, a single k-mer will be selected. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. Sensitivity and precision can be reduced by small margins. If <code>--window-size</code> = <code>--kmer-size</code>, all k-mers are going to be used to build the database.</p>
+<h3 id="target-file-or-sequence-input-target">Target file or sequence (--input-target)<a class="headerlink" href="#target-file-or-sequence-input-target" title="Permanent link">:)</a></h3>
+<p>Customized builds can be done either by file or sequence. <code>--input-target file</code> will consider every file provided with <code>--input</code> a single unit. <code>--input-target sequence</code> will use every sequence as a unit.</p>
+<p><code>--input-target file</code> is the default behavior and most efficient way to build databases. <code>--input-target sequence</code> should only be used when the input sequences are stored in a single file or when classification at sequence level is desired.</p>
+<h3 id="build-level-level">Build level (--level)<a class="headerlink" href="#build-level-level" title="Permanent link">:)</a></h3>
+<p>The <code>--level</code> parameter defines the max. depth of the database for classification. This parameter is relevant because the <code>--max-fp</code> is going to be guaranteed at the <code>--level</code> chosen. By default, the level will be the same as <code>--input-target</code>, meaning that classification will be done either at file or sequence level.</p>
+<p>Alternatively, <code>--level assembly</code> will link the file or sequence target information with assembly accessions retrieved from NCBI servers. <code>--level leaves</code> or <code>--level species</code> (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. <code>--level custom</code> will use specialization level define in the <code>--input-file</code>.</p>
+<h3 id="genome-sizes-genome-size-files">Genome sizes (--genome-size-files)<a class="headerlink" href="#genome-sizes-genome-size-files" title="Permanent link">:)</a></h3>
+<p>Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For <code>--taxonomy ncbi</code> the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/">species_genome_size.txt.gz</a> is used. For <code>--taxonomy gtdb</code> the <a href="https://data.gtdb.ecogenomic.org/releases/latest/">*_metadata.tar.gz</a> files are used. Those files can be directly provided with the <code>--genome-size-files</code> argument.</p>
+<p>Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the <a href="#buildupdate">ganon database</a>.</p>
+<h3 id="retrieving-info-ncbi-sequence-info-ncbi-file-info">Retrieving info (--ncbi-sequence-info, --ncbi-file-info)<a class="headerlink" href="#retrieving-info-ncbi-sequence-info-ncbi-file-info" title="Permanent link">:)</a></h3>
+<p>Further taxonomy and assembly linking information has to be collected to properly build the database. <code>--ncbi-sequence-info</code> and <code>--ncbi-file-info</code> allow customizations on this step.</p>
+<p>When <code>--input-target sequence</code>, <code>--ncbi-sequence-info</code> argument allows the use of NCBI e-utils webservices (<code>eutils</code>) or downloads accession2taxid files to extract target information (options <code>nucl_gb</code> <code>nucl_wgs</code> <code>nucl_est</code> <code>nucl_gss</code> <code>pdb</code> <code>prot</code> <code>dead_nucl</code> <code>dead_wgs</code> <code>dead_prot</code>). By default, ganon uses <code>eutils</code> up-to 50000 input sequences, otherwise it downloads <code>nucl_gb</code> <code>nucl_wgs</code> from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. Previously downloaded files can be directly provided with this argument.</p>
+<p>When <code>--input-target file</code>, <code>--ncbi-file-info</code> uses <code>assembly_summary.txt</code> from https://ftp.ncbi.nlm.nih.gov/genomes/ to extract target information (options <code>refseq</code> <code>genbank</code> <code>refseq_historical</code> <code>genbank_historical</code>. Previously downloaded files can be directly provided with this argument.</p>
+<p>If you are using outdated, removed or inactive assembly or sequence files and accessions from NCBI, make sure to include <code>dead_nucl</code> <code>dead_wgs</code> for <code>--ncbi-sequence-info</code> or <code>refseq_historical</code> <code>genbank_historical</code> for <code>--ncbi-file-info</code>. <code>eutils</code> option does not work with outdated accessions.</p>
               
             </div>
           </div><footer>

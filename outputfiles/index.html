@@ -101,11 +101,11 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="output-files">Output files</h1>
-<h2 id="ganon-buildbuild-customupdate">ganon build/build-custom/update</h2>
+                <h1 id="output-files">Output files<a class="headerlink" href="#output-files" title="Permanent link">:)</a></h1>
+<h2 id="ganon-buildbuild-customupdate">ganon build/build-custom/update<a class="headerlink" href="#ganon-buildbuild-customupdate" title="Permanent link">:)</a></h2>
 <p>Every run on <code>ganon build</code>, <code>ganon build-custom</code> or <code>ganon update</code> will generate the following database files:</p>
 <ul>
-<li>{prefix}<strong>.ibf</strong>: main interleaved bloom filter index file</li>
+<li>{prefix}<strong>.ibf/.hibf</strong>: main interleaved bloom filter index file, <strong>.hibf</strong> is generated with <code>--hibf</code> option.</li>
 <li>{prefix}<strong>.tax</strong>: taxonomy tree, only generated if <code>--taxonomy</code> is used <em>(fields: target/node, parent, rank, name, genome size)</em>.</li>
 <li>{prefix}<strong>_files/</strong>: (<code>ganon build</code> only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.</li>
 </ul>
@@ -113,7 +113,7 @@
 <p class="admonition-title">Warning</p>
 <p>Database files generated with version 1.2.0 or higher are not compatible with older versions.</p>
 </div>
-<h2 id="ganon-classify">ganon classify</h2>
+<h2 id="ganon-classify">ganon classify<a class="headerlink" href="#ganon-classify" title="Permanent link">:)</a></h2>
 <ul>
 <li>{prefix}<strong>.tre</strong>: full report file (see below)</li>
 <li>{prefix}<strong>.rep</strong>: plain report of the run with only targets that received a match. Can be used to re-generate full reports (.tre) with <code>ganon report</code>. At the end prints 2 extra lines with <code>#total_classified</code> and <code>#total_unclassified</code>. Fields<ul>
@@ -129,7 +129,7 @@
 <li>{prefix}<strong>.lca</strong>: output with one match for each classified read after LCA. Only generated with <code>--output-lca</code> active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca <em>(fields: read identifier, target, (max) k-mer/minimizer count)</em></li>
 <li>{prefix}<strong>.all</strong>: output with all matches for each read. Only generated with <code>--output-all</code> active <strong>Warning: file can be very large</strong>. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all <em>(fields: read identifier, target, k-mer/minimizer count)</em></li>
 </ul>
-<h2 id="ganon-report">ganon report</h2>
+<h2 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h2>
 <ul>
 <li>{prefix}<strong>.tre</strong>: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible <code>--report-type</code>. More information on the different types of reports can be found <a href="#report-type---report-type">here</a>:<ul>
 <li><em>abundance</em>: will attempt to estimate <strong>taxonomic abundances</strong> by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes.</li>
@@ -221,7 +221,7 @@
 <p>For all report type but <code>matches</code>, only taxa that received direct read matches, either unique or by LCA assignment, are considered. Some reads may have only shared matches and will not be reported directly but will be accounted for on some parent level. To visualize those matches, create a report with <code>--report-type matches</code> or use directly the file {prefix}<strong>.rep</strong>.</p>
 </li>
 </ul>
-<h2 id="ganon-table">ganon table</h2>
+<h2 id="ganon-table">ganon table<a class="headerlink" href="#ganon-table" title="Permanent link">:)</a></h2>
 <ul>
 <li>{output_file}: a tab-separated file with counts/percentages of taxa for multiple samples</li>
 </ul>
@@ -303,6 +303,7 @@ with `--output-format bioboxes`
 </code></pre>
 
 </details>
+<p><br></p>
               
             </div>
           </div><footer>

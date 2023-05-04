@@ -57,6 +57,8 @@
     </li>
         </ul>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#important-parameters">Important parameters</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a>
     </li>
     </ul>
@@ -109,10 +111,10 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="ganon">ganon</h1>
+                <h1 id="ganon">ganon<a class="headerlink" href="#ganon" title="Permanent link">:)</a></h1>
 <p><a href="https://travis-ci.com/pirovc/ganon"><img alt="Build Status" src="https://travis-ci.com/pirovc/ganon.svg?branch=master" /></a> <a href="https://codecov.io/gh/pirovc/ganon"><img alt="codecov" src="https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/downloads.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/platforms.svg" /></a> <a href="http://bioconda.github.io/recipes/ganon/README.html"><img alt="install with bioconda" src="https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat" /></a> <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458"><img alt="Publication" src="https://img.shields.io/badge/DOI-10.1101%2F406017-blue" /></a></p>
 <p>ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.</p>
-<h2 id="features">Features</h2>
+<h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">:)</a></h2>
 <ul>
 <li>NCBI and GTDB native support for taxonomic classification (also runs without taxonomy)</li>
 <li>integrated download of commonly used reference sequences from RefSeq/Genbank (<code>ganon build</code>)</li>
@@ -126,13 +128,13 @@
 <li>generate reports and contingency tables for multi-sample studies with several filter options</li>
 </ul>
 <p>ganon achieved very good results in <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458">our own evaluations</a> but also in independent evaluations: <a href="https://lemmi-v1.ezlab.org/">LEMMI</a>, <a href="https://lemmi.ezlab.org/">LEMMI v2</a> and <a href="https://dx.doi.org/10.1038/s41592-022-01431-4">CAMI2</a></p>
-<h2 id="installation-with-conda">Installation with conda</h2>
+<h2 id="installation-with-conda">Installation with conda<a class="headerlink" href="#installation-with-conda" title="Permanent link">:)</a></h2>
 <p>The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:</p>
 <pre><code class="language-bash">conda install -c bioconda -c conda-forge ganon
 </code></pre>
 <p>However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:</p>
-<h2 id="installation-from-source">Installation from source</h2>
-<h3 id="dependencies">Dependencies</h3>
+<h2 id="installation-from-source">Installation from source<a class="headerlink" href="#installation-from-source" title="Permanent link">:)</a></h2>
+<h3 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">:)</a></h3>
 <ul>
 <li>gcc &gt;=7</li>
 <li>cmake &gt;=3.10</li>
@@ -144,7 +146,7 @@
 <pre><code class="language-bash">python3 -V # &gt;=3.6
 python3 -m pip install &quot;pandas&gt;=1.1.0&quot; &quot;multitax&gt;=1.3.1&quot;
 </code></pre>
-<h3 id="downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</h3>
+<h3 id="downloading-and-building-ganon-submodules">Downloading and building ganon + submodules<a class="headerlink" href="#downloading-and-building-ganon-submodules" title="Permanent link">:)</a></h3>
 <pre><code class="language-bash">git clone --recurse-submodules https://github.com/pirovc/ganon.git
 </code></pre>
 <pre><code class="language-bash">cd ganon
@@ -163,13 +165,31 @@ sudo make install  # optional
 <p>If everything was properly installed, the following commands should show the help pages without errors:</p>
 <pre><code class="language-bash">ganon -h
 </code></pre>
-<h3 id="running-tests">Running tests</h3>
+<h3 id="running-tests">Running tests<a class="headerlink" href="#running-tests" title="Permanent link">:)</a></h3>
 <pre><code class="language-bash">python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build_cpp/
 ctest -VV .
 </code></pre>
-<h2 id="parameters">Parameters</h2>
+<h2 id="important-parameters">Important parameters<a class="headerlink" href="#important-parameters" title="Permanent link">:)</a></h2>
+<p>The most important parameters and trade-offs are:</p>
+<ul>
+<li><code>ganon build</code> <code>--hibf</code>: will build smaller databases that can be queried faster. Build time will take longer.</li>
+<li><code>ganon build</code> <code>--window-size --kmer-size</code>: the <em>window</em> value should always be the same or larger than the <em>kmer</em> value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small <em>kmer</em> and/or large <em>window</em>. Larger <em>kmer</em> values (e.g. <code>31</code>) will improve classification, specially read binning, at a cost of way bigger databases.</li>
+</ul>
+<hr />
+<ul>
+<li><code>ganon classify</code> <code>--rel-cutoff</code>: this value defines the threshold for matches between reads and database. Higher <code>--rel-cutoff</code> values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between <code>0.4</code> and <code>0.8</code> may provide better results. For read binning, lower values between <code>0.2</code> and <code>0.4</code> are recommended.</li>
+<li><code>ganon classify</code> <code>--rel-filter</code>: further filter top matches after cutoff is applied. Usually set between <code>0</code> and <code>0.2</code>.</li>
+<li><code>ganon classify</code> <code>--reassign</code>: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with <code>ganon reassign</code>.</li>
+</ul>
+<hr />
+<ul>
+<li><code>ganon report</code> <code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>corr</code> or <code>abundance</code> for taxonomic profiling, <code>reads</code> or <code>dist</code> for sequence profiling and <code>matches</code> to report a summary of all matches.</li>
+<li><code>ganon report</code> <code>--min-count</code>: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between <code>0.0001</code> (0.01%) and <code>0.001</code> (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively <code>--top-percentile</code> can be used to keep a relative amount of taxa instead a hard cutoff.</li>
+</ul>
+<p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues">issue</a>.</p>
+<h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">:)</a></h2>
 <pre><code>usage: ganon [-h] [-v]
              {build,build-custom,update,classify,reassign,report,table} ...
 
@@ -648,5 +668,5 @@ filter arguments:
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-05-03 15:31:32.559126+00:00
+Build Date UTC : 2023-05-04 15:18:25.325332+00:00
 -->
