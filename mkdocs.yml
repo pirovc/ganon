@@ -11,3 +11,5 @@ nav:
 markdown_extensions:
   - attr_list
   - admonition
+  - toc:
+      permalink: ":)"

@@ -4,7 +4,7 @@
 
 Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate the following database files:
 
- - {prefix}**.ibf**: main interleaved bloom filter index file
+ - {prefix}**.ibf/.hibf**: main interleaved bloom filter index file, **.hibf** is generated with `--hibf` option.
  - {prefix}**.tax**: taxonomy tree, only generated if `--taxonomy` is used *(fields: target/node, parent, rank, name, genome size)*.
  - {prefix}**_files/**: (`ganon build` only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
 
@@ -135,3 +135,4 @@ with `--output-format bioboxes`
 200795   phylum        2|200795  Bacteria|Chloroflexi      0.31118
 ```
 </details>
+<br>
