@@ -126,7 +126,7 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ### IBF and HIBF
 
-The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides *smaller* databases with *faster* query times. However, the HIBF takes longer to build and has less flexibility regarding size. The HIBF can be generated in `ganon build` with the `--hibf` parameter.
+The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides *smaller* databases with *faster* query times. However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in `ganon build` and `ganon build-custom` with the `--hibf` parameter.
 
 !!! hint
     - For larger reference sets, huge amount of reads to query or production level analysis -> HIBF
@@ -180,12 +180,14 @@ Define how much unique information is stored in the database. [More details](../
 
 The full RefSeq repository for archaea, bacteria, fungi and viral groups from 2023-03-14 contains 295219 assemblies and needs around 500GB to build. This can be further reduced with the following strategies:
 
-| Strategy | Size (GB) |  |
-|---|---|---|
-| `--genome-updater "-A 'species:1'"` | | |
-| `--mode smaller` | | |
-| `--hibf` | | |
-| `--max-fp 0.1 --window-size 35` | | |
+| Strategy | Size (GB) | Trade-off  | |
+|---|---|---|---|
+| `None` | 500 | Big resources, best coverage | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| `--genome-updater "-A 'species:1'"` | 98 | No strain analysis, smaller db | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
+| `--mode smaller` | | Slower classification, smaller db | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --mode smaller`</details> |
+| `--hibf` | 40 | Slower build time, smaller db and faster classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf`</details> |
+| `--max-fp 0.1 --window-size 35` | | ss| <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf --max-fp 0.1 --window-size 35`</details> |
+
 
 !!! note
     This is an illustrative example that will change drastically the contents of the database (with only one assembly for each species) and every reduction step will affect the sensitivity and precision of the results.
