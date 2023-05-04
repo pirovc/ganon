@@ -107,7 +107,7 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 
 ### Plasmid, Plastid and Mitochondrion from RefSeq
 
-Extra repositories from RefSeq release not included as default databases.
+Extra repositories from RefSeq release not included as default databases. [Website](https://www.ncbi.nlm.nih.gov/refseq/).
 
 ```bash
 # Download sequence files
@@ -183,8 +183,6 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 
 BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
 
-List currently available nucleotide databases `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`
-
 <details>
   <summary>Current available databases (2023-05-04)</summary>
   <br>
@@ -218,6 +216,9 @@ tsa_nt
 </details>
 <br>
 
+!!! note
+    List currently available nucleotide databases `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`
+
 !!! warning
     Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](../default_databases/#reducing-database-size)
 
@@ -225,32 +226,36 @@ The example below extracts sequences and information from a BLAST db to build a 
 
 ```bash
 # Define BLAST db
-db="human_genome"
+db="16S_ribosomal_RNA"
 
 # Download BLAST db
 wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz"
 
-# Extract BLAST db files
+# Merge and extract BLAST db files
 cat "${db}.tar.gz" | tar xvfz - > ex_files.txt
 ex_file=$(head -n 1 ex_files.txt)
 dbprefix="${ex_file%%.*}"
 
-# Generate sequence from BLAST db
+# Generate sequences from BLAST db
 blastdbcmd -entry all -db "${dbprefix}" -out "${db}.fna"
 
 # Generate ganon input file
-blastdbcmd -entry all -db "${dbprefix}" -outfmt "%i %X" | sed -e "s/^/${db}.fna /" | sed -e 's/ref|//g' -e 's/|//g' | tr ' ' '\t' > "${db}_ganon_input_file.tsv"
+blastdbcmd -entry all -db "${dbprefix}" -outfmt "%a %X" | awk -v file="${db}.fna" '{print file"\t"$1"\t"$2 }' > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
 ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --input-target sequence --level leaves --threads 32
 ```
 
 !!! note
-    `blastdbcmd` is a command from BLAST software suite
+    `blastdbcmd` is a command from BLAST software suite and should be installed separately
 
-### From genome_updater
+### Files from genome_updater
 
-TODO
+If you have files downloaded with [genome_updater](https://github.com/pirovc/genome_updater), building a ganon custom database is easy:
+
+```bash
+ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
+```
 
 ## Parameter details
 
