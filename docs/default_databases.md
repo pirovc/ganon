@@ -32,17 +32,17 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 | RefSeq | # assemblies | Size (GB) * |  |
 |---|---|---|---|
 | Complete | 295219 | xx - 500 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
-| One assembly for each species | 52779 | 40 - 98 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
-| Complete genome assemblies (higher quality) | 44121 | 19 - 64 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
-| One assembly for each species of complete genomes | 19713 | 8 - 27 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
-| One representative assembly for each species | 18073 | 21 - 35 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg`</details> |
+| One assembly per species | 52779 | 40 - 98 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
+| Complete genomes (higher quality) | 44121 | 19 - 64 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
+| One assembly per species of complete genomes | 19713 | 8 - 27 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
+| One representative assembly per species | 18073 | 21 - 35 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg`</details> |
 
 | GenBank | # assemblies | Size (GB) * |  |
 |---|---|---|---|
 | Complete | 1595845 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
-| One assembly for each species | 99505 | 91 - 420 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
-| Complete genome assemblies (higher quality) | 92917 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
-| One assembly for each species of complete genomes | 34497 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
+| One assembly per species | 99505 | 91 - 420 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
+| Complete genomes (higher quality) | 92917 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
+| One assembly per species of complete genomes | 34497 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
 
 \*  Size (GB) is the final size of the database and the approximate amount of RAM necessary to build it (calculated with default parameters). The two values represent databases built with and without the `--hibf` parameter, respectively. The trade-offs between those two modes are explained [here](#ibf-and-hibf).
 
@@ -124,13 +124,18 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ## Reducing database size
 
-### IBF and HIBF
+### HIBF
 
-The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides *smaller* databases with *faster* query times. However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in `ganon build` and `ganon build-custom` with the `--hibf` parameter.
+The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides *smaller* databases with *faster* query times ([pre-print](https://www.biorxiv.org/content/10.1101/2022.08.01.502266v1)). However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in `ganon build` and `ganon build-custom` with the `--hibf` parameter.
+
+**This is the best method to reduce large database sizes and to achieve faster classification speed.**
 
 !!! hint
     - For larger reference sets, huge amount of reads to query or production level analysis -> HIBF
-    - For quick build and analysis with smaller data -> IBF
+    - For quick build and analysis with smaller data -> IBF (default)
+
+!!! warning
+    [raptor](https://github.com/seqan/raptor) has to be installed to build databases with `--hibf`
 
 ### Top assemblies
 
@@ -178,16 +183,17 @@ Define how much unique information is stored in the database. [More details](../
 
 ### Example
 
-The full RefSeq repository for archaea, bacteria, fungi and viral groups from 2023-03-14 contains 295219 assemblies and needs around 500GB to build. This can be further reduced with the following strategies:
+Besides the huge benefits of using [HIBF](#hibf) and specific sub-sets of big repositories shown on the [default databases table](#commonly-used-sub-sets), examples of other reduction strategies (without `--hibf`) can be seen below:
 
-| Strategy | Size (GB) | Trade-off  | |
-|---|---|---|---|
-| `None` | 500 | Big resources, best coverage | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
-| `--genome-updater "-A 'species:1'"` | 98 | No strain analysis, smaller db | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
-| `--mode smaller` | | Slower classification, smaller db | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --mode smaller`</details> |
-| `--hibf` | 40 | Slower build time, smaller db and faster classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf`</details> |
-| `--max-fp 0.1 --window-size 35` | | ss| <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf --max-fp 0.1 --window-size 35`</details> |
+*RefSeq archaeal complete genomes from 20230505*
 
+| Strategy | Size (MB) | Smaller |  Trade-off  | |
+|---|---|---|---|---|
+| `default` | 318 | - | - | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --db-prefix arc_rs_cg`</details> |
+| `--mode smallest` | 301 | 5% | Slower classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --mode smallest --db-prefix arc_rs_cg_smallest`</details> |
+| `--filter-size 256` | 256 | 19% | Higher false positive on classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --filter-size 256 --db-prefix arc_rs_cg_fs256`</details> |
+| `--window-size 35` | 249 | 21% | Less sensitive classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --window-size 35 --db-prefix arc_rs_cg_ws35`</details> |
+| `--max-fp 0.2` | 190 | 40% | Higher false positive on classification | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --max-fp 0.2 --db-prefix arc_rs_cg_fp0.2`</details> |
 
 !!! note
-    This is an illustrative example that will change drastically the contents of the database (with only one assembly for each species) and every reduction step will affect the sensitivity and precision of the results.
+    This is an illustrative example and the reduction proportions for different configuration may be quite different

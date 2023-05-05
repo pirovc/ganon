@@ -84,7 +84,7 @@ ctest -VV .
 
 The most important parameters and trade-offs are:
 
-- `ganon build` `--hibf`: will build smaller databases that can be queried faster. Build time will take longer.
+- `ganon build` `--hibf`: build smaller databases that can be queried faster. Building will take longer.
 - `ganon build` `--window-size --kmer-size`: the *window* value should always be the same or larger than the *kmer* value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small *kmer* and/or large *window*. Larger *kmer* values (e.g. `31`) will improve classification, specially read binning, at a cost of way bigger databases.
 ---
 - `ganon classify` `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher `--rel-cutoff` values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read binning, lower values between `0.2` and `0.4` are recommended.

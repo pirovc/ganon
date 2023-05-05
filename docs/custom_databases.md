@@ -2,22 +2,25 @@
 
 ## Default NCBI assembly or sequence accession
 
-Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases from local files.
+Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases from local sequence files.
 
 To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
 
-!!! tip
-    ganon expects assembly accessions in the filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`. When using `--input-target sequence` filenames are not important but sequence headers should look like `>CP022124.1 Fusobacterium nu...`. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
+!!! note
+    ganon expects assembly accessions in the filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`. When using `--input-target sequence` filenames are not important but sequence headers should contain sequence accessions like `>CP022124.1 Fusobacterium nu...`. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
 
 ## Non-standard/custom accessions
 
-It is also possible to use **non-standard accessions and headers** to build databases with `--input-file`. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].
+It is also possible to use **non-standard accessions and headers** to build custom databases with `--input-file`. This file should contain the following fields (tab-separated): `file [<tab> target <tab> node <tab> specialization <tab> specialization_name].` Note that file is mandatory and additional fields not.
+
+!!! tip
+    If you just want to build a database without any taxonomic or target information, just sent the files with `--input`, use `--taxonomy skip` and choose between `--input-target file` or `sequence`.
 
 <details>
   <summary>Examples of --input-file</summary>
   <br>
 
-With --input-target file, where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
+With --input-target file (default), where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
 
 ```
 sequences.fasta my_target_1
@@ -183,38 +186,7 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 
 BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
 
-<details>
-  <summary>Current available databases (2023-05-04)</summary>
-  <br>
-16S_ribosomal_RNA, 
-18S_fungal_sequences, 
-28S_fungal_sequences, 
-Betacoronavirus, 
-env_nt, 
-human_genome, 
-ITS_eukaryote_sequences, 
-ITS_RefSeq_Fungi, 
-LSU_eukaryote_rRNA, 
-LSU_prokaryote_rRNA, 
-mito, 
-mouse_genome, 
-nt, 
-nt_euk, 
-nt_others, 
-nt_prok, 
-nt_viruses, 
-patnt, 
-pdbnt, 
-ref_euk_rep_genomes, 
-ref_prok_rep_genomes, 
-refseq_rna, 
-refseq_select_rna, 
-ref_viroids_rep_genomes, 
-ref_viruses_rep_genomes, 
-SSU_eukaryote_rRNA, 
-tsa_nt
-</details>
-<br>
+Current available nucleotide databases (2023-05-04): `16S_ribosomal_RNA` `18S_fungal_sequences` `28S_fungal_sequences` `Betacoronavirus` `env_nt` `human_genome` `ITS_eukaryote_sequences` `ITS_RefSeq_Fungi` `LSU_eukaryote_rRNA` `LSU_prokaryote_rRNA` `mito` `mouse_genome` `nt` `nt_euk` `nt_others` `nt_prok` `nt_viruses` `patnt` `pdbnt` `ref_euk_rep_genomes` `ref_prok_rep_genomes` `refseq_rna` `refseq_select_rna` `ref_viroids_rep_genomes` `ref_viruses_rep_genomes` `SSU_eukaryote_rRNA` `tsa_nt`
 
 !!! note
     List currently available nucleotide databases `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`
@@ -232,9 +204,9 @@ db="16S_ribosomal_RNA"
 wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz"
 
 # Merge and extract BLAST db files
-cat "${db}.tar.gz" | tar xvfz - > ex_files.txt
+cat "${db}"*.tar.gz | tar xvfz - > ex_files.txt
 ex_file=$(head -n 1 ex_files.txt)
-dbprefix="${ex_file%%.*}"
+dbprefix="${ex_file%.*}"
 
 # Generate sequences from BLAST db
 blastdbcmd -entry all -db "${dbprefix}" -out "${db}.fna"
@@ -251,7 +223,7 @@ ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}"
 
 ### Files from genome_updater
 
-If you have files downloaded with [genome_updater](https://github.com/pirovc/genome_updater), building a ganon custom database is easy:
+To create a ganon database from files previosly downloaded with [genome_updater](https://github.com/pirovc/genome_updater):
 
 ```bash
 ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
