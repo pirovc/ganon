@@ -65,7 +65,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#reducing-database-size">Reducing database size</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#ibf-and-hibf">IBF and HIBF</a>
+    <li class="toctree-l3"><a class="reference internal" href="#hibf">HIBF</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#top-assemblies">Top assemblies</a>
     </li>
@@ -165,25 +165,25 @@
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
 </tr>
 <tr>
-<td>One assembly for each species</td>
+<td>One assembly per species</td>
 <td>52779</td>
 <td>40 - 98</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s</code></details></td>
 </tr>
 <tr>
-<td>Complete genome assemblies (higher quality)</td>
+<td>Complete genomes (higher quality)</td>
 <td>44121</td>
 <td>19 - 64</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
 </tr>
 <tr>
-<td>One assembly for each species of complete genomes</td>
+<td>One assembly per species of complete genomes</td>
 <td>19713</td>
 <td>8 - 27</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s</code></details></td>
 </tr>
 <tr>
-<td>One representative assembly for each species</td>
+<td>One representative assembly per species</td>
 <td>18073</td>
 <td>21 - 35</td>
 <td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg</code></details></td>
@@ -207,19 +207,19 @@
 <td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb</code></details></td>
 </tr>
 <tr>
-<td>One assembly for each species</td>
+<td>One assembly per species</td>
 <td>99505</td>
 <td>91 - 420</td>
 <td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s</code></details></td>
 </tr>
 <tr>
-<td>Complete genome assemblies (higher quality)</td>
+<td>Complete genomes (higher quality)</td>
 <td>92917</td>
 <td></td>
 <td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg</code></details></td>
 </tr>
 <tr>
-<td>One assembly for each species of complete genomes</td>
+<td>One assembly per species of complete genomes</td>
 <td>34497</td>
 <td></td>
 <td><details><summary>cmd</summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s</code></details></td>
@@ -301,14 +301,19 @@
 <pre><code class="language-bash">genome_updater.sh -e assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o recovered_files -m -t 12 
 </code></pre>
 <h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
-<h3 id="ibf-and-hibf">IBF and HIBF<a class="headerlink" href="#ibf-and-hibf" title="Permanent link">:)</a></h3>
-<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides <em>smaller</em> databases with <em>faster</em> query times. However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in <code>ganon build</code> and <code>ganon build-custom</code> with the <code>--hibf</code> parameter.</p>
+<h3 id="hibf">HIBF<a class="headerlink" href="#hibf" title="Permanent link">:)</a></h3>
+<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides <em>smaller</em> databases with <em>faster</em> query times (<a href="https://www.biorxiv.org/content/10.1101/2022.08.01.502266v1">pre-print</a>). However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in <code>ganon build</code> and <code>ganon build-custom</code> with the <code>--hibf</code> parameter.</p>
+<p><strong>This is the best method to reduce large database sizes and to achieve faster classification speed.</strong></p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <ul>
 <li>For larger reference sets, huge amount of reads to query or production level analysis -&gt; HIBF</li>
-<li>For quick build and analysis with smaller data -&gt; IBF</li>
+<li>For quick build and analysis with smaller data -&gt; IBF (default)</li>
 </ul>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><a href="https://github.com/seqan/raptor">raptor</a> has to be installed to build databases with <code>--hibf</code></p>
 </div>
 <h3 id="top-assemblies">Top assemblies<a class="headerlink" href="#top-assemblies" title="Permanent link">:)</a></h3>
 <p>RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can not only bias analysis but also brings redundancy to the database. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed <a href="#refseq-and-genbank">above</a>) and use the full set of assemblies for specific clade analysis.</p>
@@ -350,52 +355,59 @@
 <li>The bigger the <code>--window-size</code>, the less information needs to be stored resulting in smaller databases but with decrease classification accuracy.</li>
 </ul>
 <h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">:)</a></h3>
-<p>The full RefSeq repository for archaea, bacteria, fungi and viral groups from 2023-03-14 contains 295219 assemblies and needs around 500GB to build. This can be further reduced with the following strategies:</p>
+<p>Besides the huge benefits of using <a href="#hibf">HIBF</a> and specific sub-sets of big repositories shown on the <a href="#commonly-used-sub-sets">default databases table</a>, examples of other reduction strategies (without <code>--hibf</code>) can be seen below:</p>
+<p><em>RefSeq archaeal complete genomes from 20230505</em></p>
 <table>
 <thead>
 <tr>
 <th>Strategy</th>
-<th>Size (GB)</th>
+<th>Size (MB)</th>
+<th>Smaller</th>
 <th>Trade-off</th>
 <th></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>None</code></td>
-<td>500</td>
-<td>Big resources, best coverage</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
+<td><code>default</code></td>
+<td>318</td>
+<td>-</td>
+<td>-</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --db-prefix arc_rs_cg</code></details></td>
 </tr>
 <tr>
-<td><code>--genome-updater "-A 'species:1'"</code></td>
-<td>98</td>
-<td>No strain analysis, smaller db</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s</code></details></td>
+<td><code>--mode smallest</code></td>
+<td>301</td>
+<td>5%</td>
+<td>Slower classification</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --mode smallest --db-prefix arc_rs_cg_smallest</code></details></td>
 </tr>
 <tr>
-<td><code>--mode smaller</code></td>
-<td></td>
-<td>Slower classification, smaller db</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --mode smaller</code></details></td>
+<td><code>--filter-size 256</code></td>
+<td>256</td>
+<td>19%</td>
+<td>Higher false positive on classification</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --filter-size 256 --db-prefix arc_rs_cg_fs256</code></details></td>
 </tr>
 <tr>
-<td><code>--hibf</code></td>
-<td>40</td>
-<td>Slower build time, smaller db and faster classification</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf</code></details></td>
+<td><code>--window-size 35</code></td>
+<td>249</td>
+<td>21%</td>
+<td>Less sensitive classification</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --window-size 35 --db-prefix arc_rs_cg_ws35</code></details></td>
 </tr>
 <tr>
-<td><code>--max-fp 0.1 --window-size 35</code></td>
-<td></td>
-<td>ss</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s --hibf --max-fp 0.1 --window-size 35</code></details></td>
+<td><code>--max-fp 0.2</code></td>
+<td>190</td>
+<td>40%</td>
+<td>Higher false positive on classification</td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --max-fp 0.2 --db-prefix arc_rs_cg_fp0.2</code></details></td>
 </tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This is an illustrative example that will change drastically the contents of the database (with only one assembly for each species) and every reduction step will affect the sensitivity and precision of the results.</p>
+<p>This is an illustrative example and the reduction proportions for different configuration may be quite different</p>
 </div>
               
             </div>

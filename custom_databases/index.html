@@ -133,19 +133,23 @@
               
                 <h1 id="custom-databases">Custom databases<a class="headerlink" href="#custom-databases" title="Permanent link">:)</a></h1>
 <h2 id="default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession<a class="headerlink" href="#default-ncbi-assembly-or-sequence-accession" title="Permanent link">:)</a></h2>
-<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local files.</p>
+<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local sequence files.</p>
 <p>To use custom sequences, just provide them with <code>--input</code>. ganon will try to retrieve all necessary information necessary to build a database.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should look like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence-input-target">here</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should contain sequence accessions like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence-input-target">here</a>.</p>
 </div>
 <h2 id="non-standardcustom-accessions">Non-standard/custom accessions<a class="headerlink" href="#non-standardcustom-accessions" title="Permanent link">:)</a></h2>
-<p>It is also possible to use <strong>non-standard accessions and headers</strong> to build databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): file, [target, node, specialization, specialization_name].</p>
+<p>It is also possible to use <strong>non-standard accessions and headers</strong> to build custom databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): <code>file [&lt;tab&gt; target &lt;tab&gt; node &lt;tab&gt; specialization &lt;tab&gt; specialization_name].</code> Note that file is mandatory and additional fields not.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you just want to build a database without any taxonomic or target information, just sent the files with <code>--input</code>, use <code>--taxonomy skip</code> and choose between <code>--input-target file</code> or <code>sequence</code>.</p>
+</div>
 <details>
   <summary>Examples of --input-file</summary>
   <br>
 
-With --input-target file, where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
+With --input-target file (default), where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
 
 
 <pre><code>sequences.fasta my_target_1
@@ -291,38 +295,7 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 </div>
 <h3 id="blast-databases-nt-env_nt-nt_prok">BLAST databases (nt, env_nt, nt_prok, ...)<a class="headerlink" href="#blast-databases-nt-env_nt-nt_prok" title="Permanent link">:)</a></h3>
 <p>BLAST databases. <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi">Website</a>/<a href="https://ftp.ncbi.nlm.nih.gov/blast/db/">FTP</a>.</p>
-<details>
-  <summary>Current available databases (2023-05-04)</summary>
-  <br>
-16S_ribosomal_RNA, 
-18S_fungal_sequences, 
-28S_fungal_sequences, 
-Betacoronavirus, 
-env_nt, 
-human_genome, 
-ITS_eukaryote_sequences, 
-ITS_RefSeq_Fungi, 
-LSU_eukaryote_rRNA, 
-LSU_prokaryote_rRNA, 
-mito, 
-mouse_genome, 
-nt, 
-nt_euk, 
-nt_others, 
-nt_prok, 
-nt_viruses, 
-patnt, 
-pdbnt, 
-ref_euk_rep_genomes, 
-ref_prok_rep_genomes, 
-refseq_rna, 
-refseq_select_rna, 
-ref_viroids_rep_genomes, 
-ref_viruses_rep_genomes, 
-SSU_eukaryote_rRNA, 
-tsa_nt
-</details>
-<p><br></p>
+<p>Current available nucleotide databases (2023-05-04): <code>16S_ribosomal_RNA</code> <code>18S_fungal_sequences</code> <code>28S_fungal_sequences</code> <code>Betacoronavirus</code> <code>env_nt</code> <code>human_genome</code> <code>ITS_eukaryote_sequences</code> <code>ITS_RefSeq_Fungi</code> <code>LSU_eukaryote_rRNA</code> <code>LSU_prokaryote_rRNA</code> <code>mito</code> <code>mouse_genome</code> <code>nt</code> <code>nt_euk</code> <code>nt_others</code> <code>nt_prok</code> <code>nt_viruses</code> <code>patnt</code> <code>pdbnt</code> <code>ref_euk_rep_genomes</code> <code>ref_prok_rep_genomes</code> <code>refseq_rna</code> <code>refseq_select_rna</code> <code>ref_viroids_rep_genomes</code> <code>ref_viruses_rep_genomes</code> <code>SSU_eukaryote_rRNA</code> <code>tsa_nt</code></p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>List currently available nucleotide databases <code>curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort</code></p>
@@ -339,9 +312,9 @@ db=&quot;16S_ribosomal_RNA&quot;
 wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz&quot;
 
 # Merge and extract BLAST db files
-cat &quot;${db}.tar.gz&quot; | tar xvfz - &gt; ex_files.txt
+cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; ex_files.txt
 ex_file=$(head -n 1 ex_files.txt)
-dbprefix=&quot;${ex_file%%.*}&quot;
+dbprefix=&quot;${ex_file%.*}&quot;
 
 # Generate sequences from BLAST db
 blastdbcmd -entry all -db &quot;${dbprefix}&quot; -out &quot;${db}.fna&quot;
@@ -357,7 +330,7 @@ ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-pref
 <p><code>blastdbcmd</code> is a command from BLAST software suite and should be installed separately</p>
 </div>
 <h3 id="files-from-genome_updater">Files from genome_updater<a class="headerlink" href="#files-from-genome_updater" title="Permanent link">:)</a></h3>
-<p>If you have files downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>, building a ganon custom database is easy:</p>
+<p>To create a ganon database from files previosly downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>:</p>
 <pre><code class="language-bash">ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
 </code></pre>
 <h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
