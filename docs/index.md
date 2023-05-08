@@ -105,7 +105,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.5.0
+   _|   v. 1.6.0
 - - - - - - - - - -
 
 positional arguments:
@@ -194,8 +194,8 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
-                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet]
+usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d
+                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet]
                           [--write-info-file]
 
 options:
@@ -207,6 +207,8 @@ required arguments:
   -e , --input-extension 
                         Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
                         (default: fna.gz)
+  -c, --input-recursive
+                        Look for files recursively in folder(s) provided with --input (default: False)
   -d DB_PREFIX, --db-prefix DB_PREFIX
                         Database output prefix (default: None)
 
