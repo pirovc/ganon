@@ -10,7 +10,7 @@ ganon classifies DNA sequences against large sets of genomic reference sequences
 - taxonomic and sequence abundance reports with genome size correction
 - contingency tables and many more
 
-Documentation: https://pirovc.github.io/ganon/
+User manual: https://pirovc.github.io/ganon/
 
 ## Quick install
 
@@ -20,9 +20,9 @@ conda install -c bioconda -c conda-forge ganon
 
 ## Basic usage
 
-### Download and build
+### Download and build (Archaea - complete genomes - NCBI RefSeq)
+
 ```bash
-# Archaeal complete genome sequences from NCBI RefSeq
 ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --complete-genomes --threads 12
 ```
 
@@ -31,13 +31,4 @@ ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --com
 ganon classify --db-prefix arc_cg_rs --output-prefix classify_results --single-reads my_reads.fq.gz --threads 12
 ```
 
-### Re-generate reports and create tables from multiple reports
-```bash
-ganon report --db-prefix arc_cg_rs --input classify_results.rep --output-prefix filtered_report --min-count 0.01
-ganon table --input classify_results.tre filtered_report.tre --output-file output_table.tsv --top-sample 10
-```
-
-### Update the database at a later time point
-```bash
-ganon update --db-prefix arc_cg_rs --threads 12
-```
+For complete examples, databases, installation from source and information -> https://pirovc.github.io/ganon/
