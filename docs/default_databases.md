@@ -31,7 +31,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 | RefSeq | # assemblies | Size (GB) * |  |
 |---|---|---|---|
-| Complete | 295219 | xx - 500 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| Complete | 295219 | 350 - 500 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
 | One assembly per species | 52779 | 40 - 98 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
 | Complete genomes (higher quality) | 44121 | 19 - 64 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
 | One assembly per species of complete genomes | 19713 | 8 - 27 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
@@ -44,7 +44,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 | Complete genomes (higher quality) | 92917 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
 | One assembly per species of complete genomes | 34497 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
 
-\*  Size (GB) is the final size of the database and the approximate amount of RAM necessary to build it (calculated with default parameters). The two values represent databases built with and without the `--hibf` parameter, respectively. The trade-offs between those two modes are explained [here](#ibf-and-hibf).
+\*  Size (GB) is the final size of the database and the approximate amount of RAM necessary to build it (calculated with default parameters). The two values represent databases built with and without the `--hibf` parameter, respectively. The trade-offs between those two modes are explained [here](#hibf).
 
 !!! warning
 	The `# assemblies` were obtained on 2023-03-14 accounting for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit.
@@ -95,7 +95,7 @@ ganon build --db-prefix fuso_gtdb --taxid "f__Fusobacteriaceae" --source refseq 
 !!! info
     GTDB covers only bacteria and archaea groups and has assemblies from both RefSeq and GenBank.
 
-## Update
+## Update (ganon update)
 
 Default ganon databases generated with the `ganon build` can be updated with `ganon update`. This procedure will download new files and re-generate the ganon database with the updated entries.
 
@@ -135,7 +135,7 @@ The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Inte
     - For quick build and analysis with smaller data -> IBF (default)
 
 !!! warning
-    [raptor](https://github.com/seqan/raptor) has to be installed to build databases with `--hibf`
+    [raptor (v3.0.0)](https://github.com/seqan/raptor/releases/tag/raptor-v3.0.0) has to be installed to build databases with `--hibf`
 
 ### Top assemblies
 

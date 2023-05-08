@@ -1,8 +1,33 @@
 # Classification
 
-## Profiling
+`ganon classify` will match single and/or paired-end reads against one or [more databases](#multiple-and-hierarchical-classification), for example:
 
-## Binning
+```bash
+ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
+```
+
+`ganon report` will be automatically executed after classification and a report will be created (`.tre`).
+
+ganon can generate both taxonomic profiling and binning results with `ganon classify` + `ganon report`. Please choose the parameters according to your application.
+
+### Profiling
+
+`ganon classify` is set-up by default to perform taxonomic profiling. It uses:
+
+ - strict `--rel-cutoff` and `--rel-filter` values (`0.75` and `0`, respectively)
+ - `--min-count 0.0001` (0.01%) on `ganon report` to exclude low abundant groups
+ - `--report-type abundance` on `ganon report` to generate taxonomic abundances, re-distributing read counts and correcting for genome sizes
+
+### Binning
+
+To achieve better results for binning reads to specific references, ganon can be configured with:
+
+ - `--output-all` and `--output-lca` to write `.all` `.lca` files for binning results
+ - less strict `--rel-cutoff` and `--rel-filter` values (e.g. `0.25` and `0.1`, respectively)
+ - activate the `--reassign` on `ganon classify` (or use the `ganon reassign` procedure) to apply a EM algorithm, re-assigning reads with LCA matches to most probable target (`--level` the database was built)
+
+!!! tip
+    Higher `--kmer-size` values on `ganon build` can also improve read binning sensitivity
 
 ## Multiple and Hierarchical classification
 
