@@ -17,8 +17,9 @@ public:
     double      max_fp            = 0.05;
     double      filter_size       = 0;
     uint8_t     kmer_size         = 19;
-    uint16_t    window_size       = 32;
+    uint16_t    window_size       = 31;
     uint8_t     hash_functions    = 0;
+    uint64_t    min_length        = 0;
     uint16_t    threads           = 1;
     bool        verbose           = false;
     bool        quiet             = false;
@@ -122,6 +123,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--window-size       " << config.window_size << newl;
     stream << "--hash-functions    " << unsigned( config.hash_functions ) << newl;
     stream << "--mode              " << config.mode << newl;
+    stream << "--min-length        " << config.min_length << newl;
     stream << "--threads           " << config.threads << newl;
     stream << "--verbose           " << config.verbose << newl;
     stream << "--quiet             " << config.quiet << newl;
