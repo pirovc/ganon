@@ -355,7 +355,7 @@ def build_custom(cfg, which_call: str="build_custom"):
                                             "--window-size " + str(cfg.window_size),
                                             "--hash-functions " + str(cfg.hash_functions),
                                             "--mode " + cfg.mode,
-                                            "--min-length " + cfg.min_length,
+                                            "--min-length " + str(cfg.min_length),
                                             "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
                                             "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
                                             "--tmp-output-folder '" + build_output_folder + "'",

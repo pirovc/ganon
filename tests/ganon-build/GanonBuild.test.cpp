@@ -588,8 +588,6 @@ SCENARIO( "building indices", "[ganon-build]" )
             std::string prefix{ folder_prefix + "min_length_50" };
             auto        cfg = config_build::defaultConfig( prefix );
             cfg.min_length  = 50;
-            cfg.verbose     = true;
-            cfg.quiet       = false;
 
             auto seqtarget = aux::SeqTarget( prefix, seqs2 );
             seqtarget.write_input_file( cfg.input_file );
