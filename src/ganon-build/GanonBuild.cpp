@@ -55,7 +55,7 @@ struct Total
     uint64_t files             = 0;
     uint64_t invalid_files     = 0;
     uint64_t sequences         = 0;
-    uint64_t invalid_sequences = 0;
+    uint64_t skipped_sequences = 0;
     uint64_t length_bp         = 0;
 };
 
@@ -70,7 +70,7 @@ struct Stats
             total.files += t.files;
             total.invalid_files += t.invalid_files;
             total.sequences += t.sequences;
-            total.invalid_sequences += t.invalid_sequences;
+            total.skipped_sequences += t.skipped_sequences;
             total.length_bp += t.length_bp;
         }
     }
@@ -97,6 +97,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
      */
     robin_hood::unordered_map< std::string, TFile > input_map;
     std::string                                     line;
+    robin_hood::unordered_set< std::string >        files;
     std::ifstream                                   infile( input_file );
     while ( std::getline( infile, line, '\n' ) )
     {
@@ -107,6 +108,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
             fields.push_back( field ); // file [<tab> target <tab> seqid]
 
         const std::string file = fields[0];
+        files.insert( file );
         if ( !std::filesystem::exists( file ) || std::filesystem::file_size( file ) == 0 )
         {
             if ( !quiet )
@@ -135,8 +137,8 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
             input_map[fields[1]][file].insert( seqid );
             hashes_count[fields[1]] = 0;
         }
-        stats.total.files++;
     }
+    stats.total.files = files.size();
 
     return input_map;
 }
@@ -232,6 +234,12 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                     robin_hood::unordered_set< uint64_t > hashes;
                     for ( auto const& [header, seq] : fin )
                     {
+                        if ( seq.size() < config.min_length )
+                        {
+                            total.skipped_sequences++;
+                            continue;
+                        }
+
                         total.sequences++;
                         total.length_bp += seq.size();
                         const auto mh = seq | minimiser_view | std::views::common;
@@ -249,13 +257,20 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                         const auto seqid = get_seqid( header );
                         if ( seqids.count( seqid ) )
                         {
-                            total.sequences++;
-                            total.length_bp += seq.size();
-                            robin_hood::unordered_set< uint64_t > hashes;
-                            const auto                            mh = seq | minimiser_view | std::views::common;
-                            hashes.insert( mh.begin(), mh.end() );
-                            hashes_count[ifm.target] += hashes.size();
-                            detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                            if ( seq.size() < config.min_length )
+                            {
+                                total.skipped_sequences++;
+                            }
+                            else
+                            {
+                                total.sequences++;
+                                total.length_bp += seq.size();
+                                robin_hood::unordered_set< uint64_t > hashes;
+                                const auto                            mh = seq | minimiser_view | std::views::common;
+                                hashes.insert( mh.begin(), mh.end() );
+                                hashes_count[ifm.target] += hashes.size();
+                                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                            }
                             break;
                         }
                     }
@@ -273,10 +288,18 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                         const auto seqid = get_seqid( header );
                         if ( seqids.count( seqid ) )
                         {
-                            total.sequences++;
-                            total.length_bp += seq.size();
-                            const auto mh = seq | minimiser_view | std::views::common;
-                            hashes.insert( mh.begin(), mh.end() );
+                            if ( seq.size() < config.min_length )
+                            {
+                                total.skipped_sequences++;
+                                continue;
+                            }
+                            else
+                            {
+                                total.sequences++;
+                                total.length_bp += seq.size();
+                                const auto mh = seq | minimiser_view | std::views::common;
+                                hashes.insert( mh.begin(), mh.end() );
+                            }
                             // In case all seqids were already processed
                             if ( !--n_seqids )
                                 break;
@@ -756,8 +779,8 @@ void print_stats( Stats& stats, const IBFConfig& ibf_config, const StopClock& ti
 
     if ( stats.total.invalid_files > 0 )
         std::cerr << " - " << stats.total.invalid_files << " invalid files skipped" << std::endl;
-    if ( stats.total.invalid_sequences > 0 )
-        std::cerr << " - " << stats.total.invalid_sequences << " invalid sequences skipped" << std::endl;
+    if ( stats.total.skipped_sequences > 0 )
+        std::cerr << " - " << stats.total.skipped_sequences << " sequences skipped" << std::endl;
 
     std::cerr << std::fixed << std::setprecision( 4 ) << " - max. false positive: " << ibf_config.true_max_fp;
     std::cerr << std::fixed << std::setprecision( 4 ) << " (avg.: " << ibf_config.true_avg_fp << ")" << std::endl;
@@ -842,10 +865,6 @@ bool run( Config config )
         std::cerr << "No valid input files" << std::endl;
         return false;
     }
-    else
-    {
-        stats.total.files = ifm_queue.size();
-    }
 
     // Create temporary output folder if not existing to write minimizer hashes
     if ( config.tmp_output_folder != "" && !std::filesystem::exists( config.tmp_output_folder ) )
@@ -907,6 +926,12 @@ bool run( Config config )
                   << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits )
                          / static_cast< double >( 8388608u )
                   << " Megabytes)" << std::endl;
+    }
+
+    if ( ibf_config.n_bins == 0 )
+    {
+        std::cerr << "No valid sequences to build" << std::endl;
+        return false;
     }
 
     // Split hashes into optimal size creating technical bins
