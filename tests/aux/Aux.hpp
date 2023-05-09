@@ -209,13 +209,13 @@ struct SeqTarget
         for ( uint16_t i = 0; i < files.size(); ++i )
         {
             output_file << files[i];
-            if ( custom_targets || sequence_as_target )
+            if ( sequence_as_target )
+            {
+                output_file << '\t' << headers[i] << '\t' << headers[i];
+            }
+            else if ( custom_targets )
             {
                 output_file << '\t' << targets[i];
-                if ( sequence_as_target )
-                {
-                    output_file << '\t' << headers[i];
-                }
             }
 
             output_file << '\n';
