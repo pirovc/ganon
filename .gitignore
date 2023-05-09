@@ -43,3 +43,6 @@
 # python setuptools
 *.egg-info/
 dist/
+
+# mkdocs
+site/

@@ -130,7 +130,7 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -176,8 +176,9 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
-                        False)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
+                        (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -195,8 +196,8 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d
-                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet]
-                          [--write-info-file]
+                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose]
+                          [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -259,8 +260,9 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
-                        False)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
+                        (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.

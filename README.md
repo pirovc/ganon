@@ -2,15 +2,16 @@
 
 ganon classifies DNA sequences against large sets of genomic reference sequences efficiently. It features:
 
-- automatic download, build and update for commonly used repos (refseq/genbank)
-- binning and taxonomic profiling
-- multiple taxonomy integration (ncbi/gtdb)
-- LCA algorithm + read reassignment EM algorithm
-- hierarchical use of databases
+- automatic download, build and update procedures for commonly used databases (RefSeq and GenBank)
+- classification with binning and taxonomic profiling
+- multiple taxonomy integration (NCBI and GTDB) with lowest common ancestor (LCA)
+- read reassignment EM algorithm for multi-matching reads
+- hierarchical use of multiple databases
 - taxonomic and sequence abundance reports with genome size correction
-- contingency tables and many more
+- advanced reporting and filtration of results
+- contingency table generation
 
-User manual: https://pirovc.github.io/ganon/
+Find out more in the user manual: https://pirovc.github.io/ganon/
 
 ## Quick install
 
@@ -28,7 +29,7 @@ ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --com
 
 ### Classify
 ```bash
-ganon classify --db-prefix arc_cg_rs --output-prefix classify_results --single-reads my_reads.fq.gz --threads 12
+ganon classify --db-prefix arc_cg_rs --output-prefix classify_results --paired-reads my_reads.1.fq.gz my_reads.2.fq.gz --threads 12
 ```
 
-For complete examples, databases, installation from source and information -> https://pirovc.github.io/ganon/
+For further examples, database guide, installation from source and information: https://pirovc.github.io/ganon/
