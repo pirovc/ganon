@@ -202,9 +202,26 @@ SCENARIO( "building indices", "[ganon-build]" )
             config_build::validate_elements( cfg, seqtarget );
         }
 
-        SECTION( "three columns - sequence as target" )
+        SECTION( "three columns - custom target" )
         {
             std::string prefix{ folder_prefix + "input_file_three_cols" };
+            auto        cfg = config_build::defaultConfig( prefix );
+
+            std::vector< std::string > targets{ "T1", "T9", "T1", "T8", "T1", "T1", "T1", "T1", "T4", "T1" };
+
+            auto seqtarget               = aux::SeqTarget( prefix, seqs, targets );
+            seqtarget.sequence_as_target = false;
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
+
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg );
+            config_build::validate_elements( cfg, seqtarget );
+        }
+
+        SECTION( "three columns - sequence as target" )
+        {
+            std::string prefix{ folder_prefix + "input_file_three_cols_sequence_target" };
             auto        cfg = config_build::defaultConfig( prefix );
 
             auto seqtarget               = aux::SeqTarget( prefix, seqs );
