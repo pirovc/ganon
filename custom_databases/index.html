@@ -310,6 +310,7 @@ db=&quot;16S_ribosomal_RNA&quot;
 
 # Download BLAST db
 wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz&quot;
+# Using 12 threads: curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;${db}.*.tar.gz$&quot; | xargs -P 12 -I{} wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
 
 # Merge and extract BLAST db files
 cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; ex_files.txt

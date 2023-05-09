@@ -196,7 +196,7 @@ ctest -VV .
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.5.0
+   _|   v. 1.6.0
 - - - - - - - - - -
 
 positional arguments:
@@ -220,7 +220,7 @@ options:
 
 
 <pre><code>usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -266,8 +266,9 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
-                        False)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
+                        (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -285,9 +286,9 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 
-<pre><code>usage: ganon build-custom [-h] [-i [...]] [-e] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d DB_PREFIX
-                          [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [--hibf] [--restart] [--verbose] [--quiet]
-                          [--write-info-file]
+<pre><code>usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d
+                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose]
+                          [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -298,6 +299,8 @@ required arguments:
   -e , --input-extension 
                         Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
                         (default: fna.gz)
+  -c, --input-recursive
+                        Look for files recursively in folder(s) provided with --input (default: False)
   -d DB_PREFIX, --db-prefix DB_PREFIX
                         Database output prefix (default: None)
 
@@ -348,8 +351,9 @@ advanced arguments:
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
                         to balance classification speed and database size. (default: avg)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored. (default:
-                        False)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
+  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
+                        (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -668,5 +672,5 @@ filter arguments:
 
 <!--
 MkDocs version : 1.4.2
-Build Date UTC : 2023-05-08 14:48:24.057417+00:00
+Build Date UTC : 2023-05-09 15:20:25.001053+00:00
 -->
