@@ -15,6 +15,7 @@
 #include <cereal/types/vector.hpp>
 
 #include <seqan3/core/debug_stream.hpp>
+#include <seqan3/io/exception.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 #include <seqan3/search/views/minimiser_hash.hpp>
@@ -54,7 +55,7 @@ struct Total
     uint64_t files             = 0;
     uint64_t invalid_files     = 0;
     uint64_t sequences         = 0;
-    uint64_t invalid_sequences = 0;
+    uint64_t skipped_sequences = 0;
     uint64_t length_bp         = 0;
 };
 
@@ -69,7 +70,7 @@ struct Stats
             total.files += t.files;
             total.invalid_files += t.invalid_files;
             total.sequences += t.sequences;
-            total.invalid_sequences += t.invalid_sequences;
+            total.skipped_sequences += t.skipped_sequences;
             total.length_bp += t.length_bp;
         }
     }
@@ -96,6 +97,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
      */
     robin_hood::unordered_map< std::string, TFile > input_map;
     std::string                                     line;
+    robin_hood::unordered_set< std::string >        files;
     std::ifstream                                   infile( input_file );
     while ( std::getline( infile, line, '\n' ) )
     {
@@ -106,6 +108,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
             fields.push_back( field ); // file [<tab> target <tab> seqid]
 
         const std::string file = fields[0];
+        files.insert( file );
         if ( !std::filesystem::exists( file ) || std::filesystem::file_size( file ) == 0 )
         {
             if ( !quiet )
@@ -117,7 +120,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
         if ( fields.size() == 1 )
         {
             // target is the file itself (filename only wihtout path)
-            auto target             = std::filesystem::path( file ).filename();
+            const auto target       = std::filesystem::path( file ).filename();
             input_map[target][file] = {};
             hashes_count[target]    = 0;
         }
@@ -129,13 +132,13 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
         }
         else
         {
-            // sequence as target
-            std::string seqid = fields[2];
+            // parse by sequence
+            const std::string seqid = fields[2];
             input_map[fields[1]][file].insert( seqid );
-            hashes_count[seqid] = 0;
+            hashes_count[fields[1]] = 0;
         }
-        stats.total.files++;
     }
+    stats.total.files = files.size();
 
     return input_map;
 }
@@ -198,6 +201,7 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
      * it also keep the counts to be further use to define best filter size
      */
 
+
     // one view per thread
     auto minimiser_view = seqan3::views::minimiser_hash( seqan3::shape{ seqan3::ungapped{ config.kmer_size } },
                                                          seqan3::window_size{ config.window_size },
@@ -215,45 +219,100 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
         // For all files of a target
         for ( auto& [file, seqids] : ifm.files )
         {
-
-            // open file
-            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                fin{ file };
-
-            if ( seqids.empty() )
+            try
             {
-                robin_hood::unordered_set< uint64_t > hashes;
+                // open file
+                seqan3::sequence_file_input< raptor::dna4_traits,
+                                             seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                    fin{ file };
 
-                // File as target - generate all hashes from file with possible multiple sequences
-                // before counting and storing
-                for ( auto const& [header, seq] : fin )
+                if ( seqids.empty() )
                 {
-                    total.sequences++;
-                    total.length_bp += seq.size();
-                    const auto mh = seq | minimiser_view | std::views::common;
-                    hashes.insert( mh.begin(), mh.end() );
-                }
-                hashes_count[ifm.target] += hashes.size();
-                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
-            }
-            else
-            {
-                // Sequence as target - count and store hashes for each sequence
-                for ( auto const& [header, seq] : fin )
-                {
-                    const auto seqid = get_seqid( header );
-                    // If header is present for this target
-                    if ( seqids.count( seqid ) )
+                    // File as target - generate all hashes from file with possible multiple sequences
+                    // before counting and storing
+
+                    robin_hood::unordered_set< uint64_t > hashes;
+                    for ( auto const& [header, seq] : fin )
                     {
-                        robin_hood::unordered_set< uint64_t > hashes;
+                        if ( seq.size() < config.min_length )
+                        {
+                            total.skipped_sequences++;
+                            continue;
+                        }
+
                         total.sequences++;
                         total.length_bp += seq.size();
                         const auto mh = seq | minimiser_view | std::views::common;
                         hashes.insert( mh.begin(), mh.end() );
-                        hashes_count[seqid] = hashes.size();
-                        detail::store_hashes( seqid, hashes, config.tmp_output_folder );
+                    }
+                    hashes_count[ifm.target] += hashes.size();
+                    detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                }
+                else if ( seqids.size() == 1 )
+                {
+                    // Single seqid for a target (or target is seqid itself)
+                    // Directly count and store
+                    for ( auto const& [header, seq] : fin )
+                    {
+                        const auto seqid = get_seqid( header );
+                        if ( seqids.count( seqid ) )
+                        {
+                            if ( seq.size() < config.min_length )
+                            {
+                                total.skipped_sequences++;
+                            }
+                            else
+                            {
+                                total.sequences++;
+                                total.length_bp += seq.size();
+                                robin_hood::unordered_set< uint64_t > hashes;
+                                const auto                            mh = seq | minimiser_view | std::views::common;
+                                hashes.insert( mh.begin(), mh.end() );
+                                hashes_count[ifm.target] += hashes.size();
+                                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                            }
+                            break;
+                        }
                     }
                 }
+                else
+                {
+                    // Multiple seqids for a target
+                    // generate all hashes from file with possible multiple sequences before counting and storing
+
+                    // Keep track of total seqids to be parsed
+                    size_t                                n_seqids = seqids.size();
+                    robin_hood::unordered_set< uint64_t > hashes;
+                    for ( auto const& [header, seq] : fin )
+                    {
+                        const auto seqid = get_seqid( header );
+                        if ( seqids.count( seqid ) )
+                        {
+                            if ( seq.size() < config.min_length )
+                            {
+                                total.skipped_sequences++;
+                                continue;
+                            }
+                            else
+                            {
+                                total.sequences++;
+                                total.length_bp += seq.size();
+                                const auto mh = seq | minimiser_view | std::views::common;
+                                hashes.insert( mh.begin(), mh.end() );
+                            }
+                            // In case all seqids were already processed
+                            if ( !--n_seqids )
+                                break;
+                        }
+                    }
+                    hashes_count[ifm.target] += hashes.size();
+                    detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                }
+            }
+            catch ( seqan3::parse_error const& e )
+            {
+                std::cerr << "Error parsing file [" << file << "]. " << e.what() << std::endl;
+                continue;
             }
         }
     }
@@ -448,8 +507,8 @@ void optimal_hashes( double const        max_fp,
     /*
      * given a max. false positive or filter_size, iterate over possible capacities for a bin (single bloom filter)
      * and calculate the respective size, considering split bins
-     * selects the parameters generating the "best" between smallest filter/fp and n. of bins and fill the ibf_config
-     * struct
+     * selects the parameters generating the "best" between smallest filter/fp and n. of bins and fill the
+     * ibf_config struct
      */
 
     // Target with the highest number of minimizers
@@ -720,8 +779,8 @@ void print_stats( Stats& stats, const IBFConfig& ibf_config, const StopClock& ti
 
     if ( stats.total.invalid_files > 0 )
         std::cerr << " - " << stats.total.invalid_files << " invalid files skipped" << std::endl;
-    if ( stats.total.invalid_sequences > 0 )
-        std::cerr << " - " << stats.total.invalid_sequences << " invalid sequences skipped" << std::endl;
+    if ( stats.total.skipped_sequences > 0 )
+        std::cerr << " - " << stats.total.skipped_sequences << " sequences skipped" << std::endl;
 
     std::cerr << std::fixed << std::setprecision( 4 ) << " - max. false positive: " << ibf_config.true_max_fp;
     std::cerr << std::fixed << std::setprecision( 4 ) << " (avg.: " << ibf_config.true_avg_fp << ")" << std::endl;
@@ -806,10 +865,6 @@ bool run( Config config )
         std::cerr << "No valid input files" << std::endl;
         return false;
     }
-    else
-    {
-        stats.total.files = ifm_queue.size();
-    }
 
     // Create temporary output folder if not existing to write minimizer hashes
     if ( config.tmp_output_folder != "" && !std::filesystem::exists( config.tmp_output_folder ) )
@@ -825,6 +880,7 @@ bool run( Config config )
     // Initialize in parallel (by target) the hash counting and storing
     timeCountStoreHashes.start();
     std::vector< std::future< void > > tasks_count;
+
     for ( uint16_t taskn = 0; taskn < config.threads; ++taskn )
     {
         tasks_count.emplace_back( std::async( std::launch::async,
@@ -870,6 +926,12 @@ bool run( Config config )
                   << ( detail::optimal_bins( ibf_config.n_bins ) * ibf_config.bin_size_bits )
                          / static_cast< double >( 8388608u )
                   << " Megabytes)" << std::endl;
+    }
+
+    if ( ibf_config.n_bins == 0 )
+    {
+        std::cerr << "No valid sequences to build" << std::endl;
+        return false;
     }
 
     // Split hashes into optimal size creating technical bins

@@ -202,9 +202,26 @@ SCENARIO( "building indices", "[ganon-build]" )
             config_build::validate_elements( cfg, seqtarget );
         }
 
-        SECTION( "three columns - sequence as target" )
+        SECTION( "three columns - custom target" )
         {
             std::string prefix{ folder_prefix + "input_file_three_cols" };
+            auto        cfg = config_build::defaultConfig( prefix );
+
+            std::vector< std::string > targets{ "T1", "T9", "T1", "T8", "T1", "T1", "T1", "T1", "T4", "T1" };
+
+            auto seqtarget               = aux::SeqTarget( prefix, seqs, targets );
+            seqtarget.sequence_as_target = false;
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
+
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg );
+            config_build::validate_elements( cfg, seqtarget );
+        }
+
+        SECTION( "three columns - sequence as target" )
+        {
+            std::string prefix{ folder_prefix + "input_file_three_cols_sequence_target" };
             auto        cfg = config_build::defaultConfig( prefix );
 
             auto seqtarget               = aux::SeqTarget( prefix, seqs );
@@ -531,6 +548,66 @@ SCENARIO( "building indices", "[ganon-build]" )
             seqtarget.write_sequences_files();
 
             REQUIRE_FALSE( GanonBuild::run( cfg ) );
+        }
+    }
+
+
+    SECTION( "--min-length" )
+    {
+        // 10 seqs2 lens: 80, 75, 70, ..., 35
+        aux::sequences_type seqs2{
+            "ACACTCTTTGAAAATGCATATAATATTGAACGTTATTTTGAAATAGATTAATTACTCATATCCATTTGCTAATCTTATCG"_dna4,
+            "TTTATTATATGTAATTATAAATTTATCGTTAAGCTTGACATAAGTGAGTGTATCTATGTTCTTAACAAATACATC"_dna4,
+            "TTTTATTTTTATTTCTTATGCACAAGAATAAATTATATGCATATGATAATTTCTCATTCAATGCGGATGT"_dna4,
+            "TATGGTAAGCTATTATGGCATGATAAAAAACCAGTCATATACCCATTGGCATCCTTATCTGATTA"_dna4,
+            "ATCCGACCCATTTGAAACGATTTATTATGTGGAGCAATACTATAAAATTAGCTTAAATGA"_dna4,
+            "AAAAGGACATTTACGCACACCTTCAATTAAAACATAATAAATCATTAATTACAGC"_dna4,
+            "AATAGTTCGTATTATGTTCATCGGATGAATTTACCAGCAAACATCCATGA"_dna4,
+            "TTTTTTAATCGTAACAAATAACATACGGTTAGATTATATAAGAAA"_dna4,
+            "CTGACTGGATAGAAATATCACCCGGAGAAAAACTCTCATA"_dna4,
+            "ATGCATCAATATGATATAGGAACTGTAGAGTTCAC"_dna4
+        };
+
+        SECTION( "0" )
+        {
+            std::string prefix{ folder_prefix + "min_length_0" };
+            auto        cfg = config_build::defaultConfig( prefix );
+            cfg.min_length  = 0;
+
+            auto seqtarget = aux::SeqTarget( prefix, seqs2 );
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
+
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg );
+            config_build::validate_elements( cfg, seqtarget );
+        }
+
+        SECTION( "50" )
+        {
+            std::string prefix{ folder_prefix + "min_length_50" };
+            auto        cfg = config_build::defaultConfig( prefix );
+            cfg.min_length  = 50;
+
+            auto seqtarget = aux::SeqTarget( prefix, seqs2 );
+            seqtarget.write_input_file( cfg.input_file );
+            seqtarget.write_sequences_files();
+
+            REQUIRE( GanonBuild::run( cfg ) );
+            config_build::validate_filter( cfg );
+
+            // check if only valid sequences were added
+            aux::sequences_type seqs3{
+                "ACACTCTTTGAAAATGCATATAATATTGAACGTTATTTTGAAATAGATTAATTACTCATATCCATTTGCTAATCTTATCG"_dna4,
+                "TTTATTATATGTAATTATAAATTTATCGTTAAGCTTGACATAAGTGAGTGTATCTATGTTCTTAACAAATACATC"_dna4,
+                "TTTTATTTTTATTTCTTATGCACAAGAATAAATTATATGCATATGATAATTTCTCATTCAATGCGGATGT"_dna4,
+                "TATGGTAAGCTATTATGGCATGATAAAAAACCAGTCATATACCCATTGGCATCCTTATCTGATTA"_dna4,
+                "ATCCGACCCATTTGAAACGATTTATTATGTGGAGCAATACTATAAAATTAGCTTAAATGA"_dna4,
+                "AAAAGGACATTTACGCACACCTTCAATTAAAACATAATAAATCATTAATTACAGC"_dna4,
+                "AATAGTTCGTATTATGTTCATCGGATGAATTTACCAGCAAACATCCATGA"_dna4
+            };
+            auto seqtarget_valid = aux::SeqTarget( prefix, seqs3 );
+            config_build::validate_elements( cfg, seqtarget_valid );
         }
     }
 }

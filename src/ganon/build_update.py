@@ -60,6 +60,7 @@ def build(cfg):
                                            "-o " + files_output_folder,
                                            "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
                                            "-m",
+                                           "-N",
                                            "-i" if resume_download else "",
                                            "-s" if cfg.quiet else "",
                                            "-w" if not cfg.verbose else "",
@@ -73,6 +74,7 @@ def build(cfg):
 
     build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
+                           "input_recursive": True,
                            "input_target": "file",
                            "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
@@ -87,6 +89,7 @@ def build(cfg):
                             "window_size": cfg.window_size,
                             "hash_functions": cfg.hash_functions,
                             "mode": cfg.mode,
+                            "min_length": cfg.min_length,
                             "verbose": cfg.verbose,
                             "quiet": cfg.quiet,
                             "ganon_path": cfg.ganon_path,
@@ -133,6 +136,7 @@ def update(cfg):
         run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
                                            "-o " + files_output_folder,
                                            "-m",
+                                           "-N",
                                            "-s" if cfg.quiet else "",
                                            "-w" if not cfg.verbose else ""])
         run(run_genome_updater_cmd, quiet=cfg.quiet)
@@ -145,6 +149,7 @@ def update(cfg):
 
     build_custom_params = {"input": [input_folder],
                            "input_extension": "fna.gz",
+                           "input_recursive": True,
                            "input_target": "file",
                            "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
@@ -169,6 +174,7 @@ def update(cfg):
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
     build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
+    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0
     build_custom_params["hibf"] = loaded_params["hibf"]
 
     build_custom_config = Config("build-custom", **build_custom_params)
@@ -231,7 +237,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Retrieve and check input files or folders
         if cfg.input:
-            input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet)
+            input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet, input_recursive=cfg.input_recursive)
             if not input_files:
                 print_log("ERROR: No valid input files found", cfg.quiet)
                 return False
@@ -349,6 +355,7 @@ def build_custom(cfg, which_call: str="build_custom"):
                                             "--window-size " + str(cfg.window_size),
                                             "--hash-functions " + str(cfg.hash_functions),
                                             "--mode " + cfg.mode,
+                                            "--min-length " + str(cfg.min_length),
                                             "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
                                             "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
                                             "--tmp-output-folder '" + build_output_folder + "'",

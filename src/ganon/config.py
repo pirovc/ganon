@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.5.1"
+    version = "1.6.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -51,7 +51,8 @@ class Config:
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper (v3). --mode and --filter-size will be ignored.")
+        build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,     help="Skip sequences smaller then value defined. 0 to not skip any sequence.")
+        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.")
 
         ####################################################################################################
 
@@ -76,6 +77,7 @@ class Config:
         build_custom_required_args = build_custom_parser.add_argument_group("required arguments")
         build_custom_required_args.add_argument("-i", "--input",           type=str,          nargs="*",        metavar="", help="Input file(s) and/or folder(s). Mutually exclusive --input-file.")
         build_custom_required_args.add_argument("-e", "--input-extension", type=str,          default="fna.gz", metavar="", help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).")
+        build_custom_required_args.add_argument("-c", "--input-recursive", action="store_true",                             help="Look for files recursively in folder(s) provided with --input")
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",        type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
@@ -142,7 +144,7 @@ class Config:
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
-        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM-algorithm. Will enforce --output-all. This file can be re-generated with the 'ganon reassign'.")
+        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file can be re-generated with the 'ganon reassign'.")
 
         classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
@@ -265,7 +267,7 @@ class Config:
         classify.set_defaults(which="classify")
 
         reassign = subparsers.add_parser("reassign",
-                                         help="Reassign reads with multiple matches to their target with an EM algorith",
+                                         help="Reassign reads with multiple matches with an EM algorithm",
                                          parents=[reassign_parser],
                                          formatter_class=formatter_class)
         reassign.set_defaults(which="reassign")

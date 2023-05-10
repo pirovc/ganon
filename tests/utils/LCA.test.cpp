@@ -9,7 +9,7 @@ LCA pre_process_lca( std::string file )
     LCA lca;
     for ( auto const& line : aux::parse_tsv( file ) )
         lca.addEdge( line[1], line[0] );
-    lca.doEulerWalk();
+    lca.doEulerWalk( "1" );
     return lca;
 }
 

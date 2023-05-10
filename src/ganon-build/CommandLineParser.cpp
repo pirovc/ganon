@@ -16,11 +16,12 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "i,input-file", "Define sequences to use. Tabular file with the fields: file [<tab> target <tab> seqid]", cxxopts::value< std::string >() )
         ( "o,output-file", "Filter output file", cxxopts::value< std::string >() )
         ( "k,kmer-size", "k-mer size. Default: 19", cxxopts::value< uint8_t >() )
-        ( "w,window-size", "window size. Default: 32", cxxopts::value< uint16_t >() )
+        ( "w,window-size", "window size. Default: 31", cxxopts::value< uint16_t >() )
         ( "s,hash-functions", "number of hash functions. 0 to auto-detect. Default: 0", cxxopts::value< uint8_t >() )
         ( "p,max-fp", "Maximum false positive rate per target. Used to define filter size [mutually exclusive --filter-size]. Default: 0.05", cxxopts::value< double >() )
         ( "f,filter-size", "Filter size (MB) [mutually exclusive --max-fp]", cxxopts::value< double >() )
         ( "j,mode", "mode to build filter [avg, smaller, smallest, faster, fastest]. Default: avg", cxxopts::value< std::string >() )
+        ( "y,min-length", "min. sequence length (bp) to keep. 0 to keep all. Default: 0", cxxopts::value< uint64_t >() )
         ( "m,tmp-output-folder", "Folder to write temporary files", cxxopts::value< std::string >() )
         ( "t,threads", "Number of threads", cxxopts::value< uint16_t >())
         ( "verbose", "Verbose output mode", cxxopts::value<bool>())
@@ -67,6 +68,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.filter_size = args["filter-size"].as< double >();
     if ( args.count( "mode" ) )
         config.mode = args["mode"].as< std::string >();
+    if ( args.count( "min-length" ) )
+        config.min_length = args["min-length"].as< uint64_t >();
     if ( args.count( "tmp-output-folder" ) )
         config.tmp_output_folder = args["tmp-output-folder"].as< std::string >();
     if ( args.count( "threads" ) )
