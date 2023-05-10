@@ -1,0 +1,2 @@
+07b534765d6b7d3e4d8bf67f549a5d66  build/releases/latest/ar53_taxonomy.tsv.gz
+70a673d332f60af1cf68e34d09a56816  build/releases/latest/bac120_taxonomy.tsv.gz

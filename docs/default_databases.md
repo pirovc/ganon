@@ -41,8 +41,8 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 |---|---|---|---|
 | Complete | 1595845 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
 | One assembly per species | 99505 | 91 - 420 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
-| Complete genomes (higher quality) | 92917 | 24 - | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
-| One assembly per species of complete genomes | 34497 | 10 - | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
+| Complete genomes (higher quality) | 92917 | 24 - 132 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
+| One assembly per species of complete genomes | 34497 | 10 - 34 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
 
 \*  Size (GB) is the final size of the database and the approximate amount of RAM necessary to build it (calculated with default parameters). The two values represent databases built with and without the `--hibf` parameter, respectively. The trade-offs between those two modes are explained [here](#hibf).
 

@@ -397,7 +397,7 @@ class Config:
                 elif check_file(db_prefix + ".ibf"):
                     ibf = True
                 else:
-                    print_log("File not found: " + prefix + ".ibf/.hibf" )
+                    print_log("File not found: " + db_prefix + ".ibf/.hibf" )
                     return False
 
                 if check_file(db_prefix + ".tax"):
