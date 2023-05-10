@@ -17,7 +17,7 @@ setup(
     url="https://www.github.com/pirovc/ganon",
     license='MIT',
     author="Vitor C. Piro",
-    description="ganon classifies short DNA sequences against large sets of genomic reference sequences efficiently",
+    description="ganon classifies DNA sequences against large sets of genomic reference sequences efficiently",
     long_description=read("README.md"),
     package_dir={'': 'src'},
     packages=["ganon"],
