@@ -200,12 +200,14 @@ The example below extracts sequences and information from a BLAST db to build a 
 # Define BLAST db
 db="16S_ribosomal_RNA"
 
-# Download BLAST db using 12 threads
-curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "${db}.*.tar.gz$" | xargs -P 12 -I{} wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
+# Download BLAST db using 12 threads - they fail very often, re-run this command many times until all finish (no output)
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "^${db}\..*tar.gz$" | xargs -P 12 -I{} wget --continue -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
 
 # OPTIONAL Download and check MD5
-wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz.md5"
-diff -qs <(md5sum "${db}"*.tar.gz | sort) <(cat ${db}*.tar.gz.md5 | sort)  # Should print "Files /dev/fd/xx and /dev/fd/xx are identical"
+wget -O - -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5" > "${db}.md5"
+md5sum "${db}".*tar.gz > "${db}_downloaded.md5"
+diff -s <(sort -k 2,2 "${db}.md5") <(sort -k 2,2 "${db}_downloaded.md5")  # Should print "Files /dev/fd/xx and /dev/fd/xx are identical"
+rm "${db}.md5" "${db}_downloaded.md5"
 
 # Merge and extract BLAST db files
 cat "${db}"*.tar.gz | tar xvfz - > "${db}_extracted_files.txt"
