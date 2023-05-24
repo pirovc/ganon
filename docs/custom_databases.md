@@ -200,23 +200,34 @@ The example below extracts sequences and information from a BLAST db to build a 
 # Define BLAST db
 db="16S_ribosomal_RNA"
 
-# Download BLAST db
-wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz"
-# Using 12 threads: curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "${db}.*.tar.gz$" | xargs -P 12 -I{} wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
+# Download BLAST db using 12 threads
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "${db}.*.tar.gz$" | xargs -P 12 -I{} wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
+
+# OPTIONAL Download and check MD5
+wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz.md5"
+diff -qs <(md5sum "${db}"*.tar.gz | sort) <(cat ${db}*.tar.gz.md5 | sort)  # Should print "Files /dev/fd/xx and /dev/fd/xx are identical"
 
 # Merge and extract BLAST db files
-cat "${db}"*.tar.gz | tar xvfz - > ex_files.txt
-ex_file=$(head -n 1 ex_files.txt)
+cat "${db}"*.tar.gz | tar xvfz - > "${db}_extracted_files.txt"
+
+# Extract prefix from database
+ex_file=$(head -n 1 "${db}_extracted_files.txt")
 dbprefix="${ex_file%.*}"
+# Create folder to write sequence files
+mkdir "${dbprefix}"
 
-# Generate sequences from BLAST db
-blastdbcmd -entry all -db "${dbprefix}" -out "${db}.fna"
-
-# Generate ganon input file
-blastdbcmd -entry all -db "${dbprefix}" -outfmt "%a %X" | awk -v file="${db}.fna" '{print file"\t"$1"\t"$2 }' > "${db}_ganon_input_file.tsv"
+# This command extracts the sequences from the blast dabase and save them into taxid specific files
+# It also generates the --input-file for ganon (change %T to %X for leaf-node taxids)
+blastdbcmd -entry all -db "${dbprefix}" -outfmt "%a %T %s" | \
+awk -v dbprefix="${dbprefix}" '{file=dbprefix"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2"\t"$2}' | \
+sort | uniq > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
-ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --input-target sequence --level leaves --threads 32
+ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --level leaves --threads 12
+
+# Delete extracted files and sequences
+cat "${db}_extracted_files.txt" | xargs rm
+rm -rf "${db}_extracted_files.txt" "${dbprefix}"
 ```
 
 !!! note
