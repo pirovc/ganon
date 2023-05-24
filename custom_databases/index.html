@@ -317,14 +317,14 @@ diff -qs &lt;(md5sum &quot;${db}&quot;*.tar.gz | sort) &lt;(cat ${db}*.tar.gz.md
 
 # Merge and extract BLAST db files
 cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; &quot;${db}_extracted_files.txt&quot;
-
 # Extract prefix from database
 ex_file=$(head -n 1 &quot;${db}_extracted_files.txt&quot;)
 dbprefix=&quot;${ex_file%.*}&quot;
+
 # Create folder to write sequence files
 mkdir &quot;${dbprefix}&quot;
 
-# This command extracts the sequences from the blast dabase and save them into taxid specific files
+# This command extracts sequences from the blastdb and writes them into taxid specific files
 # It also generates the --input-file for ganon (change %T to %X for leaf-node taxids)
 blastdbcmd -entry all -db &quot;${dbprefix}&quot; -outfmt &quot;%a %T %s&quot; | \
 awk -v dbprefix=&quot;${dbprefix}&quot; '{file=dbprefix&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
