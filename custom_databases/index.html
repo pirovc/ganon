@@ -308,12 +308,14 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 <pre><code class="language-bash"># Define BLAST db
 db=&quot;16S_ribosomal_RNA&quot;
 
-# Download BLAST db using 12 threads
-curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;${db}.*.tar.gz$&quot; | xargs -P 12 -I{} wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
+# Download BLAST db using 12 threads - they fail very often, re-run this command many times until all finish (no output)
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;^${db}\..*tar.gz$&quot; | xargs -P 12 -I{} wget --continue -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
 
 # OPTIONAL Download and check MD5
-wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz.md5&quot;
-diff -qs &lt;(md5sum &quot;${db}&quot;*.tar.gz | sort) &lt;(cat ${db}*.tar.gz.md5 | sort)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
+wget -O - -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5&quot; &gt; &quot;${db}.md5&quot;
+md5sum &quot;${db}&quot;.*tar.gz &gt; &quot;${db}_downloaded.md5&quot;
+diff -s &lt;(sort -k 2,2 &quot;${db}.md5&quot;) &lt;(sort -k 2,2 &quot;${db}_downloaded.md5&quot;)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
+rm &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
 
 # Merge and extract BLAST db files
 cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; &quot;${db}_extracted_files.txt&quot;
