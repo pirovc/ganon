@@ -308,23 +308,34 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 <pre><code class="language-bash"># Define BLAST db
 db=&quot;16S_ribosomal_RNA&quot;
 
-# Download BLAST db
-wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz&quot;
-# Using 12 threads: curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;${db}.*.tar.gz$&quot; | xargs -P 12 -I{} wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
+# Download BLAST db using 12 threads
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;${db}.*.tar.gz$&quot; | xargs -P 12 -I{} wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
+
+# OPTIONAL Download and check MD5
+wget -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz.md5&quot;
+diff -qs &lt;(md5sum &quot;${db}&quot;*.tar.gz | sort) &lt;(cat ${db}*.tar.gz.md5 | sort)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
 
 # Merge and extract BLAST db files
-cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; ex_files.txt
-ex_file=$(head -n 1 ex_files.txt)
+cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; &quot;${db}_extracted_files.txt&quot;
+
+# Extract prefix from database
+ex_file=$(head -n 1 &quot;${db}_extracted_files.txt&quot;)
 dbprefix=&quot;${ex_file%.*}&quot;
+# Create folder to write sequence files
+mkdir &quot;${dbprefix}&quot;
 
-# Generate sequences from BLAST db
-blastdbcmd -entry all -db &quot;${dbprefix}&quot; -out &quot;${db}.fna&quot;
-
-# Generate ganon input file
-blastdbcmd -entry all -db &quot;${dbprefix}&quot; -outfmt &quot;%a %X&quot; | awk -v file=&quot;${db}.fna&quot; '{print file&quot;\t&quot;$1&quot;\t&quot;$2 }' &gt; &quot;${db}_ganon_input_file.tsv&quot;
+# This command extracts the sequences from the blast dabase and save them into taxid specific files
+# It also generates the --input-file for ganon (change %T to %X for leaf-node taxids)
+blastdbcmd -entry all -db &quot;${dbprefix}&quot; -outfmt &quot;%a %T %s&quot; | \
+awk -v dbprefix=&quot;${dbprefix}&quot; '{file=dbprefix&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
+sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
-ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --input-target sequence --level leaves --threads 32
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --level leaves --threads 12
+
+# Delete extracted files and sequences
+cat &quot;${db}_extracted_files.txt&quot; | xargs rm
+rm -rf &quot;${db}_extracted_files.txt&quot; &quot;${dbprefix}&quot;
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
