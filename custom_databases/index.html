@@ -307,37 +307,35 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 <p>The example below extracts sequences and information from a BLAST db to build a ganon database:</p>
 <pre><code class="language-bash"># Define BLAST db
 db=&quot;16S_ribosomal_RNA&quot;
+threads=8
 
-# Download BLAST db using 12 threads - they fail very often, re-run this command many times until all finish (no output)
-curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;^${db}\..*tar.gz$&quot; | xargs -P 12 -I{} wget --continue -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
+# Download BLAST db - re-run this command many times until all finish (no more output)
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;^${db}\..*tar.gz$&quot; | xargs -P ${threads:-1} -I{} wget --continue -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
 
 # OPTIONAL Download and check MD5
 wget -O - -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5&quot; &gt; &quot;${db}.md5&quot;
 md5sum &quot;${db}&quot;.*tar.gz &gt; &quot;${db}_downloaded.md5&quot;
 diff -s &lt;(sort -k 2,2 &quot;${db}.md5&quot;) &lt;(sort -k 2,2 &quot;${db}_downloaded.md5&quot;)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
-rm &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
 
-# Merge and extract BLAST db files
-cat &quot;${db}&quot;*.tar.gz | tar xvfz - &gt; &quot;${db}_extracted_files.txt&quot;
-# Extract prefix from database
-ex_file=$(head -n 1 &quot;${db}_extracted_files.txt&quot;)
-dbprefix=&quot;${ex_file%.*}&quot;
+# Extract BLAST db files, if successful, remove .tar.gz
+ls &quot;${db}&quot;*.tar.gz | xargs -P ${threads} -I{} sh -c 'gzip -dc {} | tar --overwrite -vxf - &amp;&amp; rm {}' &gt; &quot;${db}_extracted_files.txt&quot;
 
-# Create folder to write sequence files
-mkdir &quot;${dbprefix}&quot;
+# Create folder to write sequence files (split into 10 sub-folders)
+seq 0 9 | xargs -i mkdir -p &quot;${db}&quot;/{}
 
 # This command extracts sequences from the blastdb and writes them into taxid specific files
-# It also generates the --input-file for ganon (change %T to %X for leaf-node taxids)
-blastdbcmd -entry all -db &quot;${dbprefix}&quot; -outfmt &quot;%a %T %s&quot; | \
-awk -v dbprefix=&quot;${dbprefix}&quot; '{file=dbprefix&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
+# It also generates the --input-file for ganon
+blastdbcmd -entry all -db &quot;${db}&quot; -outfmt &quot;%a %T %s&quot; | \
+awk -v db=&quot;${db}&quot; '{file=db&quot;/&quot;substr($2,1,1)&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
 sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
-ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --level leaves --threads 12
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --level species --threads 12
 
 # Delete extracted files and sequences
 cat &quot;${db}_extracted_files.txt&quot; | xargs rm
-rm -rf &quot;${db}_extracted_files.txt&quot; &quot;${dbprefix}&quot;
+rm &quot;${db}_extracted_files.txt&quot; &quot;${db}_ganon_input_file.tsv&quot; &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
+rm -rf &quot;${db}&quot;
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
