@@ -199,37 +199,35 @@ The example below extracts sequences and information from a BLAST db to build a 
 ```bash
 # Define BLAST db
 db="16S_ribosomal_RNA"
+threads=8
 
-# Download BLAST db using 12 threads - they fail very often, re-run this command many times until all finish (no output)
-curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "^${db}\..*tar.gz$" | xargs -P 12 -I{} wget --continue -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
+# Download BLAST db - re-run this command many times until all finish (no more output)
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "^${db}\..*tar.gz$" | xargs -P ${threads:-1} -I{} wget --continue -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
 
 # OPTIONAL Download and check MD5
 wget -O - -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5" > "${db}.md5"
 md5sum "${db}".*tar.gz > "${db}_downloaded.md5"
 diff -s <(sort -k 2,2 "${db}.md5") <(sort -k 2,2 "${db}_downloaded.md5")  # Should print "Files /dev/fd/xx and /dev/fd/xx are identical"
-rm "${db}.md5" "${db}_downloaded.md5"
 
-# Merge and extract BLAST db files
-cat "${db}"*.tar.gz | tar xvfz - > "${db}_extracted_files.txt"
-# Extract prefix from database
-ex_file=$(head -n 1 "${db}_extracted_files.txt")
-dbprefix="${ex_file%.*}"
+# Extract BLAST db files, if successful, remove .tar.gz
+ls "${db}"*.tar.gz | xargs -P ${threads} -I{} sh -c 'gzip -dc {} | tar --overwrite -vxf - && rm {}' > "${db}_extracted_files.txt"
 
-# Create folder to write sequence files
-mkdir "${dbprefix}"
+# Create folder to write sequence files (split into 10 sub-folders)
+seq 0 9 | xargs -i mkdir -p "${db}"/{}
 
 # This command extracts sequences from the blastdb and writes them into taxid specific files
-# It also generates the --input-file for ganon (change %T to %X for leaf-node taxids)
-blastdbcmd -entry all -db "${dbprefix}" -outfmt "%a %T %s" | \
-awk -v dbprefix="${dbprefix}" '{file=dbprefix"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2"\t"$2}' | \
+# It also generates the --input-file for ganon
+blastdbcmd -entry all -db "${db}" -outfmt "%a %T %s" | \
+awk -v db="${db}" '{file=db"/"substr($2,1,1)"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2"\t"$2}' | \
 sort | uniq > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
-ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --level leaves --threads 12
+ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --level species --threads 12
 
 # Delete extracted files and sequences
 cat "${db}_extracted_files.txt" | xargs rm
-rm -rf "${db}_extracted_files.txt" "${dbprefix}"
+rm "${db}_extracted_files.txt" "${db}_ganon_input_file.tsv" "${db}.md5" "${db}_downloaded.md5"
+rm -rf "${db}"
 ```
 
 !!! note
