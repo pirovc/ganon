@@ -326,16 +326,17 @@ seq 0 9 | xargs -i mkdir -p &quot;${db}&quot;/{}
 # This command extracts sequences from the blastdb and writes them into taxid specific files
 # It also generates the --input-file for ganon
 blastdbcmd -entry all -db &quot;${db}&quot; -outfmt &quot;%a %T %s&quot; | \
-awk -v db=&quot;${db}&quot; '{file=db&quot;/&quot;substr($2,1,1)&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
+awk -v db=&quot;$(realpath ${db})&quot; '{file=db&quot;/&quot;substr($2,1,1)&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
 sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
 ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --level species --threads 12
 
-# Delete extracted files and sequences
+# Delete extracted files and auxiliary files
 cat &quot;${db}_extracted_files.txt&quot; | xargs rm
-rm &quot;${db}_extracted_files.txt&quot; &quot;${db}_ganon_input_file.tsv&quot; &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
-rm -rf &quot;${db}&quot;
+rm &quot;${db}_extracted_files.txt&quot; &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
+# Delete sequences
+rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
