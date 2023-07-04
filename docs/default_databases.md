@@ -31,7 +31,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 | RefSeq | # assemblies | Size (GB) * |  |
 |---|---|---|---|
-| Complete | 295219 | 350 - 500 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| Complete | 295219 | 160 - 500 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
 | One assembly per species | 52779 | 40 - 98 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
 | Complete genomes (higher quality) | 44121 | 19 - 64 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
 | One assembly per species of complete genomes | 19713 | 8 - 27 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
@@ -39,7 +39,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 | GenBank | # assemblies | Size (GB) * |  |
 |---|---|---|---|
-| Complete | 1595845 | | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
+| Complete | 1595845 | - | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
 | One assembly per species | 99505 | 91 - 420 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
 | Complete genomes (higher quality) | 92917 | 24 - 132 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
 | One assembly per species of complete genomes | 34497 | 10 - 34 | <details><summary>cmd</summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
