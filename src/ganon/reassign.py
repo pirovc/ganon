@@ -69,7 +69,7 @@ def reassign(cfg):
 
         with open(af, "r") as all_file:
             for line in all_file:
-                readid, target, kcount = line.rstrip().split("\t")
+                readid, target, kcount, fpr_query = line.rstrip().split("\t")
                 if readid not in read_matches:
                     read_matches[readid] = []
                 read_matches[readid].append((targets[target], int(kcount)))

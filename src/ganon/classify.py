@@ -35,6 +35,7 @@ def classify(cfg):
                                    "--hierarchy-labels " + ",".join(cfg.hierarchy_labels) if cfg.hierarchy_labels else "",
                                    "--rel-cutoff " + ",".join([str(rc) for rc in cfg.rel_cutoff]) if cfg.rel_cutoff else "",
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
+                                   "--fpr-query " + ",".join([str(fq) for fq in cfg.fpr_query]) if cfg.fpr_query else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
                                    "--skip-lca" if cfg.reassign and not cfg.output_lca else "",
                                    "--output-lca" if cfg.output_lca else "",
