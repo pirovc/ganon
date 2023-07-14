@@ -401,7 +401,7 @@ void select_matches( Filter< THIBF >&       filter,
     }
 }
 
-size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter, size_t n_hashes, double fpr_query)
+size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter, size_t n_hashes, double min_fpr_query)
 {
 
     for ( auto const& [target, count_fpr] : matches )
@@ -416,7 +416,7 @@ size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t t
             if (q<0)
                 q=0;
     
-            if(q<=fpr_query){
+            if(q<=min_fpr_query){
                 rep[target].matches++;
                 read_out.matches.push_back( ReadMatch{ target, std::get<0>(count_fpr), q } );
             }

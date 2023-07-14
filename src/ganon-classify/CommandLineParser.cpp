@@ -23,7 +23,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         
         ( "c,rel-cutoff", "Relative cutoff (i.e. percentage of minimizers). 0 for no cutoff. One or one per filter (comma-separated). Default: 0.2", cxxopts::value< std::vector< double > >() )
         ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). 1 for no filtering. one or one per hierarchy label (comma-separated). Default: 0.0", cxxopts::value< std::vector< double > >() )
-        ( "f,fpr-query", "Min. False positive for a query. 1 for no filtering. one or one per hierarchy label (comma-separated). Default: 0.0", cxxopts::value< std::vector< double > >() )
+        ( "f,fpr-query", "Min. False positive for a query. 1 for no filtering. one or one per hierarchy label (comma-separated). Default: 1.0", cxxopts::value< std::vector< double > >() )
         
         ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.lca, prefix.all, prefix.unc]). If multi-level --hierarchy-labels is provided, files are generated accordingly (prefix.hierarchy.lca and prefix.hierarchy.all). Omit to output to STDOUT (only .rep will be printed)", cxxopts::value< std::string >() )
         ( "l,output-lca", "Runs and outputs file with lca classification (prefix.lca)", cxxopts::value< bool >() )
