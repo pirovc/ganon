@@ -109,16 +109,18 @@ struct ReadMatch
         kmer_count = _kmer_count;
     }
 
-    ReadMatch( std::string _target, size_t _kmer_count, double _fpr_query )
+    ReadMatch( std::string _target, size_t _kmer_count, double _fpr_query, size_t _n_hashes)
     {
         target = _target;
         kmer_count = _kmer_count;
         fpr_query = _fpr_query;
+        n_hashes = _n_hashes;    
     }
 
     std::string target;
     size_t      kmer_count;
     double       fpr_query;
+    size_t n_hashes;
 };
 
 struct ReadOut
@@ -345,7 +347,8 @@ void select_matches( Filter< TIBF >&        filter,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
-                     size_t&                max_kmer_count_read )
+                     size_t&                max_kmer_count_read,
+                     size_t n_hashes )
 {
     // Count every occurrence on IBF
     seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes );
@@ -358,6 +361,8 @@ void select_matches( Filter< TIBF >&        filter,
         {
             summed_count += counts[binno];
         }
+        if (summed_count>n_hashes)
+            summed_count = n_hashes;
         if ( summed_count >= threshold_cutoff )
         {
             // ensure that count was not already found for target with higher count
@@ -377,7 +382,8 @@ void select_matches( Filter< THIBF >&       filter,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
-                     size_t&                max_kmer_count_read )
+                     size_t&                max_kmer_count_read,
+                     size_t n_hashes )
 {
     // Count only matches above threhsold
     seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes, threshold_cutoff );
@@ -415,10 +421,11 @@ size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t t
             }
             if (q<0)
                 q=0;
-    
+            // remove printing from fpr, when fpr_query==1, skip calculations
+            // do not pass n_hashes
             if(q<=min_fpr_query){
                 rep[target].matches++;
-                read_out.matches.push_back( ReadMatch{ target, std::get<0>(count_fpr), q } );
+                read_out.matches.push_back( ReadMatch{ target, std::get<0>(count_fpr), q, n_hashes } );
             }
         }
     }
@@ -534,7 +541,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                             threshold_cutoff = 1;
 
                         // count and select matches
-                        select_matches( filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read );
+                        select_matches( filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read, n_hashes );
 
                     }
                 }
@@ -942,7 +949,7 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& ou
         {
             for ( size_t i = 0; i < ro.matches.size(); ++i )
             {
-                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count<< '\t' << ro.matches[i].fpr_query << '\n';
+                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count<< '\t' << ro.matches[i].fpr_query << '\t' << ro.matches[i].n_hashes << '\n';
             }
         }
         else
