@@ -394,9 +394,11 @@ void select_matches( Filter< THIBF >&       filter,
     {
         if ( counts[bins[0]] > 0 )
         {
-            const size_t count = counts[bins[0]];
+            size_t count = counts[bins[0]];
+            if (count>n_hashes)
+                count = n_hashes;
             // ensure that count was not already found for target with higher count
-            // can happen in case of ambiguos targets in multiple filters
+            // can happen in case of ambiguous targets in multiple filters
             if ( count > std::get<0>(matches[target]) )
             {
                 matches[target] = std::make_tuple(count, filter.filter_config.target_fpr[target]);

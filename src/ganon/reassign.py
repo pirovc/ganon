@@ -139,7 +139,7 @@ def reassign(cfg):
             for readid, matches in read_matches.items():
                 if len(matches) == 1:
                     print(readid, targets_rev[matches[0][0]], matches[0]
-                          [1], matches[0][2], sep="\t", file=out_file)
+                          [1], matches[0][2], matches[0][3], sep="\t", file=out_file)
                 else:
                     reassigned_reads += 1
                     target, kcount, fprquery, n_hashes = get_top_match(matches, prob)
