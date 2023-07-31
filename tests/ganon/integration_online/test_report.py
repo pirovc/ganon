@@ -87,6 +87,22 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
+
+        # No genome size
+        params = self.default_params.copy()
+        params["input"] = self.results_dir + "base_classify_ncbi.rep"
+        params["output_prefix"] = self.results_dir + "test_ncbi_skip_genome_size"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["skip_genome_size"] = True
+        # Build config from params
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
     def test_gtdb(self):
         """
         Test run with --taxonomy gtdb, downloading .tax
@@ -144,6 +160,22 @@ class TestReport(unittest.TestCase):
         res = report_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon report has inconsistent results")
 
+
+        # No genome size
+        params = self.default_params.copy()
+        params["input"] = self.results_dir + "base_classify_gtdb.rep"
+        params["output_prefix"] = self.results_dir + "test_gtdb_skip_genome_size"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+                                    data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
+        params["skip_genome_size"] = True
+        # Build config from params
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error")
+        # General sanity check of results
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
 
 if __name__ == '__main__':
     unittest.main()

@@ -344,7 +344,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
         tre_file.close()
 
     if orphan_nodes and not cfg.no_orphan:
-        print_log(" - " + str(len(orphan_nodes)) + " not found in the taxonomy (orphan nodes). " +
+        print_log(" - WARNING: " + str(len(orphan_nodes)) + " not found in the taxonomy (orphan nodes). " +
                   "\n   Orphan nodes are reported with 'na' rank with root as a direct parent node. " +
                   "\n   Too show them, use 'na' in --ranks or set --ranks all"
                   "\n   Too ommit them, use --no-orphan", cfg.quiet)
@@ -450,6 +450,7 @@ def correct_genome_size(target_counts, genome_sizes, tax, default_ranks):
     """
     ranked_counts = {}
     lost_targets = {}
+    no_genome_size_cnt = 0
     total_rank_ratio = {r: 0 for r in default_ranks}
     total_rank_count = {r: 0 for r in default_ranks}
     for target, count in target_counts.items():
@@ -466,9 +467,16 @@ def correct_genome_size(target_counts, genome_sizes, tax, default_ranks):
 
         # Sum total counts for each default rank
         gs = genome_sizes[closest_parent] if closest_parent in genome_sizes else genome_sizes[tax.root_node]
+        # Keep track of genome sizes = 1 (no genome size available)
+        if gs==1:
+            no_genome_size_cnt+=1
         closest_rank = tax.rank(closest_parent)
         total_rank_ratio[closest_rank] += count/gs
         total_rank_count[closest_rank] += count
+
+    # Warning, some genomes have no proper size
+    if no_genome_size_cnt > 0 and len(target_counts) != no_genome_size_cnt:
+        print_log(" - WARNING: " + str(no_genome_size_cnt) + " genomes without proper genome size, abundance estimation may be biased. Use a --report-type without genome size correction or omit --db-prefix on ganon report to re-generate genome sizes.")
 
     # Correct counts by the genome sizes (only default ranks)
     corr_counts = {t: 0 for t in ranked_counts.keys()}
