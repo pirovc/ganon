@@ -656,4 +656,6 @@ def load_config(config_file):
     """
     load configuration
     """
-    return pickle.load(open(config_file, "rb"))
+    with open(config_file, "rb") as file:
+        cfg = pickle.load(file) 
+    return cfg
