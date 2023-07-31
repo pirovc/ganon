@@ -91,7 +91,7 @@ class TestReport(unittest.TestCase):
         # No genome size
         params = self.default_params.copy()
         params["input"] = self.results_dir + "base_classify_ncbi.rep"
-        params["output_prefix"] = self.results_dir + "test_ncbi_no_genome_size"
+        params["output_prefix"] = self.results_dir + "test_ncbi_skip_genome_size"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
         params["skip_genome_size"] = True
@@ -164,7 +164,7 @@ class TestReport(unittest.TestCase):
         # No genome size
         params = self.default_params.copy()
         params["input"] = self.results_dir + "base_classify_gtdb.rep"
-        params["output_prefix"] = self.results_dir + "test_gtdb"
+        params["output_prefix"] = self.results_dir + "test_gtdb_skip_genome_size"
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
