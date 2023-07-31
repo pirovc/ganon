@@ -48,10 +48,10 @@ typedef uint16_t TIntCount;
 
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
-typedef robin_hood::unordered_map< std::string, std::tuple< size_t, double > >      TMatches;
+typedef robin_hood::unordered_map< std::string, std::tuple< size_t, double > >             TMatches;
 typedef std::vector< std::tuple< size_t, std::string > >                                   TBinMap;
 typedef robin_hood::unordered_map< std::string, std::vector< size_t > >                    TMap;
-typedef robin_hood::unordered_map< std::string, double >                    TTargetFpr;
+typedef robin_hood::unordered_map< std::string, double >                                   TTargetFpr;
 
 struct Node
 {
@@ -105,22 +105,12 @@ struct ReadMatch
 
     ReadMatch( std::string _target, size_t _kmer_count )
     {
-        target = _target;
+        target     = _target;
         kmer_count = _kmer_count;
-    }
-
-    ReadMatch( std::string _target, size_t _kmer_count, double _fpr_query, size_t _n_hashes)
-    {
-        target = _target;
-        kmer_count = _kmer_count;
-        fpr_query = _fpr_query;
-        n_hashes = _n_hashes;    
     }
 
     std::string target;
     size_t      kmer_count;
-    double       fpr_query;
-    size_t n_hashes;
 };
 
 struct ReadOut
@@ -270,8 +260,13 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
                 output_file_all = config.output_prefix + ".all";
             }
 
-            parsed_hierarchy[config.hierarchy_labels[h]] =
-                HierarchyConfig{ fc, 0, 0, config.rel_filter[hierarchy_count], config.fpr_query[hierarchy_count], output_file_lca, output_file_all };
+            parsed_hierarchy[config.hierarchy_labels[h]] = HierarchyConfig{ fc,
+                                                                            0,
+                                                                            0,
+                                                                            config.rel_filter[hierarchy_count],
+                                                                            config.fpr_query[hierarchy_count],
+                                                                            output_file_lca,
+                                                                            output_file_all };
             ++hierarchy_count;
         }
         else
@@ -336,9 +331,9 @@ inline size_t threshold_rel( size_t n_hashes, double p )
 }
 
 // https://stackoverflow.com/questions/44718971/calculate-binomial-coffeficient-very-reliably
-inline double binom(double n, double k) noexcept
+inline double binom( double n, double k ) noexcept
 {
-    return std::exp(std::lgamma(n+1)-std::lgamma(n-k+1)-std::lgamma(k+1));
+    return std::exp( std::lgamma( n + 1 ) - std::lgamma( n - k + 1 ) - std::lgamma( k + 1 ) );
 }
 
 
@@ -348,7 +343,7 @@ void select_matches( Filter< TIBF >&        filter,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
                      size_t&                max_kmer_count_read,
-                     size_t n_hashes )
+                     size_t                 n_hashes )
 {
     // Count every occurrence on IBF
     seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes );
@@ -361,15 +356,16 @@ void select_matches( Filter< TIBF >&        filter,
         {
             summed_count += counts[binno];
         }
-        if (summed_count>n_hashes)
+        // summed_count can be higher than n_hashes for matches in several technical bins
+        if ( summed_count > n_hashes )
             summed_count = n_hashes;
         if ( summed_count >= threshold_cutoff )
         {
             // ensure that count was not already found for target with higher count
             // can happen in case of ambiguos targets in multiple filters
-            if ( summed_count > std::get<0>(matches[target]) )
+            if ( summed_count > std::get< 0 >( matches[target] ) )
             {
-                matches[target] = std::make_tuple(summed_count, filter.filter_config.target_fpr[target]);
+                matches[target] = std::make_tuple( summed_count, filter.filter_config.target_fpr[target] );
                 if ( summed_count > max_kmer_count_read )
                     max_kmer_count_read = summed_count;
             }
@@ -383,52 +379,58 @@ void select_matches( Filter< THIBF >&       filter,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
                      size_t&                max_kmer_count_read,
-                     size_t n_hashes )
+                     size_t                 n_hashes )
 {
     // Count only matches above threhsold
     seqan3::counting_vector< detail::TIntCount > counts = agent.bulk_count( hashes, threshold_cutoff );
-
 
     // Only one bin per target
     for ( auto const& [target, bins] : filter.map )
     {
         if ( counts[bins[0]] > 0 )
         {
-            size_t count = counts[bins[0]];
-            if (count>n_hashes)
-                count = n_hashes;
+            // Sum counts among bins (split target (user bins) into several technical bins)
+            size_t summed_count = counts[bins[0]];
+            // summed_count can be higher than n_hashes for matches in several technical bins
+            if ( summed_count > n_hashes )
+                summed_count = n_hashes;
             // ensure that count was not already found for target with higher count
             // can happen in case of ambiguous targets in multiple filters
-            if ( count > std::get<0>(matches[target]) )
+            if ( summed_count > std::get< 0 >( matches[target] ) )
             {
-                matches[target] = std::make_tuple(count, filter.filter_config.target_fpr[target]);
-                if ( count > max_kmer_count_read )
-                    max_kmer_count_read = count;
+                matches[target] = std::make_tuple( summed_count, filter.filter_config.target_fpr[target] );
+                if ( summed_count > max_kmer_count_read )
+                    max_kmer_count_read = summed_count;
             }
         }
     }
 }
 
-size_t filter_matches( ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter, size_t n_hashes, double min_fpr_query)
+size_t filter_matches(
+    ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter, size_t n_hashes, double min_fpr_query )
 {
 
     for ( auto const& [target, count_fpr] : matches )
     {
-        if ( std::get<0>(count_fpr) >= threshold_filter )
+        if ( std::get< 0 >( count_fpr ) >= threshold_filter )
         {
-            
-            double q = 1;
-            for(size_t i=0; i<=std::get<0>(count_fpr); i++){
-                q -= binom(n_hashes, i) * pow(std::get<1>(count_fpr),i) * pow(1-std::get<1>(count_fpr), n_hashes-i);
+            // Filter by fpr-query
+            if ( min_fpr_query < 1 )
+            {
+                double q = 1;
+                for ( size_t i = 0; i <= std::get< 0 >( count_fpr ); i++ )
+                {
+                    q -= binom( n_hashes, i ) * pow( std::get< 1 >( count_fpr ), i )
+                         * pow( 1 - std::get< 1 >( count_fpr ), n_hashes - i );
+                }
+                if ( q > min_fpr_query )
+                {
+                    continue;
+                }
             }
-            if (q<0)
-                q=0;
-            // remove printing from fpr, when fpr_query==1, skip calculations
-            // do not pass n_hashes
-            if(q<=min_fpr_query){
-                rep[target].matches++;
-                read_out.matches.push_back( ReadMatch{ target, std::get<0>(count_fpr), q, n_hashes } );
-            }
+
+            rep[target].matches++;
+            read_out.matches.push_back( ReadMatch{ target, std::get< 0 >( count_fpr ) } );
         }
     }
 
@@ -507,7 +509,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
             // Best scoring kmer count
             size_t max_kmer_count_read = 0;
-            size_t n_hashes = 0;
+            size_t n_hashes            = 0;
             // if length is smaller than window, skip read
             if ( read1_len >= hierarchy_config.window_size )
             {
@@ -543,8 +545,8 @@ void classify( std::vector< Filter< TFilter > >& filters,
                             threshold_cutoff = 1;
 
                         // count and select matches
-                        select_matches( filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read, n_hashes );
-
+                        select_matches(
+                            filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read, n_hashes );
                     }
                 }
             }
@@ -555,13 +557,14 @@ void classify( std::vector< Filter< TFilter > >& filters,
             // if read got valid matches (above cutoff)
             if ( max_kmer_count_read > 0 )
             {
-                
+
                 // Calculate threshold for filtering (keep matches above)
                 const size_t threshold_filter =
                     max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
 
                 // Filter matches
-                const size_t count_filtered_matches = filter_matches( read_out, matches, rep, threshold_filter, n_hashes, hierarchy_config.fpr_query);
+                const size_t count_filtered_matches =
+                    filter_matches( read_out, matches, rep, threshold_filter, n_hashes, hierarchy_config.fpr_query );
 
                 if ( count_filtered_matches > 0 )
                 {
@@ -651,7 +654,11 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
     }
 }
 
-size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::string const& input_filter_file, TTargetFpr& target_fpr)
+size_t load_filter( THIBF&             filter,
+                    IBFConfig&         ibf_config,
+                    TBinMap&           bin_map,
+                    std::string const& input_filter_file,
+                    TTargetFpr&        target_fpr )
 {
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
@@ -678,7 +685,7 @@ size_t load_filter( THIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std:
     // load ibf_config from raptor params
     ibf_config.window_size = window_size;
     ibf_config.kmer_size   = shape.count();
-    ibf_config.max_fp = fpr;
+    ibf_config.max_fp      = fpr;
 
     // Create map from paths
     size_t binno{};
@@ -718,7 +725,11 @@ inline double false_positive( uint64_t bin_size_bits, uint8_t hash_functions, ui
                      hash_functions );
 }
 
-size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::string const& input_filter_file, TTargetFpr& target_fpr)
+size_t load_filter( TIBF&              filter,
+                    IBFConfig&         ibf_config,
+                    TBinMap&           bin_map,
+                    std::string const& input_filter_file,
+                    TTargetFpr&        target_fpr )
 {
     std::ifstream              is( input_filter_file, std::ios::binary );
     cereal::BinaryInputArchive archive( is );
@@ -733,7 +744,7 @@ size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::
     archive( filter );
 
 
-    //generate fpr for each bin
+    // generate fpr for each bin
     for ( auto const& [target, count] : hashes_count_std )
     {
         // Use average number of hashes for each bin to calculate fp
@@ -742,7 +753,11 @@ size_t load_filter( TIBF& filter, IBFConfig& ibf_config, TBinMap& bin_map, std::
         uint64_t n_hashes_bin = std::ceil( count / static_cast< double >( n_bins_target ) );
 
         // false positive for the current target, considering split bins
-        target_fpr[target] = 1.0 - std::pow( 1.0 - false_positive( ibf_config.bin_size_bits, ibf_config.hash_functions, n_hashes_bin ), n_bins_target );;
+        target_fpr[target] =
+            1.0
+            - std::pow( 1.0 - false_positive( ibf_config.bin_size_bits, ibf_config.hash_functions, n_hashes_bin ),
+                        n_bins_target );
+        ;
     }
 
 
@@ -774,12 +789,12 @@ bool load_files( std::vector< Filter< TFilter > >& filters, std::vector< FilterC
     size_t filter_cnt = 0;
     for ( auto& filter_config : fconf )
     {
-        TTax      tax;
-        IBFConfig ibf_config;
-        TBinMap   bin_map;
-        TFilter   filter;
+        TTax       tax;
+        IBFConfig  ibf_config;
+        TBinMap    bin_map;
+        TFilter    filter;
         TTargetFpr target_fpr;
-        auto      bin_count = load_filter( filter, ibf_config, bin_map, filter_config.ibf_file, target_fpr);
+        auto       bin_count = load_filter( filter, ibf_config, bin_map, filter_config.ibf_file, target_fpr );
 
         // Parse vector with bin_map to the old map
         TMap map;
@@ -951,7 +966,7 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& ou
         {
             for ( size_t i = 0; i < ro.matches.size(); ++i )
             {
-                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count<< '\t' << ro.matches[i].fpr_query << '\t' << ro.matches[i].n_hashes << '\n';
+                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
             }
         }
         else
