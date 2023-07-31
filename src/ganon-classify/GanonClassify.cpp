@@ -415,7 +415,7 @@ size_t filter_matches(
         if ( std::get< 0 >( count_fpr ) >= threshold_filter )
         {
             // Filter by fpr-query
-            if ( min_fpr_query < 1 )
+            if ( min_fpr_query < 1.0 )
             {
                 double q = 1;
                 for ( size_t i = 0; i <= std::get< 0 >( count_fpr ); i++ )

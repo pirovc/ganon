@@ -21,7 +21,7 @@ def reassign(cfg):
     if check_file(rep_file):
 
         print_log(".rep file found: " + rep_file, cfg.quiet)
-        # look for hiearchies
+        # look for hierarchies
         with open(rep_file) as rep:
             for line in rep:
                 if line[0] != "#":
@@ -69,10 +69,10 @@ def reassign(cfg):
 
         with open(af, "r") as all_file:
             for line in all_file:
-                readid, target, kcount, fprquery, n_hashes = line.rstrip().split("\t")
+                readid, target, kcount = line.rstrip().split("\t")
                 if readid not in read_matches:
                     read_matches[readid] = []
-                read_matches[readid].append((targets[target], int(kcount), fprquery, n_hashes))
+                read_matches[readid].append((targets[target], int(kcount)))
 
                 # Not all targets have unique matches, initialize all targets with zero weights
                 if targets[target] not in initial_weight:
@@ -104,7 +104,7 @@ def reassign(cfg):
                 # Skip unique matches
                 if len(matches) > 1:
                     # Get match with highest probability in this round
-                    t, _, _, _= get_top_match(matches, prob)
+                    t, _ = get_top_match(matches, prob)
                     reassigned_matches[t] += 1
 
             diff = 0
@@ -139,12 +139,12 @@ def reassign(cfg):
             for readid, matches in read_matches.items():
                 if len(matches) == 1:
                     print(readid, targets_rev[matches[0][0]], matches[0]
-                          [1], matches[0][2], matches[0][3], sep="\t", file=out_file)
+                          [1], sep="\t", file=out_file)
                 else:
                     reassigned_reads += 1
-                    target, kcount, fprquery, n_hashes = get_top_match(matches, prob)
+                    target, kcount = get_top_match(matches, prob)
                     print(readid, targets_rev[target],
-                          kcount, fprquery, n_hashes, sep="\t", file=out_file)
+                          kcount, sep="\t", file=out_file)
 
         print_log(" - " + str(reassigned_reads) +
                   " reassigned reads: " + output_file, cfg.quiet)
@@ -179,16 +179,12 @@ def get_top_match(matches, prob):
     # set first match as target (also the case for no unique matches)
     target = matches[0][0]
     kcount = matches[0][1]
-    fprquery = matches[0][2]
 
-    n_hashes = matches[0][3]
     max_p = 0
-    for m, k, f, n in matches:
+    for m, k in matches:
         if prob[m] > max_p:
             max_p = prob[m]
             target = m
             kcount = k
-            fprquery = f
-            n_hashes = n
 
-    return target, kcount, fprquery, n_hashes
+    return target, kcount
