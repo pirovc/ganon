@@ -782,6 +782,42 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
         }
     }
 
+    SECTION( "--rel-cutoff 0.2 --rel-filter 0.5 --fpr-query 1e-10" )
+    {
+        std::string prefix{ folder_prefix + "rel_cutoff_0.2_rel_filter_0.5_fpr_query_1e-10" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.single_reads = { folder_prefix + "readF.fasta" };
+        cfg.rel_cutoff   = { 0.2 };
+        cfg.rel_filter   = { 0.5 };
+        cfg.fpr_query    = { 1e-10 };
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        REQUIRE( res.all["readF"].size() == 2 );
+        REQUIRE( res.all["readF"]["e0"] == 9 );
+        REQUIRE( res.all["readF"]["e1F_e2R"] == 5 );
+
+        SECTION( "--paired-reads" )
+        {
+            prefix            = prefix + "_paired";
+            cfg.output_prefix = prefix;
+            cfg.single_reads  = {};
+            cfg.paired_reads  = { folder_prefix + "readF.fasta", folder_prefix + "readR.fasta" };
+
+            REQUIRE( GanonClassify::run( cfg ) );
+            config_classify::Res res{ cfg };
+            config_classify::sanity_check( cfg, res );
+
+            REQUIRE( res.all["readF"].size() == 3 );
+            REQUIRE( res.all["readF"]["e0"] == 18 );
+            REQUIRE( res.all["readF"]["e1F"] == 14 );
+            REQUIRE( res.all["readF"]["e1F_e1R"] == 10 );
+        }
+    }
+
+
     SECTION( "--rel-cutoff 0.6 --rel-filter 1 (OFF)" )
     {
         std::string prefix{ folder_prefix + "rel_cutoff_0.6_rel_filter_1" };
@@ -886,6 +922,42 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
             REQUIRE( res.all["readF"]["e1F_e2R"] == 6 );
             REQUIRE( res.all["readF"]["e2F_e1R"] == 6 );
             REQUIRE( res.all["readF"]["e2F_e2R"] == 2 );
+        }
+    }
+
+    SECTION( "--rel-cutoff 0 (OFF) --rel-filter 1 (OFF) --fpr-query 1e-10" )
+    {
+        std::string prefix{ folder_prefix + "rel_cutoff_1_rel_filter_1_fpr_query_1e-10" };
+        auto        cfg  = config_classify::defaultConfig( prefix );
+        cfg.ibf          = { base_prefix + ".ibf" };
+        cfg.single_reads = { folder_prefix + "readF.fasta" };
+        cfg.rel_cutoff   = { 0 };
+        cfg.rel_filter   = { 1 };
+        cfg.fpr_query    = { 1e-10 };
+
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        REQUIRE( res.all["readF"].size() == 2 );
+        REQUIRE( res.all["readF"]["e0"] == 9 );
+        REQUIRE( res.all["readF"]["e1F_e2R"] == 5 );
+
+        SECTION( "--paired-reads" )
+        {
+            prefix            = prefix + "_paired";
+            cfg.output_prefix = prefix;
+            cfg.single_reads  = {};
+            cfg.paired_reads  = { folder_prefix + "readF.fasta", folder_prefix + "readR.fasta" };
+
+            REQUIRE( GanonClassify::run( cfg ) );
+            config_classify::Res res{ cfg };
+            config_classify::sanity_check( cfg, res );
+
+            REQUIRE( res.all["readF"].size() == 3 );
+            REQUIRE( res.all["readF"]["e0"] == 18 );
+            REQUIRE( res.all["readF"]["e1F"] == 14 );
+            REQUIRE( res.all["readF"]["e1F_e1R"] == 10 );
         }
     }
 
