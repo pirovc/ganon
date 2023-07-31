@@ -52,7 +52,7 @@ class Config:
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
         build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,     help="Skip sequences smaller then value defined. 0 to not skip any sequence.")
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",                                              help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.")
+        build_default_advanced_args.add_argument("--hibf",                 action="store_true",  help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.")
 
         ####################################################################################################
 
@@ -69,6 +69,7 @@ class Config:
         build_download_args.add_argument("-u", "--genome-updater",    type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         build_download_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
         build_download_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                     help="Specific files for genome size estimation - otherwise files will be downloaded")
+        build_download_args.add_argument("--skip-genome-size",        action="store_true",  help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.")
 
         ####################################################################################################
 
@@ -85,6 +86,7 @@ class Config:
         build_custom_args.add_argument("-l", "--level",             type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ", ".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
         build_custom_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
         build_custom_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="", help="Specific files for genome size estimation - otherwise files will be downloaded")
+        build_custom_args.add_argument("--skip-genome-size",        action="store_true",  help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.")
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
         ncbi_args.add_argument("-r", "--ncbi-sequence-info", type=str, nargs="*", default=[],                               metavar="", help="Uses NCBI e-utils webservices or downloads accession2taxid files to extract target information. [" + ", ".join(self.choices_ncbi_sequence_info) + " or one or more accession2taxid files from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/]. By default uses e-utils up-to 50000 sequences or downloads nucl_gb nucl_wgs otherwise.")
@@ -185,6 +187,7 @@ class Config:
         report_group_dbtax.add_argument("-x", "--taxonomy",          type=str,                    metavar="", default="ncbi", help="Taxonomy database to use [" + ", ".join(self.choices_taxonomy) + "]. Mutually exclusive with --db-prefix.", choices=self.choices_taxonomy)
         report_group_dbtax.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                 help="Specific files for taxonomy - otherwise files will be downloaded")
         report_group_dbtax.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                 help="Specific files for genome size estimation - otherwise files will be downloaded")
+        report_group_dbtax.add_argument("--skip-genome-size",        action="store_true",  help="Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when using sequences not representing full genomes.")
 
         report_group_output = report_parser.add_argument_group("output arguments")
         report_group_output.add_argument("-f", "--output-format",  type=str,            metavar="", default="tsv",       help="Output format [" + ", ".join(self.choices_report_output) + "]. text outputs a tabulated formatted text file for better visualization. bioboxes is the the CAMI challenge profiling format (only percentage/abundances are reported).", choices=self.choices_report_output)
