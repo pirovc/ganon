@@ -33,11 +33,8 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ## Installation from source
 
-### Dependencies
+### Dependencies Python
 
-- gcc >=7
-- cmake >=3.10
-- zlib
 - python >=3.6
 - pandas >=1.1.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
@@ -46,6 +43,11 @@ However, there are possible performance benefits compiling ganon from source in 
 python3 -V # >=3.6
 python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
 ```
+### Dependencies C++
+
+- GCC >=7
+- CMake >=3.10
+- zlib
 
 ### Downloading and building ganon + submodules
 
@@ -54,12 +56,14 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
 ```
   
 ```bash
+# Install Python side
 cd ganon
 python3 setup.py install --record files.txt  # optional
-mkdir build_cpp
-cd build_cpp
+# Compile and install C++ side
+mkdir -p build
+cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
-make
+make -j 4
 sudo make install  # optional
 ```
 
@@ -78,7 +82,7 @@ ganon -h
 ```bash
 python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
-cd build_cpp/
+cd build/
 ctest -VV .
 ```
 
@@ -103,7 +107,7 @@ cd raptor
 mkdir -p build
 cd build
 cmake ..
-make
+make -j 4
 ```
 
 - binaries will be located in the `bin` directory
