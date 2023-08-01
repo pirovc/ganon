@@ -35,6 +35,7 @@ def classify(cfg):
                                    "--hierarchy-labels " + ",".join(cfg.hierarchy_labels) if cfg.hierarchy_labels else "",
                                    "--rel-cutoff " + ",".join([str(rc) for rc in cfg.rel_cutoff]) if cfg.rel_cutoff else "",
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
+                                   "--fpr-query " + ",".join([str(fq) for fq in cfg.fpr_query]) if cfg.fpr_query else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
                                    "--skip-lca" if cfg.reassign and not cfg.output_lca else "",
                                    "--output-lca" if cfg.output_lca else "",
@@ -67,10 +68,11 @@ def classify(cfg):
             report_params = {"db_prefix": cfg.db_prefix,
                              "input": cfg.output_prefix + ".rep",
                              "output_prefix": cfg.output_prefix,
-                             "min_count": 0.0001,
+                             "min_count": 0 if cfg.binning else 0.005,
                              "ranks": cfg.ranks,
                              "output_format": "tsv",
                              "verbose": cfg.verbose,
+                             "report_type": "reads" if cfg.binning else "abundance",
                              "quiet": cfg.quiet}
             report_cfg = Config("report", **report_params)
             print_log("- - - - - - - - - -", cfg.quiet)

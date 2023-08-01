@@ -55,6 +55,7 @@ def build(cfg):
                                            "-T '" + ",".join(cfg.taxid) + "'" if cfg.taxid else "",
                                            "-A " + str(cfg.top) if cfg.top else "",
                                            "-l 'complete genome'" if cfg.complete_genomes else "",
+                                           "-c 'representative genome'" if cfg.representative_genomes else "",
                                            "-f 'genomic.fna.gz'",
                                            "-t " + str(cfg.threads),
                                            "-o " + files_output_folder,
@@ -325,9 +326,7 @@ def build_custom(cfg, which_call: str="build_custom"):
                                               "--num-hash-functions " + str(cfg.hash_functions),
                                               "--false-positive-rate " + str(cfg.max_fp),
                                               "--output-filename '" + files_output_folder + "raptor_layout.binning.out'",
-                                              "--threads " + str(cfg.threads),
-                                              "--estimate-union",
-                                              "--rearrange-user-bins"])
+                                              "--threads " + str(cfg.threads)])
             run(run_raptor_layout_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -341,7 +340,7 @@ def build_custom(cfg, which_call: str="build_custom"):
                                              "--output '" + cfg.db_prefix + ".hibf" + "'",
                                              "--threads " + str(cfg.threads),
                                              "--verbose" if cfg.verbose else "",
-                                             "'" + files_output_folder + "raptor_layout.binning.out'"])
+                                             "--input '" + files_output_folder + "raptor_layout.binning.out'"])
             run(run_raptor_build_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -656,4 +655,6 @@ def load_config(config_file):
     """
     load configuration
     """
-    return pickle.load(open(config_file, "rb"))
+    with open(config_file, "rb") as file:
+        cfg = pickle.load(file) 
+    return cfg

@@ -29,6 +29,7 @@ public:
 
     std::vector< double > rel_cutoff{ 0.2 };
     std::vector< double > rel_filter{ 0.0 };
+    std::vector< double > fpr_query{ 1.0 };
 
     std::string output_prefix       = "";
     bool        output_lca          = false;
@@ -118,6 +119,21 @@ public:
             return false;
         }
 
+        valid_val = true;
+        for ( uint16_t i = 0; i < fpr_query.size(); ++i )
+        {
+            if ( fpr_query[i] < 0 || fpr_query[i] > 1 )
+            {
+                valid_val = false;
+                break;
+            }
+        }
+        if ( !valid_val )
+        {
+            std::cerr << "--fpr-query values should be set between 0 and 1 (1 to disable)" << std::endl;
+            return false;
+        }
+
         if ( n_batches < 1 )
             n_batches = 1;
 
@@ -160,6 +176,19 @@ public:
         else if ( rel_filter.size() != unique_hierarchy )
         {
             std::cerr << "Please provide a single or one-per-hierarchy --rel-filter value[s]" << std::endl;
+            return false;
+        }
+
+        if ( fpr_query.size() == 1 && unique_hierarchy > 1 )
+        {
+            for ( uint16_t b = 1; b < unique_hierarchy; ++b )
+            {
+                fpr_query.push_back( fpr_query[0] );
+            }
+        }
+        else if ( fpr_query.size() != unique_hierarchy )
+        {
+            std::cerr << "Please provide a single or one-per-hierarchy --fpr-query value[s]" << std::endl;
             return false;
         }
 
@@ -228,6 +257,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--threads             " << config.threads << newl;
     stream << "--n-batches           " << config.n_batches << newl;
     stream << "--n-reads             " << config.n_reads << newl;
+    stream << "--skip-lca            " << config.skip_lca << newl;
     stream << "--verbose             " << config.verbose << newl;
     stream << "--quiet               " << config.quiet << newl;
     stream << separator << newl;

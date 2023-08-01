@@ -21,7 +21,7 @@ def reassign(cfg):
     if check_file(rep_file):
 
         print_log(".rep file found: " + rep_file, cfg.quiet)
-        # look for hiearchies
+        # look for hierarchies
         with open(rep_file) as rep:
             for line in rep:
                 if line[0] != "#":
@@ -179,6 +179,7 @@ def get_top_match(matches, prob):
     # set first match as target (also the case for no unique matches)
     target = matches[0][0]
     kcount = matches[0][1]
+
     max_p = 0
     for m, k in matches:
         if prob[m] > max_p:

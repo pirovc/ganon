@@ -182,7 +182,7 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 !!! note
     The example above uses [genome_updater](https://github.com/pirovc/genome_updater) to download files
 
-### BLAST databases (nt, env_nt, nt_prok, ...)
+### BLAST databases (nt env_nt nt_prok ...)
 
 BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
 
@@ -199,24 +199,36 @@ The example below extracts sequences and information from a BLAST db to build a 
 ```bash
 # Define BLAST db
 db="16S_ribosomal_RNA"
+threads=8
 
-# Download BLAST db
-wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}*.tar.gz"
-# Using 12 threads: curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "${db}.*.tar.gz$" | xargs -P 12 -I{} wget -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
+# Download BLAST db - re-run this command many times until all finish (no more output)
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "^${db}\..*tar.gz$" | xargs -P ${threads:-1} -I{} wget --continue -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}"
 
-# Merge and extract BLAST db files
-cat "${db}"*.tar.gz | tar xvfz - > ex_files.txt
-ex_file=$(head -n 1 ex_files.txt)
-dbprefix="${ex_file%.*}"
+# OPTIONAL Download and check MD5
+wget -O - -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5" > "${db}.md5"
+md5sum "${db}".*tar.gz > "${db}_downloaded.md5"
+diff -s <(sort -k 2,2 "${db}.md5") <(sort -k 2,2 "${db}_downloaded.md5")  # Should print "Files /dev/fd/xx and /dev/fd/xx are identical"
 
-# Generate sequences from BLAST db
-blastdbcmd -entry all -db "${dbprefix}" -out "${db}.fna"
+# Extract BLAST db files, if successful, remove .tar.gz
+ls "${db}"*.tar.gz | xargs -P ${threads} -I{} sh -c 'gzip -dc {} | tar --overwrite -vxf - && rm {}' > "${db}_extracted_files.txt"
 
-# Generate ganon input file
-blastdbcmd -entry all -db "${dbprefix}" -outfmt "%a %X" | awk -v file="${db}.fna" '{print file"\t"$1"\t"$2 }' > "${db}_ganon_input_file.tsv"
+# Create folder to write sequence files (split into 10 sub-folders)
+seq 0 9 | xargs -i mkdir -p "${db}"/{}
+
+# This command extracts sequences from the blastdb and writes them into taxid specific files
+# It also generates the --input-file for ganon
+blastdbcmd -entry all -db "${db}" -outfmt "%a %T %s" | \
+awk -v db="$(realpath ${db})" '{file=db"/"substr($2,1,1)"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2"\t"$2}' | \
+sort | uniq > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
-ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --input-target sequence --level leaves --threads 32
+ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --level species --threads 12
+
+# Delete extracted files and auxiliary files
+cat "${db}_extracted_files.txt" | xargs rm
+rm "${db}_extracted_files.txt" "${db}.md5" "${db}_downloaded.md5"
+# Delete sequences
+rm -rf "${db}" "${db}_ganon_input_file.tsv"
 ```
 
 !!! note
@@ -234,7 +246,7 @@ ganon build-custom --input output_folder_genome_updater/version/ --input-recursi
 
 ### False positive and size (--max-fp, --filter-size)
 
-ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. The false positive of the query (all k-mers of the reads) is higher but directly affected.
+ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](../classification/#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
 
 Alternatively, one can set a specific size for the final index with `--filter-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 

@@ -33,11 +33,8 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ## Installation from source
 
-### Dependencies
+### Dependencies Python
 
-- gcc >=7
-- cmake >=3.10
-- zlib
 - python >=3.6
 - pandas >=1.1.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
@@ -46,6 +43,11 @@ However, there are possible performance benefits compiling ganon from source in 
 python3 -V # >=3.6
 python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
 ```
+### Dependencies C++
+
+- GCC >=7
+- CMake >=3.10
+- zlib
 
 ### Downloading and building ganon + submodules
 
@@ -54,18 +56,20 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
 ```
   
 ```bash
+# Install Python side
 cd ganon
 python3 setup.py install --record files.txt  # optional
-mkdir build_cpp
-cd build_cpp
+# Compile and install C++ side
+mkdir -p build
+cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
-make
+make -j 4
 sudo make install  # optional
 ```
 
 - to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `
 - use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
-- to classify extremely large reads (>65000bp) use `-DLONGREADS=ÒN`
+- to classify extremely large reads or contigs that would need more than 65000 k-mers, use `-DLONGREADS=ON`
 
 If everything was properly installed, the following commands should show the help pages without errors:
 
@@ -78,25 +82,36 @@ ganon -h
 ```bash
 python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
-cd build_cpp/
+cd build/
 ctest -VV .
 ```
+
+### Installing raptor (optional)
+
+If you want to use the Hierarchical Interleaved Bloom Filter `--hibf` in `ganon build` you will need to install [raptor](https://github.com/seqan/raptor) either via conda `conda install -c bioconda -c conda-forge raptor` (already included in the installation if you installed ganon via conda) or from source:
+
+#### Dependencies
  
-## Important parameters
+ - CMake >= 3.18
+ - GCC 11, 12 or 13 (most recent minor version)
+ - git
 
-The most important parameters and trade-offs are:
+#### Downloading and building raptor + submodules
 
-- `ganon build` `--hibf`: build smaller databases that can be queried faster. Building will take longer.
-- `ganon build` `--window-size --kmer-size`: the *window* value should always be the same or larger than the *kmer* value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small *kmer* and/or large *window*. Larger *kmer* values (e.g. `31`) will improve classification, specially read binning, at a cost of way bigger databases.
----
-- `ganon classify` `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher `--rel-cutoff` values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read binning, lower values between `0.2` and `0.4` are recommended.
-- `ganon classify` `--rel-filter`: further filter top matches after cutoff is applied. Usually set between `0` and `0.2`.
-- `ganon classify` `--reassign`: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with `ganon reassign`.
----
-- `ganon report` `--report-type`: reports either taxonomic, sequence or matches abundances. Use `corr` or `abundance` for taxonomic profiling, `reads` or `dist` for sequence profiling and `matches` to report a summary of all matches.
-- `ganon report` `--min-count`: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between `0.0001` (0.01%) and `0.001` (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively `--top-percentile` can be used to keep a relative amount of taxa instead a hard cutoff.
+```bash
+git clone --branch raptor-v3.0.0 --recurse-submodules https://github.com/seqan/raptor
+```
 
-The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an [issue](https://github.com/pirovc/ganon/issues).
+```bash
+cd raptor
+mkdir -p build
+cd build
+cmake ..
+make -j 4
+```
+
+- binaries will be located in the `bin` directory
+- you may have to inform `ganon build` where to find the binaries with `--raptor-path raptor/build/bin`
 
 ## Parameters
 
@@ -107,7 +122,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.6.0
+   _|   v. 1.7.0
 - - - - - - - - - -
 
 positional arguments:
@@ -131,8 +146,9 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]] [--skip-genome-size]
+                   -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet]
+                   [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -154,12 +170,16 @@ download arguments:
   -o , --top            Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
                         Download only sub-set of complete genomes (default: False)
+  -r, --representative-genomes
+                        Download only sub-set of representative genomes (default: False)
   -u , --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
+                        full genomes. (default: False)
 
 important arguments:
   -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
@@ -197,9 +217,9 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d
-                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose]
-                          [--quiet] [--write-info-file]
+usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [--skip-genome-size] [-r [...]]
+                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                          [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -232,6 +252,8 @@ custom arguments:
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
+                        full genomes. (default: False)
 
 ncbi arguments:
   -r [ ...], --ncbi-sequence-info [ ...]
@@ -312,8 +334,8 @@ optional arguments:
 
 ```
 usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
-                      [-c [...]] [-e [...]] [-o] [--output-lca] [--output-all] [--output-unclassified] [--output-single]
-                      [-t] [-l [...]] [-r [...]] [-a] [--verbose] [--quiet]
+                      [-c [...]] [-e [...]] [-f [...]] [-o] [--output-lca] [--output-all] [--output-unclassified]
+                      [--output-single] [-t] [-b] [-a] [-l [...]] [-r [...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -335,6 +357,10 @@ cutoff/filter arguments:
                         Additional relative percentage of minimizers (relative to the best match) to keep a match.
                         Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
                         0). 1 for no filter (default: [0.0])
+  -f [ ...], --fpr-query [ ...]
+                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
+                        Generally used to remove false positives matches querying a database build with large --max-fp.
+                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
 
 output arguments:
   -o , --output-prefix 
@@ -349,6 +375,10 @@ output arguments:
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --reassign). Will report (.tre) sequence
+                        abundances. This file can be re-generated with 'ganon report'. (default: False)
+  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
+                        can be re-generated with 'ganon reassign'. (default: False)
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
@@ -358,8 +388,6 @@ other arguments:
                         phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
                         'ganon report' command for other types of abundances (reads, matches) with further filtration
                         and output options (default: [])
-  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
-                        can be re-generated with the 'ganon reassign'. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -398,9 +426,9 @@ other arguments:
   <summary>ganon report</summary>
 
 ```
-usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]] [-f] [-t]
-                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose] [--quiet] [--min-count]
-                    [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
+usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]]
+                    [--skip-genome-size] [-f] [-t] [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose]
+                    [--quiet] [--min-count] [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
 
 options:
   -h, --help            show this help message and exit
@@ -426,6 +454,8 @@ db/tax arguments:
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when
+                        using sequences not representing full genomes. (default: False)
 
 output arguments:
   -f , --output-format 
