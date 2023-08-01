@@ -146,5 +146,21 @@ class TestClassify(unittest.TestCase):
         # There are only single matches on output
         self.assertEqual(len(res["all_pd"].readid), len(res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
 
+    def test_hibf(self):
+        """
+        Test ganon classify with HIBF
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = data_dir + "classify/test_db"
+        params["output_prefix"] = self.results_dir + "hibf"
+        params["verbose"] = True
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+
 if __name__ == '__main__':
     unittest.main()
