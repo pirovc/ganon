@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.6.0"
+    version = "1.7.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -65,7 +65,8 @@ class Config:
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-o", "--top",               type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
-        build_download_args.add_argument("-c", "--complete-genomes",  action="store_true",                                         help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-c", "--complete-genomes",        action="store_true",                                         help="Download only sub-set of complete genomes")
+        build_download_args.add_argument("-r", "--representative-genomes",  action="store_true",                                         help="Download only sub-set of representative genomes")
         build_download_args.add_argument("-u", "--genome-updater",    type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         build_download_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
         build_download_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                     help="Specific files for genome size estimation - otherwise files will be downloaded")
@@ -134,7 +135,7 @@ class Config:
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
         classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
         classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.0],   help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
-        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",           type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1.0],   help="FPR. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
+        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",           type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5],  help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")

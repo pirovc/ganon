@@ -1,33 +1,46 @@
 # Classification
 
-`ganon classify` will match single and/or paired-end reads against one or [more databases](#multiple-and-hierarchical-classification), for example:
+`ganon classify` will match single and/or paired-end sets of reads against one or [more databases](#multiple-and-hierarchical-classification). 
+By default, parameters are optimized for **taxonomic profiling**. 
+
+Example:
 
 ```bash
 ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
 ```
 
-`ganon report` will be automatically executed after classification and a report will be created (`.tre`).
+`ganon report` will be automatically executed after `ganon classify` and a [report will be created `.tre`](../outputfiles/#ganon-report).
 
-ganon can generate both taxonomic profiling and binning results with `ganon classify` + `ganon report`. Please choose the parameters according to your application.
+ganon can perform **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level with `ganon classify` + `ganon report`. Some guidelines are listed below, please choose the parameters according to your application:
 
 ### Profiling
 
 `ganon classify` is set-up by default to perform taxonomic profiling. It uses:
 
- - strict `--rel-cutoff` and `--rel-filter` values (`0.75` and `0`, respectively)
- - `--min-count 0.0001` (0.01%) on `ganon report` to exclude low abundant groups
- - `--report-type abundance` on `ganon report` to generate taxonomic abundances, re-distributing read counts and correcting for genome sizes
+ - strict thresholds: `--rel-cutoff 0.75` and `--rel-filter 0`
+
+`ganon report` will automatically run after classification with:
+
+ - `--min-count 0.005` (0.5%) to exclude low abundant taxa
+ - `--report-type abundance` to generate taxonomic abundances, re-distributing read counts and correcting for genome sizes
+
+!!! Note
+    `ganon report` can be used independently from `ganon classify` with the output file `.rep`
 
 ### Binning
 
-To achieve better results for binning reads to specific references, ganon can be configured with:
+To achieve better results for taxonomic binning or sequence classification, ganon can be configured with:
 
  - `--output-all` and `--output-lca` to write `.all` `.lca` files for binning results
  - less strict `--rel-cutoff` and `--rel-filter` values (e.g. `0.25` and `0.1`, respectively)
- - activate the `--reassign` on `ganon classify` (or use the `ganon reassign` procedure) to apply a EM algorithm, re-assigning reads with LCA matches to most probable target (`--level` the database was built)
+ - activate the `--reassign` to apply an EM algorithm, re-assigning reads with LCA matches to one most probable target (defined by `--level` in the build procedure). In this case, the `.all` file will be re-generated with one assignment per read.
+
+!!! Note
+    `ganon reassign` can be used independently from `ganon classify` with the output file `.rep` and `.all`
 
 !!! tip
-    Higher `--kmer-size` values on `ganon build` can also improve read binning sensitivity
+    Database parameters can also influence your results. Lower `--max-fp` (e.g. 0.1, 0.001) and higher `--kmer-size` (e.g. `23`, `27`) will improve sensitivity of your results at cost of a larger database and memory usage
+
 
 ## Multiple and Hierarchical classification
 
@@ -129,3 +142,12 @@ For databases built with `--window-size`, the relative values are not based on t
 A different `cutoff` can be set for every database in a multiple or hierarchical database classification. A different `filter` can be set for every level of a hierarchical database classification.
 
 Note that reads that remain with only one reference match (after `cutoff` and `filter` are applied) are considered a unique match.
+
+### False positive of a query (--fpr-query)
+
+ganon uses Bloom Filters, probabilistic data structures that may return false positive results. The base false positive of a ganon index is controlled by `--max-fp` when building the database. However, this value is the expected false positive for each k-mer. In practice, a sequence (several k-mers) will have a way smaller false positive. ganon calculates the false positive rate of a query as suggested by (Solomon and Kingsford, 2016). The `--fpr-query` will control the max. value accepted to consider a match between a sequence and a reference, avoiding false positives that may be introduce by the properties of the data structure. 
+
+By default, `--fpr-query 1e-5` is used and it is applied after the `--rel-cutoff` and `--rel-filter`. Values between `1e-3` and `1e-10` are recommended. This threshold becomes more important when building smaller databases with higher `--max-fp`, assuring that the false positive is under control. In this case however, you may notice a in sensitivity of your results.
+
+!!! Note
+    The false positive of a query was first propose in: Solomon, Brad, and Carl Kingsford. “Fast Search of Thousands of Short-Read Sequencing Experiments.” Nature Biotechnology 34, no. 3 (2016): 1–6. https://doi.org/10.1038/nbt.3442.

@@ -182,7 +182,7 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 !!! note
     The example above uses [genome_updater](https://github.com/pirovc/genome_updater) to download files
 
-### BLAST databases (nt, env_nt, nt_prok, ...)
+### BLAST databases (nt env_nt nt_prok ...)
 
 BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
 
@@ -246,7 +246,7 @@ ganon build-custom --input output_folder_genome_updater/version/ --input-recursi
 
 ### False positive and size (--max-fp, --filter-size)
 
-ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. The false positive of the query (all k-mers of the reads) is higher but directly affected.
+ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](../classification/#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
 
 Alternatively, one can set a specific size for the final index with `--filter-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 

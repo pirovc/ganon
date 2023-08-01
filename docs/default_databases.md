@@ -35,7 +35,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 | One assembly per species | 52779 | 40 - 98 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
 | Complete genomes (higher quality) | 44121 | 19 - 64 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
 | One assembly per species of complete genomes | 19713 | 8 - 27 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
-| One representative assembly per species | 18073 | 21 - 35 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg`</details> |
+| One representative assembly per species | 18073 | 21 - 35 | <details><summary>cmd</summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --representative-genomes --db-prefix abfv_rs_rg`</details> |
 
 | GenBank | # assemblies | Size (GB) * |  |
 |---|---|---|---|
@@ -124,15 +124,26 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ## Reducing database size
 
-### HIBF
+### False positive
 
-The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides *smaller* databases with *faster* query times ([pre-print](https://www.biorxiv.org/content/10.1101/2022.08.01.502266v1)). However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in `ganon build` and `ganon build-custom` with the `--hibf` parameter.
-
-**This is the best method to reduce large database sizes and to achieve faster classification speed.**
+A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size). Values between `0.001` (0.1%) and `0.3` (30%) are generally used. 
 
 !!! hint
-    - For larger reference sets, huge amount of reads to query or production level analysis -> HIBF
-    - For quick build and analysis with smaller data -> IBF (default)
+    When using higher `--max-fp` values, more false positive results may be generated. This can be filtered with the `--fpr-query` parameter in `ganon classify` 
+
+### Fixed size
+
+A fixed size for the database filter can be defined with `--filter-size`. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size).
+
+### HIBF
+
+The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates *smaller* databases with *faster* query times ([article](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4)). However, the HIBF takes longer to build and has less flexibility regarding size and further options in ganon. The HIBF can be generated in `ganon build` and `ganon build-custom` with the `--hibf` parameter.
+
+Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. A recommended value for high sensitivity is 1% (`--hibf --max-fp 0.001`).
+
+!!! hint
+    - For larger reference sets, huge amount of reads to query -> HIBF
+    - For quick build and more flexibility -> IBF (default)
 
 !!! warning
     [raptor (v3.0.0)](https://github.com/seqan/raptor/releases/tag/raptor-v3.0.0) has to be installed to build databases with `--hibf`
@@ -146,14 +157,6 @@ RefSeq and GenBank are highly biased toward some few organisms. This means that 
     - `ganon build --genome-updater "-A 'species:1'"` will select one assembly for each species
     - `ganon build --genome-updater "-A 'genus:3'"` will select three assemblies for each genus
 
-### False positive
-
-A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size). Values between `0.01` and `0.3` are generally used.
-
-### Fixed size
-
-A fixed size for the database filter can be defined with `--filter-size`. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size).
-
 ### Mode
 
 `--mode` offers 5 different categories to build a database controlling the trade-off between size and classification speed.
@@ -163,7 +166,7 @@ A fixed size for the database filter can be defined with `--filter-size`. The sm
 - `fast` or `fastest`: create bigger databases with faster classification speed
 
 !!! Warning
-    If `--filter-size` is used, `smaller` and `smallest` to the false positive and not to the database size which is fixed.
+    If `--filter-size` is used, `smaller` and `smallest` refers to the false positive and not to the database size (which is fixed). 
 
 ### Split databases
 
@@ -183,7 +186,7 @@ Define how much unique information is stored in the database. [More details](../
 
 ### Example
 
-Besides the huge benefits of using [HIBF](#hibf) and specific sub-sets of big repositories shown on the [default databases table](#commonly-used-sub-sets), examples of other reduction strategies (without `--hibf`) can be seen below:
+Besides the benefits of using [HIBF](#hibf) and specific sub-sets of big repositories shown on the [default databases table](#commonly-used-sub-sets), examples of other reduction strategies (without `--hibf`) can be seen below:
 
 *RefSeq archaeal complete genomes from 20230505*
 
