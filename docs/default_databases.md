@@ -142,11 +142,9 @@ The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the defa
 Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. A recommended value for high sensitivity is 1% (`--hibf --max-fp 0.001`).
 
 !!! hint
-    - For larger reference sets, huge amount of reads to query -> HIBF
+    - For large unbalanced reference sets, lots of reads to query -> HIBF
     - For quick build and more flexibility -> IBF (default)
 
-!!! warning
-    [raptor (v3.0.0)](https://github.com/seqan/raptor/releases/tag/raptor-v3.0.0) has to be installed to build databases with `--hibf`
 
 ### Top assemblies
 

@@ -599,7 +599,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         {
                             // without tax, no lca, count multi-matches to a root node
                             // to keep consistency among reports (no. of classified reads)
-                            rep[config.tax_root_node].unique_reads++;
+                            rep[config.tax_root_node].lca_reads++;
                         }
                     }
 

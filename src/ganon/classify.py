@@ -68,10 +68,11 @@ def classify(cfg):
             report_params = {"db_prefix": cfg.db_prefix,
                              "input": cfg.output_prefix + ".rep",
                              "output_prefix": cfg.output_prefix,
-                             "min_count": 0.005,
+                             "min_count": 0 if cfg.binning else 0.005,
                              "ranks": cfg.ranks,
                              "output_format": "tsv",
                              "verbose": cfg.verbose,
+                             "report_type": "reads" if cfg.binning else "abundance",
                              "quiet": cfg.quiet}
             report_cfg = Config("report", **report_params)
             print_log("- - - - - - - - - -", cfg.quiet)

@@ -257,6 +257,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--threads             " << config.threads << newl;
     stream << "--n-batches           " << config.n_batches << newl;
     stream << "--n-reads             " << config.n_reads << newl;
+    stream << "--skip-lca            " << config.skip_lca << newl;
     stream << "--verbose             " << config.verbose << newl;
     stream << "--quiet               " << config.quiet << newl;
     stream << separator << newl;

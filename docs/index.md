@@ -331,7 +331,7 @@ optional arguments:
 ```
 usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
                       [-c [...]] [-e [...]] [-f [...]] [-o] [--output-lca] [--output-all] [--output-unclassified]
-                      [--output-single] [-t] [-l [...]] [-r [...]] [-a] [--verbose] [--quiet]
+                      [--output-single] [-t] [-b] [-a] [-l [...]] [-r [...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -371,6 +371,10 @@ output arguments:
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --reassign). Will report (.tre) sequence
+                        abundances. This file can be re-generated with 'ganon report'. (default: False)
+  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
+                        can be re-generated with 'ganon reassign'. (default: False)
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
@@ -380,8 +384,6 @@ other arguments:
                         phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
                         'ganon report' command for other types of abundances (reads, matches) with further filtration
                         and output options (default: [])
-  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
-                        can be re-generated with the 'ganon reassign'. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
