@@ -8,7 +8,7 @@
     <title>Output files - ganon</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,12 +17,11 @@
         var mkdocs_page_url = null;
       </script>
     
-    <script src="../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -34,7 +33,7 @@
           <a href=".." class="icon icon-home"> ganon
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -42,6 +41,10 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../start/">Quick Start</a>
                 </li>
               </ul>
               <ul>
@@ -58,6 +61,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports (ganon report)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
                 </li>
               </ul>
               <ul class="current">
@@ -91,8 +98,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>Output files</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">Output files</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -212,7 +219,7 @@
 <p>The first line of the report file will show the number of unclassified reads (not for <code>--report-type matches</code>)</p>
 </li>
 <li>
-<p>The CAMI challenge <a href="https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd">bioboxes profiling format</a> is supported using <code>--output-format bioboxes</code>. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are ommited.</p>
+<p>The CAMI challenge <a href="https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd">bioboxes profiling format</a> is supported using <code>--output-format bioboxes</code>. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are omitted.</p>
 </li>
 <li>
 <p>The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).</p>
@@ -225,6 +232,7 @@
 <ul>
 <li>{output_file}: a tab-separated file with counts/percentages of taxa for multiple samples</li>
 </ul>
+<hr />
 <details>
   <summary>Examples of output files</summary>
 
@@ -308,7 +316,7 @@ with `--output-format bioboxes`
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../reports/" class="btn btn-neutral float-left" title="Reports (ganon report)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../table/" class="btn btn-neutral float-left" title="Table (ganon table)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../tutorials/" class="btn btn-neutral float-right" title="Tutorials">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -332,21 +340,22 @@ with `--output-format bioboxes`
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../reports/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../table/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../tutorials/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
-    <script>var base_url = '..';</script>
-    <script src="../js/theme_extra.js" defer></script>
-    <script src="../js/theme.js" defer></script>
-      <script src="../search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
-        };
+        });
     </script>
 
 </body>

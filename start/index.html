@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Quick Start - ganon</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Quick Start";
+        var mkdocs_page_input_path = "start.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Quick Start</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#install">Install</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#download-and-build-a-database">Download and Build a database</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#classify-and-generate-a-tax-profile">Classify and generate a tax. profile</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#important-parameters">Important parameters</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#ganon-build">ganon build</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#ganon-classify">ganon classify</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#ganon-report">ganon report</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../default_databases/">Databases (ganon build)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../custom_databases/">Custom databases (ganon build-custom)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../classification/">Classification (ganon classify)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports (ganon report)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">Quick Start</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="quick-start-guide">Quick Start Guide<a class="headerlink" href="#quick-start-guide" title="Permanent link">:)</a></h1>
+<h2 id="install">Install<a class="headerlink" href="#install" title="Permanent link">:)</a></h2>
+<pre><code class="language-sh">conda install -c bioconda -c conda-forge ganon
+</code></pre>
+<h2 id="download-and-build-a-database">Download and Build a database<a class="headerlink" href="#download-and-build-a-database" title="Permanent link">:)</a></h2>
+<ul>
+<li>Bacteria - NCBI RefSeq - representative genomes</li>
+</ul>
+<pre><code class="language-bash">ganon build --db-prefix bac_rs_rg --source refseq --organism-group bacteria --representative-genomes --threads 24
+</code></pre>
+<ul>
+<li>If you want to test ganon functionalities with a smaller database, use <code>archaea</code> instead of <code>bacteria</code> in the example above.</li>
+</ul>
+<h2 id="classify-and-generate-a-tax-profile">Classify and generate a tax. profile<a class="headerlink" href="#classify-and-generate-a-tax-profile" title="Permanent link">:)</a></h2>
+<ul>
+<li><a href="https://github.com/pirovc/ganon_benchmark/raw/master/files/reads/cami/toy/H01_1M_0.1.fq.gz">Download test reads</a></li>
+</ul>
+<pre><code class="language-bash">ganon classify --db-prefix bac_rs_rg --output-prefix classify_results --single-reads H01_1M_0.1.fq.gz --threads 24
+</code></pre>
+<ul>
+<li><code>classify_results.tre</code> -&gt; taxonomic profile</li>
+</ul>
+<hr />
+<h2 id="important-parameters">Important parameters<a class="headerlink" href="#important-parameters" title="Permanent link">:)</a></h2>
+<p>The most important parameters and trade-offs to be aware of when using ganon:</p>
+<h3 id="ganon-build">ganon build<a class="headerlink" href="#ganon-build" title="Permanent link">:)</a></h3>
+<ul>
+<li><code>--max-fp --filter-size</code>: controls the false positive of the bloom filters and the size of the filter (which is the same as the amount of memory needed). The higher the <code>--max-fp</code>, the smaller the databases at a cost of sensitivity in classification. <code>--filter-size</code> can be used instead of <code>--max-fp</code> to define a specific size for your database. In this case, the false positive will be reported at the end of the build.</li>
+<li><code>--window-size --kmer-size</code>: the <em>window</em> value should always be the same or larger than the <em>k-mer</em> value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small <em>k-mer</em> and/or large <em>window</em>. Larger <em>k-mer</em> values (e.g. <code>31</code>) will improve classification, specially read binning, at a cost of larger databases.</li>
+<li><code>--hibf</code>: build smaller databases that can be queried faster. Building will take longer.</li>
+</ul>
+<h3 id="ganon-classify">ganon classify<a class="headerlink" href="#ganon-classify" title="Permanent link">:)</a></h3>
+<ul>
+<li><code>--rel-cutoff</code>: this value defines the threshold for matches between reads and database. Higher values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between <code>0.4</code> and <code>0.8</code> may provide better results. For read binning, lower values between <code>0.2</code> and <code>0.4</code> are recommended. </li>
+<li><code>--rel-filter</code>: further filter matches in relation to the best match after the cutoff is applied. Usually set between <code>0</code> and <code>0.2</code>. <code>0</code> means only matches with same score (# of <em>k-mers</em>) as the best match will be kept.</li>
+<li><code>--reassign</code>: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with <code>ganon reassign</code>.</li>
+</ul>
+<h3 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h3>
+<ul>
+<li><code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>corr</code> or <code>abundance</code> for taxonomic profiling, <code>reads</code> or <code>dist</code> for sequence profiling and <code>matches</code> to report a summary of all matches.</li>
+<li><code>--min-count</code>: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between <code>0.0001</code> (0.01%) and <code>0.001</code> (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively <code>--top-percentile</code> can be used to keep a relative amount of taxa instead a hard cutoff.</li>
+</ul>
+<p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues">issue</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="ganon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../default_databases/" class="btn btn-neutral float-right" title="Databases (ganon build)">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../default_databases/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -8,7 +8,7 @@
     <title>Reports (ganon report) - ganon</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,12 +17,11 @@
         var mkdocs_page_url = null;
       </script>
     
-    <script src="../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -34,7 +33,7 @@
           <a href=".." class="icon icon-home"> ganon
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -42,6 +41,10 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../start/">Quick Start</a>
                 </li>
               </ul>
               <ul>
@@ -59,6 +62,18 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Reports (ganon report)</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#taxonomic-profile-with-abundance-estimation-default">Taxonomic profile with abundance estimation (default)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#sequence-profile">Sequence profile</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#matches-profile">Matches profile</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#filtering-results">Filtering results</a>
+    </li>
+        </ul>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#report-type-report-type">report type (--report-type)</a>
@@ -66,6 +81,10 @@
         </ul>
     </li>
     </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
                 </li>
               </ul>
               <ul>
@@ -89,8 +108,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>Reports (ganon report)</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">Reports (ganon report)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -100,20 +119,36 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="reports">Reports<a class="headerlink" href="#reports" title="Permanent link">:)</a></h1>
+<p><code>ganon report</code> filters and generates several reports and summaries from the results obtained with <code>ganon classify</code>. It is possible to summarize the results in terms of taxonomic and sequence abundances as well as total number of matches.</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">:)</a></h2>
+<p>Given the output <code>.rep</code> from <code>ganon classify</code> and the database used (<code>--db-prefix</code>):</p>
+<h3 id="taxonomic-profile-with-abundance-estimation-default">Taxonomic profile with abundance estimation (default)<a class="headerlink" href="#taxonomic-profile-with-abundance-estimation-default" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash">ganon report --db-prefix mydb --input results.rep --output-prefix tax_profile --report-type abundance
+</code></pre>
+<h3 id="sequence-profile">Sequence profile<a class="headerlink" href="#sequence-profile" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash">ganon report --db-prefix mydb --input results.rep --output-prefix seq_profile --report-type reads
+</code></pre>
+<h3 id="matches-profile">Matches profile<a class="headerlink" href="#matches-profile" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash">ganon report --db-prefix mydb --input results.rep --output-prefix matches --report-type matches
+</code></pre>
+<h3 id="filtering-results">Filtering results<a class="headerlink" href="#filtering-results" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash">ganon report --db-prefix mydb --input results.rep --output-prefix filtered --min-count 0.0005 --top-percentile 0.8
+</code></pre>
+<p>This will keep only results with a min. abundance of <code>0.05%</code> and only the top <code>80%</code> most abundant.</p>
 <h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
 <h3 id="report-type-report-type">report type (--report-type)<a class="headerlink" href="#report-type-report-type" title="Permanent link">:)</a></h3>
-<p>Several reports are availble with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
+<p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
 <p><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</p>
 <p><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</p>
 <p><code>dist</code> is the same of <code>reads</code> with read count re-distribution</p>
 <p><code>corr</code> is the same of <code>reads</code> with correction by genome size</p>
-<p><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This report will output the total number of matches instead the total number of reads reported in all other reports.</em></p>
+<p><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This option will output the total number of matches instead the total number of reads</em></p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
         <a href="../classification/" class="btn btn-neutral float-left" title="Classification (ganon classify)"><span class="icon icon-circle-arrow-left"></span> Previous</a>
-        <a href="../outputfiles/" class="btn btn-neutral float-right" title="Output files">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="../table/" class="btn btn-neutral float-right" title="Table (ganon table)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -139,18 +174,19 @@
       <span><a href="../classification/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
-      <span><a href="../outputfiles/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="../table/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
-    <script>var base_url = '..';</script>
-    <script src="../js/theme_extra.js" defer></script>
-    <script src="../js/theme.js" defer></script>
-      <script src="../search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
-        };
+        });
     </script>
 
 </body>

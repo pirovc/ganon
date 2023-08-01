@@ -8,7 +8,7 @@
     <title>Databases (ganon build) - ganon</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,12 +17,11 @@
         var mkdocs_page_url = null;
       </script>
     
-    <script src="../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -34,7 +33,7 @@
           <a href=".." class="icon icon-home"> ganon
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -42,6 +41,10 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../start/">Quick Start</a>
                 </li>
               </ul>
               <ul class="current">
@@ -65,13 +68,13 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#reducing-database-size">Reducing database size</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#hibf">HIBF</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#top-assemblies">Top assemblies</a>
-    </li>
     <li class="toctree-l3"><a class="reference internal" href="#false-positive">False positive</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#fixed-size">Fixed size</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#hibf">HIBF</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#top-assemblies">Top assemblies</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#mode">Mode</a>
     </li>
@@ -99,6 +102,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
@@ -119,8 +126,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>Databases (ganon build)</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">Databases (ganon build)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -186,7 +193,7 @@
 <td>One representative assembly per species</td>
 <td>18073</td>
 <td>21 - 35</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-c 'representative genome'" --db-prefix abfv_rs_rg</code></details></td>
+<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --representative-genomes --db-prefix abfv_rs_rg</code></details></td>
 </tr>
 </tbody>
 </table>
@@ -301,19 +308,23 @@
 <pre><code class="language-bash">genome_updater.sh -e assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o recovered_files -m -t 12 
 </code></pre>
 <h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
+<h3 id="false-positive">False positive<a class="headerlink" href="#false-positive" title="Permanent link">:)</a></h3>
+<p>A higher <code>--max-fp</code> value will generate a smaller database but with a higher number of false positive matches on classification. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>. Values between <code>0.001</code> (0.1%) and <code>0.3</code> (30%) are generally used. </p>
+<div class="admonition hint">
+<p class="admonition-title">Hint</p>
+<p>When using higher <code>--max-fp</code> values, more false positive results may be generated. This can be filtered with the <code>--fpr-query</code> parameter in <code>ganon classify</code> </p>
+</div>
+<h3 id="fixed-size">Fixed size<a class="headerlink" href="#fixed-size" title="Permanent link">:)</a></h3>
+<p>A fixed size for the database filter can be defined with <code>--filter-size</code>. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>.</p>
 <h3 id="hibf">HIBF<a class="headerlink" href="#hibf" title="Permanent link">:)</a></h3>
-<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the Interleaved Bloom Filter (IBF) and provides <em>smaller</em> databases with <em>faster</em> query times (<a href="https://www.biorxiv.org/content/10.1101/2022.08.01.502266v1">pre-print</a>). However, the HIBF takes longer to build and has less flexibility regarding size control. The HIBF can be generated in <code>ganon build</code> and <code>ganon build-custom</code> with the <code>--hibf</code> parameter.</p>
-<p><strong>This is the best method to reduce large database sizes and to achieve faster classification speed.</strong></p>
+<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4">article</a>). However, the HIBF takes longer to build and has less flexibility regarding size and further options in ganon. The HIBF can be generated in <code>ganon build</code> and <code>ganon build-custom</code> with the <code>--hibf</code> parameter.</p>
+<p>Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. A recommended value for high sensitivity is 1% (<code>--hibf --max-fp 0.001</code>).</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <ul>
-<li>For larger reference sets, huge amount of reads to query or production level analysis -&gt; HIBF</li>
-<li>For quick build and analysis with smaller data -&gt; IBF (default)</li>
+<li>For large unbalanced reference sets, lots of reads to query -&gt; HIBF</li>
+<li>For quick build and more flexibility -&gt; IBF (default)</li>
 </ul>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><a href="https://github.com/seqan/raptor/releases/tag/raptor-v3.0.0">raptor (v3.0.0)</a> has to be installed to build databases with <code>--hibf</code></p>
 </div>
 <h3 id="top-assemblies">Top assemblies<a class="headerlink" href="#top-assemblies" title="Permanent link">:)</a></h3>
 <p>RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can not only bias analysis but also brings redundancy to the database. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed <a href="#refseq-and-genbank">above</a>) and use the full set of assemblies for specific clade analysis.</p>
@@ -325,10 +336,6 @@
 <li><code>ganon build --genome-updater "-A 'genus:3'"</code> will select three assemblies for each genus</li>
 </ul>
 </div>
-<h3 id="false-positive">False positive<a class="headerlink" href="#false-positive" title="Permanent link">:)</a></h3>
-<p>A higher <code>--max-fp</code> value will generate a smaller database but with a higher number of false positive matches on classification. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>. Values between <code>0.01</code> and <code>0.3</code> are generally used.</p>
-<h3 id="fixed-size">Fixed size<a class="headerlink" href="#fixed-size" title="Permanent link">:)</a></h3>
-<p>A fixed size for the database filter can be defined with <code>--filter-size</code>. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>.</p>
 <h3 id="mode">Mode<a class="headerlink" href="#mode" title="Permanent link">:)</a></h3>
 <p><code>--mode</code> offers 5 different categories to build a database controlling the trade-off between size and classification speed.</p>
 <ul>
@@ -338,7 +345,7 @@
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>If <code>--filter-size</code> is used, <code>smaller</code> and <code>smallest</code> to the false positive and not to the database size which is fixed.</p>
+<p>If <code>--filter-size</code> is used, <code>smaller</code> and <code>smallest</code> refers to the false positive and not to the database size (which is fixed). </p>
 </div>
 <h3 id="split-databases">Split databases<a class="headerlink" href="#split-databases" title="Permanent link">:)</a></h3>
 <p>Ganon allows classification with multiple databases in one level or in an hierarchy (<a href="../classification/#multiple-and-hierarchical-classification">More details</a>). This means that databases can be built separately and used in any combination as desired. There are usually some benefits of doing so:</p>
@@ -355,7 +362,7 @@
 <li>The bigger the <code>--window-size</code>, the less information needs to be stored resulting in smaller databases but with decrease classification accuracy.</li>
 </ul>
 <h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">:)</a></h3>
-<p>Besides the huge benefits of using <a href="#hibf">HIBF</a> and specific sub-sets of big repositories shown on the <a href="#commonly-used-sub-sets">default databases table</a>, examples of other reduction strategies (without <code>--hibf</code>) can be seen below:</p>
+<p>Besides the benefits of using <a href="#hibf">HIBF</a> and specific sub-sets of big repositories shown on the <a href="#commonly-used-sub-sets">default databases table</a>, examples of other reduction strategies (without <code>--hibf</code>) can be seen below:</p>
 <p><em>RefSeq archaeal complete genomes from 20230505</em></p>
 <table>
 <thead>
@@ -413,7 +420,7 @@
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href=".." class="btn btn-neutral float-left" title="ganon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../start/" class="btn btn-neutral float-left" title="Quick Start"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../custom_databases/" class="btn btn-neutral float-right" title="Custom databases (ganon build-custom)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -437,21 +444,22 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../start/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../custom_databases/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
-    <script>var base_url = '..';</script>
-    <script src="../js/theme_extra.js" defer></script>
-    <script src="../js/theme.js" defer></script>
-      <script src="../search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
-        };
+        });
     </script>
 
 </body>

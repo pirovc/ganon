@@ -8,7 +8,7 @@
     <title>ganon</title>
     <link rel="stylesheet" href="css/theme.css" />
     <link rel="stylesheet" href="css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,12 +17,11 @@
         var mkdocs_page_url = null;
       </script>
     
-    <script src="js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -34,7 +33,7 @@
           <a href="." class="icon icon-home"> ganon
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -49,19 +48,31 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#installation-from-source">Installation from source</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#dependencies">Dependencies</a>
+    <li class="toctree-l3"><a class="reference internal" href="#dependencies-python">Dependencies Python</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#dependencies-c">Dependencies C++</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#downloading-and-building-ganon-submodules">Downloading and building ganon + submodules</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#running-tests">Running tests</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#installing-raptor-optional">Installing raptor (optional)</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#dependencies">Dependencies</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#downloading-and-building-raptor-submodules">Downloading and building raptor + submodules</a>
+    </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#important-parameters">Important parameters</a>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#parameters">Parameters</a>
     </li>
     </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="start/">Quick Start</a>
                 </li>
               </ul>
               <ul>
@@ -78,6 +89,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="reports/">Reports (ganon report)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="table/">Table (ganon table)</a>
                 </li>
               </ul>
               <ul>
@@ -101,8 +116,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>ganon</li>
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">ganon</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -135,11 +150,8 @@
 </code></pre>
 <p>However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:</p>
 <h2 id="installation-from-source">Installation from source<a class="headerlink" href="#installation-from-source" title="Permanent link">:)</a></h2>
-<h3 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">:)</a></h3>
+<h3 id="dependencies-python">Dependencies Python<a class="headerlink" href="#dependencies-python" title="Permanent link">:)</a></h3>
 <ul>
-<li>gcc &gt;=7</li>
-<li>cmake &gt;=3.10</li>
-<li>zlib</li>
 <li>python &gt;=3.6</li>
 <li>pandas &gt;=1.1.0</li>
 <li><a href="https://github.com/pirovc/multitax">multitax</a> &gt;=1.3.1</li>
@@ -147,21 +159,29 @@
 <pre><code class="language-bash">python3 -V # &gt;=3.6
 python3 -m pip install &quot;pandas&gt;=1.1.0&quot; &quot;multitax&gt;=1.3.1&quot;
 </code></pre>
+<h3 id="dependencies-c">Dependencies C++<a class="headerlink" href="#dependencies-c" title="Permanent link">:)</a></h3>
+<ul>
+<li>GCC &gt;=7</li>
+<li>CMake &gt;=3.10</li>
+<li>zlib</li>
+</ul>
 <h3 id="downloading-and-building-ganon-submodules">Downloading and building ganon + submodules<a class="headerlink" href="#downloading-and-building-ganon-submodules" title="Permanent link">:)</a></h3>
 <pre><code class="language-bash">git clone --recurse-submodules https://github.com/pirovc/ganon.git
 </code></pre>
-<pre><code class="language-bash">cd ganon
+<pre><code class="language-bash"># Install Python side
+cd ganon
 python3 setup.py install --record files.txt  # optional
-mkdir build_cpp
-cd build_cpp
+# Compile and install C++ side
+mkdir -p build
+cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
-make
+make -j 4
 sudo make install  # optional
 </code></pre>
 <ul>
 <li>to change install location (e.g. <code>/myprefix/bin/</code>), set the installation prefix in the cmake command with <code>-DCMAKE_INSTALL_PREFIX=/myprefix/</code></li>
 <li>use <code>-DINCLUDE_DIRS</code> to set alternative paths to cxxopts and Catch2 libs.</li>
-<li>to classify extremely large reads (&gt;65000bp) use <code>-DLONGREADS=ÒN</code></li>
+<li>to classify extremely large reads or contigs that would need more than 65000 k-mers, use <code>-DLONGREADS=ON</code></li>
 </ul>
 <p>If everything was properly installed, the following commands should show the help pages without errors:</p>
 <pre><code class="language-bash">ganon -h
@@ -169,27 +189,30 @@ sudo make install  # optional
 <h3 id="running-tests">Running tests<a class="headerlink" href="#running-tests" title="Permanent link">:)</a></h3>
 <pre><code class="language-bash">python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
-cd build_cpp/
+cd build/
 ctest -VV .
 </code></pre>
-<h2 id="important-parameters">Important parameters<a class="headerlink" href="#important-parameters" title="Permanent link">:)</a></h2>
-<p>The most important parameters and trade-offs are:</p>
+<h3 id="installing-raptor-optional">Installing raptor (optional)<a class="headerlink" href="#installing-raptor-optional" title="Permanent link">:)</a></h3>
+<p>If you want to use the Hierarchical Interleaved Bloom Filter <code>--hibf</code> in <code>ganon build</code> you will need to install <a href="https://github.com/seqan/raptor">raptor</a> either via conda <code>conda install -c bioconda -c conda-forge raptor</code> (already included in the installation if you installed ganon via conda) or from source:</p>
+<h4 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">:)</a></h4>
 <ul>
-<li><code>ganon build</code> <code>--hibf</code>: build smaller databases that can be queried faster. Building will take longer.</li>
-<li><code>ganon build</code> <code>--window-size --kmer-size</code>: the <em>window</em> value should always be the same or larger than the <em>kmer</em> value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small <em>kmer</em> and/or large <em>window</em>. Larger <em>kmer</em> values (e.g. <code>31</code>) will improve classification, specially read binning, at a cost of way bigger databases.</li>
+<li>CMake &gt;= 3.18</li>
+<li>GCC 11, 12 or 13 (most recent minor version)</li>
+<li>git</li>
 </ul>
-<hr />
+<h4 id="downloading-and-building-raptor-submodules">Downloading and building raptor + submodules<a class="headerlink" href="#downloading-and-building-raptor-submodules" title="Permanent link">:)</a></h4>
+<pre><code class="language-bash">git clone --branch raptor-v3.0.0 --recurse-submodules https://github.com/seqan/raptor
+</code></pre>
+<pre><code class="language-bash">cd raptor
+mkdir -p build
+cd build
+cmake ..
+make -j 4
+</code></pre>
 <ul>
-<li><code>ganon classify</code> <code>--rel-cutoff</code>: this value defines the threshold for matches between reads and database. Higher <code>--rel-cutoff</code> values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between <code>0.4</code> and <code>0.8</code> may provide better results. For read binning, lower values between <code>0.2</code> and <code>0.4</code> are recommended.</li>
-<li><code>ganon classify</code> <code>--rel-filter</code>: further filter top matches after cutoff is applied. Usually set between <code>0</code> and <code>0.2</code>.</li>
-<li><code>ganon classify</code> <code>--reassign</code>: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with <code>ganon reassign</code>.</li>
+<li>binaries will be located in the <code>bin</code> directory</li>
+<li>you may have to inform <code>ganon build</code> where to find the binaries with <code>--raptor-path raptor/build/bin</code></li>
 </ul>
-<hr />
-<ul>
-<li><code>ganon report</code> <code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>corr</code> or <code>abundance</code> for taxonomic profiling, <code>reads</code> or <code>dist</code> for sequence profiling and <code>matches</code> to report a summary of all matches.</li>
-<li><code>ganon report</code> <code>--min-count</code>: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between <code>0.0001</code> (0.01%) and <code>0.001</code> (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively <code>--top-percentile</code> can be used to keep a relative amount of taxa instead a hard cutoff.</li>
-</ul>
-<p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues">issue</a>.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">:)</a></h2>
 <pre><code>usage: ganon [-h] [-v]
              {build,build-custom,update,classify,reassign,report,table} ...
@@ -197,7 +220,7 @@ ctest -VV .
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.6.0
+   _|   v. 1.7.0
 - - - - - - - - - -
 
 positional arguments:
@@ -220,8 +243,9 @@ options:
   <summary>ganon build</summary>
 
 
-<pre><code>usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-u] [-m [...]] [-z [...]] -d DB_PREFIX [-x] [-t]
-                   [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet] [--write-info-file]
+<pre><code>usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]] [--skip-genome-size]
+                   -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet]
+                   [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -243,12 +267,16 @@ download arguments:
   -o , --top            Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
                         Download only sub-set of complete genomes (default: False)
+  -r, --representative-genomes
+                        Download only sub-set of representative genomes (default: False)
   -u , --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
+                        full genomes. (default: False)
 
 important arguments:
   -x , --taxonomy       Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
@@ -287,9 +315,9 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 
-<pre><code>usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [-r [...]] [-q [...]] -d
-                          DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose]
-                          [--quiet] [--write-info-file]
+<pre><code>usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [--skip-genome-size] [-r [...]]
+                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                          [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -322,6 +350,8 @@ custom arguments:
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
+                        full genomes. (default: False)
 
 ncbi arguments:
   -r [ ...], --ncbi-sequence-info [ ...]
@@ -404,8 +434,8 @@ optional arguments:
 
 
 <pre><code>usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
-                      [-c [...]] [-e [...]] [-o] [--output-lca] [--output-all] [--output-unclassified] [--output-single]
-                      [-t] [-l [...]] [-r [...]] [-a] [--verbose] [--quiet]
+                      [-c [...]] [-e [...]] [-f [...]] [-o] [--output-lca] [--output-all] [--output-unclassified]
+                      [--output-single] [-t] [-b] [-a] [-l [...]] [-r [...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -427,6 +457,10 @@ cutoff/filter arguments:
                         Additional relative percentage of minimizers (relative to the best match) to keep a match.
                         Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
                         0). 1 for no filter (default: [0.0])
+  -f [ ...], --fpr-query [ ...]
+                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
+                        Generally used to remove false positives matches querying a database build with large --max-fp.
+                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
 
 output arguments:
   -o , --output-prefix 
@@ -441,6 +475,10 @@ output arguments:
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --reassign). Will report (.tre) sequence
+                        abundances. This file can be re-generated with 'ganon report'. (default: False)
+  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
+                        can be re-generated with 'ganon reassign'. (default: False)
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
@@ -450,8 +488,6 @@ other arguments:
                         phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
                         'ganon report' command for other types of abundances (reads, matches) with further filtration
                         and output options (default: [])
-  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
-                        can be re-generated with the 'ganon reassign'. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 </code></pre>
@@ -492,9 +528,9 @@ other arguments:
   <summary>ganon report</summary>
 
 
-<pre><code>usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]] [-f] [-t]
-                    [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose] [--quiet] [--min-count]
-                    [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
+<pre><code>usage: ganon report [-h] -i [...] [-e INPUT_EXTENSION] -o OUTPUT_PREFIX [-d [...]] [-x] [-m [...]] [-z [...]]
+                    [--skip-genome-size] [-f] [-t] [-r [...]] [-s] [-a] [-y] [-p [...]] [-k [...]] [-c] [--verbose]
+                    [--quiet] [--min-count] [--max-count] [--names [...]] [--names-with [...]] [--taxids [...]]
 
 options:
   -h, --help            show this help message and exit
@@ -520,6 +556,8 @@ db/tax arguments:
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
+  --skip-genome-size    Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when
+                        using sequences not representing full genomes. (default: False)
 
 output arguments:
   -f , --output-format 
@@ -630,7 +668,7 @@ filter arguments:
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="default_databases/" class="btn btn-neutral float-right" title="Databases (ganon build)">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="start/" class="btn btn-neutral float-right" title="Quick Start">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -654,24 +692,25 @@ filter arguments:
     
     
     
-      <span><a href="default_databases/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="start/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
-    <script>var base_url = '.';</script>
-    <script src="js/theme_extra.js" defer></script>
-    <script src="js/theme.js" defer></script>
-      <script src="search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
-        };
+        });
     </script>
 
 </body>
 </html>
 
 <!--
-MkDocs version : 1.4.2
-Build Date UTC : 2023-07-04 15:06:39.842729+00:00
+MkDocs version : 1.5.1
+Build Date UTC : 2023-08-01 14:21:49.494273+00:00
 -->
