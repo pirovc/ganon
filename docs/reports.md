@@ -1,11 +1,42 @@
 # Reports
 
+`ganon report` filters and generates several reports and summaries from the results obtained with `ganon classify`. It is possible to summarize the results in terms of taxonomic and sequence abundances as well as total number of matches.
+
+## Examples
+
+Given the output `.rep` from `ganon classify` and the database used (`--db-prefix`):
+
+### Taxonomic profile with abundance estimation (default)
+
+```bash
+ganon report --db-prefix mydb --input results.rep --output-prefix tax_profile --report-type abundance
+```
+
+### Sequence profile
+
+```bash
+ganon report --db-prefix mydb --input results.rep --output-prefix seq_profile --report-type reads
+```
+
+### Matches profile
+
+```bash
+ganon report --db-prefix mydb --input results.rep --output-prefix matches --report-type matches
+```
+
+### Filtering results
+
+```bash
+ganon report --db-prefix mydb --input results.rep --output-prefix filtered --min-count 0.0005 --top-percentile 0.8
+```
+
+This will keep only results with a min. abundance of `0.05%` and only the top `80%` most abundant.
 
 ## Parameter details
 
 ### report type (--report-type)
 
-Several reports are availble with `--report-type`: `reads`, `abundance`, `dist`, `corr`, `matches`:
+Several reports are available with `--report-type`: `reads`, `abundance`, `dist`, `corr`, `matches`:
 
 `reads` reports **sequence abundances** which are the basic proportion of reads classified in the sample.
 
@@ -15,4 +46,4 @@ Several reports are availble with `--report-type`: `reads`, `abundance`, `dist`,
 
 `corr` is the same of `reads` with correction by genome size
 
-`matches` will report the total number of matches classified, either unique or shared. *This report will output the total number of matches instead the total number of reads reported in all other reports.*
+`matches` will report the total number of matches classified, either unique or shared. *This option will output the total number of matches instead the total number of reads*

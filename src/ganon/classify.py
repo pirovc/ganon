@@ -68,7 +68,7 @@ def classify(cfg):
             report_params = {"db_prefix": cfg.db_prefix,
                              "input": cfg.output_prefix + ".rep",
                              "output_prefix": cfg.output_prefix,
-                             "min_count": 0.0001,
+                             "min_count": 0.005,
                              "ranks": cfg.ranks,
                              "output_format": "tsv",
                              "verbose": cfg.verbose,
