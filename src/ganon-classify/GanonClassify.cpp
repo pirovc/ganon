@@ -693,18 +693,18 @@ size_t load_filter( THIBF&             filter,
     {
         for ( auto const& filename : file_list )
         {
-            // based on the filename, try to get only assembly accession (e.g.
-            // GCF_013391805.1_ASM1339180v1_genomic.fna.gz), otherwise use filename as target
+            // based on the filename, get target.minimiser
+            // (e.g. 562.minimiser or GCF_013391805.1.minimiser), otherwise use filename as target
             auto   f     = std::filesystem::path( filename ).filename().string();
-            size_t found = f.find( '_' );
+            size_t found = f.find( ".minimiser" );
             if ( found != std::string::npos )
-            {
-                found = f.find( '_', found + 1 );
-                if ( found != std::string::npos )
-                {
-                    f = f.substr( 0, found );
-                }
-            }
+                f = f.substr( 0, found );
+
+            // workaround when file has a . (e.g. GCF_013391805.1)
+            // . replaced by || in ganon build wrapper
+            size_t start_pos = f.find( "||" );
+            if ( start_pos != std::string::npos )
+                f.replace( start_pos, 2, "." );
 
             bin_map.push_back( std::make_tuple( binno, f ) );
             // same fpr for all

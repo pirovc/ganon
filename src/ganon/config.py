@@ -349,9 +349,6 @@ class Config:
                 if self.input_target == "sequence":
                     print_log("--hibf is only supported with --input-target file")
                     return False
-                elif self.level and self.level != "assembly":
-                    print_log("--hibf is only supported without --level or with --level assembly")
-                    return False
 
             if self.level == "custom" and not self.input_file:
                 print_log("--level custom requires --input-file")

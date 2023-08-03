@@ -4,6 +4,7 @@ import os
 import shutil
 import pickle
 import math
+from pathlib import Path
 
 from ganon.config import Config
 from ganon.util import check_file
@@ -22,6 +23,7 @@ from ganon.tax_util import parse_file_accession
 from ganon.tax_util import get_genome_size
 
 from multitax import NcbiTx, GtdbTx
+
 
 
 def build(cfg):
@@ -313,19 +315,46 @@ def build_custom(cfg, which_call: str="build_custom"):
             tx = time.time()
             print_log("Building index (raptor)", cfg.quiet)
 
-            # Count number of files = bins
-            with open(target_info_file, 'r') as fp:
-                n_bins = len(fp.readlines())
+            # rewrite target_info_file with one line for each target
+            # symbolic link is created for the first time with the target name
+            # this is a workaround to name targets with raptor
+            target_files = {}
+            with open(target_info_file, 'r') as tif:
+                for line in tif:
+                    col = line.rstrip().split("\t")
+                    if col[1] not in target_files:
+                        target_files[col[1]] = []
+                    target_files[col[1]].append(col[0])
+            n_bins = len(target_files)
+
+            raptor_input_file = build_output_folder + "hibf.txt"
+            with open(raptor_input_file, "w") as filehibf:
+                for target, files in target_files.items():
+                    t = target.replace(".", "||")  # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
+                    # Create symbolic link with correct name for the first file
+                    Path(build_output_folder + t + ".fna.gz").symlink_to(os.path.abspath(files[0]))
+                    # Write input file for raptor
+                    filehibf.write(build_output_folder + t + ".fna.gz " + " ".join(files[1:]) + "\n")
+
+            print_log("raptor prepare", cfg.quiet)
+            run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
+                                              "--input '" + raptor_input_file + "'",
+                                              "--output '" + build_output_folder + "'",
+                                              "--kmer " + str(cfg.kmer_size),
+                                              "--window " + str(cfg.window_size),
+                                              "--quiet" if not cfg.verbose else "",
+                                              "--threads " + str(cfg.threads)])
+            run(run_raptor_prepare_cmd, quiet=cfg.quiet)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
             print_log("raptor layout", cfg.quiet)
             # Use info file as input for raptor 
             run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
-                                              "--input-file '" + target_info_file + "'",
+                                              "--input-file '" + build_output_folder + "minimiser.list'",
                                               "--tmax " + str(math.ceil(math.sqrt(n_bins) /64.0 ) * 64),
-                                              "--kmer-size " + str(cfg.kmer_size),
                                               "--num-hash-functions " + str(cfg.hash_functions),
                                               "--false-positive-rate " + str(cfg.max_fp),
-                                              "--output-filename '" + files_output_folder + "raptor_layout.binning.out'",
+                                              "--output-filename '" + build_output_folder + "raptor_layout.binning.out'",
                                               "--threads " + str(cfg.threads)])
             run(run_raptor_layout_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
@@ -333,14 +362,12 @@ def build_custom(cfg, which_call: str="build_custom"):
             tx = time.time()
             print_log("raptor build", cfg.quiet)
             run_raptor_build_cmd = " ".join([cfg.path_exec['raptor'], "build",
-                                             "--kmer " + str(cfg.kmer_size),
-                                             "--window " + str(cfg.window_size),
                                              "--hash " + str(cfg.hash_functions),
                                              "--fpr " + str(cfg.max_fp),
                                              "--output '" + cfg.db_prefix + ".hibf" + "'",
                                              "--threads " + str(cfg.threads),
-                                             "--verbose" if cfg.verbose else "",
-                                             "--input '" + files_output_folder + "raptor_layout.binning.out'"])
+                                             "--quiet" if not cfg.verbose else "",
+                                             "--input '" + build_output_folder + "raptor_layout.binning.out'"])
             run(run_raptor_build_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
