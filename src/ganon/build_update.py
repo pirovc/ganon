@@ -85,6 +85,7 @@ def build(cfg):
     build_default_params = {"db_prefix": cfg.db_prefix,
                             "taxonomy": cfg.taxonomy,
                             "taxonomy_files": cfg.taxonomy_files,
+                            "genome_size_files": cfg.genome_size_files,
                             "threads": cfg.threads,
                             "max_fp": cfg.max_fp,
                             "filter_size": cfg.filter_size,
@@ -330,7 +331,10 @@ def build_custom(cfg, which_call: str="build_custom"):
             raptor_input_file = build_output_folder + "hibf.txt"
             with open(raptor_input_file, "w") as filehibf:
                 for target, files in target_files.items():
-                    t = target.replace(".", "||")  # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
+                    # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
+                    # raptor v3.0.0 "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
+                    # Substitute by placeholders
+                    t = target.replace(".", "|||").replace(" ", "---")  
                     # Create symbolic link with correct name for the first file
                     Path(build_output_folder + t + ".fna.gz").symlink_to(os.path.abspath(files[0]))
                     # Write input file for raptor

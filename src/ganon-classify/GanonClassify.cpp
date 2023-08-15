@@ -654,6 +654,16 @@ void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hie
     }
 }
 
+static inline void replace_all( std::string& str, const std::string& from, const std::string& to )
+{
+    size_t start_pos = 0;
+    while ( ( start_pos = str.find( from, start_pos ) ) != std::string::npos )
+    {
+        str.replace( start_pos, from.length(), to );
+        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+    }
+}
+
 size_t load_filter( THIBF&             filter,
                     IBFConfig&         ibf_config,
                     TBinMap&           bin_map,
@@ -701,10 +711,9 @@ size_t load_filter( THIBF&             filter,
                 f = f.substr( 0, found );
 
             // workaround when file has a . (e.g. GCF_013391805.1)
-            // . replaced by || in ganon build wrapper
-            size_t start_pos = f.find( "||" );
-            if ( start_pos != std::string::npos )
-                f.replace( start_pos, 2, "." );
+            // "." replaced by "|||" in ganon build wrapper
+            replace_all( f, "|||", "." );
+            replace_all( f, "---", " " );
 
             bin_map.push_back( std::make_tuple( binno, f ) );
             // same fpr for all
