@@ -79,10 +79,10 @@ def build(cfg):
                            "input_extension": "fna.gz",
                            "input_recursive": True,
                            "input_target": "file",
-                           "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.db_prefix,
+                            "level": cfg.level,
                             "taxonomy": cfg.taxonomy,
                             "taxonomy_files": cfg.taxonomy_files,
                             "genome_size_files": cfg.genome_size_files,
@@ -155,7 +155,6 @@ def update(cfg):
                            "input_extension": "fna.gz",
                            "input_recursive": True,
                            "input_target": "file",
-                           "level": "assembly",
                            "ncbi_file_info": [assembly_summary]}
 
     build_default_params = {"db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
@@ -171,6 +170,7 @@ def update(cfg):
     build_custom_params.update(build_default_params)
 
     loaded_params = load_config(files_output_folder + "config.pkl")
+    build_custom_params["level"] = loaded_params["level"]
     build_custom_params["taxonomy"] = loaded_params["taxonomy"]
     build_custom_params["max_fp"] = loaded_params["max_fp"]
     build_custom_params["filter_size"] = loaded_params["filter_size"]
@@ -366,8 +366,6 @@ def build_custom(cfg, which_call: str="build_custom"):
             tx = time.time()
             print_log("raptor build", cfg.quiet)
             run_raptor_build_cmd = " ".join([cfg.path_exec['raptor'], "build",
-                                             "--hash " + str(cfg.hash_functions),
-                                             "--fpr " + str(cfg.max_fp),
                                              "--output '" + cfg.db_prefix + ".hibf" + "'",
                                              "--threads " + str(cfg.threads),
                                              "--quiet" if not cfg.verbose else "",
