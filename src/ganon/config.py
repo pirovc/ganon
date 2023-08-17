@@ -63,7 +63,7 @@ class Config:
         build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")  
 
         build_database_args = build_parser.add_argument_group("database arguments")
-        build_database_args.add_argument("-l", "--level",          type=str, default="species", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' or 'assembly'")
+        build_database_args.add_argument("-l", "--level",          type=str, default="assembly", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' or 'assembly'")
         
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
