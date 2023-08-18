@@ -334,11 +334,15 @@ def build_custom(cfg, which_call: str="build_custom"):
                     # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
                     # raptor v3.0.0 "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
                     # Substitute by placeholders
-                    t = target.replace(".", "|||").replace(" ", "---")  
+                    new_target = target.replace(".", "|||").replace(" ", "---")
+                    # Select first file
+                    first_file = os.path.abspath(files[0])
+                    # Get extension(s)
+                    exts = "".join(Path(first_file).suffixes)
                     # Create symbolic link with correct name for the first file
-                    Path(build_output_folder + t + ".fna.gz").symlink_to(os.path.abspath(files[0]))
-                    # Write input file for raptor
-                    filehibf.write(build_output_folder + t + ".fna.gz " + " ".join(files[1:]) + "\n")
+                    Path(build_output_folder + new_target + exts).symlink_to(first_file)
+                    # Write input file for raptor (space separated)
+                    filehibf.write(build_output_folder + new_target + exts + " " + " ".join(files[1:]) + "\n")
 
             print_log("raptor prepare", cfg.quiet)
             run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
