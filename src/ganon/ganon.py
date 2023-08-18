@@ -20,9 +20,11 @@ def main(which: str=None, cfg=None, **kwargs):
     if cfg is None:
         cfg = Config(which, **kwargs)
 
-    # Validate
+    # Validate and set special default
     if not cfg.validate():
         return False
+
+    cfg.set_defaults()
 
     tx_total = time.time()
 

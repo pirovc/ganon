@@ -21,6 +21,7 @@ class TestBuild(unittest.TestCase):
     default_params = {"organism_group": ["archaea", "bacteria", "viral"],
                       "source": ["genbank"],
                       "taxonomy": "skip",
+                      "level": "assembly",
                       "threads": 1,
                       "write_info_file": True,
                       "keep_files": True,
