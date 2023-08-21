@@ -338,7 +338,9 @@ def build_custom(cfg, which_call: str="build_custom"):
                     # Select first file
                     first_file = os.path.abspath(files[0])
                     # Get extension(s)
-                    exts = "".join(Path(first_file).suffixes)
+                    suffixes = Path(first_file).suffixes
+                    # If last one is gz, get real suffix
+                    exts = "".join(suffixes[-2:]) if suffixes[-1]==".gz" else suffixes[-1]
                     # Create symbolic link with correct name for the first file
                     Path(build_output_folder + new_target + exts).symlink_to(first_file)
                     # Write input file for raptor (space separated)
