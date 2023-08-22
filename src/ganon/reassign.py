@@ -155,7 +155,12 @@ def reassign(cfg):
             with open(rep_file, "r") as rep:
                 for line in rep:
                     if line[0] != "#":
-                        hierarchy_name, target, direct_matches, _, _, rank, name = line.rstrip().split("\t")
+                        fields = line.rstrip().split("\t")
+                        hierarchy_name = fields[0]
+                        target = fields[1]
+                        direct_matches = fields[2]
+                        rank = fields[5] if len(fields)>=6 else ""
+                        name = fields[6] if len(fields)>=7 else ""
                         # Only print line of targets
                         if (hierarchy == "" or hierarchy_name == hierarchy) and targets[target] in reassigned_matches:
                             # LCA matches are zero, since they will be reassigned to other nodes
