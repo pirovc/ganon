@@ -17,6 +17,7 @@ class Config:
                   "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "custom"]
+    choices_input_target = ["file", "sequence"]
     choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb",
                                   "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
@@ -86,7 +87,7 @@ class Config:
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",        type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
-        build_custom_args.add_argument("-a", "--input-target",      type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-a", "--input-target",      type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=self.choices_input_target)
         build_custom_args.add_argument("-l", "--level",             type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ", ".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
         build_custom_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
         build_custom_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="", help="Specific files for genome size estimation - otherwise files will be downloaded")

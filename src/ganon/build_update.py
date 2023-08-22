@@ -289,7 +289,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
             user_bins_col = "specialization"  # if specialization was requested
-        elif cfg.level:  # if any other level is provided (leaves, species, ...)
+        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
             user_bins_col = "node"
 
         # Filter and write taxonomy

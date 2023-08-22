@@ -119,7 +119,7 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
 
         if ( fields.size() == 1 )
         {
-            // target is the file itself (filename only wihtout path)
+            // target is the file itself (filename only without path)
             const auto target       = std::filesystem::path( file ).filename();
             input_map[target][file] = {};
             hashes_count[target]    = 0;
