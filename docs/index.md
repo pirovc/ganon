@@ -122,7 +122,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.7.0
+   _|   v. 1.8.0
 - - - - - - - - - -
 
 positional arguments:
@@ -146,9 +146,9 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [...]] [-a [...]] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]] [--skip-genome-size]
-                   -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart] [--verbose] [--quiet]
-                   [--write-info-file]
+usage: ganon build [-h] [-g [...]] [-a [...]] [-l] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]]
+                   [--skip-genome-size] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                   [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -163,6 +163,10 @@ required arguments:
                         gtdb). Mutually exclusive --organism-group (default: None)
   -d DB_PREFIX, --db-prefix DB_PREFIX
                         Database output prefix (default: None)
+
+database arguments:
+  -l , --level          Highest level to build the database. Options: any available taxonomic rank [species, genus,
+                        ...], 'leaves' or 'assembly' (default: assembly)
 
 download arguments:
   -b [ ...], --source [ ...]
@@ -187,7 +191,8 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
+                        0.001 with --hibf. (default: None)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
@@ -200,7 +205,7 @@ advanced arguments:
                         to balance classification speed and database size. (default: avg)
   -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
   --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        (default: False)
+                        This option will set --max-fp 0.001 as default. (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -273,7 +278,8 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive rate for bloom filters Mutually exclusive --filter-size. (default: 0.05)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
+                        0.001 with --hibf. (default: None)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
@@ -286,7 +292,7 @@ advanced arguments:
                         to balance classification speed and database size. (default: avg)
   -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
   --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        (default: False)
+                        This option will set --max-fp 0.001 as default. (default: False)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
