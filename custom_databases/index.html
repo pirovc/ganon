@@ -280,7 +280,7 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F&quot;\t&quot; '{tax=&quot;1&quot;;for(i=NF;i&gt;1;i--){if(length($i)&gt;3){tax=$i;break;}};print $1&quot;.fna.gz\t&quot;$1&quot;\t&quot;tax}' &gt; ganon_input_file.tsv
 
 # Build ganon database
-ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --hibf --threads 32
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -317,15 +317,15 @@ db=&quot;16S_ribosomal_RNA&quot;
 threads=8
 
 # Download BLAST db - re-run this command many times until all finish (no more output)
-curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;^${db}\..*tar.gz$&quot; | xargs -P ${threads:-1} -I{} wget --continue -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
+curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep &quot;^${db}\..*tar.gz$&quot; | xargs -P ${threads:-1} -I{} wget --continue -nd --quiet --show-progress &quot;https://ftp.ncbi.nlm.nih.gov/blast/db/{}&quot;
 
 # OPTIONAL Download and check MD5
 wget -O - -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/blast/db/${db}\.*tar.gz.md5&quot; &gt; &quot;${db}.md5&quot;
-md5sum &quot;${db}&quot;.*tar.gz &gt; &quot;${db}_downloaded.md5&quot;
-diff -s &lt;(sort -k 2,2 &quot;${db}.md5&quot;) &lt;(sort -k 2,2 &quot;${db}_downloaded.md5&quot;)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
+find -name &quot;${db}.*tar.gz&quot; -type f -printf '%P\n' | xargs -P ${threads:-1} -I{} md5sum {} &gt; &quot;${db}_downloaded.md5&quot;
+diff -sy &lt;(sort -k 2,2 &quot;${db}.md5&quot;) &lt;(sort -k 2,2 &quot;${db}_downloaded.md5&quot;)  # Should print &quot;Files /dev/fd/xx and /dev/fd/xx are identical&quot;
 
 # Extract BLAST db files, if successful, remove .tar.gz
-ls &quot;${db}&quot;*.tar.gz | xargs -P ${threads} -I{} sh -c 'gzip -dc {} | tar --overwrite -vxf - &amp;&amp; rm {}' &gt; &quot;${db}_extracted_files.txt&quot;
+find -name &quot;${db}.*tar.gz&quot; -type f -printf '%P\n' | xargs -P ${threads} -I{} sh -c 'gzip -dc {} | tar --overwrite -vxf - &amp;&amp; rm {}' &gt; &quot;${db}_extracted_files.txt&quot;
 
 # Create folder to write sequence files (split into 10 sub-folders)
 seq 0 9 | xargs -i mkdir -p &quot;${db}&quot;/{}
@@ -337,7 +337,7 @@ awk -v db=&quot;$(realpath ${db})&quot; '{file=db&quot;/&quot;substr($2,1,1)&quo
 sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
-ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --level species --threads 12
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --hibf --level species --threads 12
 
 # Delete extracted files and auxiliary files
 cat &quot;${db}_extracted_files.txt&quot; | xargs rm
@@ -347,7 +347,7 @@ rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><code>blastdbcmd</code> is a command from BLAST software suite and should be installed separately</p>
+<p><code>blastdbcmd</code> is a command from <a href="https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/">BLAST+ software suite</a> (tested version 2.14.0) and should be installed separately.</p>
 </div>
 <h3 id="files-from-genome_updater">Files from genome_updater<a class="headerlink" href="#files-from-genome_updater" title="Permanent link">:)</a></h3>
 <p>To create a ganon database from files previosly downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>:</p>
