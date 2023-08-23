@@ -106,7 +106,7 @@ git clone --branch raptor-v3.0.0 --recurse-submodules https://github.com/seqan/r
 cd raptor
 mkdir -p build
 cd build
-cmake ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-std=c++23 -Wno-interference-size" ..
 make -j 4
 ```
 

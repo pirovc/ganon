@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.7.0"
+    version = "1.8.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -17,6 +17,7 @@ class Config:
                   "other", "plant", "protozoa", "vertebrate_mammalian", "vertebrate_other", "viral"]
     choices_db_source = ["refseq", "genbank"]
     choices_level = ["assembly", "custom"]
+    choices_input_target = ["file", "sequence"]
     choices_ncbi_sequence_info = ["eutils", "nucl_gb", "nucl_wgs", "nucl_est", "nucl_gss", "pdb",
                                   "prot", "dead_nucl", "dead_wgs", "dead_prot"]
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
@@ -45,14 +46,14 @@ class Config:
         build_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
-        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=0.05,  help="Max. false positive rate for bloom filters Mutually exclusive --filter-size.")
+        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,  help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or 0.001 with --hibf.")
         build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,     help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
         build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,    help="The k-mer size to split sequences.")
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
         build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
         build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,     help="Skip sequences smaller then value defined. 0 to not skip any sequence.")
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",  help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.")
+        build_default_advanced_args.add_argument("--hibf",                 action="store_true",  help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored. This option will set --max-fp 0.001 as default.")
 
         ####################################################################################################
 
@@ -60,8 +61,11 @@ class Config:
 
         build_required_args = build_parser.add_argument_group("required arguments")
         build_required_args.add_argument("-g", "--organism-group", type=str, nargs="*", metavar="", help="One or more organism groups to download [" + ", ".join(self.choices_og) + "]. Mutually exclusive --taxid", choices=self.choices_og)
-        build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")
+        build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")  
 
+        build_database_args = build_parser.add_argument_group("database arguments")
+        build_database_args.add_argument("-l", "--level",          type=str, default="assembly", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' or 'assembly'")
+        
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-o", "--top",               type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
@@ -83,7 +87,7 @@ class Config:
 
         build_custom_args = build_custom_parser.add_argument_group("custom arguments")
         build_custom_args.add_argument("-n", "--input-file",        type=file_exists,            metavar="", help="Manually set information for input files: file <tab> [target <tab> node <tab> specialization <tab> specialization name]. target is the sequence identifier if --input-target sequence (file can be repeated for multiple sequences). if --input-target file and target is not set, filename is used. node is the taxonomic identifier. Mutually exclusive --input")
-        build_custom_args.add_argument("-a", "--input-target",      type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=["file", "sequence"])
+        build_custom_args.add_argument("-a", "--input-target",      type=str,                    metavar="", help="Target to use [file, sequence]. By default: 'file' if multiple input files are provided or --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and will speed-up the building process", choices=self.choices_input_target)
         build_custom_args.add_argument("-l", "--level",             type=str,                    metavar="", help="Use a specialized target to build the database. By default, --level is the --input-target. Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further specialization options [" + ", ".join(self.choices_level) + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.")
         build_custom_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="", help="Specific files for taxonomy - otherwise files will be downloaded")
         build_custom_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="", help="Specific files for genome size estimation - otherwise files will be downloaded")
@@ -314,10 +318,22 @@ class Config:
                 parser.print_help()
                 self.empty = True
 
+
     def __repr__(self):
         args = ["{}={}".format(k, repr(v)) for (k, v) in vars(self).items()]
         return "Config({})".format(", ".join(args))
 
+    def set_defaults(self):
+        if self.which in ["build", "build-custom"]:
+            # If max-fp is not set, use default for ibf and hibf
+            if self.max_fp is None:
+                self.max_fp = 0.001 if self.hibf else 0.05
+
+        if self.which == "classify":
+            if self.binning:
+                self.rel_cutoff = [0.25]
+                self.reassign = True
+                
     def validate(self):
 
         if self.empty is True:
@@ -348,9 +364,6 @@ class Config:
             if self.hibf:
                 if self.input_target == "sequence":
                     print_log("--hibf is only supported with --input-target file")
-                    return False
-                elif self.level and self.level != "assembly":
-                    print_log("--hibf is only supported without --level or with --level assembly")
                     return False
 
             if self.level == "custom" and not self.input_file:
@@ -413,6 +426,7 @@ class Config:
                 print_log(".ibf and .hibf filters cannot be used together in the same run" )
                 return False
             elif hibf:
+                # Hidden param
                 self.hibf = True
                 
             if tax < len(self.db_prefix) and tax > 0:
@@ -423,35 +437,26 @@ class Config:
                 print_log("Please provide file[s] with --single-reads or --paired-reads")
                 return False
 
-            single_reads = []
             if self.single_reads:
                 for f in self.single_reads:
-                    if check_file(f):
-                        single_reads.append(f)
-            self.single_reads = single_reads
+                    if not check_file(f):
+                        print_log("File not found: " + f )
+                        return False
 
-            paired_reads = []
             if self.paired_reads:
                 for f in self.paired_reads:
-                    if check_file(f):
-                        paired_reads.append(f)
-            self.paired_reads = paired_reads
+                    if not check_file(f):
+                        print_log("File not found: " + f )
+                        return False
 
-            if len(self.paired_reads) % 2 != 0:
-                print_log("Invalid number of paired reads")
-                return False
-
-            if len(self.single_reads) + len(self.paired_reads) == 0:
-                print_log("No valid input files to classify")
-                return False
+                if len(self.paired_reads) % 2 != 0:
+                    print_log("Invalid number of paired reads")
+                    return False
 
             if not self.output_prefix and (self.output_all or self.output_lca or self.output_unclassified or self.reassign):
                     print_log("--output-all / --output-lca / --output-unclassified / --reassign requires --output-prefix to be set")
                     return False
 
-            if self.binning:
-                self.rel_cutoff = [0.25]
-                self.reassign = True
 
         elif self.which == "report":
 
