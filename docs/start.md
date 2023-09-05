@@ -41,8 +41,12 @@ The most important parameters and trade-offs to be aware of when using ganon:
 
 ### ganon classify
 
-- `--rel-cutoff`: this value defines the threshold for matches between reads and database. Higher values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read binning, lower values between `0.2` and `0.4` are recommended. 
-- `--rel-filter`: further filter matches in relation to the best match after the cutoff is applied. Usually set between `0` and `0.2`. `0` means only matches with same score (# of *k-mers*) as the best match will be kept.
+- `--rel-cutoff`: defines the min. percentage of k-mers shared to a reference to consider a match. Higher values will improve precision and decrease sensitivity. For taxonomic profiling, a higher value between `0.4` and `0.8` may provide better results. For read binning, lower values between `0.2` and `0.4` are recommended. 
+    - **lower** values -> **more read matches**
+    - **higher** values -> **less read matches**
+- `--rel-filter`: filter matches in relation to the best and worst after the cutoff is applied. `0` means only matches with top score (# of *k-mers*) as the best match will be kept.
+    - **lower** values -> **more unique matching reads**
+    - **higher** values -> **more multi-matching reads**
 - `--reassign`: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with `ganon reassign`.
 
 ### ganon report
