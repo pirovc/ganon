@@ -98,13 +98,24 @@ ganon accepts single-end and paired-end reads. Both types can be use at the same
 
 ### cutoff and filter (--rel-cutoff, --rel-filter)
 
-ganon has two parameters to control a match between reads and references: `--rel-cutoff` and `--rel-filter`.
+ganon has two main parameters to control the number and strictess of matches between reads and references: `--rel-cutoff` and `--rel-filter`.
 
-Every read can be classified against none, one or more references. What will be reported is the remaining matches after `cutoff` and `filter` thresholds are applied, based on the number of shared minimizers (or k-mers) between sequences.
+Every read can be classified against none, one or more references. ganon will report only matches after `cutoff` and `filter` thresholds are applied, based on the number of shared k-mers between sequences (use `--rel-cutoff 0` and `--rel-filter 1` to deactivate them).
 
-The `cutoff` is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best scoring match and control how far from the best match further matches are allowed. `cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
+The `cutoff` is the first to be applied. It sets the min. percentage of k-mers of a read to be shared with a reference to consider a match. Next the `filter` is applied to the remaining matches. `filter` thresholds are relative to the best and worst scoring match after `cutoff` and control the percentage of additional matches (if any) should be reported, sorted from the best to worst. `filter` won't change the total number of matched reads but will change the amount of unique or multi-matched reads.
 
-For example, using `--kmer-size 19` (and `--window-size 19` to simplify the example), a certain read (100bp) has the following matches with the 5 references (`ref1..5`), sorted by shared k-mers:
+`cutoff` can be interpreted as the lower bound to discard spurious matches and `filter` as the fine tuning to control what to keep.
+
+In summary:
+
+  - `--rel-cutoff` controls the strictness of the matching algorithm.
+    - **lower** values -> **more read matches**
+    - **higher** values -> **less read matches**
+  - `--rel-filter` controls how many matches each read will have, from best to worst
+    - **lower** values -> **more unique matching reads**
+    - **higher** values -> **more multi-matching reads**
+
+For example, using a hypothetical number of k-mer matches, a certain read with 82 k-mers has the following matches with the 5 references (`ref1..5`), sorted number of shared k-mers:
 
 | reference | shared k-mers |
 |-----------|---------------|
@@ -114,7 +125,7 @@ For example, using `--kmer-size 19` (and `--window-size 19` to simplify the exam
 | ref4      | 25            |
 | ref5      | 20            |
 
-this read can have at most 82 shared k-mers (`100-19+1=82`). With `--rel-cutoff 0.25`, the following matches will be discarded:
+With `--rel-cutoff 0.25`, the following matches will be discarded:
 
 | reference | shared k-mers | --rel-cutoff 0.25 |
 |-----------|---------------|-------------------|
@@ -124,9 +135,11 @@ this read can have at most 82 shared k-mers (`100-19+1=82`). With `--rel-cutoff 
 | ref4      | 25            |                   |
 | ~~ref5~~  | ~~20~~        | X                 |
 
-since the `--rel-cutoff` threshold is `82 * 0.25 = 21` (ceiling is applied). Further, with `--rel-filter 0.3`, the following matches will be discarded:
+since the `--rel-cutoff` threshold is `82 * 0.25 = 21` (ceiling is applied).
 
-| reference | shared k-mers | --rel-cutoff 0.25 | --rel-filter 0.3 |
+Next, with `--rel-filter 0.5`, the following matches will be discarded:
+
+| reference | shared k-mers | --rel-cutoff 0.25 | --rel-filter 0.5 |
 |-----------|---------------|-------------------|------------------|
 | ref1      | 82            |                   |                  |
 | ref2      | 68            |                   |                  |
@@ -135,13 +148,19 @@ since the `--rel-cutoff` threshold is `82 * 0.25 = 21` (ceiling is applied). Fur
 | ~~ref5~~  | ~~20~~        | X                 |                  |
 
 
-since best match is 82, the filter parameter is removing any match below `0.3 * 82 = 57` (ceiling is applied) shared k-mers. `ref1` and `ref2` are reported as matches.
+since `82` is the best match and `25` is the worst remaining match, the filter will keep 50% (`--rel-filter 0.5`) of the remaining matches, based on the shared k-mers threshold `82 - ((82-25)*0.5) = 54` (ceiling is applied). `ref1` and `ref2` are reported as matches.
 
-For databases built with `--window-size`, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of unique minimizers extracted from the read.
 
-A different `cutoff` can be set for every database in a multiple or hierarchical database classification. A different `filter` can be set for every level of a hierarchical database classification.
+!!! Tip
+    The actual number of unique k-mers in a read are used as an upper bound to calculate the thresholds. The same is applied when using `--window-size` and minimizers.
 
-Note that reads that remain with only one reference match (after `cutoff` and `filter` are applied) are considered a unique match.
+!!! Note
+    A different `--rel-cutoff` can be set for every database in a multiple or hierarchical database classification. A different `--rel-filter` can be set for every level of a hierarchical database classification.
+
+!!! Note
+    Reads that remain with only one reference match (after `cutoff` and `filter` are applied) are considered a unique match.
+
+
 
 ### False positive of a query (--fpr-query)
 

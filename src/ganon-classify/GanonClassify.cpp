@@ -342,7 +342,8 @@ void select_matches( Filter< TIBF >&        filter,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
-                     size_t&                max_kmer_count_read,
+                     size_t&                max_count_read,
+                     size_t&                min_count_read,
                      size_t                 n_hashes )
 {
     // Count every occurrence on IBF
@@ -366,8 +367,10 @@ void select_matches( Filter< TIBF >&        filter,
             if ( summed_count > std::get< 0 >( matches[target] ) )
             {
                 matches[target] = std::make_tuple( summed_count, filter.filter_config.target_fpr[target] );
-                if ( summed_count > max_kmer_count_read )
-                    max_kmer_count_read = summed_count;
+                if ( summed_count > max_count_read )
+                    max_count_read = summed_count;
+                if ( summed_count < min_count_read )
+                    min_count_read = summed_count;
             }
         }
     }
@@ -378,7 +381,8 @@ void select_matches( Filter< THIBF >&       filter,
                      std::vector< size_t >& hashes,
                      auto&                  agent,
                      size_t                 threshold_cutoff,
-                     size_t&                max_kmer_count_read,
+                     size_t&                max_count_read,
+                     size_t&                min_count_read,
                      size_t                 n_hashes )
 {
     // Count only matches above threhsold
@@ -399,15 +403,17 @@ void select_matches( Filter< THIBF >&       filter,
             if ( summed_count > std::get< 0 >( matches[target] ) )
             {
                 matches[target] = std::make_tuple( summed_count, filter.filter_config.target_fpr[target] );
-                if ( summed_count > max_kmer_count_read )
-                    max_kmer_count_read = summed_count;
+                if ( summed_count > max_count_read )
+                    max_count_read = summed_count;
+                if ( summed_count < min_count_read )
+                    min_count_read = summed_count;
             }
         }
     }
 }
 
 size_t filter_matches(
-    ReadOut& read_out, TMatches& matches, TRep& rep, size_t threshold_filter, size_t n_hashes, double min_fpr_query )
+    ReadOut& read_out, TMatches& matches, TRep& rep, size_t n_hashes, double threshold_filter, double min_fpr_query )
 {
 
     for ( auto const& [target, count_fpr] : matches )
@@ -437,7 +443,7 @@ size_t filter_matches(
     return read_out.matches.size();
 }
 
-void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_kmer_count_read, LCA& lca, TRep& rep )
+void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_count_read, LCA& lca, TRep& rep )
 {
 
     std::vector< std::string > targets;
@@ -448,7 +454,7 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_kmer_coun
 
     std::string target_lca = lca.getLCA( targets );
     rep[target_lca].lca_reads++;
-    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_kmer_count_read } );
+    read_out_lca.matches.push_back( ReadMatch{ target_lca, max_count_read } );
 }
 
 
@@ -508,8 +514,9 @@ void classify( std::vector< Filter< TFilter > >& filters,
             TMatches matches;
 
             // Best scoring kmer count
-            size_t max_kmer_count_read = 0;
-            size_t n_hashes            = 0;
+            size_t max_count_read = 0;
+            size_t min_count_read = 0;
+            size_t n_hashes       = 0;
             // if length is smaller than window, skip read
             if ( read1_len >= hierarchy_config.window_size )
             {
@@ -524,6 +531,8 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 }
 
                 n_hashes = hashes.size();
+                // set min as max. possible hashes
+                min_count_read = n_hashes;
                 // if n_hashes are bigger than int limit, skip read
                 if ( n_hashes <= hashes_limit )
                 {
@@ -545,8 +554,14 @@ void classify( std::vector< Filter< TFilter > >& filters,
                             threshold_cutoff = 1;
 
                         // count and select matches
-                        select_matches(
-                            filters[i], matches, hashes, agents[i], threshold_cutoff, max_kmer_count_read, n_hashes );
+                        select_matches( filters[i],
+                                        matches,
+                                        hashes,
+                                        agents[i],
+                                        threshold_cutoff,
+                                        max_count_read,
+                                        min_count_read,
+                                        n_hashes );
                     }
                 }
             }
@@ -555,16 +570,16 @@ void classify( std::vector< Filter< TFilter > >& filters,
             ReadOut read_out( rb.ids[readID] );
 
             // if read got valid matches (above cutoff)
-            if ( max_kmer_count_read > 0 )
+            if ( max_count_read > 0 )
             {
 
                 // Calculate threshold for filtering (keep matches above)
                 const size_t threshold_filter =
-                    max_kmer_count_read - threshold_rel( max_kmer_count_read, hierarchy_config.rel_filter );
+                    max_count_read - threshold_rel( max_count_read - min_count_read, hierarchy_config.rel_filter );
 
                 // Filter matches
                 const size_t count_filtered_matches =
-                    filter_matches( read_out, matches, rep, threshold_filter, n_hashes, hierarchy_config.fpr_query );
+                    filter_matches( read_out, matches, rep, n_hashes, threshold_filter, hierarchy_config.fpr_query );
 
                 if ( count_filtered_matches > 0 )
                 {
@@ -582,7 +597,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         }
                         else
                         {
-                            lca_matches( read_out, read_out_lca, max_kmer_count_read, lca, rep );
+                            lca_matches( read_out, read_out_lca, max_count_read, lca, rep );
                         }
 
                         if ( config.output_lca )
