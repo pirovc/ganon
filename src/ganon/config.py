@@ -332,7 +332,7 @@ class Config:
         if self.which == "classify":
             if self.binning:
                 self.rel_cutoff = [0.25]
-                self.rel_filter = [0.1]
+                self.rel_filter = [0]
                 self.reassign = True
                 
     def validate(self):
