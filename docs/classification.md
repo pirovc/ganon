@@ -148,7 +148,7 @@ Next, with `--rel-filter 0.5`, the following matches will be discarded:
 | ~~ref5~~  | ~~20~~        | X                 |                  |
 
 
-since `82` is the best match and `25` is the worst remaining match, the filter will keep 50% (`--rel-filter 0.5`) of the remaining matches, based on the shared k-mers threshold `82 - ((82-25)*0.5) = 54` (ceiling is applied). `ref1` and `ref2` are reported as matches.
+since `82` is the best match and `25` is the worst remaining match, the filter will keep the top the remaining matches, based on the shared k-mers threshold `82 - ((82-25)*0.5) = 54` (ceiling is applied). `ref1` and `ref2` are reported as matches
 
 
 !!! Tip

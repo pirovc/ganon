@@ -149,8 +149,6 @@ def reassign(cfg):
         print_log(" - " + str(reassigned_reads) +
                   " reassigned reads: " + output_file, cfg.quiet)
 
-        # Check if properly working
-        # should I zero the lca_reads? 2 dbs same level, one at assembly level other species
         if rep_file_out:
             with open(rep_file, "r") as rep:
                 for line in rep:
