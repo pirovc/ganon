@@ -204,10 +204,24 @@ In this example, classification will be performed with different `--rel-cutoff` 
 <h3 id="reads-single-reads-paired-reads">reads (--single-reads, --paired-reads)<a class="headerlink" href="#reads-single-reads-paired-reads" title="Permanent link">:)</a></h3>
 <p>ganon accepts single-end and paired-end reads. Both types can be use at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535 (accounting both reads in paired mode).</p>
 <h3 id="cutoff-and-filter-rel-cutoff-rel-filter">cutoff and filter (--rel-cutoff, --rel-filter)<a class="headerlink" href="#cutoff-and-filter-rel-cutoff-rel-filter" title="Permanent link">:)</a></h3>
-<p>ganon has two parameters to control a match between reads and references: <code>--rel-cutoff</code> and <code>--rel-filter</code>.</p>
-<p>Every read can be classified against none, one or more references. What will be reported is the remaining matches after <code>cutoff</code> and <code>filter</code> thresholds are applied, based on the number of shared minimizers (or k-mers) between sequences.</p>
-<p>The <code>cutoff</code> is the first. It should be set as a minimal value to consider a match between a read and a reference. Next the <code>filter</code> is applied to the remaining matches. <code>filter</code> thresholds are relative to the best scoring match and control how far from the best match further matches are allowed. <code>cutoff</code> can be interpreted as the lower bound to discard spurious matches and <code>filter</code> as the fine tuning to control what to keep.</p>
-<p>For example, using <code>--kmer-size 19</code> (and <code>--window-size 19</code> to simplify the example), a certain read (100bp) has the following matches with the 5 references (<code>ref1..5</code>), sorted by shared k-mers:</p>
+<p>ganon has two main parameters to control the number and strictess of matches between reads and references: <code>--rel-cutoff</code> and <code>--rel-filter</code>.</p>
+<p>Every read can be classified against none, one or more references. ganon will report only matches after <code>cutoff</code> and <code>filter</code> thresholds are applied, based on the number of shared k-mers between sequences (use <code>--rel-cutoff 0</code> and <code>--rel-filter 1</code> to deactivate them).</p>
+<p>The <code>cutoff</code> is the first to be applied. It sets the min. percentage of k-mers of a read to be shared with a reference to consider a match. Next the <code>filter</code> is applied to the remaining matches. <code>filter</code> thresholds are relative to the best and worst scoring match after <code>cutoff</code> and control the percentage of additional matches (if any) should be reported, sorted from the best to worst. <code>filter</code> won't change the total number of matched reads but will change the amount of unique or multi-matched reads.</p>
+<p><code>cutoff</code> can be interpreted as the lower bound to discard spurious matches and <code>filter</code> as the fine tuning to control what to keep.</p>
+<p>In summary:</p>
+<ul>
+<li><code>--rel-cutoff</code> controls the strictness of the matching algorithm.<ul>
+<li><strong>lower</strong> values -&gt; <strong>more read matches</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>less read matches</strong></li>
+</ul>
+</li>
+<li><code>--rel-filter</code> controls how many matches each read will have, from best to worst<ul>
+<li><strong>lower</strong> values -&gt; <strong>more unique matching reads</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>more multi-matching reads</strong></li>
+</ul>
+</li>
+</ul>
+<p>For example, using a hypothetical number of k-mer matches, a certain read with 82 k-mers has the following matches with the 5 references (<code>ref1..5</code>), sorted number of shared k-mers:</p>
 <table>
 <thead>
 <tr>
@@ -238,7 +252,7 @@ In this example, classification will be performed with different `--rel-cutoff` 
 </tr>
 </tbody>
 </table>
-<p>this read can have at most 82 shared k-mers (<code>100-19+1=82</code>). With <code>--rel-cutoff 0.25</code>, the following matches will be discarded:</p>
+<p>With <code>--rel-cutoff 0.25</code>, the following matches will be discarded:</p>
 <table>
 <thead>
 <tr>
@@ -275,14 +289,15 @@ In this example, classification will be performed with different `--rel-cutoff` 
 </tr>
 </tbody>
 </table>
-<p>since the <code>--rel-cutoff</code> threshold is <code>82 * 0.25 = 21</code> (ceiling is applied). Further, with <code>--rel-filter 0.3</code>, the following matches will be discarded:</p>
+<p>since the <code>--rel-cutoff</code> threshold is <code>82 * 0.25 = 21</code> (ceiling is applied).</p>
+<p>Next, with <code>--rel-filter 0.5</code>, the following matches will be discarded:</p>
 <table>
 <thead>
 <tr>
 <th>reference</th>
 <th>shared k-mers</th>
 <th>--rel-cutoff 0.25</th>
-<th>--rel-filter 0.3</th>
+<th>--rel-filter 0.5</th>
 </tr>
 </thead>
 <tbody>
@@ -318,10 +333,19 @@ In this example, classification will be performed with different `--rel-cutoff` 
 </tr>
 </tbody>
 </table>
-<p>since best match is 82, the filter parameter is removing any match below <code>0.3 * 82 = 57</code> (ceiling is applied) shared k-mers. <code>ref1</code> and <code>ref2</code> are reported as matches.</p>
-<p>For databases built with <code>--window-size</code>, the relative values are not based on the maximum number of possible shared k-mers but on the actual number of unique minimizers extracted from the read.</p>
-<p>A different <code>cutoff</code> can be set for every database in a multiple or hierarchical database classification. A different <code>filter</code> can be set for every level of a hierarchical database classification.</p>
-<p>Note that reads that remain with only one reference match (after <code>cutoff</code> and <code>filter</code> are applied) are considered a unique match.</p>
+<p>since <code>82</code> is the best match and <code>25</code> is the worst remaining match, the filter will keep the top the remaining matches, based on the shared k-mers threshold <code>82 - ((82-25)*0.5) = 54</code> (ceiling is applied). <code>ref1</code> and <code>ref2</code> are reported as matches</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The actual number of unique k-mers in a read are used as an upper bound to calculate the thresholds. The same is applied when using <code>--window-size</code> and minimizers.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A different <code>--rel-cutoff</code> can be set for every database in a multiple or hierarchical database classification. A different <code>--rel-filter</code> can be set for every level of a hierarchical database classification.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Reads that remain with only one reference match (after <code>cutoff</code> and <code>filter</code> are applied) are considered a unique match.</p>
+</div>
 <h3 id="false-positive-of-a-query-fpr-query">False positive of a query (--fpr-query)<a class="headerlink" href="#false-positive-of-a-query-fpr-query" title="Permanent link">:)</a></h3>
 <p>ganon uses Bloom Filters, probabilistic data structures that may return false positive results. The base false positive of a ganon index is controlled by <code>--max-fp</code> when building the database. However, this value is the expected false positive for each k-mer. In practice, a sequence (several k-mers) will have a way smaller false positive. ganon calculates the false positive rate of a query as suggested by (Solomon and Kingsford, 2016). The <code>--fpr-query</code> will control the max. value accepted to consider a match between a sequence and a reference, avoiding false positives that may be introduce by the properties of the data structure. </p>
 <p>By default, <code>--fpr-query 1e-5</code> is used and it is applied after the <code>--rel-cutoff</code> and <code>--rel-filter</code>. Values between <code>1e-3</code> and <code>1e-10</code> are recommended. This threshold becomes more important when building smaller databases with higher <code>--max-fp</code>, assuring that the false positive is under control. In this case however, sensitivity of results may decrease.</p>

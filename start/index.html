@@ -149,8 +149,16 @@
 </ul>
 <h3 id="ganon-classify">ganon classify<a class="headerlink" href="#ganon-classify" title="Permanent link">:)</a></h3>
 <ul>
-<li><code>--rel-cutoff</code>: this value defines the threshold for matches between reads and database. Higher values will improve precision and decrease sensitivity with expected less unique matches but an increase in overall matches. For taxonomic profiling, a higher value between <code>0.4</code> and <code>0.8</code> may provide better results. For read binning, lower values between <code>0.2</code> and <code>0.4</code> are recommended. </li>
-<li><code>--rel-filter</code>: further filter matches in relation to the best match after the cutoff is applied. Usually set between <code>0</code> and <code>0.2</code>. <code>0</code> means only matches with same score (# of <em>k-mers</em>) as the best match will be kept.</li>
+<li><code>--rel-cutoff</code>: defines the min. percentage of k-mers shared to a reference to consider a match. Higher values will improve precision and decrease sensitivity. For taxonomic profiling, a higher value between <code>0.4</code> and <code>0.8</code> may provide better results. For read binning, lower values between <code>0.2</code> and <code>0.4</code> are recommended. <ul>
+<li><strong>lower</strong> values -&gt; <strong>more read matches</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>less read matches</strong></li>
+</ul>
+</li>
+<li><code>--rel-filter</code>: filter matches in relation to the best and worst after the cutoff is applied. <code>0</code> means only matches with top score (# of <em>k-mers</em>) as the best match will be kept.<ul>
+<li><strong>lower</strong> values -&gt; <strong>more unique matching reads</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>more multi-matching reads</strong></li>
+</ul>
+</li>
 <li><code>--reassign</code>: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with <code>ganon reassign</code>.</li>
 </ul>
 <h3 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h3>
