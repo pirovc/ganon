@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.8.0"
+    version = "1.9.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -137,9 +137,9 @@ class Config:
         classify_group_required.add_argument("-p", "--paired-reads", type=str, nargs="*", required=False, metavar="reads.1.fq[.gz] reads.2.fq[.gz]", help="Multi-fastq[.gz] pairs of file[s] to classify")
 
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
-        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75],  help="Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
-        classify_group_cutoff_filter.add_argument("-e", "--rel-filter",          type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.0],   help="Additional relative percentage of minimizers (relative to the best match) to keep a match. Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
-        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",           type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5],  help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
+        classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75], help="Min. percentage of a read (set of k-mers) shared with a reference necessary to consider a match. Generally used to remove low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
+        classify_group_cutoff_filter.add_argument("-e", "--rel-filter", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of matches (relative to the best match) to keep. Generally used to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
+        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",  type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5], help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
       
         classify_group_output = classify_parser.add_argument_group("output arguments")
         classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
@@ -150,13 +150,13 @@ class Config:
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-b", "--binning",             action="store_true", help="Optimized parameters for binning (--rel-cutoff 0.25 --reassign). Will report (.tre) sequence abundances. This file can be re-generated with 'ganon report'.")
+        classify_group_other.add_argument("-b", "--binning",             action="store_true",                                 help="Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon report'.")
         classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file can be re-generated with 'ganon reassign'.")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
         classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
-        classify_group_other.add_argument("--verbose",                   action="store_true",               help="Verbose output mode")
-        classify_group_other.add_argument("--quiet",                     action="store_true",               help="Quiet output mode")
-        classify_group_other.add_argument("--hibf",                      action="store_true",               help=argparse.SUPPRESS)
+        classify_group_other.add_argument("--verbose",                   action="store_true",                                 help="Verbose output mode")
+        classify_group_other.add_argument("--quiet",                     action="store_true",                                 help="Quiet output mode")
+        classify_group_other.add_argument("--hibf",                      action="store_true",                     help=argparse.SUPPRESS)
         classify_group_other.add_argument("--ganon-path",                type=str, default="",  metavar="",       help=argparse.SUPPRESS) 
         classify_group_other.add_argument("--n-reads",                   type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
         classify_group_other.add_argument("--n-batches",                 type=unsigned_int(minval=1), metavar="", help=argparse.SUPPRESS)
@@ -226,13 +226,13 @@ class Config:
         table_group_output.add_argument("-t", "--top-sample",    type=unsigned_int(minval=0), metavar="", default=0,        help="Top hits of each sample individually")
         table_group_output.add_argument("-a", "--top-all",       type=unsigned_int(minval=0), metavar="", default=0,        help="Top hits of all samples (ranked by percentage)")
         table_group_output.add_argument("-m", "--min-frequency", type=int_or_float(minval=0), metavar="", default=0,        help="Minimum number/percentage of files containing an taxa to keep the taxa [values between 0-1 for percentage, >1 specific number]")
-        table_group_output.add_argument("-r", "--rank",          type=str,             metavar="", default=None,     help="Define specific rank to report. Empty will report all ranks.")
-        table_group_output.add_argument("-n", "--no-root",       action="store_true",    default=False,              help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
-        table_group_output.add_argument("--header",              type=str,   metavar="", default="name",             help="Header information [name, taxid, lineage]")
-        table_group_output.add_argument("--unclassified-label",  type=str,   metavar="", default=None,               help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
-        table_group_output.add_argument("--filtered-label",      type=str,   metavar="", default=None,               help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
-        table_group_output.add_argument("--skip-zeros",          action="store_true",    default=False,              help="Do not print lines with only zero count/percentage")
-        table_group_output.add_argument("--transpose",           action="store_true",    default=False,              help="Transpose output table (taxa as cols and files as rows)")
+        table_group_output.add_argument("-r", "--rank",          type=str,   metavar="", default=None,   help="Define specific rank to report. Empty will report all ranks.")
+        table_group_output.add_argument("-n", "--no-root",       action="store_true",    default=False,  help="Do not report root node entry and lineage. Direct and shared matches to root will be accounted as unclassified")
+        table_group_output.add_argument("--header",              type=str,   metavar="", default="name", help="Header information [name, taxid, lineage]")
+        table_group_output.add_argument("--unclassified-label",  type=str,   metavar="", default=None,   help="Add column with unclassified count/percentage with the chosen label. May be the same as --filtered-label (e.g. unassigned)")
+        table_group_output.add_argument("--filtered-label",      type=str,   metavar="", default=None,   help="Add column with filtered count/percentage with the chosen label. May be the same as --unclassified-label (e.g. unassigned)")
+        table_group_output.add_argument("--skip-zeros",          action="store_true",    default=False,  help="Do not print lines with only zero count/percentage")
+        table_group_output.add_argument("--transpose",           action="store_true",    default=False,  help="Transpose output table (taxa as cols and files as rows)")
 
         table_group_optional = table_parser.add_argument_group("optional arguments")
         table_group_optional.add_argument("--verbose", action="store_true", default=False, help="Verbose output mode")
@@ -332,6 +332,7 @@ class Config:
         if self.which == "classify":
             if self.binning:
                 self.rel_cutoff = [0.25]
+                self.rel_filter = [0]
                 self.reassign = True
                 
     def validate(self):

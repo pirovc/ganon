@@ -745,20 +745,20 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
         }
     }
 
-    SECTION( "--rel-cutoff 0.2 --rel-filter 0.5" )
+    SECTION( "--rel-cutoff 0.2 --rel-filter 0.8" )
     {
-        std::string prefix{ folder_prefix + "rel_cutoff_0.2_rel_filter_0.5" };
+        std::string prefix{ folder_prefix + "rel_cutoff_0.2_rel_filter_0.8" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "readF.fasta" };
         cfg.rel_cutoff   = { 0.2 };
-        cfg.rel_filter   = { 0.5 };
+        cfg.rel_filter   = { 0.8 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
 
         // ceil(9*0.2) = 2 threhsold cutoff
-        // 9 - ceil(9*0.5) = 4 threshold filter
+        // 9 - ceil((9-5)*0.8) = 5 threshold filter
         REQUIRE( res.all["readF"].size() == 4 );
         REQUIRE( res.all["readF"]["e0"] == 9 );
         REQUIRE( res.all["readF"]["e1F"] == 5 );
@@ -782,14 +782,14 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
         }
     }
 
-    SECTION( "--rel-cutoff 0.2 --rel-filter 0.5 --fpr-query 1e-10" )
+    SECTION( "--rel-cutoff 0.2 --rel-filter 0.8 --fpr-query 1e-10" )
     {
-        std::string prefix{ folder_prefix + "rel_cutoff_0.2_rel_filter_0.5_fpr_query_1e-10" };
+        std::string prefix{ folder_prefix + "rel_cutoff_0.2_rel_filter_0.8_fpr_query_1e-10" };
         auto        cfg  = config_classify::defaultConfig( prefix );
         cfg.ibf          = { base_prefix + ".ibf" };
         cfg.single_reads = { folder_prefix + "readF.fasta" };
         cfg.rel_cutoff   = { 0.2 };
-        cfg.rel_filter   = { 0.5 };
+        cfg.rel_filter   = { 0.8 };
         cfg.fpr_query    = { 1e-10 };
         REQUIRE( GanonClassify::run( cfg ) );
         config_classify::Res res{ cfg };
@@ -863,7 +863,7 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
         config_classify::Res res{ cfg };
         config_classify::sanity_check( cfg, res );
 
-        // 9 - ceil(9*0.3) = 6 threhsold cutoff
+        // 9 - ceil((9-9)*0.3) = 9 threhsold cutoff
         REQUIRE( res.all["readF"].size() == 1 );
         REQUIRE( res.all["readF"]["e0"] == 9 );
 
