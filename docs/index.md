@@ -122,7 +122,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.8.0
+   _|   v. 1.9.0
 - - - - - - - - - -
 
 positional arguments:
@@ -356,13 +356,13 @@ required arguments:
 
 cutoff/filter arguments:
   -c [ ...], --rel-cutoff [ ...]
-                        Min. percentage of a read (set of minimizers) shared with the a reference necessary to consider
-                        a match. Generally used to cutoff low similarity matches. Single value or one per database (e.g.
-                        0.7 1 0.25). 0 for no cutoff (default: [0.75])
+                        Min. percentage of a read (set of k-mers) shared with a reference necessary to consider a match.
+                        Generally used to remove low similarity matches. Single value or one per database (e.g. 0.7 1
+                        0.25). 0 for no cutoff (default: [0.75])
   -e [ ...], --rel-filter [ ...]
-                        Additional relative percentage of minimizers (relative to the best match) to keep a match.
-                        Generally used to select best matches above cutoff. Single value or one per hierarchy (e.g. 0.1
-                        0). 1 for no filter (default: [0.0])
+                        Additional relative percentage of matches (relative to the best match) to keep. Generally used
+                        to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no
+                        filter (default: [0.1])
   -f [ ...], --fpr-query [ ...]
                         Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
                         Generally used to remove false positives matches querying a database build with large --max-fp.
@@ -381,8 +381,9 @@ output arguments:
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
-  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --reassign). Will report (.tre) sequence
-                        abundances. This file can be re-generated with 'ganon report'. (default: False)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report
+                        sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon
+                        report'. (default: False)
   -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
                         can be re-generated with 'ganon reassign'. (default: False)
   -l [ ...], --hierarchy-labels [ ...]
