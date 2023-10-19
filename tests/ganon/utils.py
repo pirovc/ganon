@@ -206,8 +206,8 @@ def classify_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
     out_ext = ["rep", "tre"]
-    if params["output_lca"]:
-        out_ext.append("lca")
+    if params["output_one"]:
+        out_ext.append("one")
 
     if params["output_all"]:
         out_ext.append("all")
@@ -221,9 +221,9 @@ def classify_sanity_check_and_parse(params):
         if res["all_pd"].empty:
             return None
 
-    if params["output_lca"]:
-        res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
-        if res["lca_pd"].empty:
+    if params["output_one"]:
+        res["one_pd"] = parse_all_lca(params["output_prefix"]+".one")
+        if res["one_pd"].empty:
             return None
 
     res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
@@ -239,13 +239,18 @@ def classify_sanity_check_and_parse(params):
 
 def reassign_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
-    if not check_files(params["output_prefix"], ["all"]):
+    if not check_files(params["output_prefix"], ["one"]):
         return None
 
     res = {}
 
-    res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
+
+    res["all_pd"] = parse_all_lca(params["input_prefix"]+".all")
     if res["all_pd"].empty:
+        return None
+
+    res["one_pd"] = parse_all_lca(params["output_prefix"]+".one")
+    if res["one_pd"].empty:
         return None
 
     if check_files(params["output_prefix"], ["rep"]):

@@ -37,9 +37,9 @@ def classify(cfg):
                                    "--rel-filter " + ",".join([str(rf) for rf in cfg.rel_filter]) if cfg.rel_filter else "",
                                    "--fpr-query " + ",".join([str(fq) for fq in cfg.fpr_query]) if cfg.fpr_query else "",
                                    "--output-prefix " + cfg.output_prefix if cfg.output_prefix else "",
-                                   "--skip-lca" if cfg.reassign and not cfg.output_lca else "",
-                                   "--output-lca" if cfg.output_lca else "",
-                                   "--output-all" if cfg.output_all or cfg.reassign else "",
+                                   "--skip-lca" if cfg.multiple_matches != "lca" and not cfg.output_one else "",
+                                   "--output-lca" if cfg.output_one else "",
+                                   "--output-all" if cfg.output_all or cfg.multiple_matches == "em" else "",
                                    "--output-unclassified" if cfg.output_unclassified else "",
                                    "--output-single" if cfg.output_single else "",
                                    "--threads " + str(cfg.threads) if cfg.threads else "",
@@ -53,9 +53,11 @@ def classify(cfg):
     if not cfg.output_prefix:
         print(stdout)
     else:
-        if cfg.reassign:
+        if cfg.multiple_matches == "em":
             reassign_params = {"input_prefix": cfg.output_prefix,
                                "output_prefix": cfg.output_prefix,
+                               "remove_all": False if cfg.output_all else True,
+                               "skip_one": False if cfg.output_one else True,
                                "verbose": cfg.verbose,
                                "quiet": cfg.quiet}
             reassign_cfg = Config("reassign", **reassign_params)
@@ -64,15 +66,15 @@ def classify(cfg):
             if not ret:
                 return False
 
-        if tax_files:
+        if tax_files and not cfg.skip_report:
             report_params = {"db_prefix": cfg.db_prefix,
                              "input": cfg.output_prefix + ".rep",
                              "output_prefix": cfg.output_prefix,
-                             "min_count": 0 if cfg.binning else 0.00005,
+                             "min_count": cfg.min_count,
                              "ranks": cfg.ranks,
                              "output_format": "tsv",
                              "verbose": cfg.verbose,
-                             "report_type": "reads" if cfg.binning else "abundance",
+                             "report_type": cfg.report_type,
                              "quiet": cfg.quiet}
             report_cfg = Config("report", **report_params)
             print_log("- - - - - - - - - -", cfg.quiet)

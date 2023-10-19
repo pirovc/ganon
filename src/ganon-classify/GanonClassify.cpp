@@ -251,12 +251,12 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
             std::string output_file_all = "";
             if ( !config.output_prefix.empty() && unique_hierarchy > 1 && !config.output_single )
             {
-                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".lca";
+                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".one";
                 output_file_all = config.output_prefix + "." + config.hierarchy_labels[h] + ".all";
             }
             else if ( !config.output_prefix.empty() )
             {
-                output_file_lca = config.output_prefix + ".lca";
+                output_file_lca = config.output_prefix + ".one";
                 output_file_all = config.output_prefix + ".all";
             }
 

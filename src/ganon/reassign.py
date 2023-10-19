@@ -20,7 +20,7 @@ def reassign(cfg):
 
     if check_file(rep_file):
 
-        print_log(".rep file found: " + rep_file, cfg.quiet)
+        print_log("Ganon report output found: " + rep_file, cfg.quiet)
         # look for hierarchies
         with open(rep_file) as rep:
             for line in rep:
@@ -125,29 +125,31 @@ def reassign(cfg):
 
             em_ite_cnt += 1
 
-        # General output file
-        if len(all_files) == 1:
-            output_file = cfg.output_prefix + ".all"
-        else:
-            file_pre = os.path.splitext(os.path.basename(af))[0]
-            output_file = cfg.output_prefix + "." + hierarchy + ".all"
+        # Skip .one file (just generate .rep)
+        if not cfg.skip_one:
+            # General output file
+            if len(all_files) == 1:
+                output_file = cfg.output_prefix + ".one"
+            else:
+                file_pre = os.path.splitext(os.path.basename(af))[0]
+                output_file = cfg.output_prefix + "." + hierarchy + ".one"
 
-        # reverse string target <-> integer id
-        targets_rev = {val: key for (key, val) in targets.items()}
-        reassigned_reads = 0
-        with open(output_file, "w") as out_file:
-            for readid, matches in read_matches.items():
-                if len(matches) == 1:
-                    print(readid, targets_rev[matches[0][0]], matches[0]
-                          [1], sep="\t", file=out_file)
-                else:
-                    reassigned_reads += 1
-                    target, kcount = get_top_match(matches, prob)
-                    print(readid, targets_rev[target],
-                          kcount, sep="\t", file=out_file)
+            # reverse string target <-> integer id
+            targets_rev = {val: key for (key, val) in targets.items()}
+            reassigned_reads = 0
+            with open(output_file, "w") as out_file:
+                for readid, matches in read_matches.items():
+                    if len(matches) == 1:
+                        print(readid, targets_rev[matches[0][0]], matches[0]
+                              [1], sep="\t", file=out_file)
+                    else:
+                        reassigned_reads += 1
+                        target, kcount = get_top_match(matches, prob)
+                        print(readid, targets_rev[target],
+                              kcount, sep="\t", file=out_file)
 
-        print_log(" - " + str(reassigned_reads) +
-                  " reassigned reads: " + output_file, cfg.quiet)
+            print_log(" - " + str(reassigned_reads) +
+                      " reassigned reads to " + output_file, cfg.quiet)
 
         if rep_file_out:
             with open(rep_file, "r") as rep:
@@ -172,6 +174,10 @@ def reassign(cfg):
             for info in rep_file_info:
                 print(*info, sep="\t", file=rep_out)
         print_log("New .rep file: " + rep_file_out, cfg.quiet)
+
+    if cfg.remove_all:
+        for af in all_files.values():
+            os.remove(af)
 
     return True
 

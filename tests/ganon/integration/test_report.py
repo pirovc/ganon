@@ -74,6 +74,7 @@ class TestReport(unittest.TestCase):
                            "paired_reads": [data_dir+"classify/sim.1.fq.gz",
                                             data_dir+"classify/sim.2.fq.gz"],
                            "verbose": True,
+                           "multiple_matches": "lca",
                            "quiet": False}
         # Build config from params
         classify_cfg = Config("classify", **classify_params)

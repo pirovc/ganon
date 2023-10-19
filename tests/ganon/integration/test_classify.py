@@ -112,7 +112,7 @@ class TestClassify(unittest.TestCase):
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "output_files"
-        params["output_lca"] = True
+        params["output_one"] = True
         params["output_all"] = True
         params["output_unclassified"] = True
 
@@ -124,14 +124,15 @@ class TestClassify(unittest.TestCase):
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
 
-    def test_reassign(self):
+    def test_multiple_matches_em(self):
         """
-        Test ganon classify with --reassign active
+        Test ganon classify with --multiple-matches em
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "reassign"
-        params["reassign"] = True
+        params["output_prefix"] = self.results_dir + "multiple_matches_em"
+        params["multiple_matches"] = "em"
         params["output_all"] = True
+        params["output_one"] = True
         params["rel_cutoff"] = 0.001
         params["rel_filter"] = 1
 
@@ -144,7 +145,7 @@ class TestClassify(unittest.TestCase):
         self.assertIsNotNone(res, "ganon table has inconsistent results")
         
         # There are only single matches on output
-        self.assertEqual(len(res["all_pd"].readid), len(res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
+        self.assertEqual(len(res["one_pd"].readid), len(res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
 
     def test_hibf(self):
         """
