@@ -12,7 +12,7 @@ Output files:
  - `results.rep`: plain report of the run, used to further generate tree-like reports
  - `results.tre`: tree-like report with cumulative abundances by taxonomic ranks (can be re-generated with `ganon report`)
 
-More information about output files [here](../outputfiles/#ganon-classify).
+By default, `ganon classify` only write report files. To get files with the classification of each read, use `--output-one` and/or `--output-all`. More information about output files [here](../outputfiles/#ganon-classify).
 
 !!! Note
     ganon performs **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.
