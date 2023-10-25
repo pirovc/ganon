@@ -115,6 +115,8 @@ make -j 4
 
 ## Parameters
 
+## Parameters
+
 ```
 usage: ganon [-h] [-v]
              {build,build-custom,update,classify,reassign,report,table} ...
@@ -122,7 +124,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.9.0
+   _|   v. 2.0.0-rc.1
 - - - - - - - - - -
 
 positional arguments:
@@ -340,8 +342,9 @@ optional arguments:
 
 ```
 usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
-                      [-c [...]] [-e [...]] [-f [...]] [-o] [--output-lca] [--output-all] [--output-unclassified]
-                      [--output-single] [-t] [-b] [-a] [-l [...]] [-r [...]] [--verbose] [--quiet]
+                      [-c [...]] [-e [...]] [-m] [--ranks [...]] [--min-count] [--report-type] [--skip-report] [-o]
+                      [--output-one] [--output-all] [--output-unclassified] [--output-single] [-t] [-b] [-f [...]]
+                      [-l [...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -363,38 +366,46 @@ cutoff/filter arguments:
                         Additional relative percentage of matches (relative to the best match) to keep. Generally used
                         to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no
                         filter (default: [0.1])
-  -f [ ...], --fpr-query [ ...]
-                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
-                        Generally used to remove false positives matches querying a database build with large --max-fp.
-                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
+
+post-processing/report arguments:
+  -m , --multiple-matches 
+                        Method to solve reads with multiple matches [em, lca, skip]. em -> expectation maximization
+                        algorithm based on unique matches. lca -> lowest common ancestor based on taxonomy. The EM
+                        algorithm can be executed later with 'ganon reassign' using the .all file (--output-all).
+                        (default: em)
+  --ranks [ ...]        Ranks to report taxonomic abundances (.tre). empty will report default ranks [superkingdom,
+                        phylum, class, order, family, genus, species, assembly]. (default: [])
+  --min-count           Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1
+                        for counts] (default: 5e-05)
+  --report-type         Type of report (.tre) [abundance, reads, matches, dist, corr]. More info in 'ganon report'.
+                        (default: abundance)
+  --skip-report         Disable tree-like report (.tre) at the end of classification. Can be done later with 'ganon
+                        report'. (default: False)
 
 output arguments:
   -o , --output-prefix 
-                        Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)
-                        (default: None)
-  --output-lca          Output an additional file with one lca match for each read (.lca) (default: False)
-  --output-all          Output an additional file with all matches. File can be very large (.all) (default: False)
+                        Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only
+                        .rep) (default: None)
+  --output-one          Output a file with one match for each read (.one) either an unique match or a result from the EM
+                        or a LCA algorithm (--multiple-matches) (default: False)
+  --output-all          Output a file with all unique and multiple matches (.all) (default: False)
   --output-unclassified
-                        Output an additional file with unclassified read headers (.unc) (default: False)
+                        Output a file with unclassified read headers (.unc) (default: False)
   --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
                         hierarchy (default: False)
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
-  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report
-                        sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon
-                        report'. (default: False)
-  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
-                        can be re-generated with 'ganon reassign'. (default: False)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --min-count 0 --report-type
+                        reads). Will report sequence abundances (.tre) instead of tax. abundance. (default: False)
+  -f [ ...], --fpr-query [ ...]
+                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
+                        Generally used to remove false positives matches querying a database build with large --max-fp.
+                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
-  -r [ ...], --ranks [ ...]
-                        Ranks to report taxonomic abundances (.tre). empty will report default ranks [superkingdom,
-                        phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
-                        'ganon report' command for other types of abundances (reads, matches) with further filtration
-                        and output options (default: [])
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -405,7 +416,7 @@ other arguments:
   <summary>ganon reassign</summary>
 
 ```
-usage: ganon reassign [-h] -i  -o OUTPUT_PREFIX [-e] [-s] [--verbose] [--quiet]
+usage: ganon reassign [-h] -i  -o OUTPUT_PREFIX [-e] [-s] [--remove-all] [--skip-one] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -413,9 +424,9 @@ options:
 required arguments:
   -i , --input-prefix   Input prefix to find files from ganon classify (.all and optionally .rep) (default: None)
   -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-                        Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the
+                        Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the
                         base input filename will be appended at the end of the output file 'output_prefix +
-                        FILENAME.all' (default: None)
+                        FILENAME.out' (default: None)
 
 EM arguments:
   -e , --max-iter       Max. number of iterations for the EM algorithm. If 0, will run until convergence (check
@@ -423,6 +434,8 @@ EM arguments:
   -s , --threshold      Convergence threshold limit to stop the EM algorithm. (default: 0)
 
 other arguments:
+  --remove-all          Remove input file (.all) after processing. (default: False)
+  --skip-one            Do not write output file (.one) after processing. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```

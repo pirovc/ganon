@@ -23,6 +23,7 @@ class Config:
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
     choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
+    choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
 
@@ -139,21 +140,26 @@ class Config:
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
         classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75], help="Min. percentage of a read (set of k-mers) shared with a reference necessary to consider a match. Generally used to remove low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
         classify_group_cutoff_filter.add_argument("-e", "--rel-filter", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of matches (relative to the best match) to keep. Generally used to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
-        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",  type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5], help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
       
+        classify_group_postrep = classify_parser.add_argument_group("post-processing/report arguments")
+        classify_group_postrep.add_argument("-m", "--multiple-matches", type=str,                    metavar="", default="em",        help="Method to solve reads with multiple matches  [" + ", ".join(self.choices_multiple_matches) + "]. em -> expectation maximization algorithm based on unique matches. lca -> lowest common ancestor based on taxonomy. The EM algorithm can be executed later with 'ganon reassign' using the .all file (--output-all).", choices=self.choices_multiple_matches)
+        classify_group_postrep.add_argument("--ranks",                  type=str,  nargs="*",        metavar="", default=[],          help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "].")
+        classify_group_postrep.add_argument("--min-count",              type=int_or_float(minval=0), metavar="", default=0.00005,     help="Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1 for counts]")
+        classify_group_postrep.add_argument("--report-type",            type=str,                    metavar="", default="abundance", help="Type of report (.tre) [" + ", ".join(self.choices_report_type) + "]. More info in 'ganon report'.", choices=self.choices_report_type)
+        classify_group_postrep.add_argument("--skip-report",            action="store_true",                                          help="Disable tree-like report (.tre) at the end of classification. Can be done later with 'ganon report'.")
+
         classify_group_output = classify_parser.add_argument_group("output arguments")
-        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
-        classify_group_output.add_argument("--output-lca",                action="store_true",               help="Output an additional file with one lca match for each read (.lca)")
-        classify_group_output.add_argument("--output-all",                action="store_true",               help="Output an additional file with all matches. File can be very large (.all)")
-        classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output an additional file with unclassified read headers (.unc)")
+        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only .rep)")
+        classify_group_output.add_argument("--output-one",                action="store_true",               help="Output a file with one match for each read (.one) either an unique match or a result from the EM or a LCA algorithm (--multiple-matches)")
+        classify_group_output.add_argument("--output-all",                action="store_true",               help="Output a file with all unique and multiple matches (.all)")
+        classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output a file with unclassified read headers (.unc)")
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-b", "--binning",             action="store_true",                                 help="Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon report'.")
-        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file can be re-generated with 'ganon reassign'.")
+        classify_group_other.add_argument("-b", "--binning",             action="store_true",                                 help="Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --min-count 0 --report-type reads). Will report sequence abundances (.tre) instead of tax. abundance.")
+        classify_group_other.add_argument("-f", "--fpr-query",  type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5], help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
-        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
         classify_group_other.add_argument("--verbose",                   action="store_true",                                 help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",                                 help="Quiet output mode")
         classify_group_other.add_argument("--hibf",                      action="store_true",                     help=argparse.SUPPRESS)
@@ -168,15 +174,17 @@ class Config:
         # Required
         reassign_group_required = reassign_parser.add_argument_group("required arguments")
         reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
-        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.out'")
    
         reassign_em = reassign_parser.add_argument_group("EM arguments")
         reassign_em.add_argument("-e", "--max-iter",  type=unsigned_int(minval=0), metavar="", default=10, help="Max. number of iterations for the EM algorithm. If 0, will run until convergence (check --threshold)")
         reassign_em.add_argument("-s", "--threshold", type=int_or_float(minval=0), metavar="", default=0,  help="Convergence threshold limit to stop the EM algorithm.")
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
-        reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
-        reassign_group_other.add_argument("--quiet",           action="store_true", help="Quiet output mode")
+        reassign_group_other.add_argument("--remove-all", action="store_true", help="Remove input file (.all) after processing.")
+        reassign_group_other.add_argument("--skip-one",   action="store_true", help="Do not write output file (.one) after processing.")
+        reassign_group_other.add_argument("--verbose",    action="store_true", help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",      action="store_true", help="Quiet output mode")
 
         ####################################################################################################
 
@@ -333,7 +341,8 @@ class Config:
             if self.binning:
                 self.rel_cutoff = [0.25]
                 self.rel_filter = [0]
-                self.reassign = True
+                self.min_count = 0
+                self.report_type = "reads"
                 
     def validate(self):
 
@@ -454,11 +463,14 @@ class Config:
                     print_log("Invalid number of paired reads")
                     return False
 
-            if not self.output_prefix and (self.output_all or self.output_lca or self.output_unclassified or self.reassign):
-                    print_log("--output-all / --output-lca / --output-unclassified / --reassign requires --output-prefix to be set")
+            if not self.output_prefix and (self.output_all or self.output_one or self.output_unclassified):
+                    print_log("--output-all / --output-one / --output-unclassified requires --output-prefix to be set")
                     return False
 
-
+            if self.output_one and self.multiple_matches == "skip":
+                print_log("--output-one requires --multiple-matches em/lca")
+                return False              
+        
         elif self.which == "report":
 
             if self.skip_hierarchy and self.keep_hierarchy:

@@ -10,8 +10,9 @@ from utils import setup_dir
 from utils import build_sanity_check_and_parse
 from utils import classify_sanity_check_and_parse
 from utils import reassign_sanity_check_and_parse
-from utils import parse_all_lca, parse_rep
+from utils import parse_all_one, parse_rep
 from utils import run_ganon
+from utils import check_files
 data_dir = base_dir + "data/"
 
 
@@ -95,7 +96,7 @@ class TestReassign(unittest.TestCase):
         res = reassign_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon reassign has inconsistent results")
         # There are only single matches on output
-        self.assertEqual(len(res["all_pd"].readid), len(
+        self.assertEqual(len(res["one_pd"].readid), len(
             res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
         # Check if all reads got properly reported
         self.assertEqual(total_reads_classified, res["rep_pd"]["unique"].fillna(0).astype(int).sum(
@@ -133,7 +134,7 @@ class TestReassign(unittest.TestCase):
         res = reassign_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon reassign has inconsistent results")
         # There are only single matches on output
-        self.assertEqual(len(res["all_pd"].readid), len(
+        self.assertEqual(len(res["one_pd"].readid), len(
             res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
         # Check if all reads got properly reported
         self.assertEqual(total_reads_classified, res["rep_pd"]["unique"].fillna(0).astype(int).sum(
@@ -154,8 +155,8 @@ class TestReassign(unittest.TestCase):
         self.assertTrue(run_ganon(
             cfg, params_classify["output_prefix"]), "ganon classify exited with an error")
         rep = parse_rep(params_classify["output_prefix"] + ".rep")
-        all_A = parse_all_lca(params_classify["output_prefix"] + ".A.all")
-        all_B = parse_all_lca(params_classify["output_prefix"] + ".B.all")
+        all_A = parse_all_one(params_classify["output_prefix"] + ".A.all")
+        all_B = parse_all_one(params_classify["output_prefix"] + ".B.all")
         self.assertIsNotNone(all_A, "ganon classify has inconsistent results")
         self.assertIsNotNone(all_B, "ganon classify has inconsistent results")
         total_reads_classified = rep["unique"].fillna(0).astype(
@@ -174,11 +175,11 @@ class TestReassign(unittest.TestCase):
         self.assertTrue(
             run_ganon(cfg, params["output_prefix"]), "ganon reassign exited with an error")
         rep = parse_rep(params["output_prefix"] + ".rep")
-        all_A = parse_all_lca(params["output_prefix"] + ".A.all")
-        all_B = parse_all_lca(params["output_prefix"] + ".B.all")
+        one_A = parse_all_one(params["output_prefix"] + ".A.one")
+        one_B = parse_all_one(params["output_prefix"] + ".B.one")
 
         # There are only single matches on output
-        self.assertEqual(len(all_A.readid), len(
+        self.assertEqual(len(one_A.readid), len(
             all_A.readid.unique()), "ganon reassign has multiple matches")
         # Check if all reads got properly reported
         self.assertEqual(total_reads_classified, rep["unique"].fillna(0).astype(int).sum(
@@ -212,15 +213,89 @@ class TestReassign(unittest.TestCase):
         cfg = Config("reassign", **params)
         self.assertTrue(
             run_ganon(cfg, params["output_prefix"]), "ganon reassign exited with an error")
-        all_file = parse_all_lca(params["output_prefix"] + ".all")
-        self.assertIsNotNone(all_file, "ganon reassign has inconsistent results")
+        res = reassign_sanity_check_and_parse(vars(cfg))
+        
+        self.assertIsNotNone(res["one_pd"], "ganon reassign has inconsistent results")
 
         # There are only single matches on output
-        self.assertEqual(len(all_file.readid), len(
-            all_file.readid.unique()), "ganon reassign has multiple matches")
+        self.assertEqual(len(res["one_pd"].readid), len(
+            res["all_pd"].readid.unique()), "ganon reassign has multiple matches")
 
         # Check if all reads got properly reported
-        self.assertEqual(total_reads_classified, len(all_file.readid), "ganon reassign reported wrong number of reads")
-    
+        self.assertEqual(total_reads_classified, len(res["one_pd"].readid), "ganon reassign reported wrong number of reads")
+
+    def test_remove_all(self):
+        """
+        Test ganon reassign with --remove-all
+        """
+        params_classify = self.default_params_classify.copy()
+        params_classify["output_prefix"] = self.results_dir + "remove_all"
+
+        # Build config from params
+        cfg = Config("classify", **params_classify)
+        self.assertTrue(run_ganon(
+            cfg, params_classify["output_prefix"]), "ganon classify exited with an error")
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+        # There are multiple matches on output
+        self.assertTrue(len(res["all_pd"].readid) > len(
+            res["all_pd"].readid.unique()), "ganon classify has only unique matches")
+        total_reads_classified = res["rep_pd"]["unique"].fillna(0).astype(
+            int).sum() + res["rep_pd"]["lca"].fillna(0).astype(int).sum()
+
+        # Reassign
+        params = {"input_prefix": params_classify["output_prefix"],
+                  "output_prefix": params_classify["output_prefix"] + "_reassigned",
+                  "remove_all": True}
+
+        cfg = Config("reassign", **params)
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon reassign exited with an error")
+
+        res = reassign_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon reassign has inconsistent results")
+        
+        # .all file removed 
+        self.assertFalse(check_files(params["input_prefix"], "all"))
+
+        # Check if all reads got properly reported
+        self.assertEqual(total_reads_classified, res["rep_pd"]["unique"].fillna(0).astype(int).sum() + res["rep_pd"]["lca"].fillna(0).astype(int).sum(), "ganon reassign reported wrong number of reads")
+
+    def test_skip_one(self):
+        """
+        Test ganon reassign with --skip-one
+        """
+        params_classify = self.default_params_classify.copy()
+        params_classify["output_prefix"] = self.results_dir + "skip_one"
+
+        # Build config from params
+        cfg = Config("classify", **params_classify)
+        self.assertTrue(run_ganon(
+            cfg, params_classify["output_prefix"]), "ganon classify exited with an error")
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon classify has inconsistent results")
+        # There are multiple matches on output
+        self.assertTrue(len(res["all_pd"].readid) > len(
+            res["all_pd"].readid.unique()), "ganon classify has only unique matches")
+        total_reads_classified = res["rep_pd"]["unique"].fillna(0).astype(
+            int).sum() + res["rep_pd"]["lca"].fillna(0).astype(int).sum()
+
+        # Reassign
+        params = {"input_prefix": params_classify["output_prefix"],
+                  "output_prefix": params_classify["output_prefix"] + "_reassigned",
+                  "skip_one": True}
+
+        cfg = Config("reassign", **params)
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon reassign exited with an error")
+
+        res = reassign_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon reassign has inconsistent results")
+        
+        # .one file not created
+        self.assertFalse(check_files(params["output_prefix"], "one"))
+
+        # Check if all reads got properly reported
+        self.assertEqual(total_reads_classified, res["rep_pd"]["unique"].fillna(0).astype(int).sum() + res["rep_pd"]["lca"].fillna(0).astype(int).sum(), "ganon reassign reported wrong number of reads")
+
+
 if __name__ == '__main__':
     unittest.main()

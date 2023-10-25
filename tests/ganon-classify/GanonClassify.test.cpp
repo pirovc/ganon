@@ -122,7 +122,7 @@ struct Res
         }
         if ( cfg.output_lca )
         {
-            lca = parse_all_lca( cfg.output_prefix + ".lca", lines_lca );
+            lca = parse_all_lca( cfg.output_prefix + ".one", lines_lca );
         }
         if ( cfg.output_unclassified )
         {
@@ -280,7 +280,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             REQUIRE( GanonClassify::run( cfg ) );
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
-            REQUIRE_FALSE( std::filesystem::exists( prefix + ".lca" ) );
+            REQUIRE_FALSE( std::filesystem::exists( prefix + ".one" ) );
         }
         SECTION( "without --output-all" )
         {
@@ -481,7 +481,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         REQUIRE( GanonClassify::run( cfg ) );
         // No files created
         REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.rep" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.lca" ) );
+        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.one" ) );
         REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.all" ) );
         REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.unc" ) );
 
