@@ -239,19 +239,22 @@ def classify_sanity_check_and_parse(params):
 
 def reassign_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
-    if not check_files(params["output_prefix"], ["one"]):
-        return None
-
+    
     res = {}
+    if not params["remove_all"]:
+        res["all_pd"] = parse_all_lca(params["input_prefix"]+".all")
+        if res["all_pd"].empty:
+            return None
 
+    if not params["skip_one"]:
+        # If no .one file was created
+        if not check_files(params["output_prefix"], ["one"]): 
+            return None
+        else:
+            res["one_pd"] = parse_all_lca(params["output_prefix"]+".one")
+            if res["one_pd"].empty:
+                return None
 
-    res["all_pd"] = parse_all_lca(params["input_prefix"]+".all")
-    if res["all_pd"].empty:
-        return None
-
-    res["one_pd"] = parse_all_lca(params["output_prefix"]+".one")
-    if res["one_pd"].empty:
-        return None
 
     if check_files(params["output_prefix"], ["rep"]):
         res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
