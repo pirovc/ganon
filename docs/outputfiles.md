@@ -22,7 +22,7 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
     - 5: # lca reads
     - 6: rank
     - 7: name
-- {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
+- {prefix}**.one**: output with one match for each classified read after EM or LCA algorithm. Only generated with `--output-one` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.one *(fields: read identifier, target, (max) k-mer/minimizer count)*
 - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: read identifier, target, k-mer/minimizer count)*
 
 ## ganon report
