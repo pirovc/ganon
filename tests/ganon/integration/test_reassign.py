@@ -10,7 +10,7 @@ from utils import setup_dir
 from utils import build_sanity_check_and_parse
 from utils import classify_sanity_check_and_parse
 from utils import reassign_sanity_check_and_parse
-from utils import parse_all_lca, parse_rep
+from utils import parse_all_one, parse_rep
 from utils import run_ganon
 from utils import check_files
 data_dir = base_dir + "data/"
@@ -155,8 +155,8 @@ class TestReassign(unittest.TestCase):
         self.assertTrue(run_ganon(
             cfg, params_classify["output_prefix"]), "ganon classify exited with an error")
         rep = parse_rep(params_classify["output_prefix"] + ".rep")
-        all_A = parse_all_lca(params_classify["output_prefix"] + ".A.all")
-        all_B = parse_all_lca(params_classify["output_prefix"] + ".B.all")
+        all_A = parse_all_one(params_classify["output_prefix"] + ".A.all")
+        all_B = parse_all_one(params_classify["output_prefix"] + ".B.all")
         self.assertIsNotNone(all_A, "ganon classify has inconsistent results")
         self.assertIsNotNone(all_B, "ganon classify has inconsistent results")
         total_reads_classified = rep["unique"].fillna(0).astype(
@@ -175,8 +175,8 @@ class TestReassign(unittest.TestCase):
         self.assertTrue(
             run_ganon(cfg, params["output_prefix"]), "ganon reassign exited with an error")
         rep = parse_rep(params["output_prefix"] + ".rep")
-        one_A = parse_all_lca(params["output_prefix"] + ".A.one")
-        one_B = parse_all_lca(params["output_prefix"] + ".B.one")
+        one_A = parse_all_one(params["output_prefix"] + ".A.one")
+        one_B = parse_all_one(params["output_prefix"] + ".B.one")
 
         # There are only single matches on output
         self.assertEqual(len(one_A.readid), len(

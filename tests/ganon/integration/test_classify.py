@@ -7,7 +7,7 @@ base_dir = "tests/ganon/"
 sys.path.append(base_dir)
 from utils import setup_dir
 from utils import build_sanity_check_and_parse
-from utils import classify_sanity_check_and_parse
+from utils import classify_sanity_check_and_parse, report_sanity_check_and_parse
 from utils import run_ganon
 from utils import check_files
 data_dir = base_dir + "data/"
@@ -209,6 +209,56 @@ class TestClassify(unittest.TestCase):
         # General sanity check of results
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
+
+    def test_report_params(self):
+        """
+        Test ganon classify with report parameters
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "report_params"
+        params["min_count"] = 0.1
+        params["ranks"] = ["genus", "species"]
+        params["report_type"] = "matches"
+
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+
+        # General sanity check of reports
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        # check if only selected ranks were reported
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["rank"].isin(params["ranks"])).all(),
+                        "ganon report did not report the correct ranks")
+        # check if none is higher than min_count
+        self.assertTrue((res["tre_pd"][~res["idx_base"]]["cumulative"] >= params["min_count"]).all(),
+                        "ganon report failed filtering with --min-count")
+        # should not output unclassified
+        self.assertFalse((res["tre_pd"]['rank'] == "unclassified").any(),
+                         "ganon report has wrong output for --report_type matches")
+
+    def test_skip_report(self):
+        """
+        Test ganon classify with --skip-report
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "skip_report"
+        params["skip_report"] = True
+
+        # Build config from params
+        cfg = Config("classify", **params)
+        # Run
+        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon classify exited with an error")
+        # General sanity check of results
+        res = classify_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon table has inconsistent results")
+        
+        # There is no .tre output
+        self.assertFalse(check_files(params["output_prefix"], "tre"))
 
 if __name__ == '__main__':
     unittest.main()
