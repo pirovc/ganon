@@ -1,46 +1,59 @@
 # Classification
 
 `ganon classify` will match single and/or paired-end sets of reads against one or [more databases](#multiple-and-hierarchical-classification). 
-By default, parameters are optimized for **taxonomic profiling**. 
-
-Example:
+By default, parameters are optimized for **taxonomic profiling**, meaning that less reads will be classified but with a higher sensitivity. For example:
 
 ```bash
 ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
 ```
 
-`ganon report` will be automatically executed after `ganon classify` and a [report will be created `.tre`](../outputfiles/#ganon-report).
+Output files:
 
-ganon can perform **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level with `ganon classify` + `ganon report`. Some guidelines are listed below, please choose the parameters according to your application:
+ - `results.rep`: plain report of the run, used to further generate tree-like reports
+ - `results.tre`: tree-like report with cumulative abundances by taxonomic ranks (can be re-generated with `ganon report`)
+
+More information about output files [here](../outputfiles/#ganon-classify).
+
+!!! Note
+    ganon performs **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.
 
 ### Profiling
 
 `ganon classify` is set-up by default to perform taxonomic profiling. It uses:
 
- - strict thresholds: `--rel-cutoff 0.75` and `--rel-filter 0`
-
-`ganon report` will automatically run after classification with:
-
- - `--min-count 0.005` (0.5%) to exclude low abundant taxa
- - `--report-type abundance` to generate taxonomic abundances, re-distributing read counts and correcting for genome sizes
-
-!!! Note
-    `ganon report` can be used independently from `ganon classify` with the output file `.rep`
+ - strict thresholds: `--rel-cutoff 0.75` and `--rel-filter 0.1`
+ - `--min-count 0.00005` (0.005%) to exclude very low abundant taxa
+ - `--report-type abundance` to generate taxonomic abundances, correcting for genome sizes  (more infos [here](../reports/#report-type-report-type))
 
 ### Binning
 
-To achieve better results for taxonomic binning or sequence classification, ganon can be configured with:
+To achieve better results for taxonomic binning or sequence classification, `ganon classify` can be configured with `--binning`, that is the same as:
 
- - `--output-all` and `--output-lca` to write `.all` `.lca` files for binning results
- - less strict `--rel-cutoff` and `--rel-filter` values (e.g. `0.25` and `0.1`, respectively)
- - activate the `--reassign` to apply an EM algorithm, re-assigning reads with LCA matches to one most probable target (defined by `--level` in the build procedure). In this case, the `.all` file will be re-generated with one assignment per read.
+ - less strict thresholds: `--rel-cutoff 0.25 --rel-filter 0`
+ - `--min-count 0` reports all taxa with at least one read assigned to it
+ - `--report-type reads` will report sequence abundances instead of taxonomic abundances (more infos [here](../reports/#report-type-report-type))
+
+!!! Tip
+    Database parameters in `ganon build` can also influence your results. Lower `--max-fp` (e.g. 0.1, 0.001) and higher `--kmer-size` (e.g. `23`, `27`) will improve sensitivity of your results at cost of a larger database and memory usage.
+
+## Reads with multiple matches
+
+There are two ways to solve reads with multiple-matches in `ganon classify`:
+
+ - `--multiple-matches em` (default): uses an Expectation-Maximization algorithm, re-assigning reads with multiple matches to one most probable target (defined by `--level` in the build procedure).
+ - `--multiple-matches lca`: uses the Lowest Common Ancestor algorithm, re-assigning reads with multiple matches to higher common ancestors in the taxonomic tree.
+ - `--multiple-matches skip`: will not resolve multi-matching reads
+
+!!! Tip
+    - The Expectation-Maximization can be performed independently with `ganon reassign` using the output files `.rep` and `.all`.
+    - Reports can be generated independently with `ganon report` using the output file `.rep`
 
 !!! Note
-    `ganon reassign` can be used independently from `ganon classify` with the output file `.rep` and `.all`
+    `--multiple-matches lca` paired with `--report-type abundance` or `dist` will distribute read **counts** with multiple matches to one most probable target (defined by `--level` in the build procedure), instead of a higher taxonomic rank. In this case the distribution is simply based on the number of taxa with unique matches and it is not as precise as the EM algorithm, but it will run faster since the per-read basis re-assignment can be skipped.
 
-!!! tip
-    Database parameters can also influence your results. Lower `--max-fp` (e.g. 0.1, 0.001) and higher `--kmer-size` (e.g. `23`, `27`) will improve sensitivity of your results at cost of a larger database and memory usage
+## Classifying more reads
 
+By default ganon will classify less reads in favour of sensitivity. To classify more reads, use less strict `--rel-cutoff` and `--rel-filter` values (e.g. `0.25` and `0`, respectively). More details [here](#cutoff-and-filter-rel-cutoff-rel-filter).
 
 ## Multiple and Hierarchical classification
 
