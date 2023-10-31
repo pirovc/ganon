@@ -260,6 +260,13 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Set-up input info
         info = load_input(cfg, input_files)
+        # Define user bins for writing taxonomy and target info file
+        user_bins_col = "target"  # Default as target
+        if cfg.level in cfg.choices_level:
+            user_bins_col = "specialization"  # if specialization was requested
+        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
+            user_bins_col = "node"
+
         if info.empty:
             print_log("ERROR: Unable to parse input files", cfg.quiet)
             return False
@@ -285,18 +292,23 @@ def build_custom(cfg, which_call: str="build_custom"):
                 print_log("ERROR: Unable to match specialization to targets", cfg.quiet)
                 return False
 
-        # Define user bins for writing taxonomy and target info file
-        user_bins_col = "target"  # Default as target
-        if cfg.level in cfg.choices_level:
-            user_bins_col = "specialization"  # if specialization was requested
-        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
-            user_bins_col = "node"
-
         # Filter and write taxonomy
         if tax:
+            unique_nodes = info["node"].unique()
+
+            # Check if targets/specializations are not overlapping with taxids
+            if (user_bins_col=="target" and info.index.isin(unique_nodes).any()) or \
+               (user_bins_col=="specialization" and info["specialization"].isin(unique_nodes).any()):
+                print_log("ERROR: " + user_bins_col + " overlaps with taxonomic identifiers", cfg.quiet)
+                return False
+
             # Get estimates of genome sizes
-            genome_sizes = get_genome_size(cfg, info["node"].unique(), tax, build_output_folder)
-            tax.filter(info["node"].unique())  # filter only used tax. nodes
+            genome_sizes = get_genome_size(cfg, unique_nodes, tax, build_output_folder)
+            
+            # filter only used tax. nodes
+            tax.filter(unique_nodes) 
+
+            # write tax with added nodes and genome sizes
             write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
 
         # If requested, save a copy of the info file to re-run build quicker
@@ -529,19 +541,18 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
     may include specialization as nodes
     """
 
-    # Write filtered "standard" taxonomy
-    rm_files(tax_file)
-    tax.write(tax_file)
-
     # Add specialization if not using direct taxonomic nodes
     if user_bins_col != "node":
         # Set rank to level or input_target
-        rank = level if level else input_target
-        with open(tax_file, "a") as outf:
-            for target, row in info.iterrows():
-                t = row[user_bins_col] if user_bins_col != "target" else target
-                n = row["specialization_name"] if user_bins_col == "specialization" else t
-                print(t, row["node"], rank, n, sep="\t", end="\n", file=outf)
+        tax_rank = level if level else input_target
+        for target, row in info.iterrows():
+            tax_node = row["specialization"] if user_bins_col == "specialization" else target
+            tax_name = row["specialization_name"] if user_bins_col == "specialization" else target
+            tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
+
+    # Write filtered taxonomy with added nodes
+    rm_files(tax_file)
+    tax.write(tax_file)
 
     # add genome_sizes col, either from node or parent (specialization)
     tax_df = pd.read_csv(tax_file, names=["node", "parent", "rank", "name"], delimiter='\t', dtype=str)
