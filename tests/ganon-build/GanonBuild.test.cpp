@@ -79,7 +79,7 @@ void validate_elements( const GanonBuild::Config cfg, const aux::SeqTarget& seqt
     // For each sequence used to build the filter
     for ( auto& seq : seqtarget.sequences )
     {
-        auto hashes     = seq | minimiser_hash | seqan3::views::to< std::vector >;
+        auto hashes     = seq | minimiser_hash | seqan3::ranges::to<std::vector>();
         auto counts_seq = agent.bulk_count( hashes );
 
         // get bins from target of this sequence

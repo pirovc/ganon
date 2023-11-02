@@ -7,7 +7,7 @@
 #include <map>
 #include <ostream>
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/std/filesystem>
+#include <filesystem>
 #include <string>
 #include <vector>
 

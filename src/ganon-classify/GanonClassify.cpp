@@ -521,7 +521,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             if ( read1_len >= hierarchy_config.window_size )
             {
                 // Count hashes
-                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
+                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::ranges::to<std::vector>();
                 // Count hashes from both pairs if second is given
                 if ( read2_len >= hierarchy_config.window_size )
                 {
