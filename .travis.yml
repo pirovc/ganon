@@ -3,29 +3,29 @@ dist: focal
 
 matrix:
   include:
-    - name: "linux gcc-8"
+    - name: "linux gcc-11"
       os: linux
       addons:
-        apt: { packages: [g++-8, parallel] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Release"
+        apt: { packages: [g++-11, parallel] }
+      env: MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-9"
+    - name: "linux gcc-12"
       os: linux
       addons:
-        apt: { packages: [g++-9, parallel] }
-      env: MATRIX_EVAL="CC=gcc-9 && CXX=g++-9 && BUILD_TYPE=Release"
+        apt: { packages: [g++-12, parallel] }
+      env: MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-10"
+    - name: "linux gcc-13"
       os: linux
       addons:
-        apt: { packages: [g++-10, parallel] }
-      env: MATRIX_EVAL="CC=gcc-10 && CXX=g++-10 && BUILD_TYPE=Release"
+        apt: { packages: [g++-13, parallel] }
+      env: MATRIX_EVAL="CC=gcc-13 && CXX=g++-13 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-8 (coverage)"
+    - name: "linux gcc-12 (coverage)"
       os: linux
       addons:
-        apt: { packages: [g++-8, lcov, parallel] }
-      env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8 && BUILD_TYPE=Coverage && GCOV=gcov-8"
+        apt: { packages: [g++-12, lcov, parallel] }
+      env: MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Coverage && GCOV=gcov-12"
 
 before_install:
   - eval "${MATRIX_EVAL}"
