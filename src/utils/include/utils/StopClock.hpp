@@ -50,3 +50,9 @@ private:
     TimePoint                        m_end;
     std::chrono::duration< Seconds > m_runTime{ 0.0 };
 };
+
+inline auto StopClock_datetime( const StopClock::TimePoint& timepoint )
+{
+    const auto time = std::chrono::system_clock::to_time_t( timepoint );
+    return std::put_time( std::localtime( &time ), "%F %T" );
+}
