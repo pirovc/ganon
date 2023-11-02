@@ -521,7 +521,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             if ( read1_len >= hierarchy_config.window_size )
             {
                 // Count hashes
-                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
+                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::ranges::to< std::vector >();
                 // Count hashes from both pairs if second is given
                 if ( read2_len >= hierarchy_config.window_size )
                 {
@@ -844,11 +844,11 @@ bool load_files( std::vector< Filter< TFilter > >& filters, std::vector< FilterC
 void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, const StopClock& timeClassPrint )
 {
     using ::operator<<;
-    std::cerr << "ganon-classify    start time: " << timeGanon.begin() << std::endl;
-    std::cerr << "loading filters      elapsed: " << timeLoadFilters.elapsed() << " seconds" << std::endl;
-    std::cerr << "classifying+printing elapsed: " << timeClassPrint.elapsed() << " seconds" << std::endl;
-    std::cerr << "ganon-classify       elapsed: " << timeGanon.elapsed() << " seconds" << std::endl;
-    std::cerr << "ganon-classify      end time: " << timeGanon.end() << std::endl;
+    std::cerr << "ganon-classify        start time: " << StopClock_datetime( timeGanon.begin() ) << std::endl;
+    std::cerr << "loading filters      elapsed (s): " << timeLoadFilters.elapsed() << " seconds" << std::endl;
+    std::cerr << "classifying+printing elapsed (s): " << timeClassPrint.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify       elapsed (s): " << timeGanon.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify          end time: " << StopClock_datetime( timeGanon.end() ) << std::endl;
     std::cerr << std::endl;
 }
 
