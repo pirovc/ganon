@@ -727,7 +727,11 @@ size_t load_filter( THIBF&             filter,
 
             // workaround when file has a . (e.g. GCF_013391805.1)
             // "." replaced by "|||" in ganon build wrapper
+            // fixed on ganon v2.0.0 (+ raptor 3.0.1) but kept for compatibility (>= ganon v1.8.0)
             replace_all( f, "|||", "." );
+
+            // workaround when target has a space (e.g. s__Pectobacterium carotovorum)
+            // " " replaced by "---" in ganon build wrapper
             replace_all( f, "---", " " );
 
             bin_map.push_back( std::make_tuple( binno, f ) );
