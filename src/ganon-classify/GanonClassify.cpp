@@ -1117,6 +1117,9 @@ bool ganon_classify( Config config )
     SafeQueue< detail::ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
     SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
 
+    // Define one threads for decompress bgzf files
+    seqan3::contrib::bgzf_thread_count = 1u;
+
     // Thread for reading input files
     std::future< void > read_task = std::async(
         std::launch::async, detail::parse_reads, std::ref( queue1 ), std::ref( stats ), std::ref( config ) );
