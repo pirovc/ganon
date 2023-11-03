@@ -344,9 +344,10 @@ def build_custom(cfg, which_call: str="build_custom"):
             with open(raptor_input_file, "w") as filehibf:
                 for target, files in target_files.items():
                     # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
-                    # raptor v3.0.0 "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
-                    # Substitute by placeholders
-                    new_target = target.replace(".", "|||").replace(" ", "---")
+                    # raptor v3.0.1 fixes it
+                    # raptor v3.0.X "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
+                    # since input file is a space separated, substitute by placeholder "---", treated at runtime ganon-classify
+                    new_target = target.replace(" ", "---")
                     # Select first file
                     first_file = os.path.abspath(files[0])
                     # Get extension(s)
