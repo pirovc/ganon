@@ -373,7 +373,7 @@ class Config:
                 return False
 
             if self.filter_type == "hibf" and self.input_target == "sequence":
-                print_log("--hibf is currently only supported with --input-target file")
+                print_log("--filter-type hibf is currently only supported with --input-target file")
                 return False
 
             if self.level == "custom" and not self.input_file:
