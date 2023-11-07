@@ -26,6 +26,7 @@ class Config:
     choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
+    choices_filter_type = ["hibf", "ibf"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -47,14 +48,14 @@ class Config:
         build_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
-        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,  help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or 0.001 with --hibf.")
-        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,     help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
-        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,    help="The k-mer size to split sequences.")
-        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
-        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
-        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
-        build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,     help="Skip sequences smaller then value defined. 0 to not skip any sequence.")
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",  help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored. This option will set --max-fp 0.001 as default.")
+        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,   help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with --filter-type hibf or 0.05 with --filter-type ibf.")
+        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,     help="The k-mer size to split sequences.")
+        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,     help="The window-size to build filter with minimizers.")
+        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,      help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,      help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-type ibf.")
+        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg",  help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.", choices=self.choices_mode)
+        build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,      help="Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-type ibf.")
+        build_default_advanced_args.add_argument("-v", "--filter-type",    type=str,                              metavar="", default="hibf", help="Variant of bloom filter to use [" + ", ".join(self.choices_filter_type) + "]. hibf requires raptor >= v3.0.1 installed or binary path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf. hibf will set --max-fp 0.001 as default.", choices=self.choices_filter_type)
 
         ####################################################################################################
 
@@ -65,7 +66,7 @@ class Config:
         build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")  
 
         build_database_args = build_parser.add_argument_group("database arguments")
-        build_database_args.add_argument("-l", "--level",          type=str, default="assembly", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' or 'assembly'")
+        build_database_args.add_argument("-l", "--level",          type=str, default="species", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis")
         
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
@@ -335,7 +336,7 @@ class Config:
         if self.which in ["build", "build-custom"]:
             # If max-fp is not set, use default for ibf and hibf
             if self.max_fp is None:
-                self.max_fp = 0.001 if self.hibf else 0.05
+                self.max_fp = 0.001 if self.filter_type == "hibf" else 0.05
 
         if self.which == "classify":
             if self.binning:
@@ -358,7 +359,7 @@ class Config:
         if self.which == "build":
 
             if not self.organism_group and not self.taxid:
-                print_log("--organism-group or --taxid is required")
+                print_log("--organism-group or --taxid required")
                 return False
 
             if self.organism_group and self.taxid:
@@ -371,10 +372,9 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
-            if self.hibf:
-                if self.input_target == "sequence":
-                    print_log("--hibf is only supported with --input-target file")
-                    return False
+            if self.filter_type == "hibf" and self.input_target == "sequence":
+                print_log("--hibf is currently only supported with --input-target file")
+                return False
 
             if self.level == "custom" and not self.input_file:
                 print_log("--level custom requires --input-file")
@@ -519,14 +519,14 @@ class Config:
                 print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-            if hasattr(self, 'hibf') and self.hibf:
+            if hasattr(self, 'filter_type') and self.filter_type == "hibf":
                 self.raptor_path = self.raptor_path + "/" if self.raptor_path else ""
                 raptor_paths = [self.raptor_path, self.raptor_path+"build/bin/"] if self.raptor_path else [None, "build/"]
                 for p in raptor_paths:
                     self.path_exec["raptor"] = shutil.which("raptor", path=p)
                     if self.path_exec["raptor"] is not None: break
                 if self.path_exec["raptor"] is None:
-                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path")
+                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path or use --filter-type ibf")
                     missing_path = True
 
         if self.which in ["classify"]:
