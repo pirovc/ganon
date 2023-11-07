@@ -100,7 +100,7 @@ def build(cfg):
                             "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
-                            "hibf": cfg.hibf,
+                            "filter_type": cfg.filter_type,
                             "write_info_file": cfg.write_info_file,
                             "keep_files": cfg.keep_files}
 
@@ -178,8 +178,15 @@ def update(cfg):
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
     build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
-    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0
-    build_custom_params["hibf"] = loaded_params["hibf"]
+    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0    
+    # filter_type introduced in v2.0.0, before was --hibf
+    if "filter_type" in loaded_params:
+        ft = loaded_params["filter_type"]  # current definition
+    elif "hibf" in loaded_params:
+        ft = "hibf"  # --hibf
+    else:
+        ft = "ibf"  # default < 2.0.0 was ibf
+    build_custom_params["filter_type"] = ft
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
@@ -324,7 +331,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished - skipping", cfg.quiet)
     else:
 
-        if cfg.hibf:
+        if cfg.filter_type == "hibf":
             tx = time.time()
             print_log("Building index (raptor)", cfg.quiet)
 
@@ -416,7 +423,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
     # Set output database files
     db_files_ext = []
-    if cfg.hibf:
+    if cfg.filter_type == "hibf":
         db_files_ext.append("hibf")
     else:
         db_files_ext.append("ibf")

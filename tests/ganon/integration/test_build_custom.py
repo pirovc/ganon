@@ -22,6 +22,7 @@ class TestBuildCustom(unittest.TestCase):
     default_params = {"input": data_dir + "build-custom/files/",
                       "taxonomy": "skip",
                       "threads": 1,
+                      "filter_type": "ibf",
                       "write_info_file": True,
                       "keep_files": True,
                       "verbose": True,

@@ -23,6 +23,7 @@ class TestBuild(unittest.TestCase):
                       "taxonomy": "skip",
                       "level": "assembly",
                       "threads": 1,
+                      "filter_type": "ibf",
                       "write_info_file": True,
                       "keep_files": True,
                       "verbose": True,
