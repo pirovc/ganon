@@ -4,19 +4,19 @@
 
 [GitHub repository](https://github.com/pirovc/ganon)
 
-ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
+ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses [Hierarchical Interleaved Bloom Filters](https://doi.org/10.1186/s13059-023-02971-4) as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
 
 ## Features
 
 - NCBI and GTDB native support for taxonomic classification (also runs without taxonomy)
-- integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
+- integrated download of commonly used reference sequences from RefSeq/Genbank/GTDB (`ganon build`)
 - update indices incrementally (`ganon update`)
-- customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
-- build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
-- perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
-- [report](#report) the lowest common ancestor (LCA) but also multiple and unique matches for every read
+- customizable database build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
+- build and classify at different taxonomic levels, strain, assembly, file, sequence or custom specialization
+- perform [hierarchical classification](#multiple-and-hierarchical-classification) using several databases in one run
+- solve multiple-matching reads with an Expectation-Maximization (EM) or Lowest Common Ancestor (LCA) algorithm
+- [report](#report) multiple and unique matches for every read
 - [report](#report) sequence or taxonomic abundances as well as total number of matches
-- reassignment of reads with multiple matches to a unique match with an EM algorithm
 - generate reports and contingency tables for multi-sample studies with several filter options
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
@@ -33,21 +33,34 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ## Installation from source
 
-### Dependencies Python
+### Python dependencies
 
 - python >=3.6
 - pandas >=1.1.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
 
 ```bash
-python3 -V # >=3.6
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
-```
-### Dependencies C++
+# Python version should be >=3.6
+python3 -V
 
-- GCC >=7
-- CMake >=3.10
+# Install packages via pip or conda:
+# PIP
+python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
+# Conda (alternative)
+conda install "pandas>=1.1.0" "multitax>=1.3.1"
+```
+### C++ dependencies
+
+- GCC >=11
+- CMake >=3.4
 - zlib
+- bzip2
+- raptor >=3.0.1
+
+!!! tip
+    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
+
+    In CMake, you may have set the environment include directory with the following parameter: `-DSEQAN3_CXX_FLAGS="-I/path/to/miniconda3/envs/gcc-conda/include/"` changing `/path/to/miniconda3` with your local path to the conda installation.
 
 ### Downloading and building ganon + submodules
 
@@ -59,6 +72,7 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
 # Install Python side
 cd ganon
 python3 setup.py install --record files.txt  # optional
+
 # Compile and install C++ side
 mkdir -p build
 cd build
@@ -71,35 +85,25 @@ sudo make install  # optional
 - use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 - to classify extremely large reads or contigs that would need more than 65000 k-mers, use `-DLONGREADS=ON`
 
-If everything was properly installed, the following commands should show the help pages without errors:
+### Installing raptor
 
-```bash
-ganon -h
-```
+The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor>=3.0.1"` (already included in ganon install via conda).
 
-### Running tests
+!!! Note
+    raptor is required to build databases with the Hierarchical Interleaved Bloom Filter (`ganon build --filter-type hibf`)
+    To build old style ganon indices `ganon build --filter-type ibf`, raptor is not required
 
-```bash
-python3 -m unittest discover -s tests/ganon/integration/
-python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
-cd build/
-ctest -VV .
-```
-
-### Installing raptor (optional)
-
-If you want to use the Hierarchical Interleaved Bloom Filter `--hibf` in `ganon build` you will need to install [raptor](https://github.com/seqan/raptor) either via conda `conda install -c bioconda -c conda-forge raptor` (already included in the installation if you installed ganon via conda) or from source:
+To install raptor from source, follow the instructions below:
 
 #### Dependencies
  
  - CMake >= 3.18
  - GCC 11, 12 or 13 (most recent minor version)
- - git
 
 #### Downloading and building raptor + submodules
 
 ```bash
-git clone --branch raptor-v3.0.0 --recurse-submodules https://github.com/seqan/raptor
+git clone --branch raptor-v3.0.1 --recurse-submodules https://github.com/seqan/raptor
 ```
 
 ```bash
@@ -111,9 +115,24 @@ make -j 4
 ```
 
 - binaries will be located in the `bin` directory
-- you may have to inform `ganon build` where to find the binaries with `--raptor-path raptor/build/bin`
+- you may have to inform `ganon build` the path to the binaries with `--raptor-path raptor/build/bin`
 
-## Parameters
+### Testing
+
+If everything was properly installed, the following command should show the help pages without errors:
+
+```bash
+ganon -h
+```
+
+#### Running tests
+
+```bash
+python3 -m unittest discover -s tests/ganon/integration/
+python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
+cd build/
+ctest -VV .
+```
 
 ## Parameters
 
