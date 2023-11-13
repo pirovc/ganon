@@ -35,9 +35,9 @@ The most important parameters and trade-offs to be aware of when using ganon:
 
 ### ganon build
 
-- `--max-fp --filter-size`: controls the false positive of the bloom filters and the size of the filter (which is the same as the amount of memory needed). The higher the `--max-fp`, the smaller the databases at a cost of sensitivity in classification. `--filter-size` can be used instead of `--max-fp` to define a specific size for your database. In this case, the false positive will be reported at the end of the build.
+- `--level`: Highest level to build the database. Can be a taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis. The more specific the level, the bigger the database will be.
+- `--max-fp`: controls the false positive of the bloom filters. The higher the `--max-fp`, the smaller the databases at a cost of sensitivity in classification.
 - `--window-size --kmer-size`: the *window* value should always be the same or larger than the *k-mer* value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small *k-mer* and/or large *window*. Larger *k-mer* values (e.g. `31`) will improve classification, specially read binning, at a cost of larger databases.
-- `--hibf`: build smaller databases that can be queried faster. Building will take longer.
 
 ### ganon classify
 
@@ -47,7 +47,7 @@ The most important parameters and trade-offs to be aware of when using ganon:
 - `--rel-filter`: filter matches in relation to the best and worst after the cutoff is applied. `0` means only matches with top score (# of *k-mers*) as the best match will be kept.
     - **lower** values -> **more unique matching reads**
     - **higher** values -> **more multi-matching reads**
-- `--reassign`: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with `ganon reassign`.
+- `--multiple-matches`: defines how ganon treats multiple-matching reads. Either by an EM-algorithm based on unique matches or a taxonomy-based LCA algorithm.
 
 ### ganon report
 

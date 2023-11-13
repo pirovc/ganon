@@ -67,7 +67,7 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wcast-align -Wunused 
     -Woverloaded-virtual -Wpedantic -Wnull-dereference -Wdouble-promotion 
-    -Wformat=2 -Wstrict-aliasing -Wunused-variable )
+    -Wformat=2 -Wstrict-aliasing -Wunused-variable -Wno-interference-size -Wno-null-dereference )
 
 add_compile_options( -Wno-shadow -Wno-old-style-cast )
 
