@@ -27,16 +27,16 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 | RefSeq (2023-03-14) | # assemblies | # species | Size* | `ganon build` |
 |---|---|---|---|---|
-| All genomes | 295219 | 52781 | 160 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --level species --db-prefix abfv_rs`</details> |
-| All genomes - 1 assembly/species | 52781 | 52781 | 128 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --level species --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
-| Complete genomes | 44121 | 19715 | 35 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --level species --complete-genomes --db-prefix abfv_rs_cg`</details> |
-| Complete genomes - 1 assembly/species | 19715 | 19715 | 29 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --level species --complete-genomes --genome-updater "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
-| Representative genomes | 18073 | 18073 | 69 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --level species --representative-genomes --db-prefix abfv_rs_rg`</details> |
+| All genomes | 295219 | 52781 | 160 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| All genomes - 1 assembly/species | 52781 | 52781 | 128 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s`</details> |
+| Complete genomes | 44121 | 19715 | 35 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
+| Complete genomes - 1 assembly/species | 19715 | 19715 | 29 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --genome-updater "-A 'species:1'" --db-prefix abfv_rs_cg_t1s`</details> |
+| Representative genomes | 18073 | 18073 | 69 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --representative-genomes --db-prefix abfv_rs_rg`</details> |
 
 | GenBank (2023-03-14) | # assemblies | # species | Size* | `ganon build`  |
 |---|---|---|---|---|
-| All genomes | 1595845 | 99505 | - | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --level species --db-prefix abfv_gb`</details> |
-| All genomes - 1 assembly/species | 99505 | 99505 | 300 | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --level species --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
+| All genomes | 1595845 | 99505 | - | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb`</details> |
+| All genomes - 1 assembly/species | 99505 | 99505 | 300 | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s`</details> |
 | Complete genomes | 92917 | 34815 | 42 | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg`</details> |
 | Complete genomes - 1 assembly/species | 34815 | 34815 | 34 | <details><summary></summary>`ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s`</details> |
 
@@ -45,8 +45,8 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 | GTDB R214 | # assemblies | # species | Size* | `ganon build`  |
 |---|---|---|---|---|
-| All genomes | 402709 | 85205 | 260 | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --level species --taxonomy gtdb --db-prefix ab_gtdb`</details> |
-| All genomes - 1 assembly/species  | 85205 | 85205 | 213 | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --level species --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s`</details> |
+| All genomes | 402709 | 85205 | 260 | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
+| All genomes - 1 assembly/species  | 85205 | 85205 | 213 | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s`</details> |
 
 
 !!! info
