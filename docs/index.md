@@ -168,7 +168,7 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-l] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]]
-                   [--skip-genome-size] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                   [--skip-genome-size] -d DB_PREFIX [-x] [-t] [-p] [-k] [-w] [-s] [-f] [-j] [-y] [-v] [--restart]
                    [--verbose] [--quiet] [--write-info-file]
 
 options:
@@ -187,7 +187,8 @@ required arguments:
 
 database arguments:
   -l , --level          Highest level to build the database. Options: any available taxonomic rank [species, genus,
-                        ...], 'leaves' or 'assembly' (default: assembly)
+                        ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis (default:
+                        species)
 
 download arguments:
   -b [ ...], --source [ ...]
@@ -212,21 +213,25 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
-                        0.001 with --hibf. (default: None)
-  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
+                        --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
+                        type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. (default: avg)
-  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        This option will set --max-fp 0.001 as default. (default: False)
+                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
+                        avg)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
+                        type ibf. (default: 0)
+  -v , --filter-type    Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
+                        path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf.
+                        hibf will set --max-fp 0.001 as default. (default: hibf)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -244,7 +249,7 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [--skip-genome-size] [-r [...]]
-                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-k] [-w] [-s] [-f] [-j] [-y] [-v] [--restart]
                           [--verbose] [--quiet] [--write-info-file]
 
 options:
@@ -299,21 +304,25 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
-                        0.001 with --hibf. (default: None)
-  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
+                        --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
+                        type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. (default: avg)
-  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        This option will set --max-fp 0.001 as default. (default: False)
+                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
+                        avg)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
+                        type ibf. (default: 0)
+  -v , --filter-type    Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
+                        path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf.
+                        hibf will set --max-fp 0.001 as default. (default: hibf)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
