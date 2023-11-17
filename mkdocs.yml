@@ -1,7 +1,7 @@
-site_name: ganon
+site_name: ganon2
 theme: readthedocs
 nav:
-    - ganon: index.md
+    - ganon2: index.md
     - Quick Start: start.md
     - Databases (ganon build): default_databases.md
     - Custom databases (ganon build-custom): custom_databases.md

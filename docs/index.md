@@ -1,23 +1,24 @@
-# ganon
+# ganon2
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pirovc/ganon)](https://github.com/pirovc/ganon) [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458) 
 
 [GitHub repository](https://github.com/pirovc/ganon)
 
-ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses [Hierarchical Interleaved Bloom Filters](https://doi.org/10.1186/s13059-023-02971-4) as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
+ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses [Hierarchical Interleaved Bloom Filters](https://doi.org/10.1186/s13059-023-02971-4) as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic or sequence abundances are estimated and reported.
 
 ## Features
 
-- NCBI and GTDB native support for taxonomic classification (also runs without taxonomy)
-- integrated download of commonly used reference sequences from RefSeq/Genbank/GTDB (`ganon build`)
-- update indices incrementally (`ganon update`)
-- customizable database build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
-- build and classify at different taxonomic levels, strain, assembly, file, sequence or custom specialization
-- perform [hierarchical classification](#multiple-and-hierarchical-classification) using several databases in one run
-- solve multiple-matching reads with an Expectation-Maximization (EM) or Lowest Common Ancestor (LCA) algorithm
-- [report](#report) multiple and unique matches for every read
-- [report](#report) sequence or taxonomic abundances as well as total number of matches
-- generate reports and contingency tables for multi-sample studies with several filter options
+- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases/#refseq-and-genbank) with incremental [updates](default_databases/#update-ganon-update)
+- NCBI and [GTDB](default_databases/#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
+- [customizable database](custom_databases/) build for local or non-standard sequence files
+- optimized [taxonomic binning](classification/#binning) and [profiling](classification/#profiling) configurations
+- build and classify at various taxonomic levels, strain, assembly, file, sequence or custom specialization
+- [hierarchical classification](classification/#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
+- [EM and/or LCA](classification/#reads-with-multiple-matches) algorithms to solve multiple-matching reads
+- reporting of multiple and unique matches for every read
+- [reporting](reports/#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
+- advanced tree-like [reports](reports) with several filter options
+- generation of [contingency tables](table/) with several filters for multi-sample studies
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
