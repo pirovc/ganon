@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "1.9.0"
+    version = "2.0.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -23,8 +23,10 @@ class Config:
     choices_ncbi_file_info = ["refseq", "genbank", "refseq_historical", "genbank_historical"]
     choices_default_ranks = ["superkingdom", "phylum", "class", "order", "family", "genus", "species", "assembly"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
+    choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
+    choices_filter_type = ["hibf", "ibf"]
 
     def __init__(self, which: str=None, **kwargs):
 
@@ -46,14 +48,14 @@ class Config:
         build_default_important_args.add_argument("-t", "--threads",  type=unsigned_int(minval=1), metavar="", default=1,      help="")
 
         build_default_advanced_args = build_default_parser.add_argument_group("advanced arguments")
-        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,  help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or 0.001 with --hibf.")
-        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,     help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp.")
-        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,    help="The k-mer size to split sequences.")
-        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,    help="The window-size to build filter with minimizers.")
-        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,     help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
-        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg", help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size.", choices=self.choices_mode)
-        build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,     help="Skip sequences smaller then value defined. 0 to not skip any sequence.")
-        build_default_advanced_args.add_argument("--hibf",                 action="store_true",  help="Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored. This option will set --max-fp 0.001 as default.")
+        build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,   help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with --filter-type hibf or 0.05 with --filter-type ibf.")
+        build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,     help="The k-mer size to split sequences.")
+        build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,     help="The window-size to build filter with minimizers.")
+        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,      help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,      help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-type ibf.")
+        build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg",  help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.", choices=self.choices_mode)
+        build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,      help="Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-type ibf.")
+        build_default_advanced_args.add_argument("-v", "--filter-type",    type=str,                              metavar="", default="hibf", help="Variant of bloom filter to use [" + ", ".join(self.choices_filter_type) + "]. hibf requires raptor >= v3.0.1 installed or binary path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf. hibf will set --max-fp 0.001 as default.", choices=self.choices_filter_type)
 
         ####################################################################################################
 
@@ -64,7 +66,7 @@ class Config:
         build_required_args.add_argument("-a", "--taxid",          type=str, nargs="*", metavar="", help="One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x gtdb). Mutually exclusive --organism-group")  
 
         build_database_args = build_parser.add_argument_group("database arguments")
-        build_database_args.add_argument("-l", "--level",          type=str, default="assembly", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' or 'assembly'")
+        build_database_args.add_argument("-l", "--level",          type=str, default="species", metavar="", help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis")
         
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
@@ -139,21 +141,26 @@ class Config:
         classify_group_cutoff_filter = classify_parser.add_argument_group("cutoff/filter arguments")
         classify_group_cutoff_filter.add_argument("-c", "--rel-cutoff", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.75], help="Min. percentage of a read (set of k-mers) shared with a reference necessary to consider a match. Generally used to remove low similarity matches. Single value or one per database (e.g. 0.7 1 0.25). 0 for no cutoff")
         classify_group_cutoff_filter.add_argument("-e", "--rel-filter", type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[0.1],  help="Additional relative percentage of matches (relative to the best match) to keep. Generally used to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
-        classify_group_cutoff_filter.add_argument("-f", "--fpr-query",  type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5], help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
       
+        classify_group_postrep = classify_parser.add_argument_group("post-processing/report arguments")
+        classify_group_postrep.add_argument("-m", "--multiple-matches", type=str,                    metavar="", default="em",        help="Method to solve reads with multiple matches  [" + ", ".join(self.choices_multiple_matches) + "]. em -> expectation maximization algorithm based on unique matches. lca -> lowest common ancestor based on taxonomy. The EM algorithm can be executed later with 'ganon reassign' using the .all file (--output-all).", choices=self.choices_multiple_matches)
+        classify_group_postrep.add_argument("--ranks",                  type=str,  nargs="*",        metavar="", default=[],          help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "].")
+        classify_group_postrep.add_argument("--min-count",              type=int_or_float(minval=0), metavar="", default=0.00005,     help="Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1 for counts]")
+        classify_group_postrep.add_argument("--report-type",            type=str,                    metavar="", default="abundance", help="Type of report (.tre) [" + ", ".join(self.choices_report_type) + "]. More info in 'ganon report'.", choices=self.choices_report_type)
+        classify_group_postrep.add_argument("--skip-report",            action="store_true",                                          help="Disable tree-like report (.tre) at the end of classification. Can be done later with 'ganon report'.")
+
         classify_group_output = classify_parser.add_argument_group("output arguments")
-        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)")
-        classify_group_output.add_argument("--output-lca",                action="store_true",               help="Output an additional file with one lca match for each read (.lca)")
-        classify_group_output.add_argument("--output-all",                action="store_true",               help="Output an additional file with all matches. File can be very large (.all)")
-        classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output an additional file with unclassified read headers (.unc)")
+        classify_group_output.add_argument("-o", "--output-prefix",       type=str,              metavar="", help="Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only .rep)")
+        classify_group_output.add_argument("--output-one",                action="store_true",               help="Output a file with one match for each read (.one) either an unique match or a result from the EM or a LCA algorithm (--multiple-matches)")
+        classify_group_output.add_argument("--output-all",                action="store_true",               help="Output a file with all unique and multiple matches (.all)")
+        classify_group_output.add_argument("--output-unclassified",       action="store_true",               help="Output a file with unclassified read headers (.unc)")
         classify_group_output.add_argument("--output-single",             action="store_true",               help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy")
 
         classify_group_other = classify_parser.add_argument_group("other arguments")
         classify_group_other.add_argument("-t", "--threads",             type=unsigned_int(minval=1), metavar="", default=1,  help="Number of sub-processes/threads to use")
-        classify_group_other.add_argument("-b", "--binning",             action="store_true",                                 help="Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon report'.")
-        classify_group_other.add_argument("-a", "--reassign",            action="store_true",                                 help="Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file can be re-generated with 'ganon reassign'.")
+        classify_group_other.add_argument("-b", "--binning",             action="store_true",                                 help="Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --min-count 0 --report-type reads). Will report sequence abundances (.tre) instead of tax. abundance.")
+        classify_group_other.add_argument("-f", "--fpr-query",  type=int_or_float(minval=0, maxval=1), nargs="*", metavar="", default=[1e-5], help="Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter. Generally used to remove false positives matches querying a database build with large --max-fp. Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter")
         classify_group_other.add_argument("-l", "--hierarchy-labels",    type=str,         nargs="*", metavar="",             help="Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'")
-        classify_group_other.add_argument("-r", "--ranks",               type=str,         nargs="*", metavar="", default=[], help="Ranks to report taxonomic abundances (.tre). empty will report default ranks [" + ", ".join(self.choices_default_ranks) + "]. This file can be re-generated with the 'ganon report' command for other types of abundances (reads, matches) with further filtration and output options")
         classify_group_other.add_argument("--verbose",                   action="store_true",                                 help="Verbose output mode")
         classify_group_other.add_argument("--quiet",                     action="store_true",                                 help="Quiet output mode")
         classify_group_other.add_argument("--hibf",                      action="store_true",                     help=argparse.SUPPRESS)
@@ -168,15 +175,17 @@ class Config:
         # Required
         reassign_group_required = reassign_parser.add_argument_group("required arguments")
         reassign_group_required.add_argument("-i", "--input-prefix",  type=str, required=True, metavar="", help="Input prefix to find files from ganon classify (.all and optionally .rep)")
-        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.all'")
+        reassign_group_required.add_argument("-o", "--output-prefix", type=str, required=True,             help="Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.out'")
    
         reassign_em = reassign_parser.add_argument_group("EM arguments")
         reassign_em.add_argument("-e", "--max-iter",  type=unsigned_int(minval=0), metavar="", default=10, help="Max. number of iterations for the EM algorithm. If 0, will run until convergence (check --threshold)")
         reassign_em.add_argument("-s", "--threshold", type=int_or_float(minval=0), metavar="", default=0,  help="Convergence threshold limit to stop the EM algorithm.")
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
-        reassign_group_other.add_argument("--verbose",         action="store_true", help="Verbose output mode")
-        reassign_group_other.add_argument("--quiet",           action="store_true", help="Quiet output mode")
+        reassign_group_other.add_argument("--remove-all", action="store_true", help="Remove input file (.all) after processing.")
+        reassign_group_other.add_argument("--skip-one",   action="store_true", help="Do not write output file (.one) after processing.")
+        reassign_group_other.add_argument("--verbose",    action="store_true", help="Verbose output mode")
+        reassign_group_other.add_argument("--quiet",      action="store_true", help="Quiet output mode")
 
         ####################################################################################################
 
@@ -327,13 +336,14 @@ class Config:
         if self.which in ["build", "build-custom"]:
             # If max-fp is not set, use default for ibf and hibf
             if self.max_fp is None:
-                self.max_fp = 0.001 if self.hibf else 0.05
+                self.max_fp = 0.001 if self.filter_type == "hibf" else 0.05
 
         if self.which == "classify":
             if self.binning:
                 self.rel_cutoff = [0.25]
                 self.rel_filter = [0]
-                self.reassign = True
+                self.min_count = 0
+                self.report_type = "reads"
                 
     def validate(self):
 
@@ -349,7 +359,7 @@ class Config:
         if self.which == "build":
 
             if not self.organism_group and not self.taxid:
-                print_log("--organism-group or --taxid is required")
+                print_log("--organism-group or --taxid required")
                 return False
 
             if self.organism_group and self.taxid:
@@ -362,10 +372,9 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
-            if self.hibf:
-                if self.input_target == "sequence":
-                    print_log("--hibf is only supported with --input-target file")
-                    return False
+            if self.filter_type == "hibf" and self.input_target == "sequence":
+                print_log("--filter-type hibf is currently only supported with --input-target file")
+                return False
 
             if self.level == "custom" and not self.input_file:
                 print_log("--level custom requires --input-file")
@@ -454,11 +463,14 @@ class Config:
                     print_log("Invalid number of paired reads")
                     return False
 
-            if not self.output_prefix and (self.output_all or self.output_lca or self.output_unclassified or self.reassign):
-                    print_log("--output-all / --output-lca / --output-unclassified / --reassign requires --output-prefix to be set")
+            if not self.output_prefix and (self.output_all or self.output_one or self.output_unclassified):
+                    print_log("--output-all / --output-one / --output-unclassified requires --output-prefix to be set")
                     return False
 
-
+            if self.output_one and self.multiple_matches == "skip":
+                print_log("--output-one requires --multiple-matches em/lca")
+                return False              
+        
         elif self.which == "report":
 
             if self.skip_hierarchy and self.keep_hierarchy:
@@ -507,14 +519,14 @@ class Config:
                 print_log("ganon-build binary was not found. Please inform a specific path with --ganon-path")
                 missing_path = True
 
-            if hasattr(self, 'hibf') and self.hibf:
+            if hasattr(self, 'filter_type') and self.filter_type == "hibf":
                 self.raptor_path = self.raptor_path + "/" if self.raptor_path else ""
                 raptor_paths = [self.raptor_path, self.raptor_path+"build/bin/"] if self.raptor_path else [None, "build/"]
                 for p in raptor_paths:
                     self.path_exec["raptor"] = shutil.which("raptor", path=p)
                     if self.path_exec["raptor"] is not None: break
                 if self.path_exec["raptor"] is None:
-                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path")
+                    print_log("raptor binary was not found. Please inform a specific path with --raptor-path or use --filter-type ibf")
                     missing_path = True
 
         if self.which in ["classify"]:

@@ -4,7 +4,7 @@
 
 Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate the following database files:
 
- - {prefix}**.ibf/.hibf**: main interleaved bloom filter index file, **.hibf** is generated with `--hibf` option.
+ - {prefix}**.ibf/.hibf**: main bloom filter index file, extension based on the `--filter-type` option.
  - {prefix}**.tax**: taxonomy tree, only generated if `--taxonomy` is used *(fields: target/node, parent, rank, name, genome size)*.
  - {prefix}**_files/**: (`ganon build` only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.
 
@@ -22,7 +22,7 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
     - 5: # lca reads
     - 6: rank
     - 7: name
-- {prefix}**.lca**: output with one match for each classified read after LCA. Only generated with `--output-lca` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca *(fields: read identifier, target, (max) k-mer/minimizer count)*
+- {prefix}**.one**: output with one match for each classified read after EM or LCA algorithm. Only generated with `--output-one` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.one *(fields: read identifier, target, (max) k-mer/minimizer count)*
 - {prefix}**.all**: output with all matches for each read. Only generated with `--output-all` active **Warning: file can be very large**. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all *(fields: read identifier, target, k-mer/minimizer count)*
 
 ## ganon report

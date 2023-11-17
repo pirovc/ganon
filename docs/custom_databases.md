@@ -16,6 +16,9 @@ It is also possible to use **non-standard accessions and headers** to build cust
 !!! tip
     If you just want to build a database without any taxonomic or target information, just sent the files with `--input`, use `--taxonomy skip` and choose between `--input-target file` or `sequence`.
 
+!!! warning
+    the target and specialization fields (2nd and 4th col) cannot be the same as the target (3rd col)
+
 <details>
   <summary>Examples of --input-file</summary>
   <br>
@@ -159,7 +162,7 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F"\t" '{tax="1";for(i=NF;i>1;i--){if(length($i)>3){tax=$i;break;}};print $1".fna.gz\t"$1"\t"tax}' > ganon_input_file.tsv
 
 # Build ganon database
-ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --hibf --threads 32
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
 ```
 
 !!! note
@@ -222,7 +225,7 @@ awk -v db="$(realpath ${db})" '{file=db"/"substr($2,1,1)"/"$2".fna"; print ">"$1
 sort | uniq > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
-ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --hibf --level species --threads 12
+ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --threads 12
 
 # Delete extracted files and auxiliary files
 cat "${db}_extracted_files.txt" | xargs rm

@@ -799,21 +799,21 @@ void print_stats_verbose( const StopClock& timeGanonBuild,
      * print advanced statistic and times of the build
      */
     using ::operator<<;
-    std::cerr << "Count/save hashes start: " << timeCountStoreHashes.begin() << std::endl;
-    std::cerr << "                    end: " << timeCountStoreHashes.end() << std::endl;
-    std::cerr << "                elapsed: " << timeCountStoreHashes.elapsed() << std::endl;
-    std::cerr << "Estimate params   start: " << timeEstimateParams.begin() << std::endl;
-    std::cerr << "                    end: " << timeEstimateParams.end() << std::endl;
-    std::cerr << "                elapsed: " << timeEstimateParams.elapsed() << std::endl;
-    std::cerr << "Building filter   start: " << timeBuildIBF.begin() << std::endl;
-    std::cerr << "                    end: " << timeBuildIBF.end() << std::endl;
-    std::cerr << "                elapsed: " << timeBuildIBF.elapsed() << std::endl;
-    std::cerr << "Saving filer      start: " << timeWriteIBF.begin() << std::endl;
-    std::cerr << "                    end: " << timeWriteIBF.end() << std::endl;
-    std::cerr << "                elapsed: " << timeWriteIBF.elapsed() << std::endl;
-    std::cerr << "ganon-build       start: " << timeGanonBuild.begin() << std::endl;
-    std::cerr << "                    end: " << timeGanonBuild.end() << std::endl;
-    std::cerr << "                elapsed: " << timeGanonBuild.elapsed() << std::endl;
+    std::cerr << "Count/save hashes start: " << StopClock_datetime( timeCountStoreHashes.begin() ) << std::endl;
+    std::cerr << "                    end: " << StopClock_datetime( timeCountStoreHashes.end() ) << std::endl;
+    std::cerr << "            elapsed (s): " << timeCountStoreHashes.elapsed() << std::endl;
+    std::cerr << "Estimate params   start: " << StopClock_datetime( timeEstimateParams.begin() ) << std::endl;
+    std::cerr << "                    end: " << StopClock_datetime( timeEstimateParams.end() ) << std::endl;
+    std::cerr << "            elapsed (s): " << timeEstimateParams.elapsed() << std::endl;
+    std::cerr << "Building filter   start: " << StopClock_datetime( timeBuildIBF.begin() ) << std::endl;
+    std::cerr << "                    end: " << StopClock_datetime( timeBuildIBF.end() ) << std::endl;
+    std::cerr << "            elapsed (s): " << timeBuildIBF.elapsed() << std::endl;
+    std::cerr << "Saving filer      start: " << StopClock_datetime( timeWriteIBF.begin() ) << std::endl;
+    std::cerr << "                    end: " << StopClock_datetime( timeWriteIBF.end() ) << std::endl;
+    std::cerr << "            elapsed (s): " << timeWriteIBF.elapsed() << std::endl;
+    std::cerr << "ganon-build       start: " << StopClock_datetime( timeGanonBuild.begin() ) << std::endl;
+    std::cerr << "                    end: " << StopClock_datetime( timeGanonBuild.end() ) << std::endl;
+    std::cerr << "            elapsed (s): " << timeGanonBuild.elapsed() << std::endl;
     std::cerr << std::endl;
 }
 

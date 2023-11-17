@@ -2,12 +2,12 @@
 
 #include <algorithm>
 #include <cinttypes>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <map>
 #include <ostream>
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/std/filesystem>
 #include <string>
 #include <vector>
 

@@ -85,7 +85,7 @@ def parse_tsv(tsv_file):
     return pd.read_table(tsv_file, sep='\t', index_col=0)
 
 
-def parse_all_lca(file):
+def parse_all_one(file):
     colums = ['readid', 'target', 'count']
     types = {'readid': 'str', 'target': 'str', 'count': 'uint64'}
     return pd.read_table(file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
@@ -205,9 +205,12 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
 def classify_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
 
-    out_ext = ["rep", "tre"]
-    if params["output_lca"]:
-        out_ext.append("lca")
+    out_ext = ["rep"]
+    if not params["skip_report"]:
+        out_ext.append("tre")
+
+    if params["output_one"]:
+        out_ext.append("one")
 
     if params["output_all"]:
         out_ext.append("all")
@@ -217,18 +220,19 @@ def classify_sanity_check_and_parse(params):
 
     res = {}
     if params["output_all"]:
-        res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
+        res["all_pd"] = parse_all_one(params["output_prefix"]+".all")
         if res["all_pd"].empty:
             return None
 
-    if params["output_lca"]:
-        res["lca_pd"] = parse_all_lca(params["output_prefix"]+".lca")
-        if res["lca_pd"].empty:
+    if params["output_one"]:
+        res["one_pd"] = parse_all_one(params["output_prefix"]+".one")
+        if res["one_pd"].empty:
             return None
 
-    res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
-    if res["tre_pd"].empty:
-        return None
+    if "tre" in out_ext:
+        res["tre_pd"] = parse_tre(params["output_prefix"]+".tre")
+        if res["tre_pd"].empty:
+            return None
 
     res["rep_pd"] = parse_rep(params["output_prefix"]+".rep")
     if res["rep_pd"].empty:
@@ -239,14 +243,22 @@ def classify_sanity_check_and_parse(params):
 
 def reassign_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
-    if not check_files(params["output_prefix"], ["all"]):
-        return None
-
+    
     res = {}
+    if not params["remove_all"]:
+        res["all_pd"] = parse_all_one(params["input_prefix"]+".all")
+        if res["all_pd"].empty:
+            return None
 
-    res["all_pd"] = parse_all_lca(params["output_prefix"]+".all")
-    if res["all_pd"].empty:
-        return None
+    if not params["skip_one"]:
+        # If no .one file was created
+        if not check_files(params["output_prefix"], ["one"]): 
+            return None
+        else:
+            res["one_pd"] = parse_all_one(params["output_prefix"]+".one")
+            if res["one_pd"].empty:
+                return None
+
 
     if check_files(params["output_prefix"], ["rep"]):
         res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
@@ -272,7 +284,7 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         res = {}
         # Sequence information from database to be updated
-        res["tre_pd"] = parse_tre(out_tre, params["output_format"])
+        res["tre_pd"] = parse_tre(out_tre, params["output_format"] if "output_format" in params else None)
 
         # get idx for root (idx_root) and root + unclassified (idx_base)
         # strip white spaces for output_format text

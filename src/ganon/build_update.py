@@ -100,7 +100,7 @@ def build(cfg):
                             "raptor_path": cfg.raptor_path,
                             "n_refs": cfg.n_refs,
                             "n_batches": cfg.n_batches,
-                            "hibf": cfg.hibf,
+                            "filter_type": cfg.filter_type,
                             "write_info_file": cfg.write_info_file,
                             "keep_files": cfg.keep_files}
 
@@ -178,8 +178,15 @@ def update(cfg):
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
     build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
-    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0
-    build_custom_params["hibf"] = loaded_params["hibf"]
+    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0    
+    # filter_type introduced in v2.0.0, before was --hibf
+    if "filter_type" in loaded_params:
+        ft = loaded_params["filter_type"]  # current definition
+    elif "hibf" in loaded_params:
+        ft = "hibf"  # --hibf
+    else:
+        ft = "ibf"  # default < 2.0.0 was ibf
+    build_custom_params["filter_type"] = ft
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
@@ -260,6 +267,13 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Set-up input info
         info = load_input(cfg, input_files)
+        # Define user bins for writing taxonomy and target info file
+        user_bins_col = "target"  # Default as target
+        if cfg.level in cfg.choices_level:
+            user_bins_col = "specialization"  # if specialization was requested
+        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
+            user_bins_col = "node"
+
         if info.empty:
             print_log("ERROR: Unable to parse input files", cfg.quiet)
             return False
@@ -285,18 +299,23 @@ def build_custom(cfg, which_call: str="build_custom"):
                 print_log("ERROR: Unable to match specialization to targets", cfg.quiet)
                 return False
 
-        # Define user bins for writing taxonomy and target info file
-        user_bins_col = "target"  # Default as target
-        if cfg.level in cfg.choices_level:
-            user_bins_col = "specialization"  # if specialization was requested
-        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
-            user_bins_col = "node"
-
         # Filter and write taxonomy
         if tax:
+            unique_nodes = info["node"].unique()
+
+            # Check if targets/specializations are not overlapping with taxids
+            if (user_bins_col=="target" and info.index.isin(unique_nodes).any()) or \
+               (user_bins_col=="specialization" and info["specialization"].isin(unique_nodes).any()):
+                print_log("ERROR: " + user_bins_col + " overlaps with taxonomic identifiers", cfg.quiet)
+                return False
+
             # Get estimates of genome sizes
-            genome_sizes = get_genome_size(cfg, info["node"].unique(), tax, build_output_folder)
-            tax.filter(info["node"].unique())  # filter only used tax. nodes
+            genome_sizes = get_genome_size(cfg, unique_nodes, tax, build_output_folder)
+            
+            # filter only used tax. nodes
+            tax.filter(unique_nodes) 
+
+            # write tax with added nodes and genome sizes
             write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
 
         # If requested, save a copy of the info file to re-run build quicker
@@ -312,7 +331,7 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished - skipping", cfg.quiet)
     else:
 
-        if cfg.hibf:
+        if cfg.filter_type == "hibf":
             tx = time.time()
             print_log("Building index (raptor)", cfg.quiet)
 
@@ -332,9 +351,10 @@ def build_custom(cfg, which_call: str="build_custom"):
             with open(raptor_input_file, "w") as filehibf:
                 for target, files in target_files.items():
                     # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
-                    # raptor v3.0.0 "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
-                    # Substitute by placeholders
-                    new_target = target.replace(".", "|||").replace(" ", "---")
+                    # raptor v3.0.1 fixes it
+                    # raptor v3.0.X "eats" the space (e.g. s__Pectobacterium carotovorum -> s__Pectobacterium)
+                    # since input file is a space separated, substitute by placeholder "---", treated at runtime ganon-classify
+                    new_target = target.replace(" ", "---")
                     # Select first file
                     first_file = os.path.abspath(files[0])
                     # Get extension(s)
@@ -403,7 +423,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 
     # Set output database files
     db_files_ext = []
-    if cfg.hibf:
+    if cfg.filter_type == "hibf":
         db_files_ext.append("hibf")
     else:
         db_files_ext.append("ibf")
@@ -529,19 +549,18 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
     may include specialization as nodes
     """
 
-    # Write filtered "standard" taxonomy
-    rm_files(tax_file)
-    tax.write(tax_file)
-
     # Add specialization if not using direct taxonomic nodes
     if user_bins_col != "node":
         # Set rank to level or input_target
-        rank = level if level else input_target
-        with open(tax_file, "a") as outf:
-            for target, row in info.iterrows():
-                t = row[user_bins_col] if user_bins_col != "target" else target
-                n = row["specialization_name"] if user_bins_col == "specialization" else t
-                print(t, row["node"], rank, n, sep="\t", end="\n", file=outf)
+        tax_rank = level if level else input_target
+        for target, row in info.iterrows():
+            tax_node = row["specialization"] if user_bins_col == "specialization" else target
+            tax_name = row["specialization_name"] if user_bins_col == "specialization" else target
+            tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
+
+    # Write filtered taxonomy with added nodes
+    rm_files(tax_file)
+    tax.write(tax_file)
 
     # add genome_sizes col, either from node or parent (specialization)
     tax_df = pd.read_csv(tax_file, names=["node", "parent", "rank", "name"], delimiter='\t', dtype=str)

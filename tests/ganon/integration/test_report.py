@@ -35,6 +35,7 @@ class TestReport(unittest.TestCase):
                         "ncbi_file_info":  data_dir + "build-custom/assembly_summary.txt",
                         "genome_size_file": data_dir + "build-custom/species_genome_size.txt.gz",
                         "level": "species",
+                        "filter_type": "ibf",
                         "threads": 1,
                         "keep_files": True,
                         "write_info_file": True,
@@ -55,6 +56,7 @@ class TestReport(unittest.TestCase):
                         "genome_size_file": data_dir + "build-custom/species_genome_size.txt.gz",
                         "level": "assembly",
                         "threads": 1,
+                        "filter_type": "ibf",
                         "keep_files": True,
                         "write_info_file": True,
                         "verbose": True,
@@ -74,6 +76,7 @@ class TestReport(unittest.TestCase):
                            "paired_reads": [data_dir+"classify/sim.1.fq.gz",
                                             data_dir+"classify/sim.2.fq.gz"],
                            "verbose": True,
+                           "multiple_matches": "lca",
                            "quiet": False}
         # Build config from params
         classify_cfg = Config("classify", **classify_params)

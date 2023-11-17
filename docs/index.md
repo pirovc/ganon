@@ -1,23 +1,24 @@
-# ganon
+# ganon [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pirovc/ganon)](https://github.com/pirovc/ganon)
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/pirovc/ganon)](https://github.com/pirovc/ganon) [![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458) 
+[![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458) 
 
-[GitHub repository](https://github.com/pirovc/ganon)
+Code: [GitHub repository](https://github.com/pirovc/ganon)
 
-ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses Interleaved Bloom Filters as indices based on k-mers/minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic abundance is estimated and reported.
+ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses [Hierarchical Interleaved Bloom Filters](https://doi.org/10.1186/s13059-023-02971-4) as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic or sequence abundances are estimated and reported.
 
 ## Features
 
-- NCBI and GTDB native support for taxonomic classification (also runs without taxonomy)
-- integrated download of commonly used reference sequences from RefSeq/Genbank (`ganon build`)
-- update indices incrementally (`ganon update`)
-- customizable build for pre-downloaded or non-standard sequence files (`ganon build-custom`)
-- build and classify at different taxonomic levels, file, sequence, strain/assembly or custom specialization
-- perform [hierarchical classification](#multiple-and-hierarchical-classification): use several databases in any order
-- [report](#report) the lowest common ancestor (LCA) but also multiple and unique matches for every read
-- [report](#report) sequence or taxonomic abundances as well as total number of matches
-- reassignment of reads with multiple matches to a unique match with an EM algorithm
-- generate reports and contingency tables for multi-sample studies with several filter options
+- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases/#refseq-and-genbank) with incremental [updates](default_databases/#update-ganon-update)
+- NCBI and [GTDB](default_databases/#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
+- [customizable database](custom_databases/) build for local or non-standard sequence files
+- optimized [taxonomic binning](classification/#binning) and [profiling](classification/#profiling) configurations
+- build and classify at various taxonomic levels, strain, assembly, file, sequence or custom specialization
+- [hierarchical classification](classification/#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
+- [EM and/or LCA](classification/#reads-with-multiple-matches) algorithms to solve multiple-matching reads
+- reporting of multiple and unique matches for every read
+- [reporting](reports/#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
+- advanced tree-like [reports](reports) with several filter options
+- generation of [contingency tables](table/) with several filters for multi-sample studies
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -33,21 +34,34 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ## Installation from source
 
-### Dependencies Python
+### Python dependencies
 
 - python >=3.6
 - pandas >=1.1.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
 
 ```bash
-python3 -V # >=3.6
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
-```
-### Dependencies C++
+# Python version should be >=3.6
+python3 -V
 
-- GCC >=7
-- CMake >=3.10
+# Install packages via pip or conda:
+# PIP
+python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
+# Conda (alternative)
+conda install "pandas>=1.1.0" "multitax>=1.3.1"
+```
+### C++ dependencies
+
+- GCC >=11
+- CMake >=3.4
 - zlib
+- bzip2
+- raptor >=3.0.1
+
+!!! tip
+    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
+
+    In CMake, you may have set the environment include directory with the following parameter: `-DSEQAN3_CXX_FLAGS="-I/path/to/miniconda3/envs/gcc-conda/include/"` changing `/path/to/miniconda3` with your local path to the conda installation.
 
 ### Downloading and building ganon + submodules
 
@@ -59,6 +73,7 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
 # Install Python side
 cd ganon
 python3 setup.py install --record files.txt  # optional
+
 # Compile and install C++ side
 mkdir -p build
 cd build
@@ -71,35 +86,25 @@ sudo make install  # optional
 - use `-DINCLUDE_DIRS` to set alternative paths to cxxopts and Catch2 libs.
 - to classify extremely large reads or contigs that would need more than 65000 k-mers, use `-DLONGREADS=ON`
 
-If everything was properly installed, the following commands should show the help pages without errors:
+### Installing raptor
 
-```bash
-ganon -h
-```
+The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor>=3.0.1"` (already included in ganon install via conda).
 
-### Running tests
+!!! Note
+    raptor is required to build databases with the Hierarchical Interleaved Bloom Filter (`ganon build --filter-type hibf`)
+    To build old style ganon indices `ganon build --filter-type ibf`, raptor is not required
 
-```bash
-python3 -m unittest discover -s tests/ganon/integration/
-python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
-cd build/
-ctest -VV .
-```
-
-### Installing raptor (optional)
-
-If you want to use the Hierarchical Interleaved Bloom Filter `--hibf` in `ganon build` you will need to install [raptor](https://github.com/seqan/raptor) either via conda `conda install -c bioconda -c conda-forge raptor` (already included in the installation if you installed ganon via conda) or from source:
+To install raptor from source, follow the instructions below:
 
 #### Dependencies
  
  - CMake >= 3.18
  - GCC 11, 12 or 13 (most recent minor version)
- - git
 
 #### Downloading and building raptor + submodules
 
 ```bash
-git clone --branch raptor-v3.0.0 --recurse-submodules https://github.com/seqan/raptor
+git clone --branch raptor-v3.0.1 --recurse-submodules https://github.com/seqan/raptor
 ```
 
 ```bash
@@ -111,7 +116,24 @@ make -j 4
 ```
 
 - binaries will be located in the `bin` directory
-- you may have to inform `ganon build` where to find the binaries with `--raptor-path raptor/build/bin`
+- you may have to inform `ganon build` the path to the binaries with `--raptor-path raptor/build/bin`
+
+### Testing
+
+If everything was properly installed, the following command should show the help pages without errors:
+
+```bash
+ganon -h
+```
+
+#### Running tests
+
+```bash
+python3 -m unittest discover -s tests/ganon/integration/
+python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
+cd build/
+ctest -VV .
+```
 
 ## Parameters
 
@@ -122,7 +144,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 1.9.0
+   _|   v. 2.0.0
 - - - - - - - - - -
 
 positional arguments:
@@ -147,7 +169,7 @@ options:
 
 ```
 usage: ganon build [-h] [-g [...]] [-a [...]] [-l] [-b [...]] [-o] [-c] [-r] [-u] [-m [...]] [-z [...]]
-                   [--skip-genome-size] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                   [--skip-genome-size] -d DB_PREFIX [-x] [-t] [-p] [-k] [-w] [-s] [-f] [-j] [-y] [-v] [--restart]
                    [--verbose] [--quiet] [--write-info-file]
 
 options:
@@ -166,7 +188,8 @@ required arguments:
 
 database arguments:
   -l , --level          Highest level to build the database. Options: any available taxonomic rank [species, genus,
-                        ...], 'leaves' or 'assembly' (default: assembly)
+                        ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis (default:
+                        species)
 
 download arguments:
   -b [ ...], --source [ ...]
@@ -191,21 +214,25 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
-                        0.001 with --hibf. (default: None)
-  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
+                        --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
+                        type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. (default: avg)
-  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        This option will set --max-fp 0.001 as default. (default: False)
+                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
+                        avg)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
+                        type ibf. (default: 0)
+  -v , --filter-type    Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
+                        path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf.
+                        hibf will set --max-fp 0.001 as default. (default: hibf)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -223,7 +250,7 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [...]] [-e] [-c] [-n] [-a] [-l] [-m [...]] [-z [...]] [--skip-genome-size] [-r [...]]
-                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-f] [-k] [-w] [-s] [-j] [-y] [--hibf] [--restart]
+                          [-q [...]] -d DB_PREFIX [-x] [-t] [-p] [-k] [-w] [-s] [-f] [-j] [-y] [-v] [--restart]
                           [--verbose] [--quiet] [--write-info-file]
 
 options:
@@ -278,21 +305,25 @@ important arguments:
   -t , --threads 
 
 advanced arguments:
-  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.05 or
-                        0.001 with --hibf. (default: None)
-  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. (default: 0)
+  -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
+                        --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
                         (default: 4)
+  -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
+                        type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
                         smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. (default: avg)
-  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. (default: 0)
-  --hibf                Builds an HIBF with raptor/chopper (v3). --mode, --filter-size and --min-length will be ignored.
-                        This option will set --max-fp 0.001 as default. (default: False)
+                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
+                        avg)
+  -y , --min-length     Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
+                        type ibf. (default: 0)
+  -v , --filter-type    Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
+                        path set with --raptor-path. --mode, --filter-size and --min-length will be ignored with hibf.
+                        hibf will set --max-fp 0.001 as default. (default: hibf)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -340,8 +371,9 @@ optional arguments:
 
 ```
 usage: ganon classify [-h] -d [DB_PREFIX ...] [-s [reads.fq[.gz] ...]] [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]]
-                      [-c [...]] [-e [...]] [-f [...]] [-o] [--output-lca] [--output-all] [--output-unclassified]
-                      [--output-single] [-t] [-b] [-a] [-l [...]] [-r [...]] [--verbose] [--quiet]
+                      [-c [...]] [-e [...]] [-m] [--ranks [...]] [--min-count] [--report-type] [--skip-report] [-o]
+                      [--output-one] [--output-all] [--output-unclassified] [--output-single] [-t] [-b] [-f [...]]
+                      [-l [...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -363,38 +395,46 @@ cutoff/filter arguments:
                         Additional relative percentage of matches (relative to the best match) to keep. Generally used
                         to keep top matches above cutoff. Single value or one per hierarchy (e.g. 0.1 0). 1 for no
                         filter (default: [0.1])
-  -f [ ...], --fpr-query [ ...]
-                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
-                        Generally used to remove false positives matches querying a database build with large --max-fp.
-                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
+
+post-processing/report arguments:
+  -m , --multiple-matches 
+                        Method to solve reads with multiple matches [em, lca, skip]. em -> expectation maximization
+                        algorithm based on unique matches. lca -> lowest common ancestor based on taxonomy. The EM
+                        algorithm can be executed later with 'ganon reassign' using the .all file (--output-all).
+                        (default: em)
+  --ranks [ ...]        Ranks to report taxonomic abundances (.tre). empty will report default ranks [superkingdom,
+                        phylum, class, order, family, genus, species, assembly]. (default: [])
+  --min-count           Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1
+                        for counts] (default: 5e-05)
+  --report-type         Type of report (.tre) [abundance, reads, matches, dist, corr]. More info in 'ganon report'.
+                        (default: abundance)
+  --skip-report         Disable tree-like report (.tre) at the end of classification. Can be done later with 'ganon
+                        report'. (default: False)
 
 output arguments:
   -o , --output-prefix 
-                        Output prefix for output (.rep) and report (.tre). Empty to output to STDOUT (only .rep)
-                        (default: None)
-  --output-lca          Output an additional file with one lca match for each read (.lca) (default: False)
-  --output-all          Output an additional file with all matches. File can be very large (.all) (default: False)
+                        Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only
+                        .rep) (default: None)
+  --output-one          Output a file with one match for each read (.one) either an unique match or a result from the EM
+                        or a LCA algorithm (--multiple-matches) (default: False)
+  --output-all          Output a file with all unique and multiple matches (.all) (default: False)
   --output-unclassified
-                        Output an additional file with unclassified read headers (.unc) (default: False)
+                        Output a file with unclassified read headers (.unc) (default: False)
   --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
                         hierarchy (default: False)
 
 other arguments:
   -t , --threads        Number of sub-processes/threads to use (default: 1)
-  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --reassign). Will report
-                        sequence abundances (.tre) instead of tax. abundance. This file can be re-generated with 'ganon
-                        report'. (default: False)
-  -a, --reassign        Reassign reads with multiple matches with an EM algorithm. Will enforce --output-all. This file
-                        can be re-generated with 'ganon reassign'. (default: False)
+  -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --min-count 0 --report-type
+                        reads). Will report sequence abundances (.tre) instead of tax. abundance. (default: False)
+  -f [ ...], --fpr-query [ ...]
+                        Max. false positive of a query to accept a match. Applied after --rel-cutoff and --rel-filter.
+                        Generally used to remove false positives matches querying a database build with large --max-fp.
+                        Single value or one per hierarchy (e.g. 0.1 0). 1 for no filter (default: [1e-05])
   -l [ ...], --hierarchy-labels [ ...]
                         Hierarchy definition of --db-prefix files to be classified. Can also be a string, but input will
                         be sorted to define order (e.g. 1 1 2 3). The default value reported without hierarchy is 'H1'
                         (default: None)
-  -r [ ...], --ranks [ ...]
-                        Ranks to report taxonomic abundances (.tre). empty will report default ranks [superkingdom,
-                        phylum, class, order, family, genus, species, assembly]. This file can be re-generated with the
-                        'ganon report' command for other types of abundances (reads, matches) with further filtration
-                        and output options (default: [])
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```
@@ -405,7 +445,7 @@ other arguments:
   <summary>ganon reassign</summary>
 
 ```
-usage: ganon reassign [-h] -i  -o OUTPUT_PREFIX [-e] [-s] [--verbose] [--quiet]
+usage: ganon reassign [-h] -i  -o OUTPUT_PREFIX [-e] [-s] [--remove-all] [--skip-one] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -413,9 +453,9 @@ options:
 required arguments:
   -i , --input-prefix   Input prefix to find files from ganon classify (.all and optionally .rep) (default: None)
   -o OUTPUT_PREFIX, --output-prefix OUTPUT_PREFIX
-                        Output prefix for reassigned file (.all and optionally .rep). In case of multiple files, the
+                        Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the
                         base input filename will be appended at the end of the output file 'output_prefix +
-                        FILENAME.all' (default: None)
+                        FILENAME.out' (default: None)
 
 EM arguments:
   -e , --max-iter       Max. number of iterations for the EM algorithm. If 0, will run until convergence (check
@@ -423,6 +463,8 @@ EM arguments:
   -s , --threshold      Convergence threshold limit to stop the EM algorithm. (default: 0)
 
 other arguments:
+  --remove-all          Remove input file (.all) after processing. (default: False)
+  --skip-one            Do not write output file (.one) after processing. (default: False)
   --verbose             Verbose output mode (default: False)
   --quiet               Quiet output mode (default: False)
 ```

@@ -251,12 +251,12 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
             std::string output_file_all = "";
             if ( !config.output_prefix.empty() && unique_hierarchy > 1 && !config.output_single )
             {
-                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".lca";
+                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".one";
                 output_file_all = config.output_prefix + "." + config.hierarchy_labels[h] + ".all";
             }
             else if ( !config.output_prefix.empty() )
             {
-                output_file_lca = config.output_prefix + ".lca";
+                output_file_lca = config.output_prefix + ".one";
                 output_file_all = config.output_prefix + ".all";
             }
 
@@ -521,7 +521,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             if ( read1_len >= hierarchy_config.window_size )
             {
                 // Count hashes
-                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::views::to< std::vector >;
+                std::vector< size_t > hashes = rb.seqs[readID] | minimiser_hash | seqan3::ranges::to< std::vector >();
                 // Count hashes from both pairs if second is given
                 if ( read2_len >= hierarchy_config.window_size )
                 {
@@ -727,7 +727,11 @@ size_t load_filter( THIBF&             filter,
 
             // workaround when file has a . (e.g. GCF_013391805.1)
             // "." replaced by "|||" in ganon build wrapper
+            // fixed on ganon v2.0.0 (+ raptor 3.0.1) but kept for compatibility (>= ganon v1.8.0)
             replace_all( f, "|||", "." );
+
+            // workaround when target has a space (e.g. s__Pectobacterium carotovorum)
+            // " " replaced by "---" in ganon build wrapper
             replace_all( f, "---", " " );
 
             bin_map.push_back( std::make_tuple( binno, f ) );
@@ -844,11 +848,11 @@ bool load_files( std::vector< Filter< TFilter > >& filters, std::vector< FilterC
 void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, const StopClock& timeClassPrint )
 {
     using ::operator<<;
-    std::cerr << "ganon-classify    start time: " << timeGanon.begin() << std::endl;
-    std::cerr << "loading filters      elapsed: " << timeLoadFilters.elapsed() << " seconds" << std::endl;
-    std::cerr << "classifying+printing elapsed: " << timeClassPrint.elapsed() << " seconds" << std::endl;
-    std::cerr << "ganon-classify       elapsed: " << timeGanon.elapsed() << " seconds" << std::endl;
-    std::cerr << "ganon-classify      end time: " << timeGanon.end() << std::endl;
+    std::cerr << "ganon-classify        start time: " << StopClock_datetime( timeGanon.begin() ) << std::endl;
+    std::cerr << "loading filters      elapsed (s): " << timeLoadFilters.elapsed() << " seconds" << std::endl;
+    std::cerr << "classifying+printing elapsed (s): " << timeClassPrint.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify       elapsed (s): " << timeGanon.elapsed() << " seconds" << std::endl;
+    std::cerr << "ganon-classify          end time: " << StopClock_datetime( timeGanon.end() ) << std::endl;
     std::cerr << std::endl;
 }
 
@@ -1112,6 +1116,9 @@ bool ganon_classify( Config config )
     SafeQueue< detail::ReadBatches >* pointer_current = &queue1; // pointer to the queues
     SafeQueue< detail::ReadBatches >* pointer_helper  = &queue2; // pointer to the queues
     SafeQueue< detail::ReadBatches >* pointer_extra;             // pointer to the queues
+
+    // Define one threads for decompress bgzf files
+    seqan3::contrib::bgzf_thread_count = 1u;
 
     // Thread for reading input files
     std::future< void > read_task = std::async(

@@ -2,20 +2,20 @@
 # ganon
 # =============================================================================
 
-cmake_minimum_required( VERSION 3.10 FATAL_ERROR )
-project( ganon VERSION 1.9.0 LANGUAGES CXX )
+cmake_minimum_required( VERSION 3.4 FATAL_ERROR )
+project( ganon VERSION 2.0.0 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup
 # -----------------------------------------------------------------------------
 
-set( CMAKE_CXX_STANDARD 17 )
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} )
 
-if( NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU" )
+if( NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
     message( FATAL_ERROR
         "Compiler id '${CMAKE_CXX_COMPILER_ID}' is not supported, please \
         check the documentation." )
@@ -67,7 +67,7 @@ set( CMAKE_MODULE_LINKER_FLAGS_COVERAGE "${CMAKE_MODULE_LINKER_FLAGS_DEBUG}" )
 
 add_compile_options( -Wall -Wextra -Wshadow -Wuninitialized -Wcast-align -Wunused 
     -Woverloaded-virtual -Wpedantic -Wnull-dereference -Wdouble-promotion 
-    -Wformat=2 -Wstrict-aliasing -Wunused-variable )
+    -Wformat=2 -Wstrict-aliasing -Wunused-variable -Wno-interference-size -Wno-null-dereference )
 
 add_compile_options( -Wno-shadow -Wno-old-style-cast )
 
@@ -103,21 +103,15 @@ else()
     target_include_directories( cxxopts SYSTEM INTERFACE libs/cxxopts/include )
 endif()
 
-# 3. Zlib (optional for SeqAn):
+# 3. Zlib and Bzip2:
 
-find_package( ZLIB )
+find_package( BZip2 REQUIRED )
+find_package( ZLIB REQUIRED )
 
 # 4. SeqAn3:
 
-set( SEQAN3_INCLUDE_PATH libs/seqan3/include )
-find_package (SeqAn3 3.1.0 REQUIRED HINTS libs/seqan3/build_system)
-
-add_library( seqan3 INTERFACE )
-target_include_directories( seqan3 SYSTEM INTERFACE ${SEQAN3_INCLUDE_DIRS} )
-target_link_libraries( seqan3 INTERFACE ${SEQAN3_LIBRARIES} )
-
-add_compile_options( ${SEQAN3_DEFINITIONS} )
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN3_CXX_FLAGS}" )
+list (APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs/seqan3/build_system")
+find_package (seqan3 3.3.0 REQUIRED)
 
 # 5. Catch2:
 
@@ -143,21 +137,20 @@ endif()
 
 if( VERBOSE_CONFIG )
     message( STATUS "SeqAn3 symbols")
-    message( STATUS "  SEQAN3_VERSION   : ${SEQAN3_VERSION}" )
-    message( STATUS "  SEQAN3_DEFINITIONS   : ${SEQAN3_DEFINITIONS}" )
+    message( STATUS "  SEQAN3_VERSION       : ${SEQAN3_VERSION}" )
     message( STATUS "  SEQAN3_CXX_FLAGS     : ${SEQAN3_CXX_FLAGS}" )
+    message( STATUS "  SEQAN3_DEFINITIONS   : ${SEQAN3_DEFINITIONS}" )
     message( STATUS "  SEQAN3_INCLUDE_DIRS  : ${SEQAN3_INCLUDE_DIRS}" )
     message( STATUS "  SEQAN3_LIBRARIES     : ${SEQAN3_LIBRARIES}" )
     message( STATUS "Misc symbols")
+    get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  Build type          : ${CMAKE_BUILD_TYPE}" )
     message( STATUS "  CMAKE_CXX_FLAGS     : ${CMAKE_CXX_FLAGS}" )
-    message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
     message( STATUS "  CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}" )
     message( STATUS "  CONDA               : ${CONDA}" )
-    message( STATUS "  LONGREADS           : ${LONGREADS}" )
-    get_directory_property( dirCompileOptions COMPILE_OPTIONS )
     message( STATUS "  COMPILE_OPTIONS   : ${dirCompileOptions}" )
-
+    message( STATUS "  INCLUDE_DIRS        : ${INCLUDE_DIRS}" )
+    message( STATUS "  LONGREADS           : ${LONGREADS}" )
 endif()
 
 # -----------------------------------------------------------------------------
