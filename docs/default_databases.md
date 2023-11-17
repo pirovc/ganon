@@ -52,7 +52,7 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 !!! info
     GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.
 
-\* in GB -> the size of the database and the approx. RAM needed to build and use it.
+**\* in GB -> ganon requires up-to 2x the database size of memory to build it. The memory required to use it in classification is approx. the same as the database size.**
 
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
 - It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches [can reduce the size/RAM requirements with some trade-offs](#reducing-database-size).

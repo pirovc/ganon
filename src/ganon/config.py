@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "2.0.0-rc.1"
+    version = "2.0.0"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
