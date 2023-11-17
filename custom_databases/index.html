@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Custom databases (ganon build-custom) - ganon</title>
+    <title>Custom databases (ganon build-custom) - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -30,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href=".." class="icon icon-home"> ganon
+          <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
@@ -40,7 +40,7 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon2</a>
                 </li>
               </ul>
               <ul>
@@ -122,7 +122,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="..">ganon</a>
+          <a href="..">ganon2</a>
         
       </nav>
       <div class="wy-nav-content">
@@ -151,6 +151,10 @@
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>If you just want to build a database without any taxonomic or target information, just sent the files with <code>--input</code>, use <code>--taxonomy skip</code> and choose between <code>--input-target file</code> or <code>sequence</code>.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>the target and specialization fields (2nd and 4th col) cannot be the same as the target (3rd col)</p>
 </div>
 <details>
   <summary>Examples of --input-file</summary>
@@ -280,7 +284,7 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F&quot;\t&quot; '{tax=&quot;1&quot;;for(i=NF;i&gt;1;i--){if(length($i)&gt;3){tax=$i;break;}};print $1&quot;.fna.gz\t&quot;$1&quot;\t&quot;tax}' &gt; ganon_input_file.tsv
 
 # Build ganon database
-ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --hibf --threads 32
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -337,7 +341,7 @@ awk -v db=&quot;$(realpath ${db})&quot; '{file=db&quot;/&quot;substr($2,1,1)&quo
 sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
-ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --hibf --level species --threads 12
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --threads 12
 
 # Delete extracted files and auxiliary files
 cat &quot;${db}_extracted_files.txt&quot; | xargs rm

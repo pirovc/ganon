@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Classification (ganon classify) - ganon</title>
+    <title>Classification (ganon classify) - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -30,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href=".." class="icon icon-home"> ganon
+          <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
@@ -40,7 +40,7 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon2</a>
                 </li>
               </ul>
               <ul>
@@ -61,6 +61,10 @@
     <li class="toctree-l2"><a class="reference internal" href="#profiling">Profiling</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#binning">Binning</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#reads-with-multiple-matches">Reads with multiple matches</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#classifying-more-reads">Classifying more reads</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#multiple-and-hierarchical-classification">Multiple and Hierarchical classification</a>
     </li>
@@ -100,7 +104,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="..">ganon</a>
+          <a href="..">ganon2</a>
         
       </nav>
       <div class="wy-nav-content">
@@ -118,41 +122,57 @@
               
                 <h1 id="classification">Classification<a class="headerlink" href="#classification" title="Permanent link">:)</a></h1>
 <p><code>ganon classify</code> will match single and/or paired-end sets of reads against one or <a href="#multiple-and-hierarchical-classification">more databases</a>. 
-By default, parameters are optimized for <strong>taxonomic profiling</strong>. </p>
-<p>Example:</p>
+By default, parameters are optimized for <strong>taxonomic profiling</strong>, meaning that less reads will be classified but with a higher sensitivity. For example:</p>
 <pre><code class="language-bash">ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
 </code></pre>
-<p><code>ganon report</code> will be automatically executed after <code>ganon classify</code> and a <a href="../outputfiles/#ganon-report">report will be created <code>.tre</code></a>.</p>
-<p>ganon can perform <strong>taxonomic profiling</strong> and/or <strong>binning</strong> (one tax. assignment for each read) at a taxonomic, strain or sequence level with <code>ganon classify</code> + <code>ganon report</code>. Some guidelines are listed below, please choose the parameters according to your application:</p>
+<p>Output files:</p>
+<ul>
+<li><code>results.rep</code>: plain report of the run, used to further generate tree-like reports</li>
+<li><code>results.tre</code>: tree-like report with cumulative abundances by taxonomic ranks (can be re-generated with <code>ganon report</code>)</li>
+</ul>
+<p>By default, <code>ganon classify</code> only write report files. To get files with the classification of each read, use <code>--output-one</code> and/or <code>--output-all</code>. More information about output files <a href="../outputfiles/#ganon-classify">here</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>ganon performs <strong>taxonomic profiling</strong> and/or <strong>binning</strong> (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.</p>
+</div>
 <h3 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">:)</a></h3>
 <p><code>ganon classify</code> is set-up by default to perform taxonomic profiling. It uses:</p>
 <ul>
-<li>strict thresholds: <code>--rel-cutoff 0.75</code> and <code>--rel-filter 0</code></li>
+<li>strict thresholds: <code>--rel-cutoff 0.75</code> and <code>--rel-filter 0.1</code></li>
+<li><code>--min-count 0.00005</code> (0.005%) to exclude very low abundant taxa</li>
+<li><code>--report-type abundance</code> to generate taxonomic abundances, correcting for genome sizes  (more infos <a href="../reports/#report-type-report-type">here</a>)</li>
 </ul>
-<p><code>ganon report</code> will automatically run after classification with:</p>
-<ul>
-<li><code>--min-count 0.005</code> (0.5%) to exclude low abundant taxa</li>
-<li><code>--report-type abundance</code> to generate taxonomic abundances, re-distributing read counts and correcting for genome sizes</li>
-</ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>ganon report</code> can be used independently from <code>ganon classify</code> with the output file <code>.rep</code></p>
-</div>
 <h3 id="binning">Binning<a class="headerlink" href="#binning" title="Permanent link">:)</a></h3>
-<p>To achieve better results for taxonomic binning or sequence classification, ganon can be configured with:</p>
+<p>To achieve better results for taxonomic binning or sequence classification, <code>ganon classify</code> can be configured with <code>--binning</code>, that is the same as:</p>
 <ul>
-<li><code>--output-all</code> and <code>--output-lca</code> to write <code>.all</code> <code>.lca</code> files for binning results</li>
-<li>less strict <code>--rel-cutoff</code> and <code>--rel-filter</code> values (e.g. <code>0.25</code> and <code>0.1</code>, respectively)</li>
-<li>activate the <code>--reassign</code> to apply an EM algorithm, re-assigning reads with LCA matches to one most probable target (defined by <code>--level</code> in the build procedure). In this case, the <code>.all</code> file will be re-generated with one assignment per read.</li>
+<li>less strict thresholds: <code>--rel-cutoff 0.25 --rel-filter 0</code></li>
+<li><code>--min-count 0</code> reports all taxa with at least one read assigned to it</li>
+<li><code>--report-type reads</code> will report sequence abundances instead of taxonomic abundances (more infos <a href="../reports/#report-type-report-type">here</a>)</li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>ganon reassign</code> can be used independently from <code>ganon classify</code> with the output file <code>.rep</code> and <code>.all</code></p>
-</div>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
-<p>Database parameters can also influence your results. Lower <code>--max-fp</code> (e.g. 0.1, 0.001) and higher <code>--kmer-size</code> (e.g. <code>23</code>, <code>27</code>) will improve sensitivity of your results at cost of a larger database and memory usage</p>
+<p>Database parameters in <code>ganon build</code> can also influence your results. Lower <code>--max-fp</code> (e.g. 0.1, 0.001) and higher <code>--kmer-size</code> (e.g. <code>23</code>, <code>27</code>) will improve sensitivity of your results at cost of a larger database and memory usage.</p>
 </div>
+<h2 id="reads-with-multiple-matches">Reads with multiple matches<a class="headerlink" href="#reads-with-multiple-matches" title="Permanent link">:)</a></h2>
+<p>There are two ways to solve reads with multiple-matches in <code>ganon classify</code>:</p>
+<ul>
+<li><code>--multiple-matches em</code> (default): uses an Expectation-Maximization algorithm, re-assigning reads with multiple matches to one most probable target (defined by <code>--level</code> in the build procedure).</li>
+<li><code>--multiple-matches lca</code>: uses the Lowest Common Ancestor algorithm, re-assigning reads with multiple matches to higher common ancestors in the taxonomic tree.</li>
+<li><code>--multiple-matches skip</code>: will not resolve multi-matching reads</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<ul>
+<li>The Expectation-Maximization can be performed independently with <code>ganon reassign</code> using the output files <code>.rep</code> and <code>.all</code>.</li>
+<li>Reports can be generated independently with <code>ganon report</code> using the output file <code>.rep</code></li>
+</ul>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code>--multiple-matches lca</code> paired with <code>--report-type abundance</code> or <code>dist</code> will distribute read <strong>counts</strong> with multiple matches to one most probable target (defined by <code>--level</code> in the build procedure), instead of a higher taxonomic rank. In this case the distribution is simply based on the number of taxa with unique matches and it is not as precise as the EM algorithm, but it will run faster since the per-read basis re-assignment can be skipped.</p>
+</div>
+<h2 id="classifying-more-reads">Classifying more reads<a class="headerlink" href="#classifying-more-reads" title="Permanent link">:)</a></h2>
+<p>By default ganon will classify less reads in favour of sensitivity. To classify more reads, use less strict <code>--rel-cutoff</code> and <code>--rel-filter</code> values (e.g. <code>0.25</code> and <code>0</code>, respectively). More details <a href="#cutoff-and-filter-rel-cutoff-rel-filter">here</a>.</p>
 <h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification<a class="headerlink" href="#multiple-and-hierarchical-classification" title="Permanent link">:)</a></h2>
 <p><code>ganon classify</code> can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. </p>
 <p>Multiple database classification can be performed providing several inputs for <code>--db-prefix</code>. They are required to be built with the same <code>--kmer-size</code> and <code>--window-size</code> values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.</p>

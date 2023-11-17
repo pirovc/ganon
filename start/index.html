@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Quick Start - ganon</title>
+    <title>Quick Start - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -30,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href=".." class="icon icon-home"> ganon
+          <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
@@ -40,7 +40,7 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon2</a>
                 </li>
               </ul>
               <ul class="current">
@@ -100,7 +100,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="..">ganon</a>
+          <a href="..">ganon2</a>
         
       </nav>
       <div class="wy-nav-content">
@@ -143,9 +143,9 @@
 <p>The most important parameters and trade-offs to be aware of when using ganon:</p>
 <h3 id="ganon-build">ganon build<a class="headerlink" href="#ganon-build" title="Permanent link">:)</a></h3>
 <ul>
-<li><code>--max-fp --filter-size</code>: controls the false positive of the bloom filters and the size of the filter (which is the same as the amount of memory needed). The higher the <code>--max-fp</code>, the smaller the databases at a cost of sensitivity in classification. <code>--filter-size</code> can be used instead of <code>--max-fp</code> to define a specific size for your database. In this case, the false positive will be reported at the end of the build.</li>
+<li><code>--level</code>: Highest level to build the database. Can be a taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis. The more specific the level, the bigger the database will be.</li>
+<li><code>--max-fp</code>: controls the false positive of the bloom filters. The higher the <code>--max-fp</code>, the smaller the databases at a cost of sensitivity in classification.</li>
 <li><code>--window-size --kmer-size</code>: the <em>window</em> value should always be the same or larger than the <em>k-mer</em> value. The larger the difference between them, the smaller the database will be. However, some sensitivity/precision loss in classification is expected with small <em>k-mer</em> and/or large <em>window</em>. Larger <em>k-mer</em> values (e.g. <code>31</code>) will improve classification, specially read binning, at a cost of larger databases.</li>
-<li><code>--hibf</code>: build smaller databases that can be queried faster. Building will take longer.</li>
 </ul>
 <h3 id="ganon-classify">ganon classify<a class="headerlink" href="#ganon-classify" title="Permanent link">:)</a></h3>
 <ul>
@@ -159,7 +159,7 @@
 <li><strong>higher</strong> values -&gt; <strong>more multi-matching reads</strong></li>
 </ul>
 </li>
-<li><code>--reassign</code>: runs an EM-algorithm to reassign reads that received multiple matches. It provides a unique match for each read at the level the database was built (e.g. assembly or species). Mostly useful for read binning, with little overall impact on taxonomic profiling. Can be used independently with <code>ganon reassign</code>.</li>
+<li><code>--multiple-matches</code>: defines how ganon treats multiple-matching reads. Either by an EM-algorithm based on unique matches or a taxonomy-based LCA algorithm.</li>
 </ul>
 <h3 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h3>
 <ul>
@@ -171,7 +171,7 @@
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href=".." class="btn btn-neutral float-left" title="ganon"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href=".." class="btn btn-neutral float-left" title="ganon2"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../default_databases/" class="btn btn-neutral float-right" title="Databases (ganon build)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 

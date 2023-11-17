@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <link rel="shortcut icon" href="../img/favicon.ico" />
-    <title>Output files - ganon</title>
+    <title>Output files - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
@@ -30,7 +30,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href=".." class="icon icon-home"> ganon
+          <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
@@ -40,7 +40,7 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="..">ganon</a>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon2</a>
                 </li>
               </ul>
               <ul>
@@ -92,7 +92,7 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="..">ganon</a>
+          <a href="..">ganon2</a>
         
       </nav>
       <div class="wy-nav-content">
@@ -112,7 +112,7 @@
 <h2 id="ganon-buildbuild-customupdate">ganon build/build-custom/update<a class="headerlink" href="#ganon-buildbuild-customupdate" title="Permanent link">:)</a></h2>
 <p>Every run on <code>ganon build</code>, <code>ganon build-custom</code> or <code>ganon update</code> will generate the following database files:</p>
 <ul>
-<li>{prefix}<strong>.ibf/.hibf</strong>: main interleaved bloom filter index file, <strong>.hibf</strong> is generated with <code>--hibf</code> option.</li>
+<li>{prefix}<strong>.ibf/.hibf</strong>: main bloom filter index file, extension based on the <code>--filter-type</code> option.</li>
 <li>{prefix}<strong>.tax</strong>: taxonomy tree, only generated if <code>--taxonomy</code> is used <em>(fields: target/node, parent, rank, name, genome size)</em>.</li>
 <li>{prefix}<strong>_files/</strong>: (<code>ganon build</code> only) folder containing downloaded reference sequence and auxiliary files. Not necessary for classification. Keep this folder if the database will be update later. Otherwise it can be deleted.</li>
 </ul>
@@ -133,7 +133,7 @@
 <li>7: name</li>
 </ul>
 </li>
-<li>{prefix}<strong>.lca</strong>: output with one match for each classified read after LCA. Only generated with <code>--output-lca</code> active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.lca <em>(fields: read identifier, target, (max) k-mer/minimizer count)</em></li>
+<li>{prefix}<strong>.one</strong>: output with one match for each classified read after EM or LCA algorithm. Only generated with <code>--output-one</code> active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.one <em>(fields: read identifier, target, (max) k-mer/minimizer count)</em></li>
 <li>{prefix}<strong>.all</strong>: output with all matches for each read. Only generated with <code>--output-all</code> active <strong>Warning: file can be very large</strong>. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.all <em>(fields: read identifier, target, k-mer/minimizer count)</em></li>
 </ul>
 <h2 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h2>
