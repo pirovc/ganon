@@ -54,7 +54,7 @@ def parse_genome_size_files(cfg, build_output_folder):
         if cfg.taxonomy == "ncbi":
             files = download([cfg.ncbi_url + "/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"], build_output_folder)
         elif cfg.taxonomy == "gtdb":
-            files = download([cfg.gtdb_url + "/ar53_metadata.tar.gz", cfg.gtdb_url + "/bac120_metadata.tar.gz"], build_output_folder)
+            files = download([cfg.gtdb_url + "/ar53_metadata.tsv.gz", cfg.gtdb_url + "/bac120_metadata.tsv.gz"], build_output_folder)
     else:
         print_log("Parsing auxiliary files for genome size", cfg.quiet)
         files = cfg.genome_size_files
@@ -73,21 +73,18 @@ def parse_genome_size_files(cfg, build_output_folder):
 
     elif cfg.taxonomy == "gtdb":
         for file in files:
-            with tarfile.open(file, mode='r:gz') as tfile:
-                tfile.extractall(path=build_output_folder)
-                for n in tfile.getnames():
-                    with open(build_output_folder + "/" + n, "r") as f:
-                        # skip first line wiht header
-                        # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
-                        next(f)
-                        for line in f:
-                            fields = line.rstrip().split("\t")
-                            t = fields[16].split(";")[-1]  # species taxid (leaf)
-                            # In GTDB, several genome sizes are available for each node
-                            # accumulate them in a list and make average
-                            if t not in leaves_sizes:
-                                leaves_sizes[t] = []
-                            leaves_sizes[t].append(int(fields[13]))
+             with gzip.open(file, "rt") as f:
+                # skip first line wiht header
+                # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
+                next(f)
+                for line in f:
+                    fields = line.rstrip().split("\t")
+                    t = fields[16].split(";")[-1]  # species taxid (leaf)
+                    # In GTDB, several genome sizes are available for each node
+                    # accumulate them in a list and make average
+                    if t not in leaves_sizes:
+                        leaves_sizes[t] = []
+                    leaves_sizes[t].append(int(fields[13]))
         # Average sizes
         for t in list(leaves_sizes.keys()):
             leaves_sizes[t] = int(sum(leaves_sizes[t])/len(leaves_sizes[t]))
