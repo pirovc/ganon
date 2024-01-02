@@ -11,6 +11,7 @@ from multitax import CustomTx
 sys.path.append('src')
 from ganon import ganon
 from ganon.config import Config
+from ganon.util import download
 
 def run_ganon(cfg, prefix):
     """
@@ -102,7 +103,8 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
     res = {}
 
     if not check_files(params["db_prefix"], ["ibf"] if params["taxonomy"] == "skip" else ["ibf", "tax"]):
-        return None
+        if not check_files(params["db_prefix"], ["hibf"] if params["taxonomy"] == "skip" else ["hibf", "tax"]):
+            return None
 
     # target_info file to be read by ganon-build
     # res["target"] fields ['file', 'target', 'sequence']
@@ -386,8 +388,8 @@ def download_bulk_files(download_dir):
                       "genomes/genbank/assembly_summary_genbank_historical.txt",
                       "genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"],
                   "https://data.gtdb.ecogenomic.org/releases/latest/":
-                      ["ar53_metadata.tar.gz",
-                      "bac120_metadata.tar.gz"]
+                      ["ar53_metadata.tsv.gz",
+                      "bac120_metadata.tsv.gz"]
                   }
 
     for url, files in bulk_files.items():

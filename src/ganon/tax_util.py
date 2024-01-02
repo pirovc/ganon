@@ -85,6 +85,7 @@ def parse_genome_size_files(cfg, build_output_folder):
                     if t not in leaves_sizes:
                         leaves_sizes[t] = []
                     leaves_sizes[t].append(int(fields[13]))
+                    
         # Average sizes
         for t in list(leaves_sizes.keys()):
             leaves_sizes[t] = int(sum(leaves_sizes[t])/len(leaves_sizes[t]))

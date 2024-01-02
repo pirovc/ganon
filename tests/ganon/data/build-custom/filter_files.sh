@@ -52,8 +52,8 @@ head -n 1 base_files/bac120_metadata_r207.tsv > bac120_metadata_r207.tsv
 head -n 1 base_files/ar53_metadata_r207.tsv > ar53_metadata_r207.tsv
 join <(cut -f 1 assembly_summary.txt | sort) <(awk 'BEGIN{FS=OFS="\t"}{print substr($1,4,length($1)), $0}' base_files/bac120_metadata_r207.tsv | sort -t$'\t' -k 1,1) -t$'\t' | cut -f 2- >> bac120_metadata_r207.tsv
 join <(cut -f 1 assembly_summary.txt | sort) <(awk 'BEGIN{FS=OFS="\t"}{print substr($1,4,length($1)), $0}' base_files/ar53_metadata_r207.tsv | sort -t$'\t' -k 1,1) -t$'\t' | cut -f 2- >> ar53_metadata_r207.tsv
-tar -czf bac120_metadata.tar.gz bac120_metadata_r207.tsv
-tar -czf ar53_metadata.tar.gz ar53_metadata_r207.tsv
+gzip -c bac120_metadata_r207.tsv > bac120_metadata.tsv.gz
+gzip -c ar53_metadata_r207.tsv > ar53_metadata.tar.gz
 rm bac120_metadata_r207.tsv ar53_metadata_r207.tsv
 
 # make nucl_gb.accession2taxid.gz
