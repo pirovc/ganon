@@ -40,7 +40,7 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_taxonomy(self):
         """
-        ganon build-custom with --taxonomy ncbi,gtdb
+        ganon build-custom with --taxonomy ncbi,gtdb (downloads taxonomy)
         """
         #ncbi
         params = self.default_params.copy()
@@ -154,8 +154,6 @@ class TestBuildCustom(unittest.TestCase):
         params["input_target"] = "sequence"
         params["level"] = "assembly"
         params["taxonomy"] = "gtdb"
-        params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
-                            data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg), skipped_targets=True), "ganon build-custom sanity check failed")

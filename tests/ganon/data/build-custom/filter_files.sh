@@ -9,8 +9,8 @@ wget --quiet --output-document - "ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/ass
 wget "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz" --output-document base_files/new_taxdump.tar.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_taxonomy.tsv.gz" --output-document base_files/bac120_taxonomy.tsv.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_taxonomy.tsv.gz" --output-document base_files/ar53_taxonomy.tsv.gz
-wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz" --output-document base_files/bac120_metadata.tar.gz
-wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz" --output-document base_files/ar53_metadata.tar.gz
+wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz" --output-document base_files/bac120_metadata.tsv.gz
+wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz" --output-document base_files/ar53_metadata.tsv.gz
 tar xf base_files/bac120_metadata.tar.gz bac120_metadata_r207.tsv
 tar xf base_files/ar53_metadata.tar.gz ar53_metadata_r207.tsv
 tar xf base_files/new_taxdump.tar.gz taxidlineage.dmp nodes.dmp names.dmp
