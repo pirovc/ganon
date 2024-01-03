@@ -556,8 +556,14 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
         for target, row in info.iterrows():
             tax_node = row["specialization"] if user_bins_col == "specialization" else target
             tax_name = row["specialization_name"] if user_bins_col == "specialization" else target
-            tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
 
+            # Check if node is already present with correct parent
+            # in case of input-target sequence, info has repeated pairs of node/parent
+            if tax.latest(tax_node) is tax.undefined_node:
+                tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
+            else:
+                assert tax.parent(tax_node)==row["node"]
+            
     # Write filtered taxonomy with added nodes
     rm_files(tax_file)
     tax.write(tax_file)

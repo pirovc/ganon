@@ -40,7 +40,7 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_taxonomy(self):
         """
-        ganon build-custom with --taxonomy ncbi,gtdb
+        ganon build-custom with --taxonomy ncbi,gtdb (downloads taxonomy)
         """
         #ncbi
         params = self.default_params.copy()
@@ -69,6 +69,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level default (sequence) - GTDB
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_default_gtdb"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
@@ -86,6 +87,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level genus NCBI
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_taxrank_gtdb"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["level"] = "genus"
         params["taxonomy"] = "gtdb"
@@ -106,6 +108,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level leaves NCBI
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_leaves_ncbi"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["level"] = "leaves"
         params["taxonomy"] = "gtdb"
@@ -123,6 +126,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level assembly no tax
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_assembly"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["level"] = "assembly"
         params["ncbi_sequence_info"] = ["nucl_gb"]
@@ -133,6 +137,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level assembly NCBI
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_assembly_ncbi"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["level"] = "assembly"
         params["taxonomy"] = "ncbi"
@@ -145,6 +150,7 @@ class TestBuildCustom(unittest.TestCase):
         # --level assembly GTDB
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_level_sequence_assembly_gtdb"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["level"] = "assembly"
         params["taxonomy"] = "gtdb"
@@ -159,6 +165,7 @@ class TestBuildCustom(unittest.TestCase):
         # dead_nucl nucl_gb
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_ncbi_sequence_info"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
@@ -171,6 +178,7 @@ class TestBuildCustom(unittest.TestCase):
         # dead_nucl - none found
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_ncbi_sequence_info_wrong"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
@@ -181,6 +189,7 @@ class TestBuildCustom(unittest.TestCase):
         # eutils
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_ncbi_sequence_info_eutils"
+        params["filter_type"] = "ibf"
         params["input_target"] = "sequence"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
