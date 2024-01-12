@@ -4,6 +4,8 @@
 
 Code: [GitHub repository](https://github.com/pirovc/ganon)
 
+[ganon2 pre-print](https://www.biorxiv.org/content/10.1101/2023.12.07.570547)
+
 ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses [Hierarchical Interleaved Bloom Filters](https://doi.org/10.1186/s13059-023-02971-4) as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic or sequence abundances are estimated and reported.
 
 ## Features
