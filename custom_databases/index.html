@@ -154,7 +154,7 @@
 </div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>the target and specialization fields (2nd and 4th col) cannot be the same as the target (3rd col)</p>
+<p>the target and specialization fields (2nd and 4th col) cannot be the same as the node (3rd col)</p>
 </div>
 <details>
   <summary>Examples of --input-file</summary>
@@ -252,20 +252,27 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.n
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
 
+# Split sequences in files and retrieve taxonomy
+mkdir sequences/
+zcat plasmid.* plastid.* mitochondrion.* | awk '$0 ~ &quot;&gt;&quot; {accver=(substr($1,2)); print accver}{print $0 &gt; &quot;sequences/&quot;accver&quot;.fna&quot;}' | ganon-get-seq-info.sh -e -i - | awk '{print &quot;sequences/&quot;$1&quot;.fna\t&quot;$1&quot;\t&quot;$3}' &gt; ppm.tsv
+
 # Build ganon database
-ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --input-target sequence --level leaves --threads 32 
+ganon build-custom --input-file ppm.tsv --db-prefix ppm --level species --threads 16
+
+# OPTIONAL Remove temporary folder and downloaded files
+rm -rf sequences/ ppm.tsv plasmid.* plastid.* mitochondrion.* 
 </code></pre>
 <h3 id="univec-univec_core">UniVec, UniVec_core<a class="headerlink" href="#univec-univec_core" title="Permanent link">:)</a></h3>
 <p>"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv">Website</a>. Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.</p>
 <pre><code class="language-bash"># UniVec
 wget -O &quot;UniVec.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec&quot; 
-grep -o '^&gt;[^ ]*' UniVec.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --input-target sequence --level leaves --threads 8
+echo -e &quot;UniVec.fasta\tUniVec\t81077&quot; &gt; UniVec_Core_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8
 
 # UniVec_Core
 wget -O &quot;UniVec_Core.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core&quot; 
-grep -o '^&gt;[^ ]*' UniVec_Core.fasta | sed 's/^&gt;//' | awk '{print &quot;UniVec_Core.fasta\t&quot;$1&quot;\t81077&quot;}' &gt; UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --input-target sequence --level leaves --threads 8
+echo -e &quot;UniVec_Core.fasta\tUniVec_Core\t81077&quot; &gt; UniVec_Core_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
