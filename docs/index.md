@@ -139,8 +139,6 @@ ctest -VV .
 
 ## Parameters
 
-## Parameters
-
 ```
 usage: ganon [-h] [-v]
              {build,build-custom,update,classify,reassign,report,table} ...
