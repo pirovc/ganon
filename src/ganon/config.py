@@ -488,6 +488,10 @@ class Config:
                         print_log("File not found: " + file)
                         return False
 
+            if self.db_prefix and self.taxonomy == "skip":
+                print_log("To skip taxonomy, omit --db-prefix and set --taxonomy skip")
+                return False
+
         elif self.which == "table":
             pass
 
