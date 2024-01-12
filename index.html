@@ -246,7 +246,7 @@ ctest -VV .
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.0.0
+   _|   v. 2.0.1
 - - - - - - - - - -
 
 positional arguments:
@@ -320,8 +320,8 @@ advanced arguments:
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
-                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 4)
+                        The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0
+                        will try to set optimal value. (default: 4)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
                         type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
@@ -412,8 +412,8 @@ advanced arguments:
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
-                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 4)
+                        The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0
+                        will try to set optimal value. (default: 4)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
                         type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
@@ -765,5 +765,5 @@ filter arguments:
 
 <!--
 MkDocs version : 1.5.1
-Build Date UTC : 2024-01-12 17:29:24.877181+00:00
+Build Date UTC : 2024-01-12 19:25:24.187155+00:00
 -->
