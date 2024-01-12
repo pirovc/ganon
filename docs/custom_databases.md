@@ -17,7 +17,7 @@ It is also possible to use **non-standard accessions and headers** to build cust
     If you just want to build a database without any taxonomic or target information, just sent the files with `--input`, use `--taxonomy skip` and choose between `--input-target file` or `sequence`.
 
 !!! warning
-    the target and specialization fields (2nd and 4th col) cannot be the same as the target (3rd col)
+    the target and specialization fields (2nd and 4th col) cannot be the same as the node (3rd col)
 
 <details>
   <summary>Examples of --input-file</summary>
@@ -121,8 +121,15 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.go
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
 
+# Split sequences in files and retrieve taxonomy
+mkdir sequences/
+zcat plasmid.* plastid.* mitochondrion.* | awk '$0 ~ ">" {accver=(substr($1,2)); print accver}{print $0 > "sequences/"accver".fna"}' | ganon-get-seq-info.sh -e -i - | awk '{print "sequences/"$1".fna\t"$1"\t"$3}' > ppm.tsv
+
 # Build ganon database
-ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --input-target sequence --level leaves --threads 32 
+ganon build-custom --input-file ppm.tsv --db-prefix ppm --level species --threads 16
+
+# OPTIONAL Remove temporary folder and downloaded files
+rm -rf sequences/ ppm.tsv plasmid.* plastid.* mitochondrion.* 
 ```
 
 ### UniVec, UniVec_core
@@ -132,13 +139,13 @@ ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm -
 ```bash
 # UniVec
 wget -O "UniVec.fasta" --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec" 
-grep -o '^>[^ ]*' UniVec.fasta | sed 's/^>//' | awk '{print "UniVec.fasta\t"$1"\t81077"}' > UniVec_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --input-target sequence --level leaves --threads 8
+echo -e "UniVec.fasta\tUniVec\t81077" > UniVec_Core_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8
 
 # UniVec_Core
 wget -O "UniVec_Core.fasta" --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core" 
-grep -o '^>[^ ]*' UniVec_Core.fasta | sed 's/^>//' | awk '{print "UniVec_Core.fasta\t"$1"\t81077"}' > UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --input-target sequence --level leaves --threads 8
+echo -e "UniVec_Core.fasta\tUniVec_Core\t81077" > UniVec_Core_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8
 ```
 
 !!! note
