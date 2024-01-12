@@ -9,8 +9,8 @@ wget --quiet --output-document - "ftp://ftp.ncbi.nlm.nih.gov/genomes/genbank/ass
 wget "https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/new_taxdump.tar.gz" --output-document base_files/new_taxdump.tar.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_taxonomy.tsv.gz" --output-document base_files/bac120_taxonomy.tsv.gz
 wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_taxonomy.tsv.gz" --output-document base_files/ar53_taxonomy.tsv.gz
-wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tar.gz" --output-document base_files/bac120_metadata.tar.gz
-wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tar.gz" --output-document base_files/ar53_metadata.tar.gz
+wget "https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz" --output-document base_files/bac120_metadata.tsv.gz
+wget "https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz" --output-document base_files/ar53_metadata.tsv.gz
 tar xf base_files/bac120_metadata.tar.gz bac120_metadata_r207.tsv
 tar xf base_files/ar53_metadata.tar.gz ar53_metadata_r207.tsv
 tar xf base_files/new_taxdump.tar.gz taxidlineage.dmp nodes.dmp names.dmp
@@ -52,8 +52,8 @@ head -n 1 base_files/bac120_metadata_r207.tsv > bac120_metadata_r207.tsv
 head -n 1 base_files/ar53_metadata_r207.tsv > ar53_metadata_r207.tsv
 join <(cut -f 1 assembly_summary.txt | sort) <(awk 'BEGIN{FS=OFS="\t"}{print substr($1,4,length($1)), $0}' base_files/bac120_metadata_r207.tsv | sort -t$'\t' -k 1,1) -t$'\t' | cut -f 2- >> bac120_metadata_r207.tsv
 join <(cut -f 1 assembly_summary.txt | sort) <(awk 'BEGIN{FS=OFS="\t"}{print substr($1,4,length($1)), $0}' base_files/ar53_metadata_r207.tsv | sort -t$'\t' -k 1,1) -t$'\t' | cut -f 2- >> ar53_metadata_r207.tsv
-tar -czf bac120_metadata.tar.gz bac120_metadata_r207.tsv
-tar -czf ar53_metadata.tar.gz ar53_metadata_r207.tsv
+gzip -c bac120_metadata_r207.tsv > bac120_metadata.tsv.gz
+gzip -c ar53_metadata_r207.tsv > ar53_metadata.tsv.gz
 rm bac120_metadata_r207.tsv ar53_metadata_r207.tsv
 
 # make nucl_gb.accession2taxid.gz

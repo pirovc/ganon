@@ -215,8 +215,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -302,8 +302,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -338,8 +338,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
@@ -373,8 +373,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -415,8 +415,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")
@@ -447,8 +447,8 @@ class TestBuildCustom(unittest.TestCase):
         params["taxonomy"] = "gtdb"
         params["taxonomy_files"] = [data_dir + "build-custom/ar53_taxonomy.tsv.gz",
                                     data_dir + "build-custom/bac120_taxonomy.tsv.gz"]
-        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tar.gz",
-                                       data_dir + "build-custom/bac120_metadata.tar.gz"]
+        params["genome_size_files"] = [data_dir + "build-custom/ar53_metadata.tsv.gz",
+                                       data_dir + "build-custom/bac120_metadata.tsv.gz"]
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         self.assertIsNotNone(build_sanity_check_and_parse(vars(cfg)), "ganon build-custom sanity check failed")

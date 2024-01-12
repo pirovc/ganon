@@ -361,10 +361,13 @@ def build_custom(cfg, which_call: str="build_custom"):
                     suffixes = Path(first_file).suffixes
                     # If last one is gz, get real suffix
                     exts = "".join(suffixes[-2:]) if suffixes[-1]==".gz" else suffixes[-1]
+                    target_file = build_output_folder + new_target + exts
+                    # Attempt to remove if exists +
                     # Create symbolic link with correct name for the first file
-                    Path(build_output_folder + new_target + exts).symlink_to(first_file)
+                    Path(target_file).unlink(missing_ok=True)
+                    Path(target_file).symlink_to(first_file)
                     # Write input file for raptor (space separated)
-                    filehibf.write(build_output_folder + new_target + exts + " " + " ".join(files[1:]) + "\n")
+                    filehibf.write(target_file + " " + " ".join(files[1:]) + "\n")
 
             print_log("raptor prepare", cfg.quiet)
             run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
@@ -556,8 +559,14 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
         for target, row in info.iterrows():
             tax_node = row["specialization"] if user_bins_col == "specialization" else target
             tax_name = row["specialization_name"] if user_bins_col == "specialization" else target
-            tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
 
+            # Check if node is already present with correct parent
+            # in case of input-target sequence, info has repeated pairs of node/parent
+            if tax.latest(tax_node) is tax.undefined_node:
+                tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
+            else:
+                assert tax.parent(tax_node)==row["node"]
+            
     # Write filtered taxonomy with added nodes
     rm_files(tax_file)
     tax.write(tax_file)
