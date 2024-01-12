@@ -46,23 +46,23 @@ def report(cfg):
                     "Failed to get genome sizes from .tax files, run ganon report without -d/--db-prefix")
                 return False
     else:
-        tx = time.time()
-        if cfg.taxonomy_files:
-            print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
+        if cfg.taxonomy == "skip":
+            tax = DummyTx(**tax_args)
         else:
-            if cfg.taxonomy == "skip":
-                tax = DummyTx(**tax_args)
+            tx = time.time()
+            if cfg.taxonomy_files:
+                print_log("Parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
             else:
                 print_log("Downloading and parsing " +
                           cfg.taxonomy + " taxonomy", cfg.quiet)
 
-                if cfg.taxonomy == "ncbi":
-                    tax = NcbiTx(files=cfg.taxonomy_files, **tax_args)
-                elif cfg.taxonomy == "gtdb":
-                    tax = GtdbTx(files=cfg.taxonomy_files, **tax_args)
+            if cfg.taxonomy == "ncbi":
+                tax = NcbiTx(files=cfg.taxonomy_files, **tax_args)
+            elif cfg.taxonomy == "gtdb":
+                tax = GtdbTx(files=cfg.taxonomy_files, **tax_args)
 
-                print_log(" - done in " + str("%.2f" %
-                                              (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(" - done in " + str("%.2f" %
+                                          (time.time() - tx)) + "s.\n", cfg.quiet)
 
         # In case no tax was provided, generate genome sizes (for the full tree)
         if cfg.report_type in ["abundance", "corr"]:
