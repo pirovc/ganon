@@ -139,6 +139,8 @@ ctest -VV .
 
 ## Parameters
 
+## Parameters
+
 ```
 usage: ganon [-h] [-v]
              {build,build-custom,update,classify,reassign,report,table} ...
@@ -146,7 +148,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.0.0
+   _|   v. 2.0.1
 - - - - - - - - - -
 
 positional arguments:
@@ -221,8 +223,8 @@ advanced arguments:
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
-                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 4)
+                        The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0
+                        will try to set optimal value. (default: 4)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
                         type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
@@ -312,8 +314,8 @@ advanced arguments:
   -k , --kmer-size      The k-mer size to split sequences. (default: 19)
   -w , --window-size    The window-size to build filter with minimizers. (default: 31)
   -s , --hash-functions 
-                        The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.
-                        (default: 4)
+                        The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0
+                        will try to set optimal value. (default: 4)
   -f , --filter-size    Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-
                         type ibf. (default: 0)
   -j , --mode           Create smaller or faster filters at the cost of classification speed or database size,
