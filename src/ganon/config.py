@@ -51,7 +51,7 @@ class Config:
         build_default_advanced_args.add_argument("-p", "--max-fp",         type=int_or_float(minval=0, maxval=1), metavar="", default=None,   help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with --filter-type hibf or 0.05 with --filter-type ibf.")
         build_default_advanced_args.add_argument("-k", "--kmer-size",      type=unsigned_int(minval=1),           metavar="", default=19,     help="The k-mer size to split sequences.")
         build_default_advanced_args.add_argument("-w", "--window-size",    type=unsigned_int(minval=1),           metavar="", default=31,     help="The window-size to build filter with minimizers.")
-        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,      help="The number of hash functions for the interleaved bloom filter [0-5]. 0 to detect optimal value.", choices=range(6))
+        build_default_advanced_args.add_argument("-s", "--hash-functions", type=unsigned_int(minval=0, maxval=5), metavar="", default=4,      help="The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0 will try to set optimal value.", choices=range(6))
         build_default_advanced_args.add_argument("-f", "--filter-size",    type=unsigned_float(),                 metavar="", default=0,      help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-type ibf.")
         build_default_advanced_args.add_argument("-j", "--mode",           type=str,                              metavar="", default="avg",  help="Create smaller or faster filters at the cost of classification speed or database size, respectively [" + ", ".join(self.choices_mode) + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.", choices=self.choices_mode)
         build_default_advanced_args.add_argument("-y", "--min-length",     type=unsigned_int(minval=0),           metavar="", default=0,      help="Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-type ibf.")
@@ -374,6 +374,10 @@ class Config:
 
             if self.filter_type == "hibf" and self.input_target == "sequence":
                 print_log("--filter-type hibf is currently only supported with --input-target file")
+                return False
+
+            if self.filter_type == "hibf" and self.hash_functions == 0:
+                print_log("--filter-type hibf requires --hash-function value between 1 and 5")
                 return False
 
             if self.level == "custom" and not self.input_file:
