@@ -372,10 +372,6 @@ class Config:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
 
-            if self.filter_type == "hibf" and self.input_target == "sequence":
-                print_log("--filter-type hibf is currently only supported with --input-target file")
-                return False
-
             if self.filter_type == "hibf" and self.hash_functions == 0:
                 print_log("--filter-type hibf requires --hash-function value between 1 and 5")
                 return False

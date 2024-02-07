@@ -266,7 +266,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             tax = load_taxonomy(cfg, build_output_folder)
 
         # Set-up input info
-        info = load_input(cfg, input_files)
+        info = load_input(cfg, input_files, build_output_folder)
         # Define user bins for writing taxonomy and target info file
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
@@ -323,7 +323,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             write_info_file(info, cfg.db_prefix + ".info.tsv")
 
         # Write aux file for ganon-build
-        write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
+        write_target_info(info, user_bins_col, target_info_file)
         save_state(which_call + "_parse", files_output_folder)
 
     # Skip if already finished run
@@ -371,12 +371,12 @@ def build_custom(cfg, which_call: str="build_custom"):
 
             print_log("raptor prepare", cfg.quiet)
             run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
-                                              "--input '" + raptor_input_file + "'",
-                                              "--output '" + build_output_folder + "'",
-                                              "--kmer " + str(cfg.kmer_size),
-                                              "--window " + str(cfg.window_size),
-                                              "--quiet" if not cfg.verbose else "",
-                                              "--threads " + str(cfg.threads)])
+                                               "--input '" + raptor_input_file + "'",
+                                               "--output '" + build_output_folder + "'",
+                                               "--kmer " + str(cfg.kmer_size),
+                                               "--window " + str(cfg.window_size),
+                                               "--quiet" if not cfg.verbose else "",
+                                               "--threads " + str(cfg.threads)])
             run(run_raptor_prepare_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -474,7 +474,7 @@ def parse_input_file(input_file, info, input_target):
     return info
 
 
-def load_input(cfg, input_files):
+def load_input(cfg, input_files, build_output_folder):
     """
     Load basic target info, either provided as --target-info
     or extracted from file/sequences
@@ -489,7 +489,7 @@ def load_input(cfg, input_files):
     else:
         if cfg.input_target == "sequence":
             print_log("Parsing sequences from --input (" + str(len(input_files)) + " files)", cfg.quiet)
-            info = parse_sequence_accession(input_files, info)
+            info = parse_sequence_accession(input_files, info, build_output_folder)
         else:
             print_log("Parsing --input (" + str(len(input_files)) + " files)", cfg.quiet)
             info = parse_file_accession(input_files, info)
@@ -577,17 +577,14 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
     tax_df["genome_size"] = tax_df.apply(lambda d: genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent], axis=1)
     tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
 
-def write_target_info(info, input_target, user_bins_col, target_info_file):
+def write_target_info(info, user_bins_col, target_info_file):
     """
-    write tabular file to be parsed by ganon-build with: file <tab> target [<tab> sequence]
+    write tabular file to be parsed by ganon-build with: file <tab> target
     """
     with open(target_info_file, "w") as outf:
         for target, row in info.iterrows():
             t = row[user_bins_col] if user_bins_col != "target" else target
-            if input_target == "sequence":
-                print(row["file"], t, target, sep="\t", end="\n", file=outf)
-            else:
-                print(row["file"], t, sep="\t", end="\n", file=outf)
+            print(row["file"], t, sep="\t", end="\n", file=outf)
 
 
 def write_info_file(info, filename):

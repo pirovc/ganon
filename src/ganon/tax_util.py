@@ -3,23 +3,41 @@ import pandas as pd
 import re
 import os
 import gzip
-import tarfile
 
 from ganon.util import download, run, print_log, rm_files
 from io import StringIO
 
 
-def parse_sequence_accession(input_files, info):
+def parse_sequence_accession(input_files, info, build_output_folder):
     """
-    Look for sequence accession (anything from > to the first space) in all input files
+    Parse sequence accession (anything from > to the first space) in all input files
+    Split files by sequence and write them in subfolders
     """
+
+    # Create subfolders to distribute files
+    n_folders = 10
+    run("seq 0 {n_folders} | xargs -i mkdir -p \"{build_output_folder}/{{}}\"".format(n_folders=n_folders-1, build_output_folder=build_output_folder), shell=True)
+    
+    # Randomly distribute sequences into subfolders
     for file in input_files:
-        # cat | zcat  -> compability with osx
-        run_cat = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
+        run_cat = """
+        cat {file} {zcat} | 
+        awk '/^>/{{
+                id=substr($1,2);
+                subf=int({n_folders} * rand())"/";
+                file=(\"{build_output_folder}\" subf id \".fna\"); 
+                print id\"\t\"file;
+            }}
+            {{print $0 >> file}}'
+        """.format(file=file, 
+                   zcat="| zcat" if file.endswith(".gz") else "", 
+                   build_output_folder=build_output_folder, 
+                   n_folders=n_folders)
+        
         stdout = run(run_cat, shell=True, ret_stdout=True)
-        tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target'])
-        tmp_info["file"] = file
+        tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target', 'file'], delimiter="\t")
         info = pd.concat([info, tmp_info])
+
     return info
 
 
@@ -38,6 +56,7 @@ def parse_file_accession(input_files, info):
         assembly_accessions.append((match.group() if match else os.path.basename(file), file))
     info[["target", "file"]] = pd.DataFrame(assembly_accessions)
     return info
+
 
 def parse_genome_size_files(cfg, build_output_folder):
     """
@@ -70,10 +89,9 @@ def parse_genome_size_files(cfg, build_output_folder):
                     fields = line.rstrip().split("\t")
                     leaves_sizes[fields[0]] = int(fields[3])
 
-
     elif cfg.taxonomy == "gtdb":
         for file in files:
-             with gzip.open(file, "rt") as f:
+            with gzip.open(file, "rt") as f:
                 # skip first line wiht header
                 # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
                 next(f)
@@ -414,11 +432,13 @@ def run_eutils(cfg, info, build_output_folder, skip_taxid: bool=False, level: st
     # (-e) get taxid length
     # (-a) get assembly accession
     # (-m) get assembly name
-    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3}".format(cfg.path_exec["get_seq_info"],
-                                                          accessions_file,
-                                                          "" if skip_taxid else "-e",
-                                                          "-a -m" if level == "assembly" else "")
-    stdout = run(run_get_seq_info_cmd, ret_stdout=True, quiet=cfg.quiet)
+    # || true to ignore exit status in case some sequences were not retrieved
+    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3} || true".format(cfg.path_exec["get_seq_info"],
+                                                                  accessions_file,
+                                                                  "" if skip_taxid else "-e",
+                                                                  "-a -m" if level == "assembly" else "")
+
+    stdout = run(run_get_seq_info_cmd, ret_stdout=True, shell=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
     if level == "assembly":
