@@ -3,27 +3,46 @@ import pandas as pd
 import re
 import os
 import gzip
-import tarfile
 
 from ganon.util import download, run, print_log, rm_files
 from io import StringIO
 
 
-def parse_sequence_accession(input_files, info):
+def parse_sequence_accession(input_files, info_cols, build_output_folder):
     """
-    Look for sequence accession (anything from > to the first space) in all input files
+    Parse sequence accession (anything from > to the first space) in all input files
+    Split files by sequence and write them in subfolders
     """
+    info = pd.DataFrame(columns=info_cols)
+
+    # Create subfolders to distribute files
+    n_folders = 10
+    run("seq 0 {n_folders} | xargs -i mkdir -p \"{build_output_folder}/{{}}\"".format(n_folders=n_folders-1, build_output_folder=build_output_folder), shell=True)
+    
+    # Randomly distribute sequences into subfolders
+    # cat | zcat -> compability with osx
     for file in input_files:
-        # cat | zcat  -> compability with osx
-        run_cat = "cat {0} {1} | grep -o '^>[^ ]*' | sed 's/>//'".format(file, "| zcat" if file.endswith(".gz") else "")
+        run_cat = """
+        cat {file} {zcat} | 
+        awk '/^>/{{
+                id=substr($1,2);
+                subf=int({n_folders} * rand())"/";
+                file=(\"{build_output_folder}\" subf id \".fna\"); 
+                print id\"\t\"file;
+            }}
+            {{print $0 > file}}'
+        """.format(file=file, 
+                   zcat="| zcat" if file.endswith(".gz") else "", 
+                   build_output_folder=build_output_folder, 
+                   n_folders=n_folders)
+        
         stdout = run(run_cat, shell=True, ret_stdout=True)
-        tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target'])
-        tmp_info["file"] = file
+        tmp_info = pd.read_csv(StringIO(stdout), header=None, names=['target', 'file'], delimiter="\t")
         info = pd.concat([info, tmp_info])
+
     return info
 
-
-def parse_file_accession(input_files, info):
+def parse_file_accession(input_files, info_cols):
     """
     Look for genbank/refseq assembly accession* pattern in the filename
     if not found, return basename of the file as target
@@ -31,12 +50,15 @@ def parse_file_accession(input_files, info):
     *https://support.nlm.nih.gov/knowledgebase/article/KA-03451/en-us
     *https://https.ncbi.nlm.nih.gov/datasets/docs/v1/reference-docs/gca-and-gcf-explained/
     """
+    info = pd.DataFrame(columns=info_cols)
+
     assembly_accessions = []
     assembly_accession_pattern = re.compile("GC[A|F]_[0-9]+\.[0-9]+")
     for file in input_files:
         match = assembly_accession_pattern.search(file)
         assembly_accessions.append((match.group() if match else os.path.basename(file), file))
     info[["target", "file"]] = pd.DataFrame(assembly_accessions)
+
     return info
 
 def parse_genome_size_files(cfg, build_output_folder):
@@ -70,10 +92,9 @@ def parse_genome_size_files(cfg, build_output_folder):
                     fields = line.rstrip().split("\t")
                     leaves_sizes[fields[0]] = int(fields[3])
 
-
     elif cfg.taxonomy == "gtdb":
         for file in files:
-             with gzip.open(file, "rt") as f:
+            with gzip.open(file, "rt") as f:
                 # skip first line wiht header
                 # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
                 next(f)
@@ -93,6 +114,7 @@ def parse_genome_size_files(cfg, build_output_folder):
 
     return leaves_sizes
 
+
 def parse_genome_size_tax(tax_files):
     """
     Parse last column of a .tax file and retrieve genome_sizes to a dict {node: size}
@@ -109,6 +131,7 @@ def parse_genome_size_tax(tax_files):
                     continue
                 genome_sizes[node] = gsize
     return genome_sizes
+
 
 def get_genome_size(cfg, nodes, tax, build_output_folder):
     """
@@ -317,27 +340,36 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
 def parse_acc2txid(info, acc2txid_files):
     count_acc2txid = {}
     unique_acc = set(info.index)
-    for acc2txid in acc2txid_files:
-        tmp_acc_node = pd.read_csv(acc2txid,
-                                   sep="\t",
-                                   header=None,
-                                   skiprows=1,
-                                   usecols=[1, 2],
-                                   names=["target", "node"],
-                                   index_col="target",
-                                   converters={"target": lambda x: x if x in unique_acc else None, "node": str})
-        tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
-        tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"]  # filter out taxid==0
 
-        # save count to return
-        count_acc2txid[acc2txid] = tmp_acc_node.shape[0]
-        # merge node(taxid) retrieved based on target(accesion)
-        if count_acc2txid[acc2txid]:
-            info.update(tmp_acc_node)
-        del tmp_acc_node
-        #if already found all seqids no need to parse all files till the end)
-        if sum(count_acc2txid.values()) == len(unique_acc):
-            break
+    # Parse very large acc2txid files in chunks to limit memory usage
+    chunksize = 10 ** 6
+    for acc2txid in acc2txid_files:
+        count_acc2txid[acc2txid] = 0
+        with pd.read_csv(acc2txid,
+                         sep="\t",
+                         header=None,
+                         skiprows=1,
+                         usecols=[1, 2],
+                         names=["target", "node"],
+                         index_col="target",
+                         converters={"target": lambda x: x if x in unique_acc else None, "node": str},
+                         chunksize=chunksize) as reader:
+
+            for tmp_acc_node in reader:
+                tmp_acc_node = tmp_acc_node[tmp_acc_node.index.notnull()]  # keep only seqids used
+                tmp_acc_node = tmp_acc_node[tmp_acc_node["node"] != "0"]  # filter out taxid==0
+
+                # If there was any match
+                if tmp_acc_node.shape[0]:
+                    # merge node(taxid) retrieved based on target(accesion)
+                    info.update(tmp_acc_node)
+
+                    # save count to return
+                    count_acc2txid[acc2txid] += tmp_acc_node.shape[0]
+                    
+                    #if already found all seqids no need to parse all files till the end)
+                    if sum(count_acc2txid.values()) == len(unique_acc):
+                        break
 
     return count_acc2txid
 
@@ -414,11 +446,13 @@ def run_eutils(cfg, info, build_output_folder, skip_taxid: bool=False, level: st
     # (-e) get taxid length
     # (-a) get assembly accession
     # (-m) get assembly name
-    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3}".format(cfg.path_exec["get_seq_info"],
-                                                          accessions_file,
-                                                          "" if skip_taxid else "-e",
-                                                          "-a -m" if level == "assembly" else "")
-    stdout = run(run_get_seq_info_cmd, ret_stdout=True, quiet=cfg.quiet)
+    # || true to ignore exit status in case some sequences were not retrieved
+    run_get_seq_info_cmd = "{0} -i {1} -k {2} {3} || true".format(cfg.path_exec["get_seq_info"],
+                                                                  accessions_file,
+                                                                  "" if skip_taxid else "-e",
+                                                                  "-a -m" if level == "assembly" else "")
+
+    stdout = run(run_get_seq_info_cmd, ret_stdout=True, shell=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
     if level == "assembly":

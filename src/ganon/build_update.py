@@ -25,7 +25,6 @@ from ganon.tax_util import get_genome_size
 from multitax import NcbiTx, GtdbTx
 
 
-
 def build(cfg):
     
     # Set paths
@@ -248,25 +247,20 @@ def build_custom(cfg, which_call: str="build_custom"):
 
         # Retrieve and check input files or folders
         if cfg.input:
+            tx = time.time()
+            print_log("Parsing --input", cfg.quiet)
             input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet, input_recursive=cfg.input_recursive)
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
             if not input_files:
                 print_log("ERROR: No valid input files found", cfg.quiet)
                 return False
-
-        # Set --input-target automatically if not given
-        if not cfg.input_target:
-            # file is the default if more than one file is provided
-            if len(input_files) > 1 or cfg.input_file:
-                cfg.input_target = "file"
-            else:
-                cfg.input_target = "sequence"
 
         # Set-up taxonomy
         if cfg.taxonomy != "skip":
             tax = load_taxonomy(cfg, build_output_folder)
 
         # Set-up input info
-        info = load_input(cfg, input_files)
+        info = load_input(cfg, input_files, build_output_folder)
         # Define user bins for writing taxonomy and target info file
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
@@ -323,7 +317,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             write_info_file(info, cfg.db_prefix + ".info.tsv")
 
         # Write aux file for ganon-build
-        write_target_info(info, cfg.input_target, user_bins_col, target_info_file)
+        write_target_info(info, user_bins_col, target_info_file)
         save_state(which_call + "_parse", files_output_folder)
 
     # Skip if already finished run
@@ -332,9 +326,10 @@ def build_custom(cfg, which_call: str="build_custom"):
     else:
 
         if cfg.filter_type == "hibf":
-            tx = time.time()
             print_log("Building index (raptor)", cfg.quiet)
 
+            tx = time.time()
+            print_log("Preparing files", cfg.quiet)
             # rewrite target_info_file with one line for each target
             # symbolic link is created for the first time with the target name
             # this is a workaround to name targets with raptor
@@ -348,6 +343,8 @@ def build_custom(cfg, which_call: str="build_custom"):
             n_bins = len(target_files)
 
             raptor_input_file = build_output_folder + "hibf.txt"
+ 
+            # Create symbolic link with target to raptor
             with open(raptor_input_file, "w") as filehibf:
                 for target, files in target_files.items():
                     # raptor v3.0.0 "eats" the . (e.g. GCF_013391805.1 -> GCF_013391805)
@@ -368,18 +365,21 @@ def build_custom(cfg, which_call: str="build_custom"):
                     Path(target_file).symlink_to(first_file)
                     # Write input file for raptor (space separated)
                     filehibf.write(target_file + " " + " ".join(files[1:]) + "\n")
+            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+            tx = time.time()
             print_log("raptor prepare", cfg.quiet)
             run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
-                                              "--input '" + raptor_input_file + "'",
-                                              "--output '" + build_output_folder + "'",
-                                              "--kmer " + str(cfg.kmer_size),
-                                              "--window " + str(cfg.window_size),
-                                              "--quiet" if not cfg.verbose else "",
-                                              "--threads " + str(cfg.threads)])
+                                               "--input '" + raptor_input_file + "'",
+                                               "--output '" + build_output_folder + "'",
+                                               "--kmer " + str(cfg.kmer_size),
+                                               "--window " + str(cfg.window_size),
+                                               "--quiet" if not cfg.verbose else "",
+                                               "--threads " + str(cfg.threads)])
             run(run_raptor_prepare_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
+            tx = time.time()
             print_log("raptor layout", cfg.quiet)
             # Use info file as input for raptor 
             run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
@@ -456,7 +456,7 @@ def build_custom(cfg, which_call: str="build_custom"):
 ########################################################################################################################
 
 
-def parse_input_file(input_file, info, input_target):
+def parse_input_file(input_file, info_cols, input_target, quiet):
     """
     parse user provided --input-file with all specifications for input
     """
@@ -464,35 +464,60 @@ def parse_input_file(input_file, info, input_target):
                        sep="\t",
                        header=None,
                        skiprows=0,
-                       dtype=object,
-                       names=["file", "target", "node", "specialization", "specialization_name"])
-
+                       dtype=object)
+    # Need to rename columns after parsing since file can have 1 to 5
+    info.rename(columns=lambda x: info_cols[x], inplace=True)
+    info = pd.concat([info, pd.DataFrame(columns=info_cols)])
+    
     # If no target was provided and target is file, use filename
     if info["target"].isna().all() and input_target == "file":
         info["target"] = info["file"].apply(os.path.basename)
 
+    # Validate files provided and remove not found
+    total_files = len(info["file"].unique().tolist())
+    valid_files = validate_input_files(info["file"].unique().tolist(), "", quiet)
+    if total_files - len(valid_files) > 0:
+        info = info[info["file"].isin(valid_files)]
+        print_log(" - " + str(total_files - len(valid_files)) + " invalid files skipped", quiet)
     return info
 
 
-def load_input(cfg, input_files):
+def load_input(cfg, input_files, build_output_folder):
     """
     Load basic target info, either provided as --target-info
     or extracted from file/sequences
     """
     tx = time.time()
-    info = pd.DataFrame(columns=["target", "node", "specialization", "specialization_name", "file"])
+    info_cols = ["file", "target", "node", "specialization", "specialization_name"]
 
     # Parse/load info without setting index
     if cfg.input_file:
         print_log("Parsing --input-file " + cfg.input_file, cfg.quiet)
-        info = parse_input_file(cfg.input_file, info, cfg.input_target)
+        info = parse_input_file(cfg.input_file, info_cols, cfg.input_target, cfg.quiet)
+
+        # If --input-target sequence, split files by sequence and validate headers
+        if cfg.input_target == "sequence":
+            print_log("\nMatching --input-file entries with sequences", cfg.quiet)
+            shape_tmp = info.shape[0]
+            # Split files and return headers obtained
+            info_seqs = parse_sequence_accession(info["file"].unique().tolist(), info_cols, build_output_folder)
+            
+            # Merge with provided file, keeping only matching entries
+            info = pd.merge(left=info, right=info_seqs, on="target", suffixes=("", "_seqs"))[info_cols + ["file_seqs"]]
+            info["file"] = info["file_seqs"]
+            info.drop("file_seqs", axis=1, inplace=True)
+
+            if shape_tmp - info.shape[0] > 0:
+                print_log(" - " + str(shape_tmp - info.shape[0]) + " invalid sequences skipped", cfg.quiet)
+
     else:
+        
         if cfg.input_target == "sequence":
             print_log("Parsing sequences from --input (" + str(len(input_files)) + " files)", cfg.quiet)
-            info = parse_sequence_accession(input_files, info)
+            info = parse_sequence_accession(input_files, info_cols, build_output_folder)
         else:
-            print_log("Parsing --input (" + str(len(input_files)) + " files)", cfg.quiet)
-            info = parse_file_accession(input_files, info)
+            print_log("Parsing files from --input (" + str(len(input_files)) + " files)", cfg.quiet)
+            info = parse_file_accession(input_files, info_cols)
 
     # Drop cols without values
     shape_tmp = info.shape[0]
@@ -577,17 +602,14 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
     tax_df["genome_size"] = tax_df.apply(lambda d: genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent], axis=1)
     tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
 
-def write_target_info(info, input_target, user_bins_col, target_info_file):
+def write_target_info(info, user_bins_col, target_info_file):
     """
-    write tabular file to be parsed by ganon-build with: file <tab> target [<tab> sequence]
+    write tabular file to be parsed by ganon-build with: file <tab> target
     """
     with open(target_info_file, "w") as outf:
         for target, row in info.iterrows():
             t = row[user_bins_col] if user_bins_col != "target" else target
-            if input_target == "sequence":
-                print(row["file"], t, target, sep="\t", end="\n", file=outf)
-            else:
-                print(row["file"], t, sep="\t", end="\n", file=outf)
+            print(row["file"], t, sep="\t", end="\n", file=outf)
 
 
 def write_info_file(info, filename):

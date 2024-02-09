@@ -83,11 +83,7 @@ void validate_elements( const GanonBuild::Config cfg, const aux::SeqTarget& seqt
         auto counts_seq = agent.bulk_count( hashes );
 
         // get bins from target of this sequence
-        std::vector< uint64_t > target_bins;
-        if ( seqtarget.sequence_as_target )
-            target_bins = targets[seqtarget.headers[i]];
-        else
-            target_bins = targets[seqtarget.targets[i]];
+        const std::vector< uint64_t > target_bins = targets[seqtarget.targets[i]];
 
         // sum matches for all bins of the targets this sequences belongs
         uint16_t expected_counts = 0;
@@ -194,38 +190,6 @@ SCENARIO( "building indices", "[ganon-build]" )
             std::vector< std::string > targets{ "T1", "T9", "T1", "T8", "T1", "T1", "T1", "T1", "T4", "T1" };
 
             auto seqtarget = aux::SeqTarget( prefix, seqs, targets );
-            seqtarget.write_input_file( cfg.input_file );
-            seqtarget.write_sequences_files();
-
-            REQUIRE( GanonBuild::run( cfg ) );
-            config_build::validate_filter( cfg );
-            config_build::validate_elements( cfg, seqtarget );
-        }
-
-        SECTION( "three columns - custom target" )
-        {
-            std::string prefix{ folder_prefix + "input_file_three_cols" };
-            auto        cfg = config_build::defaultConfig( prefix );
-
-            std::vector< std::string > targets{ "T1", "T9", "T1", "T8", "T1", "T1", "T1", "T1", "T4", "T1" };
-
-            auto seqtarget               = aux::SeqTarget( prefix, seqs, targets );
-            seqtarget.sequence_as_target = false;
-            seqtarget.write_input_file( cfg.input_file );
-            seqtarget.write_sequences_files();
-
-            REQUIRE( GanonBuild::run( cfg ) );
-            config_build::validate_filter( cfg );
-            config_build::validate_elements( cfg, seqtarget );
-        }
-
-        SECTION( "three columns - sequence as target" )
-        {
-            std::string prefix{ folder_prefix + "input_file_three_cols_sequence_target" };
-            auto        cfg = config_build::defaultConfig( prefix );
-
-            auto seqtarget               = aux::SeqTarget( prefix, seqs );
-            seqtarget.sequence_as_target = true;
             seqtarget.write_input_file( cfg.input_file );
             seqtarget.write_sequences_files();
 

@@ -38,15 +38,14 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
 
-typedef robin_hood::unordered_map< std::string, robin_hood::unordered_set< std::string > > TFile;
-typedef robin_hood::unordered_map< std::string, uint64_t >                                 THashesCount;
+typedef robin_hood::unordered_map< std::string, uint64_t > THashesCount;
 
 typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
 
 struct InputFileMap
 {
-    std::string target;
-    TFile       files;
+    std::string                target;
+    std::vector< std::string > files;
 };
 
 
@@ -84,10 +83,10 @@ inline std::string get_seqid( std::string header )
     return header.substr( 0, header.find( ' ' ) );
 }
 
-robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::string& input_file,
-                                                                  THashesCount&      hashes_count,
-                                                                  bool               quiet,
-                                                                  Stats&             stats )
+robin_hood::unordered_map< std::string, std::vector< std::string > > parse_input_file( const std::string& input_file,
+                                                                                       THashesCount&      hashes_count,
+                                                                                       bool               quiet,
+                                                                                       Stats&             stats )
 {
     /*
      * Funtion to parse input file -> tabular file with the fields: file [<tab> target <tab> seqid]
@@ -95,10 +94,10 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
      * In case of sequence parsing (provided seqids on third row), seqids is a set of sequence ids
      * In case of file parsing, each file has only one target and seqids is empty
      */
-    robin_hood::unordered_map< std::string, TFile > input_map;
-    std::string                                     line;
-    robin_hood::unordered_set< std::string >        files;
-    std::ifstream                                   infile( input_file );
+    robin_hood::unordered_map< std::string, std::vector< std::string > > input_map;
+    std::string                                                          line;
+    robin_hood::unordered_set< std::string >                             files;
+    std::ifstream                                                        infile( input_file );
     while ( std::getline( infile, line, '\n' ) )
     {
         std::istringstream         stream_line( line );
@@ -120,21 +119,14 @@ robin_hood::unordered_map< std::string, TFile > parse_input_file( const std::str
         if ( fields.size() == 1 )
         {
             // target is the file itself (filename only without path)
-            const auto target       = std::filesystem::path( file ).filename();
-            input_map[target][file] = {};
-            hashes_count[target]    = 0;
+            const auto target = std::filesystem::path( file ).filename();
+            input_map[target].push_back( file );
+            hashes_count[target] = 0;
         }
         else if ( fields.size() == 2 )
         {
             // provided target in the file
-            input_map[fields[1]][file] = {};
-            hashes_count[fields[1]]    = 0;
-        }
-        else
-        {
-            // parse by sequence
-            const std::string seqid = fields[2];
-            input_map[fields[1]][file].insert( seqid );
+            input_map[fields[1]].push_back( file );
             hashes_count[fields[1]] = 0;
         }
     }
@@ -217,7 +209,7 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
             break;
 
         // For all files of a target
-        for ( auto& [file, seqids] : ifm.files )
+        for ( auto& file : ifm.files )
         {
             try
             {
@@ -226,88 +218,26 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                                              seqan3::fields< seqan3::field::id, seqan3::field::seq > >
                     fin{ file };
 
-                if ( seqids.empty() )
-                {
-                    // File as target - generate all hashes from file with possible multiple sequences
-                    // before counting and storing
 
-                    robin_hood::unordered_set< uint64_t > hashes;
-                    for ( auto const& [header, seq] : fin )
-                    {
-                        if ( seq.size() < config.min_length )
-                        {
-                            total.skipped_sequences++;
-                            continue;
-                        }
+                // File as target - generate all hashes from file with possible multiple sequences
+                // before counting and storing
 
-                        total.sequences++;
-                        total.length_bp += seq.size();
-                        const auto mh = seq | minimiser_view | std::views::common;
-                        hashes.insert( mh.begin(), mh.end() );
-                    }
-                    hashes_count[ifm.target] += hashes.size();
-                    detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
-                }
-                else if ( seqids.size() == 1 )
+                robin_hood::unordered_set< uint64_t > hashes;
+                for ( auto const& [header, seq] : fin )
                 {
-                    // Single seqid for a target (or target is seqid itself)
-                    // Directly count and store
-                    for ( auto const& [header, seq] : fin )
+                    if ( seq.size() < config.min_length )
                     {
-                        const auto seqid = get_seqid( header );
-                        if ( seqids.count( seqid ) )
-                        {
-                            if ( seq.size() < config.min_length )
-                            {
-                                total.skipped_sequences++;
-                            }
-                            else
-                            {
-                                total.sequences++;
-                                total.length_bp += seq.size();
-                                robin_hood::unordered_set< uint64_t > hashes;
-                                const auto                            mh = seq | minimiser_view | std::views::common;
-                                hashes.insert( mh.begin(), mh.end() );
-                                hashes_count[ifm.target] += hashes.size();
-                                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
-                            }
-                            break;
-                        }
+                        total.skipped_sequences++;
+                        continue;
                     }
-                }
-                else
-                {
-                    // Multiple seqids for a target
-                    // generate all hashes from file with possible multiple sequences before counting and storing
 
-                    // Keep track of total seqids to be parsed
-                    size_t                                n_seqids = seqids.size();
-                    robin_hood::unordered_set< uint64_t > hashes;
-                    for ( auto const& [header, seq] : fin )
-                    {
-                        const auto seqid = get_seqid( header );
-                        if ( seqids.count( seqid ) )
-                        {
-                            if ( seq.size() < config.min_length )
-                            {
-                                total.skipped_sequences++;
-                                continue;
-                            }
-                            else
-                            {
-                                total.sequences++;
-                                total.length_bp += seq.size();
-                                const auto mh = seq | minimiser_view | std::views::common;
-                                hashes.insert( mh.begin(), mh.end() );
-                            }
-                            // In case all seqids were already processed
-                            if ( !--n_seqids )
-                                break;
-                        }
-                    }
-                    hashes_count[ifm.target] += hashes.size();
-                    detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
+                    total.sequences++;
+                    total.length_bp += seq.size();
+                    const auto mh = seq | minimiser_view | std::views::common;
+                    hashes.insert( mh.begin(), mh.end() );
                 }
+                hashes_count[ifm.target] += hashes.size();
+                detail::store_hashes( ifm.target, hashes, config.tmp_output_folder );
             }
             catch ( seqan3::parse_error const& e )
             {
@@ -856,7 +786,7 @@ bool run( Config config )
           detail::parse_input_file( config.input_file, hashes_count, config.quiet, stats ) )
     {
         // Add to Target and Files to the SafeQueue
-        ifm_queue.push( detail::InputFileMap{ target, std::move( files ) } );
+        ifm_queue.push( detail::InputFileMap{ target, files } );
     }
     ifm_queue.notify_push_over();
 

@@ -1,25 +1,25 @@
-mode.fasta.gz	0	SEQ0
-mode.fasta.gz	1	SEQ1
-mode.fasta.gz	2	SEQ2
-mode.fasta.gz	3	SEQ3
-mode.fasta.gz	4	SEQ4
-mode.fasta.gz	5	SEQ5
-mode.fasta.gz	6	SEQ6
-mode.fasta.gz	7	SEQ7
-mode.fasta.gz	8	SEQ8
-mode.fasta.gz	9	SEQ9
-mode.fasta.gz	10	SEQ10
-mode.fasta.gz	11	SEQ11
-mode.fasta.gz	12	SEQ12
-mode.fasta.gz	13	SEQ13
-mode.fasta.gz	14	SEQ14
-mode.fasta.gz	15	SEQ15
-mode.fasta.gz	16	SEQ16
-mode.fasta.gz	17	SEQ17
-mode.fasta.gz	18	SEQ18
-mode.fasta.gz	19	SEQ19
-mode.fasta.gz	20	SEQ20
-mode.fasta.gz	21	SEQ21
-mode.fasta.gz	22	SEQ22
-mode.fasta.gz	23	SEQ23
-mode.fasta.gz	24	SEQ24
+SEQ0.fna.gz	0
+SEQ1.fna.gz	1
+SEQ2.fna.gz	2
+SEQ3.fna.gz	3
+SEQ4.fna.gz	4
+SEQ5.fna.gz	5
+SEQ6.fna.gz	6
+SEQ7.fna.gz	7
+SEQ8.fna.gz	8
+SEQ9.fna.gz	9
+SEQ10.fna.gz	10
+SEQ11.fna.gz	11
+SEQ12.fna.gz	12
+SEQ13.fna.gz	13
+SEQ14.fna.gz	14
+SEQ15.fna.gz	15
+SEQ16.fna.gz	16
+SEQ17.fna.gz	17
+SEQ18.fna.gz	18
+SEQ19.fna.gz	19
+SEQ20.fna.gz	20
+SEQ21.fna.gz	21
+SEQ22.fna.gz	22
+SEQ23.fna.gz	23
+SEQ24.fna.gz	24

@@ -209,11 +209,7 @@ struct SeqTarget
         for ( uint16_t i = 0; i < files.size(); ++i )
         {
             output_file << files[i];
-            if ( sequence_as_target )
-            {
-                output_file << '\t' << headers[i] << '\t' << headers[i];
-            }
-            else if ( custom_targets )
+            if ( custom_targets )
             {
                 output_file << '\t' << targets[i];
             }
@@ -237,8 +233,7 @@ struct SeqTarget
     std::vector< std::string >         headers;
     std::vector< seqan3::dna4_vector > sequences;
     std::vector< std::string >         targets;
-    bool                               sequence_as_target = false;
-    bool                               custom_targets     = false;
+    bool                               custom_targets = false;
 };
 
 } // namespace aux
