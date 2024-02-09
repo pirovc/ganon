@@ -1,6 +1,3 @@
-from ganon.util import download
-from ganon.config import Config
-from ganon import ganon
 import shutil
 import os
 import gzip
@@ -12,7 +9,9 @@ from math import floor
 from multitax import CustomTx
 
 sys.path.append('src')
-
+from ganon.util import download
+from ganon.config import Config
+from ganon import ganon
 
 def run_ganon(cfg, prefix):
     """
