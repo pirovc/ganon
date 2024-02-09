@@ -1,81 +1,108 @@
 # Custom databases
 
-## Default NCBI assembly or sequence accession
-
 Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases from local sequence files.
 
-To use custom sequences, just provide them with `--input`. ganon will try to retrieve all necessary information necessary to build a database.
+## Files with NCBI assembly accessions
+
+If your files are standard files from NCBI (e.g. with assembly accession in the beginning of the filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`), provide them with the `--input` parameter. ganon will try to retrieve all necessary information to build the database.
+
+## Files with NCBI sequence accessions headers
+
+If your sequence files are separated by file or not standardized (e.g. one big `sequences.fasta`) but the sequences are in the NCBI standard (e.g. headers like `>CP022124.1 Fusobacterium nu...`), provide them with the `--input` parameter and set `--input-target sequence`. ganon will try to retrieve all necessary information to build the database.
 
 !!! note
-    ganon expects assembly accessions in the filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`. When using `--input-target sequence` filenames are not important but sequence headers should contain sequence accessions like `>CP022124.1 Fusobacterium nu...`. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
+    `--input-target sequence` will be slower to build and will use more disk space, since files have be re-written separately for each sequence. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
 
-## Non-standard/custom accessions
+## Non-standard files/headers with `--input-file`
 
-It is also possible to use **non-standard accessions and headers** to build custom databases with `--input-file`. This file should contain the following fields (tab-separated): `file [<tab> target <tab> node <tab> specialization <tab> specialization_name].` Note that file is mandatory and additional fields not.
+Alternatively to the automatic input methods, it is possible to manually define the input with either standard or **non-standard filenames, accessions and headers** to build custom databases with `--input-file`. This file should contain the following fields (tab-separated):
 
-!!! tip
-    If you just want to build a database without any taxonomic or target information, just sent the files with `--input`, use `--taxonomy skip` and choose between `--input-target file` or `sequence`.
+`file [<tab> target <tab> node <tab> specialization <tab> specialization_name].`
+
+- `file`: relative or full path to the sequence file
+- `target`: any unique text to name the file, to be used in the taxonomy
+- `node`: taxonomic node (e.g. taxid) to link entry with taxonomy
+- `specialization`: creates a specialized taxonomic level with a custom name, allowing files to be grouped
+- `specialization_name`: a name for the specialization, to be used in the taxonomy
 
 !!! warning
-    the target and specialization fields (2nd and 4th col) cannot be the same as the node (3rd col)
+    the `target` and `specialization` fields (2nd and 4th col) cannot be the same as the `node` (3rd col)
 
-<details>
-  <summary>Examples of --input-file</summary>
-  <br>
+Below you find example of `--input-file`. Note they are slightly different depending on the `--input-target` chosen. They need to be *tab-separated* to be properly parsed (tsv).
 
-With --input-target file (default), where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
+### Examples of `--input-file` using the default `--input-target file`
 
-```
-sequences.fasta my_target_1
-others.fasta my_target_2
-```
-
-With --input-target sequence, second column should match sequence headers on provided sequence files (that should be repeated for each header):
+#### Simple list of files
 
 ```
-sequences.fasta HEADER1
-sequences.fasta HEADER2
-sequences.fasta HEADER3
-others.fasta HEADER4
-others.fasta HEADER5
+sequences.fasta
+others.fasta
 ```
 
-A third column with taxonomic nodes can be provided to link the data with taxonomy. For example with --taxonomy ncbi:
+No taxonomic information is provided so `--taxonomy skip` should be set. The classification against the generated database will be performed at file level (`--level file`), since that is the only available information given.
+
+#### Files and taxonomy
 
 ```
-sequences.fasta FILE_A  562
-others.fasta FILE_B 623
+sequences.fasta  sequences  562
+others.fasta     others     623
 ```
 
-```
-sequences.fasta HEADER1 562
-sequences.fasta HEADER2 562
-sequences.fasta HEADER3 562
-others.fasta HEADER4  623
-others.fasta HEADER5  623
-```
+The classification max. level against this database will depend on the value set for `--level`:
 
-Further specializations can be used to create a additional classification level after the taxonomic leaves. For example (using --level custom):
+- `--level file` -> use the file (named with target) with node as parent
+- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+
+#### Files, taxonomy and specialization
 
 ```
-sequences.fasta FILE_A  562 ID44444 Escherichia coli TW10119
-others.fasta FILE_B 623 ID55555  Shigella flexneri 1a
+sequences.fasta  FILE_A  562  ID44444  Escherichia coli TW10119
+others.fasta     FILE_B  623  ID55555  Shigella flexneri 1a
 ```
 
+The classification max. level against this database will depend on the value set for `--level`:
+
+- `--level custom` -> use the specialization (named with specialization_name) with node as parent
+- `--level file` -> use the file (named with target) as a tax. node as parent
+- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+
+### Examples of `--input-file` using the `--input-target sequence`
+
+To provide a tabular information for every sequence in your files, you need to use the `target` field (2nd col.) of the `--input-file` to input sequence headers. For example:
+
+#### Sequences and taxonomy
+
 ```
-sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
-sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
-sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
-others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
-others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
+sequences.fasta  NZ_CP054001.1  562
+sequences.fasta  NZ_CP117955.1  623
+others.fasta     header1        666
+others.fasta     header2        666
 ```
 
-</details>
-<br>
+The classification max. level against this database will depend on the value set for `--level`:
+
+- `--level sequence` -> use the sequence header with node as parent
+- `--level assembly` -> will attempt to retrieve the assembly related to the sequence with node as parent
+- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+
+#### Sequences, taxonomy and specialization
+
+```
+sequences.fasta  NZ_CP054001.1  562  ID44444  Escherichia coli TW10119
+sequences.fasta  NZ_CP117955.1  623  ID55555  Shigella flexneri 1a
+others.fasta     header1        666  StrainA  My Strain
+others.fasta     header2        666  StrainA  My Strain
+```
+
+The classification max. level against this database will depend on the value set for `--level`:
+
+- `--level custom` -> use the specialization (named with specialization_name) with node as parent
+- `--level sequence` -> use the sequence header with node as parent
+- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
 
 ## Examples
 
-Some examples with download and build commands for custom ganon databases from useful and commonly used repositories and datasets for metagenomics analysis:
+Below you will find some examples from commonly used repositories for metagenomics analysis with `ganon build-custom`: 
 
 ### HumGut
 
@@ -121,15 +148,7 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.go
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
 
-# Split sequences in files and retrieve taxonomy
-mkdir sequences/
-zcat plasmid.* plastid.* mitochondrion.* | awk '$0 ~ ">" {accver=(substr($1,2)); print accver}{print $0 > "sequences/"accver".fna"}' | ganon-get-seq-info.sh -e -i - | awk '{print "sequences/"$1".fna\t"$1"\t"$3}' > ppm.tsv
-
-# Build ganon database
-ganon build-custom --input-file ppm.tsv --db-prefix ppm --level species --threads 16
-
-# OPTIONAL Remove temporary folder and downloaded files
-rm -rf sequences/ ppm.tsv plasmid.* plastid.* mitochondrion.* 
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence
 ```
 
 ### UniVec, UniVec_core
@@ -139,13 +158,13 @@ rm -rf sequences/ ppm.tsv plasmid.* plastid.* mitochondrion.*
 ```bash
 # UniVec
 wget -O "UniVec.fasta" --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec" 
-echo -e "UniVec.fasta\tUniVec\t81077" > UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8
+echo -e "UniVec.fasta\tUniVec\t81077" > UniVec_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8 --skip-genome-size
 
 # UniVec_Core
 wget -O "UniVec_Core.fasta" --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core" 
 echo -e "UniVec_Core.fasta\tUniVec_Core\t81077" > UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8 --skip-genome-size
 ```
 
 !!! note
@@ -246,7 +265,7 @@ rm -rf "${db}" "${db}_ganon_input_file.tsv"
 
 ### Files from genome_updater
 
-To create a ganon database from files previosly downloaded with [genome_updater](https://github.com/pirovc/genome_updater):
+To create a ganon database from files previously downloaded with [genome_updater](https://github.com/pirovc/genome_updater):
 
 ```bash
 ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
@@ -266,15 +285,19 @@ in `ganon build`, when `--window-size` > `--kmer-size` minimizers are used. That
 
 ### Target file or sequence (--input-target) 
 
-Customized builds can be done either by file or sequence. `--input-target file` will consider every file provided with `--input` a single unit. `--input-target sequence` will use every sequence as a unit.
+This is a parameter that defines how ganon will parse your input files:
+ - `--input-target file` (default) will consider every file provided with `--input` a single unit  (e.g. multi-fasta files are considered one input, sequence headers ignored).
+ - `--input-target sequence` will use every sequence as a unit. For this, ganon will first decompose every sequence in the input files provided with `--input` into a separated file. This will take longer and use more disk space.
 
-`--input-target file` is the default behavior and most efficient way to build databases. `--input-target sequence` should only be used when the input sequences are stored in a single file or when classification at sequence level is desired.
+`--input-target file` is the default behavior and most efficient way to build databases. `--input-target sequence` should only be used when the input sequences are not separated by file (e.g. a single big FASTA file) or when classification at sequence level is desired.
 
 ### Build level (--level)
 
-The `--level` parameter defines the max. depth of the database for classification. This parameter is relevant because the `--max-fp` is going to be guaranteed at the `--level` chosen. By default, the level will be the same as `--input-target`, meaning that classification will be done either at file or sequence level.
+The `--level` parameter defines the max. depth of the database for classification. This parameter is relevant because the `--max-fp` is going to be guaranteed at the `--level` chosen. 
 
-Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI servers. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
+In `ganon build` the default value is `species`. In `ganon build-custom` the level will be the same as `--input-target`, meaning that classification will be done either at `file` or `sequence` level.
+
+Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
 
 ### Genome sizes (--genome-size-files)
 

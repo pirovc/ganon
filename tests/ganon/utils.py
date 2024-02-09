@@ -1,3 +1,6 @@
+from ganon.util import download
+from ganon.config import Config
+from ganon import ganon
 import shutil
 import os
 import gzip
@@ -9,9 +12,7 @@ from math import floor
 from multitax import CustomTx
 
 sys.path.append('src')
-from ganon import ganon
-from ganon.config import Config
-from ganon.util import download
+
 
 def run_ganon(cfg, prefix):
     """
@@ -38,7 +39,7 @@ def check_files(prefix, extensions):
     return True
 
 
-def list_files_folder(folder, ext: str="", recursive: bool=False):
+def list_files_folder(folder, ext: str = "", recursive: bool = False):
     file_list = []
     if recursive:
         for path in Path(folder).rglob('*' + ext):
@@ -65,21 +66,25 @@ def list_sequences(files):
 
 
 def parse_target(target_file):
-    colums = ['file', 'target', 'sequence']
-    types = {'file': 'str', 'target': 'str', 'sequence': 'str'}
+    colums = ['file', 'target']
+    types = {'file': 'str', 'target': 'str'}
     return pd.read_table(target_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
 def parse_info(info_file):
-    colums = ['file', 'target', 'node', 'specialization', 'specialization_name']
-    types = {'file': 'str', 'target': 'str', 'node': 'str', 'specialization': 'str', 'specialization_name': 'str'}
+    colums = ['file', 'target', 'node',
+              'specialization', 'specialization_name']
+    types = {'file': 'str', 'target': 'str', 'node': 'str',
+             'specialization': 'str', 'specialization_name': 'str'}
     return pd.read_table(info_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
-def parse_tre(tre_file, output_format: str="tsv"):
-    colums = ['rank', 'target', 'lineage', 'name', 'unique', 'shared', 'children', 'cumulative', 'cumulative_perc']
-    types = {'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'uint64', 'shared': 'uint64', 'children': 'uint64', 'cumulative': 'uint64', 'cumulative_perc': 'float'}
-    return pd.read_table(tre_file, sep="," if output_format=="csv" else "\t", header=None, skiprows=0, names=colums, dtype=types)
+def parse_tre(tre_file, output_format: str = "tsv"):
+    colums = ['rank', 'target', 'lineage', 'name', 'unique',
+              'shared', 'children', 'cumulative', 'cumulative_perc']
+    types = {'rank': 'str', 'target': 'str', 'lineage': 'str', 'name': 'str', 'unique': 'uint64',
+             'shared': 'uint64', 'children': 'uint64', 'cumulative': 'uint64', 'cumulative_perc': 'float'}
+    return pd.read_table(tre_file, sep="," if output_format == "csv" else "\t", header=None, skiprows=0, names=colums, dtype=types)
 
 
 def parse_tsv(tsv_file):
@@ -94,11 +99,12 @@ def parse_all_one(file):
 
 def parse_rep(rep_file):
     colums = ['hierarchy', 'target', 'total', 'unique', 'lca', 'rank', 'name']
-    types = {'hierarchy': 'str', 'target': 'str', 'total': 'str', 'unique': 'str', 'lca': 'str', 'rank': 'str', 'name': 'str'}
+    types = {'hierarchy': 'str', 'target': 'str', 'total': 'str',
+             'unique': 'str', 'lca': 'str', 'rank': 'str', 'name': 'str'}
     return pd.read_table(rep_file, sep='\t', header=None, skiprows=0, names=colums, dtype=types)
 
 
-def build_sanity_check_and_parse(params, skipped_targets: bool=False):
+def build_sanity_check_and_parse(params, skipped_targets: bool = False):
     # Provide sanity checks for outputs (not specific to a test) and returns loaded data
     res = {}
 
@@ -107,8 +113,9 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
             return None
 
     # target_info file to be read by ganon-build
-    # res["target"] fields ['file', 'target', 'sequence']
-    res["target"] = parse_target(params["db_prefix"] + "_files/build/target_info.tsv")
+    # res["target"] fields ['file', 'target']
+    res["target"] = parse_target(
+        params["db_prefix"] + "_files/build/target_info.tsv")
 
     if not skipped_targets:
         # Count number of target based on input files
@@ -120,7 +127,8 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
             input_files = []
             for i in params["input"]:
                 if os.path.isdir(i):
-                    input_files.extend(list_files_folder(i, ext=params["input_extension"], recursive=params["input_recursive"]))
+                    input_files.extend(list_files_folder(
+                        i, ext=params["input_extension"], recursive=params["input_recursive"]))
                 else:
                     input_files.append(i)
 
@@ -138,6 +146,8 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
     if "input_file" in params and params["input_file"]:
         # Parse info file if provided
         res["info"] = parse_info(params["input_file"])
+        if res["info"]["target"].isna().all(): # in case of one col only, use filename as target
+            res["info"]["target"] = res["info"]["file"].apply(lambda x: Path(x).name)
     else:
         # Generated on build process
         res["info"] = parse_info(params["db_prefix"] + ".info.tsv")
@@ -146,7 +156,8 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
     if params["taxonomy"] != "skip":
         # Load with multitax, verify consistency
         try:
-            res["tax"] = CustomTx(files=params["db_prefix"] + ".tax", cols=["node", "parent", "rank", "name"])
+            res["tax"] = CustomTx(
+                files=params["db_prefix"] + ".tax", cols=["node", "parent", "rank", "name"])
         except AssertionError:
             print("Inconsistent .tax")
             return None
@@ -158,11 +169,6 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
 
     # Validate specialization and targets
     if params["level"] in ["assembly", "custom"]:  # specializations
-        # Check if specialization was generated
-        if res["info"]["specialization"].isna().any() or res["info"]["specialization_name"].isna().any():
-            print("Undefined specialization")
-            return None
-
         # Check if target_info has the correct value
         if not (res["target"]["target"] == res["info"]["specialization"]).all():
             print("Wrong target")
@@ -180,14 +186,14 @@ def build_sanity_check_and_parse(params, skipped_targets: bool=False):
             return None
 
         if params["level"]:  # If given and not assembly or custom, should be a taxonomic rank or leaves
-            if not (res["target"]["target"] == res["info"]["node"]).all():
-                print("Wrong target")
-                return None
-
             # Check if specialization rank is present in tax (skip for leaves, not a specific rank)
             if params["taxonomy"] != "skip" and params["level"] != "leaves":
                 if params["level"] not in res["tax"]._ranks.values():
                     print("Rank missing from tax")
+                    return None
+            else:
+                if not (res["target"]["target"] == res["info"]["node"]).all():
+                    print("Wrong target")
                     return None
 
         else:  # if not given, default to --input-target
@@ -245,7 +251,7 @@ def classify_sanity_check_and_parse(params):
 
 def reassign_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
-    
+
     res = {}
     if not params["remove_all"]:
         res["all_pd"] = parse_all_one(params["input_prefix"]+".all")
@@ -254,13 +260,12 @@ def reassign_sanity_check_and_parse(params):
 
     if not params["skip_one"]:
         # If no .one file was created
-        if not check_files(params["output_prefix"], ["one"]): 
+        if not check_files(params["output_prefix"], ["one"]):
             return None
         else:
             res["one_pd"] = parse_all_one(params["output_prefix"]+".one")
             if res["one_pd"].empty:
                 return None
-
 
     if check_files(params["output_prefix"], ["rep"]):
         res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
@@ -269,7 +274,8 @@ def reassign_sanity_check_and_parse(params):
 
     return res
 
-def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
+
+def report_sanity_check_and_parse(params, sum_full_percentage: bool = True):
 
     # get all output files referent to the run by name
     output_files = []
@@ -286,7 +292,8 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         res = {}
         # Sequence information from database to be updated
-        res["tre_pd"] = parse_tre(out_tre, params["output_format"] if "output_format" in params else None)
+        res["tre_pd"] = parse_tre(
+            out_tre, params["output_format"] if "output_format" in params else None)
 
         # get idx for root (idx_root) and root + unclassified (idx_base)
         # strip white spaces for output_format text
@@ -294,11 +301,11 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
         if params["report_type"] == "matches":
             res["idx_base"] = res["idx_root"]
         else:
-            res["idx_base"] = res["idx_root"] | (res["tre_pd"]['rank'] == "unclassified")
-            
+            res["idx_base"] = res["idx_root"] | (
+                res["tre_pd"]['rank'] == "unclassified")
 
         # Check if total is 100%
-        if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum())!=100:
+        if sum_full_percentage and floor(res["tre_pd"][res["idx_base"]]["cumulative_perc"].sum()) != 100:
             print("Inconsistent total percentage")
             return None
 
@@ -314,18 +321,19 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
 
         # check if sum of percentage for each default rank is equal or lower than 100 (floor for rounding errors)
         for rank, val in res["tre_pd"].groupby(by="rank")["cumulative_perc"].sum().apply(floor).items():
-            if rank in Config.choices_default_ranks and val>100:
+            if rank in Config.choices_default_ranks and val > 100:
                 print("Inconsistent percentage by rank (>100%)")
                 return None
 
         # Check if counts are consistent
         if ((res["tre_pd"]["unique"] + res["tre_pd"]["shared"] + res["tre_pd"]["children"]) > res["tre_pd"]["cumulative"]).any():
             print("Inconsistent counts")
-            return None 
+            return None
 
         # Check if percentage/abundance is consistent
         # nodes cannot have higher percentage than parents
-        target_perc = dict(zip(res["tre_pd"]["target"], res["tre_pd"]["cumulative_perc"]))
+        target_perc = dict(
+            zip(res["tre_pd"]["target"], res["tre_pd"]["cumulative_perc"]))
         for l in res["tre_pd"]["lineage"]:
             # skip empty nodes (e.g 241||412412 -> 241|412412)
             lineage = [n for n in l.split("|") if n]
@@ -342,10 +350,11 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool=True):
         multi_res[out_tre] = res
 
     # If only one output, return directly
-    if len(multi_res)==1:
+    if len(multi_res) == 1:
         return res
     else:
         return multi_res
+
 
 def table_sanity_check_and_parse(params):
     # Provide sanity checks for outputs (not specific to a test) and return loaded data
@@ -358,29 +367,29 @@ def table_sanity_check_and_parse(params):
     res["out_pd"] = parse_tsv(params["output_file"])
 
     # check if all values are positive
-    if not (res["out_pd"].values>=0 ).all():
+    if not (res["out_pd"].values >= 0).all():
         print("Invalid negative value")
         return None
 
     # specific for percentage output
-    if params["output_value"]=="percentage":
+    if params["output_value"] == "percentage":
         # check if all percentages are on the 0-1 range
-        if not (res["out_pd"].values<=1).all():
+        if not (res["out_pd"].values <= 1).all():
             print("Invalid table percentage (>1)")
             return None
 
         # Check if sum of the lines do not pass 1
-        if not (res["out_pd"].sum(axis=1)<=1).all():
+        if not (res["out_pd"].sum(axis=1) <= 1).all():
             print("Invalid line value (>1)")
             return None
 
-
     return res
+
 
 def download_bulk_files(download_dir):
 
-    bulk_files = {"https://ftp.ncbi.nlm.nih.gov/": 
-                     ["pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz",
+    bulk_files = {"https://ftp.ncbi.nlm.nih.gov/":
+                  ["pub/taxonomy/accession2taxid/dead_nucl.accession2taxid.gz",
                       "pub/taxonomy/accession2taxid/nucl_gb.accession2taxid.gz",
                       "genomes/refseq/assembly_summary_refseq.txt",
                       "genomes/refseq/assembly_summary_refseq_historical.txt",
@@ -389,7 +398,7 @@ def download_bulk_files(download_dir):
                       "genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"],
                   "https://data.gtdb.ecogenomic.org/releases/latest/":
                       ["ar53_metadata.tsv.gz",
-                      "bac120_metadata.tsv.gz"]
+                       "bac120_metadata.tsv.gz"]
                   }
 
     for url, files in bulk_files.items():
@@ -398,6 +407,50 @@ def download_bulk_files(download_dir):
                 print("File found: " + download_dir + file)
             else:
                 p = os.path.dirname(file)
-                print("Downloading " + url + file + " -> " + download_dir + p + file)
+                print("Downloading " + url + file +
+                      " -> " + download_dir + p + file)
                 os.makedirs(download_dir + p, exist_ok=True)
                 download([url + file], download_dir + p + "/")
+
+
+def write_input_file(files,
+                     assembly_summary,
+                     output_file,
+                     cols: list = ["file", "target", "node", "specialization", "specialization_name"],
+                     sequence: bool = False):
+    """
+    Generates a simulated --input-file based on an assembly summary and a list of files
+    """
+
+    input_file = {}
+    for file in files:
+        input_file[Path(file).name] = {"file": file}
+
+    with open(assembly_summary, "r") as asf:
+        for line in asf:
+            fields = line.split("\t")
+            # filename from url
+            file = Path(fields[19]).name + "_genomic.fna.gz"
+
+            if file not in input_file:
+                continue
+
+            # assembly accession as target
+            target = fields[0]
+            # taxid as node
+            node = fields[5]
+            # use biosample as specialization
+            spec = fields[2]
+            # use name + strain for specialization name
+            spec_name = fields[7] + " " + fields[8]
+
+            input_file[file].update({"target": target, "node": node, "specialization": spec, "specialization_name": spec_name})
+
+    with open(output_file, "w") as outf:
+        for file, vals in input_file.items():
+            if sequence:
+                for seq in list_sequences([vals["file"]]):
+                    vals["target"] = seq
+                    print("\t".join([v for k,v in vals.items() if k in cols]), file=outf)    
+            else:
+                print("\t".join([v for k,v in vals.items() if k in cols]), file=outf)

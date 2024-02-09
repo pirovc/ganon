@@ -12,6 +12,7 @@ from utils import setup_dir
 from utils import list_files_folder
 from utils import list_sequences
 from utils import build_sanity_check_and_parse
+from utils import write_input_file
 data_dir = base_dir + "data/"
 
 
@@ -92,20 +93,21 @@ class TestBuildCustom(unittest.TestCase):
 
     def test_input_single_file(self):
         """
-        ganon build-custom with one file as --input (will set --input-target sequence)
+        ganon build-custom with one file as --input  and --input-target sequence
         """
         files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_single_file"
         params["input"] = files[0]
         params["input_extension"] = ""
+        params["input_target"] = "sequence"
         cfg = Config("build-custom", **params)
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         sequences = list_sequences([params["input"]])
-        self.assertTrue(res["target"]["sequence"].isin(sequences).all(), "Sequence missing from target")
+        self.assertTrue(res["target"]["target"].isin(sequences).all(), "Sequence missing from target")
         self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of sequences on target")
         self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
         self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
@@ -263,7 +265,7 @@ class TestBuildCustom(unittest.TestCase):
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         sequences = list_sequences(list_files_folder(params["input"], ext="fna.gz"))
-        self.assertTrue(res["target"]["sequence"].isin(sequences).all(), "Files missing from target")
+        self.assertTrue(res["target"]["target"].isin(sequences).all(), "Files missing from target")
         self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of files on target")
         self.assertTrue(res["info"]["target"].isin(sequences).all(), "Files missing from info")
         self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of files on info")
@@ -650,12 +652,490 @@ class TestBuildCustom(unittest.TestCase):
         cfg = Config("build-custom", **params)
         self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
 
-    def test_restart(self):
-        """
-        ganon build-custom --restart
-        """
-        pass
 
+    def test_input_file_1col(self):
+        """
+        ganon build-custom --input-file with 1 col
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_1col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+
+    def test_input_file_2col(self):
+        """
+        ganon build-custom --input-file with 2 cols
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_2col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+    
+    def test_input_file_3col(self):
+        """
+        ganon build-custom --input-file with one 3 cols
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "file", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["target"]), "Wrong taxonomy")
+
+
+    def test_input_file_3col_level_leaves(self):
+        """
+        ganon build-custom --input-file with one 3 cols with tax. --level leaves
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col_level_tax"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["level"] = "leaves"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+        
+        # Check tax. level (node)
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["node"]), "Wrong taxonomy")
+
+    def test_input_file_3col_level_species(self):
+        """
+        ganon build-custom --input-file with one 3 cols with tax. --level species
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col_level_species"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["level"] = "species"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+        
+        # Check tax. level (node)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "species", "Wrong taxonomy")
+
+    def test_input_file_4col(self):
+        """
+        ganon build-custom --input-file with 4 cols
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_4col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["level"] = "custom"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node", "specialization"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "custom", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["specialization"]), "Wrong taxonomy")
+        # Specialization name is the same as specialization
+        self.assertEqual(sorted(res["tax"].leaves()), 
+                         sorted(map(res["tax"].name, res["tax"].leaves())), "Wrong taxonomy")
+
+    def test_input_file_5col(self):
+        """
+        ganon build-custom --input-file with 5 cols
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_5col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["level"] = "custom"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node", "specialization", "specialization_name"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(res["target"]["file"].isin(files).all(), "Files missing from target")
+        self.assertEqual(len(files), res["target"].shape[0], "Wrong number of files on target")
+        self.assertTrue(res["info"]["file"].isin(files).all(), "Files missing from info")
+        self.assertEqual(len(files), res["info"].shape[0], "Wrong number of files on info")
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "custom", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["specialization"]), "Wrong taxonomy")
+        self.assertEqual(sorted(map(res["tax"].name, res["tax"].leaves())), sorted(res["info"]["specialization_name"]), "Wrong taxonomy")
+
+    def test_input_file_1col_sequence(self):
+        """
+        ganon build-custom --input-file with one 1 col and --input-target sequence
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_1col_sequence"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["input_target"] = "sequence"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        # Should fail, since no sequence information was given to match the files
+        self.assertFalse(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+
+    def test_input_file_2col_sequence(self):
+        """
+        ganon build-custom --input-file with one 2 cols and --input-target sequence
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_2col_sequence"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["input_target"] = "sequence"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+        
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertTrue(res["target"]["target"].isin(sequences).all(), "Sequences missing from target")
+        self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of sequences on target")
+        self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
+        self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
+
+    def test_input_file_3col_sequence(self):
+        """
+        ganon build-custom --input-file with one 3 cols and --input-target sequence
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col_sequence"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["input_target"] = "sequence"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertTrue(res["target"]["target"].isin(sequences).all(), "Sequences missing from target")
+        self.assertEqual(len(sequences), res["target"].shape[0], "Wrong number of sequences on target")
+        self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
+        self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
+        # Check tax. level (default sequence)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "sequence", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["target"]), "Wrong taxonomy")
+
+    def test_input_file_3col_sequence_level_leaves(self):
+        """
+        ganon build-custom --input-file with one 3 cols and --input-target sequence and --level leaves
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col_sequence_level_leaves"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["input_target"] = "sequence"
+        params["level"] = "leaves"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertEqual(sorted(res["info"]["target"]), sorted(sequences), "Sequences missing from target")
+        # Check tax. level (default sequence)
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["node"].unique()), "Wrong taxonomy")
+
+    def test_input_file_3col_sequence_level_species(self):
+        """
+        ganon build-custom --input-file with one 3 cols and --input-target sequence and --level species
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_3col_sequence_level_species"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["input_target"] = "sequence"
+        params["level"] = "species"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertEqual(sorted(res["info"]["target"]), sorted(sequences), "Sequences missing from target")
+        # Check tax. level (species)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "species", "Wrong taxonomy")
+
+
+    def test_input_file_4col_sequence(self):
+        """
+        ganon build-custom --input-file with 4 cols and --input-target sequence
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_4col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["input_target"] = "sequence"
+        params["level"] = "custom"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node", "specialization"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertTrue(res["target"]["target"].isin(res["info"]["specialization"]).all(), "Sequences missing from target")
+        self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
+        self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
+
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "custom", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["specialization"].unique()), "Wrong taxonomy")
+        # Specialization name is the same as specialization
+        self.assertEqual(sorted(res["tax"].leaves()), 
+                         sorted(map(res["tax"].name, res["tax"].leaves())), "Wrong taxonomy")
+
+    def test_input_file_5col_sequence(self):
+        """
+        ganon build-custom --input-file with 5 cols and --input-target sequence
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+        sequences = list_sequences(files)
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_4col"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = data_dir + "build-custom/species_genome_size.txt.gz"
+        params["input_target"] = "sequence"
+        params["level"] = "custom"
+
+        write_input_file(files,
+                         data_dir + "build-custom/assembly_summary.txt",
+                         params["input_file"],
+                         cols=["file", "target", "node", "specialization", "specialization_name"],
+                         sequence=True)
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed")
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check files
+        self.assertEqual(sorted(res["info"]["file"].unique()), sorted(files), "Files missing from target")
+        # Check sequences
+        self.assertTrue(res["target"]["target"].isin(res["info"]["specialization"]).all(), "Sequences missing from target")
+        self.assertTrue(res["info"]["target"].isin(sequences).all(), "Sequences missing from info")
+        self.assertEqual(len(sequences), res["info"].shape[0], "Wrong number of sequences on info")
+
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "custom", "Wrong taxonomy")
+        self.assertEqual(sorted(res["tax"].leaves()), sorted(res["info"]["specialization"].unique()), "Wrong taxonomy")
+        self.assertEqual(sorted(map(res["tax"].name, res["tax"].leaves())), sorted(res["info"]["specialization_name"].unique()), "Wrong taxonomy")
 
 if __name__ == '__main__':
     unittest.main()
