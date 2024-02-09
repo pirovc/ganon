@@ -40,7 +40,7 @@ Several reports are available with `--report-type`: `reads`, `abundance`, `dist`
 
 `reads` reports **sequence abundances** which are the basic proportion of reads classified in the sample.
 
-`abundance` will convert sequence abundance into **taxonomic abundances** by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on [NCBI or GTDB auxiliary files](../custom_databases/#genome-sizes-genome-size-files). Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.
+`abundance` will convert sequence abundance into **taxonomic abundances** by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on [NCBI or GTDB auxiliary files](custom_databases.md#genome-sizes-genome-size-files). Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.
 
 `dist` is the same of `reads` with read count re-distribution
 

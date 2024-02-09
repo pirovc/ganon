@@ -11,6 +11,9 @@ If your files are standard files from NCBI (e.g. with assembly accession in the 
 If your sequence files are separated by file or not standardized (e.g. one big `sequences.fasta`) but the sequences are in the NCBI standard (e.g. headers like `>CP022124.1 Fusobacterium nu...`), provide them with the `--input` parameter and set `--input-target sequence`. ganon will try to retrieve all necessary information to build the database.
 
 !!! note
+    The `--level` will define the deepest classification level for the database. More infos [here](#build-level-level).
+
+!!! warning
     `--input-target sequence` will be slower to build and will use more disk space, since files have be re-written separately for each sequence. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
 
 ## Non-standard files/headers with `--input-file`
@@ -221,7 +224,7 @@ Current available nucleotide databases (2023-05-04): `16S_ribosomal_RNA` `18S_fu
     List currently available nucleotide databases `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`
 
 !!! warning
-    Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](../default_databases/#reducing-database-size)
+    Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](default_databases.md#reducing-database-size)
 
 The example below extracts sequences and information from a BLAST db to build a ganon database:
 
@@ -275,7 +278,7 @@ ganon build-custom --input output_folder_genome_updater/version/ --input-recursi
 
 ### False positive and size (--max-fp, --filter-size)
 
-ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](../classification/#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
+ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](classification.md#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
 
 Alternatively, one can set a specific size for the final index with `--filter-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 
@@ -297,7 +300,7 @@ The `--level` parameter defines the max. depth of the database for classificatio
 
 In `ganon build` the default value is `species`. In `ganon build-custom` the level will be the same as `--input-target`, meaning that classification will be done either at `file` or `sequence` level.
 
-Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI. `--level leaves` or `--level species` (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization level define in the `--input-file`.
+Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI. `--level leaves` or `--level species` (or `genus`, `family`, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization (4th col.) defined in the `--input-file`.
 
 ### Genome sizes (--genome-size-files)
 

@@ -10,17 +10,17 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 
 ## Features
 
-- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases/#refseq-and-genbank) with incremental [updates](default_databases/#update-ganon-update)
-- NCBI and [GTDB](default_databases/#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
-- [customizable database](custom_databases/) build for local or non-standard sequence files
-- optimized [taxonomic binning](classification/#binning) and [profiling](classification/#profiling) configurations
+- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases.md#refseq-and-genbank) with incremental [updates](default_databases.md#update-ganon-update)
+- NCBI and [GTDB](default_databases.md#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
+- [customizable database](custom_databases.md) build for local or non-standard sequence files
+- optimized [taxonomic binning](classification.md#binning) and [profiling](classification.md#profiling) configurations
 - build and classify at various taxonomic levels, strain, assembly, file, sequence or custom specialization
-- [hierarchical classification](classification/#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
-- [EM and/or LCA](classification/#reads-with-multiple-matches) algorithms to solve multiple-matching reads
+- [hierarchical classification](classification.md#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
+- [EM and/or LCA](classification.md#reads-with-multiple-matches) algorithms to solve multiple-matching reads
 - reporting of multiple and unique matches for every read
-- [reporting](reports/#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
-- advanced tree-like [reports](reports) with several filter options
-- generation of [contingency tables](table/) with several filters for multi-sample studies
+- [reporting](reports.md#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
+- advanced tree-like [reports](reports.md) with several filter options
+- generation of [contingency tables](table.md) with several filters for multi-sample studies
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -39,7 +39,7 @@ However, there are possible performance benefits compiling ganon from source in 
 ### Python dependencies
 
 - python >=3.6
-- pandas >=1.1.0
+- pandas >=1.2.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
 
 ```bash
@@ -48,9 +48,9 @@ python3 -V
 
 # Install packages via pip or conda:
 # PIP
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
-# Conda (alternative)
-conda install "pandas>=1.1.0" "multitax>=1.3.1"
+python3 -m pip install "pandas>=1.2.0" "multitax>=1.3.1"
+# Conda/Mamba (alternative)
+conda install "pandas>=1.2.0" "multitax>=1.3.1"
 ```
 ### C++ dependencies
 

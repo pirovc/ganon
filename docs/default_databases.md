@@ -13,7 +13,7 @@ This will download archaeal and bacterial complete genomes from RefSeq and build
 ganon update -d arc_bac -t 30
 ```
 
-Additionally, [custom databases](../custom_databases) can be built with customized files and identifiers with the `ganon build-custom` command.
+Additionally, [custom databases](custom_databases.md) can be built with customized files and identifiers with the `ganon build-custom` command.
 
 !!! info
     We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.
@@ -56,9 +56,9 @@ NCBI RefSeq and GenBank repositories are common resources to obtain reference se
 
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
 - It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches [can reduce the size/RAM requirements with some trade-offs](#reducing-database-size).
-- Alternatively, you can build one database for each organism group separately and use them in `ganon classify` in [any order or even stack them hierarchically](../classification/#multiple-and-hierarchical-classification). This way combination of multiple databases are possible, extending use cases.
+- Alternatively, you can build one database for each organism group separately and use them in `ganon classify` in [any order or even stack them hierarchically](classification.md#multiple-and-hierarchical-classification). This way combination of multiple databases are possible, extending use cases.
 
-Further examples of commonly used database can be found [here](../custom_databases/#examples).
+Further examples of commonly used database can be found [here](custom_databases.md#examples).
 
 ### Specific organisms or taxonomic groups
 
@@ -82,7 +82,7 @@ will download top 3 archaeal assemblies for each genus with date before 2023-01-
 
 ## GTDB
 
-By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](gtdb.ecogenomic.org/) is fully supported and can be used with the parameter `--taxonomy gtdb`. 
+By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](https://gtdb.ecogenomic.org) is fully supported and can be used with the parameter `--taxonomy gtdb`. 
 
 Filtering by taxonomic entries also work with GTDB, for example:
 
@@ -132,7 +132,7 @@ Due to differences between the default IBF used in ganon and the HIBF, it is rec
 
 ### False positive rate
 
-A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size). Values between `0.001` (0.1%) and `0.3` (30%) are generally used. 
+A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](custom_databases.md#false-positive-and-size-max-fp-filter-size). Values between `0.001` (0.1%) and `0.3` (30%) are generally used. 
 
 !!! hint
     When using higher `--max-fp` values, more false positive results may be generated. This can be filtered with the `--fpr-query` parameter in `ganon classify` 
@@ -140,7 +140,7 @@ A higher `--max-fp` value will generate a smaller database but with a higher num
 
 ### k-mer and window size
 
-Define how much unique information is stored in the database. [More details](../custom_databases/#minimizers-window-size-kmer-size)
+Define how much unique information is stored in the database. [More details](custom_databases.md#minimizers-window-size-kmer-size)
 
 - The smaller the `--kmer-size`, the less unique they will be, reducing database size but also sensitivity in classification. 
 - The bigger the `--window-size`, the less information needs to be stored resulting in smaller databases but with decrease classification accuracy.
@@ -158,7 +158,7 @@ RefSeq and GenBank are highly biased toward some few organisms. This means that 
 
 ### Split databases
 
-Ganon allows classification with multiple databases in one level or in an hierarchy ([More details](../classification/#multiple-and-hierarchical-classification)). This means that databases can be built separately and used in any combination as desired. There are usually some benefits of doing so:
+Ganon allows classification with multiple databases in one level or in an hierarchy ([More details](classification.md#multiple-and-hierarchical-classification)). This means that databases can be built separately and used in any combination as desired. There are usually some benefits of doing so:
 
 - Smaller databases when building by organism group, for example: one for bacteria, another for viruses, ... since average genome sizes are quite different.
 - Easier to maintain and update.
@@ -168,7 +168,7 @@ Ganon allows classification with multiple databases in one level or in an hierar
 
 ### Fixed size and Mode (only for --filter-type ibf)
 
-A fixed size for the database filter can be defined with `--filter-size` when using `--filter-type ibf`. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. [More details](../custom_databases/#false-positive-and-size-max-fp-filter-size).
+A fixed size for the database filter can be defined with `--filter-size` when using `--filter-type ibf`. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. [More details](custom_databases.md#false-positive-and-size-max-fp-filter-size).
 
 `--mode` offers 5 different categories to build a database controlling the trade-off between size and classification speed.
 
