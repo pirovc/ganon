@@ -1,20 +1,21 @@
 # Custom databases
 
-Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases from local sequence files.
+Besides the automated download and build (`ganon build`) ganon provides a highly customizable build procedure (`ganon build-custom`) to create databases from local sequence files. The usage of this procedure depends on the configuration of your files:
 
-## Files with NCBI assembly accessions
-
-If your files are standard files from NCBI (e.g. with assembly accession in the beginning of the filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`), provide them with the `--input` parameter. ganon will try to retrieve all necessary information to build the database.
-
-## Files with NCBI sequence accessions headers
-
-If your sequence files are separated by file or not standardized (e.g. one big `sequences.fasta`) but the sequences are in the NCBI standard (e.g. headers like `>CP022124.1 Fusobacterium nu...`), provide them with the `--input` parameter and set `--input-target sequence`. ganon will try to retrieve all necessary information to build the database.
-
-!!! note
-    The `--level` will define the deepest classification level for the database. More infos [here](#build-level-level).
+- Filename like `GCA_002211645.1_ASM221164v1_genomic.fna.gz`: genomic fasta files in the NCBI standard, with assembly accession in the beginning of the filename. Provide the files with the `--input` parameter. ganon will try to retrieve all necessary information to build the database.
+- Headers like `>NC_006297.1 Bacteroides fragilis YCH46 ...`: sequence headers are in the NCBI standard, with sequence accession in after `>` and with a space afterwards (or line break). Provide the files with the `--input` parameter and set `--input-target sequence`. ganon will try to retrieve all necessary information to build the database.
+- For non-standard filenames and headers, [follow this](#non-standard-filesheaders-with-input-file)
 
 !!! warning
     `--input-target sequence` will be slower to build and will use more disk space, since files have be re-written separately for each sequence. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
+
+The `--level` is a important parameter that will define the (max.) classification level for the database ([more infos](#build-level-level)):
+
+- `--level file` or `sequence` -> default behavior (depending on `--input-target `), use file/sequence as classification target
+- `--level assembly` -> will retrieve assembly related to the file/sequence, use assembly as classification target
+- `--level leaves` or `species`,`genus`,... -> group input by taxonomy, use tax. nodes at the rank chosen as classification target
+
+More infos about other parameters [here](#parameter-details).
 
 ## Non-standard files/headers with `--input-file`
 
@@ -35,7 +36,7 @@ Below you find example of `--input-file`. Note they are slightly different depen
 
 ### Examples of `--input-file` using the default `--input-target file`
 
-#### Simple list of files
+#### List of files
 
 ```
 sequences.fasta
@@ -43,6 +44,14 @@ others.fasta
 ```
 
 No taxonomic information is provided so `--taxonomy skip` should be set. The classification against the generated database will be performed at file level (`--level file`), since that is the only available information given.
+
+#### List of files with alternative names
+```
+sequences.fasta  sequences
+others.fasta     others
+```
+
+Just like above, but with a specific name to be used for each file.
 
 #### Files and taxonomy
 
@@ -54,7 +63,7 @@ others.fasta     others     623
 The classification max. level against this database will depend on the value set for `--level`:
 
 - `--level file` -> use the file (named with target) with node as parent
-- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+- `--level leaves` or `species`,`genus`,... -> files are grouped by taxonomy
 
 #### Files, taxonomy and specialization
 
@@ -67,9 +76,9 @@ The classification max. level against this database will depend on the value set
 
 - `--level custom` -> use the specialization (named with specialization_name) with node as parent
 - `--level file` -> use the file (named with target) as a tax. node as parent
-- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+- `--level leaves` or `species`,`genus`,... -> files are grouped by taxonomy
 
-### Examples of `--input-file` using the `--input-target sequence`
+### Examples of `--input-file` using `--input-target sequence`
 
 To provide a tabular information for every sequence in your files, you need to use the `target` field (2nd col.) of the `--input-file` to input sequence headers. For example:
 
@@ -86,7 +95,7 @@ The classification max. level against this database will depend on the value set
 
 - `--level sequence` -> use the sequence header with node as parent
 - `--level assembly` -> will attempt to retrieve the assembly related to the sequence with node as parent
-- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+- `--level leaves` or `species`,`genus`,... -> files are grouped by taxonomy
 
 #### Sequences, taxonomy and specialization
 
@@ -101,7 +110,7 @@ The classification max. level against this database will depend on the value set
 
 - `--level custom` -> use the specialization (named with specialization_name) with node as parent
 - `--level sequence` -> use the sequence header with node as parent
-- `--level leaves` or `species` or `genus` ... -> files are grouped by taxonomy
+- `--level leaves` or `species`,`genus`,... -> files are grouped by taxonomy
 
 ## Examples
 
@@ -177,12 +186,15 @@ ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix Uni
 
 "Genome catalogues are biome-specific collections of metagenomic-assembled and isolate genomes". [Article](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/)/[Website](https://www.ebi.ac.uk/metagenomics/browse/genomes)/[FTP](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/).
 
-There are currently (2023-05-04) 8 genome catalogues available: chicken-gut, human-gut, human-oral, marine, non-model-fish-gut, pig-gut and zebrafish-fecal. An example below how to download and build the human-oral catalog:
+Currently available genome catalogues (2024-02-09): `chicken-gut` `cow-rumen` `honeybee-gut` `human-gut` `human-oral` `human-vaginal` `marine` `mouse-gut` `non-model-fish-gut` `pig-gut` `zebrafish-fecal`
 
+*List currently available entries `curl --silent --list-only ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/`*
+
+Example on how to download and build the `human-oral` catalog:
 
 ```bash
 # Download metadata
-wget "https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0/genomes-all_metadata.tsv"
+wget "https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0.1/genomes-all_metadata.tsv"
 
 # Download sequence files with 12 threads
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl --silent ${1}| gzip -d | sed -e "1,/##FASTA/ d" | gzip > ${0}.fna.gz'
@@ -191,7 +203,7 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F"\t" '{tax="1";for(i=NF;i>1;i--){if(length($i)>3){tax=$i;break;}};print $1".fna.gz\t"$1"\t"tax}' > ganon_input_file.tsv
 
 # Build ganon database
-ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v101 --taxonomy gtdb --level leaves --threads 8
 ```
 
 !!! note
@@ -218,15 +230,14 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 
 BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
 
-Current available nucleotide databases (2023-05-04): `16S_ribosomal_RNA` `18S_fungal_sequences` `28S_fungal_sequences` `Betacoronavirus` `env_nt` `human_genome` `ITS_eukaryote_sequences` `ITS_RefSeq_Fungi` `LSU_eukaryote_rRNA` `LSU_prokaryote_rRNA` `mito` `mouse_genome` `nt` `nt_euk` `nt_others` `nt_prok` `nt_viruses` `patnt` `pdbnt` `ref_euk_rep_genomes` `ref_prok_rep_genomes` `refseq_rna` `refseq_select_rna` `ref_viroids_rep_genomes` `ref_viruses_rep_genomes` `SSU_eukaryote_rRNA` `tsa_nt`
+Current available nucleotide databases (2024-02-09): `16S_ribosomal_RNA` `18S_fungal_sequences` `28S_fungal_sequences` `Betacoronavirus` `env_nt` `human_genome` `ITS_eukaryote_sequences` `ITS_RefSeq_Fungi` `LSU_eukaryote_rRNA` `LSU_prokaryote_rRNA` `mito` `mouse_genome` `nt` `nt_euk` `nt_others` `nt_prok` `nt_viruses` `patnt` `pdbnt` `ref_euk_rep_genomes` `ref_prok_rep_genomes` `refseq_rna` `refseq_select_rna` `ref_viroids_rep_genomes` `ref_viruses_rep_genomes` `SSU_eukaryote_rRNA` `tsa_nt`
 
-!!! note
-    List currently available nucleotide databases `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`
+*List currently available entries `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`*
 
 !!! warning
-    Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](default_databases.md#reducing-database-size)
+    Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](default_databases.md#reducing-database-size).
 
-The example below extracts sequences and information from a BLAST db to build a ganon database:
+The example shows how to **download**, **parse** and **build** a ganon database from BLAST database files. It does so by splitting the database into taxonomic specific files, to speed-up the build process:
 
 ```bash
 # Define BLAST db
@@ -248,18 +259,18 @@ find -name "${db}.*tar.gz" -type f -printf '%P\n' | xargs -P ${threads} -I{} sh 
 seq 0 9 | xargs -i mkdir -p "${db}"/{}
 
 # This command extracts sequences from the blastdb and writes them into taxid specific files
-# It also generates the --input-file for ganon
+# It also generates the --input-file for ganon with the fields: filepath <tab> file <tab> taxid
 blastdbcmd -entry all -db "${db}" -outfmt "%a %T %s" | \
-awk -v db="$(realpath ${db})" '{file=db"/"substr($2,1,1)"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2"\t"$2}' | \
+awk -v db="$(realpath ${db})" '{file=db"/"substr($2,1,1)"/"$2".fna"; print ">"$1"\n"$3 >> file; print file"\t"$2".fna\t"$2}' | \
 sort | uniq > "${db}_ganon_input_file.tsv"
 
 # Build ganon database
-ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --threads 12
+ganon build-custom --input-file "${db}_ganon_input_file.tsv" --db-prefix "${db}" --threads ${threads} --level leaves
 
 # Delete extracted files and auxiliary files
 cat "${db}_extracted_files.txt" | xargs rm
 rm "${db}_extracted_files.txt" "${db}.md5" "${db}_downloaded.md5"
-# Delete sequences
+# Delete sequences and input_file
 rm -rf "${db}" "${db}_ganon_input_file.tsv"
 ```
 

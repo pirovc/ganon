@@ -121,14 +121,13 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ### Filter type (IBF and HIBF)
 
-The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates *smaller* databases with *faster* query times ([article](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4)). However, the HIBF takes longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the `--filter-type` parameter in `ganon build` and `ganon build-custom`-
+The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates *smaller* databases with *faster* query times ([article](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4)). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the `--filter-type` parameter in `ganon build` and `ganon build-custom`.
 
 Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. The default value for high sensitivity is 1% (`--filter-type hibf --max-fp 0.001`).
 
 !!! hint
     - For large unbalanced reference sets, lots of reads to query -> HIBF (default)
     - For quick database build and more flexibility -> IBF
-
 
 ### False positive rate
 
