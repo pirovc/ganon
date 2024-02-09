@@ -20,6 +20,7 @@ def parse_sequence_accession(input_files, info_cols, build_output_folder):
     run("seq 0 {n_folders} | xargs -i mkdir -p \"{build_output_folder}/{{}}\"".format(n_folders=n_folders-1, build_output_folder=build_output_folder), shell=True)
     
     # Randomly distribute sequences into subfolders
+    # cat | zcat -> compability with osx
     for file in input_files:
         run_cat = """
         cat {file} {zcat} | 
