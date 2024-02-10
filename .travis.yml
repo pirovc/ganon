@@ -15,36 +15,43 @@ matrix:
       env:
         - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-12"
-      os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-12
-            - parallel
-      env:
-        - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
+    # - name: "linux gcc-12"
+    #   os: linux
+    #   addons:
+    #     apt:
+    #       sources:
+    #         - ubuntu-toolchain-r-test
+    #       packages:
+    #         - g++-12
+    #         - parallel
+    #   env:
+    #     - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
 
-    - name: "linux gcc-11 (coverage)"
-      os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-11
-            - parallel
-            - lcov
-      env:
-        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Coverage && GCOV=gcov-11"
+    # - name: "linux gcc-11 (coverage)"
+    #   os: linux
+    #   addons:
+    #     apt:
+    #       sources:
+    #         - ubuntu-toolchain-r-test
+    #       packages:
+    #         - g++-11
+    #         - parallel
+    #         - lcov
+    #   env:
+    #     - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Coverage && GCOV=gcov-11"
 
 before_install:
   - eval "${MATRIX_EVAL}"
   - python3 -m pip install --upgrade pip
   - python3 -m pip install "pandas>=1.2.0"
   - python3 -m pip install "multitax>=1.3.1"
+  - git clone --branch raptor-v3.0.1 --recurse-submodules https://github.com/seqan/raptor
+  - cd raptor
+  - mkdir -p build
+  - cd build
+  - cmake ..
+  - make
+  - export PATH=$(pwd)/bin:$PATH
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m pip install coverage;
     fi
@@ -59,6 +66,7 @@ script:
   - ganon-build -h  # ret 0
   - ganon-classify -h  # ret 0
   - cd ..
+  - cd
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
     else
