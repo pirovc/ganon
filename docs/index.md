@@ -131,6 +131,7 @@ ganon -h
 #### Running tests
 
 ```bash
+python3 -m pip install "parameterized>=0.9.0"
 python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build/

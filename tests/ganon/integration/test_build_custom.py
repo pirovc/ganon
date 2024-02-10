@@ -15,15 +15,17 @@ from utils import build_sanity_check_and_parse
 from utils import write_input_file
 data_dir = base_dir + "data/"
 
+from parameterized import parameterized_class
 
+@parameterized_class([
+   { "filter_type": "ibf"},
+   { "filter_type": "hibf" },
+])
 class TestBuildCustom(unittest.TestCase):
-
-    results_dir = base_dir + "results/integration/build-custom/"
 
     default_params = {"input": data_dir + "build-custom/files/",
                       "taxonomy": "skip",
                       "threads": 1,
-                      "filter_type": "ibf",
                       "write_info_file": True,
                       "keep_files": True,
                       "verbose": True,
@@ -31,6 +33,9 @@ class TestBuildCustom(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+        # parametrization for filter type
+        self.default_params["filter_type"] = self.filter_type
+        self.results_dir = base_dir + "results/integration/build-custom_" + self.filter_type + "/"
         setup_dir(self.results_dir)
 
     def test_input_folder(self):
