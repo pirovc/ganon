@@ -41,6 +41,7 @@ However, there are possible performance benefits compiling ganon from source in 
 - python >=3.6
 - pandas >=1.2.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
+- [genome_updater](https://github.com/pirovc/genome_updater) >=0.6.3
 
 ```bash
 # Python version should be >=3.6
@@ -60,7 +61,7 @@ conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "geno
 - CMake >=3.4
 - zlib
 - bzip2
-- raptor >=3.0.1
+- raptor ==3.0.1
 
 !!! tip
     If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
