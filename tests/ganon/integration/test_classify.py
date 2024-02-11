@@ -144,7 +144,6 @@ class TestClassify(unittest.TestCase):
         params["rel_cutoff"] = 0.001
         params["rel_filter"] = 1
 
-        print(params)
         # Build config from params
         cfg = Config("classify", **params)
         # Run

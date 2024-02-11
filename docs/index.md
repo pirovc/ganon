@@ -49,8 +49,10 @@ python3 -V
 # Install packages via pip or conda:
 # PIP
 python3 -m pip install "pandas>=1.2.0" "multitax>=1.3.1"
+wget --quiet --show-progress https://raw.githubusercontent.com/pirovc/genome_updater/master/genome_updater.sh && chmod +x genome_updater.sh
+
 # Conda/Mamba (alternative)
-conda install "pandas>=1.2.0" "multitax>=1.3.1"
+conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "genome_updater>=0.6.3"
 ```
 ### C++ dependencies
 
@@ -90,7 +92,7 @@ sudo make install  # optional
 
 ### Installing raptor
 
-The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor>=3.0.1"` (already included in ganon install via conda).
+The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor=3.0.1"` (already included in ganon install via conda).
 
 !!! Note
     raptor is required to build databases with the Hierarchical Interleaved Bloom Filter (`ganon build --filter-type hibf`)
@@ -131,7 +133,7 @@ ganon -h
 #### Running tests
 
 ```bash
-python3 -m pip install "parameterized>=0.9.0"
+python3 -m pip install "parameterized>=0.9.0" # Alternative: conda install -c conda-forge "parameterized>=0.9.0"
 python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build/
@@ -147,7 +149,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.0.1
+   _|   v. 2.1.0
 - - - - - - - - - -
 
 positional arguments:
@@ -271,18 +273,15 @@ required arguments:
                         Database output prefix (default: None)
 
 custom arguments:
-  -n , --input-file     Manually set information for input files: file <tab> [target <tab> node <tab> specialization
-                        <tab> specialization name]. target is the sequence identifier if --input-target sequence (file
-                        can be repeated for multiple sequences). if --input-target file and target is not set, filename
-                        is used. node is the taxonomic identifier. Mutually exclusive --input (default: None)
-  -a , --input-target   Target to use [file, sequence]. By default: 'file' if multiple input files are provided or
-                        --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and
-                        will speed-up the building process (default: None)
-  -l , --level          Use a specialized target to build the database. By default, --level is the --input-target.
-                        Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy).
-                        Further specialization options [assembly, custom]. assembly will retrieve and use the assembly
-                        accession and name. custom requires and uses the specialization field in the --input-file.
-                        (default: None)
+  -n , --input-file     Tab-separated file with all necessary file/sequence information. Fields: file [<tab> target
+                        <tab> node <tab> specialization <tab> specialization name]. For details:
+                        https://pirovc.github.io/ganon/custom_databases/. Mutually exclusive --input (default: None)
+  -a , --input-target   Target to use [file, sequence]. Parse input by file or by sequence. Using 'file' is recommended
+                        and will speed-up the building process (default: file)
+  -l , --level          Max. level to build the database. By default, --level is the --input-target. Options: any
+                        available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
+                        specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
+                        and name. custom requires and uses the specialization field in the --input-file. (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]

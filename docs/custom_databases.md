@@ -68,8 +68,8 @@ The classification max. level against this database will depend on the value set
 #### Files, taxonomy and specialization
 
 ```
-sequences.fasta  FILE_A  562  ID44444  Escherichia coli TW10119
-others.fasta     FILE_B  623  ID55555  Shigella flexneri 1a
+sequences.fasta  sequences  562  ID44444  Escherichia coli TW10119
+others.fasta     others     623  ID55555  Shigella flexneri 1a
 ```
 
 The classification max. level against this database will depend on the value set for `--level`:
