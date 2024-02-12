@@ -54,9 +54,29 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="./">Custom databases (ganon build-custom)</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession</a>
+    <li class="toctree-l2"><a class="reference internal" href="#non-standard-filesheaders-with-input-file">Non-standard files/headers with --input-file</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#examples-of-input-file-using-the-default-input-target-file">Examples of --input-file using the default --input-target file</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#list-of-files">List of files</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#non-standardcustom-accessions">Non-standard/custom accessions</a>
+    <li class="toctree-l4"><a class="reference internal" href="#list-of-files-with-alternative-names">List of files with alternative names</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#files-and-taxonomy">Files and taxonomy</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#files-taxonomy-and-specialization">Files, taxonomy and specialization</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#examples-of-input-file-using-input-target-sequence">Examples of --input-file using --input-target sequence</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#sequences-and-taxonomy">Sequences and taxonomy</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#sequences-taxonomy-and-specialization">Sequences, taxonomy and specialization</a>
+    </li>
+        </ul>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
         <ul>
@@ -139,84 +159,96 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="custom-databases">Custom databases<a class="headerlink" href="#custom-databases" title="Permanent link">:)</a></h1>
-<h2 id="default-ncbi-assembly-or-sequence-accession">Default NCBI assembly or sequence accession<a class="headerlink" href="#default-ncbi-assembly-or-sequence-accession" title="Permanent link">:)</a></h2>
-<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local sequence files.</p>
-<p>To use custom sequences, just provide them with <code>--input</code>. ganon will try to retrieve all necessary information necessary to build a database.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>ganon expects assembly accessions in the filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>. When using <code>--input-target sequence</code> filenames are not important but sequence headers should contain sequence accessions like <code>&gt;CP022124.1 Fusobacterium nu...</code>. More information about building by file or sequence can be found <a href="#target-file-or-sequence-input-target">here</a>.</p>
-</div>
-<h2 id="non-standardcustom-accessions">Non-standard/custom accessions<a class="headerlink" href="#non-standardcustom-accessions" title="Permanent link">:)</a></h2>
-<p>It is also possible to use <strong>non-standard accessions and headers</strong> to build custom databases with <code>--input-file</code>. This file should contain the following fields (tab-separated): <code>file [&lt;tab&gt; target &lt;tab&gt; node &lt;tab&gt; specialization &lt;tab&gt; specialization_name].</code> Note that file is mandatory and additional fields not.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>If you just want to build a database without any taxonomic or target information, just sent the files with <code>--input</code>, use <code>--taxonomy skip</code> and choose between <code>--input-target file</code> or <code>sequence</code>.</p>
-</div>
+<p>Besides the automated download and build (<code>ganon build</code>) ganon provides a highly customizable build procedure (<code>ganon build-custom</code>) to create databases from local sequence files. The usage of this procedure depends on the configuration of your files:</p>
+<ul>
+<li>Filename like <code>GCA_002211645.1_ASM221164v1_genomic.fna.gz</code>: genomic fasta files in the NCBI standard, with assembly accession in the beginning of the filename. Provide the files with the <code>--input</code> parameter. ganon will try to retrieve all necessary information to build the database.</li>
+<li>Headers like <code>&gt;NC_006297.1 Bacteroides fragilis YCH46 ...</code>: sequence headers are in the NCBI standard, with sequence accession in after <code>&gt;</code> and with a space afterwards (or line break). Provide the files with the <code>--input</code> parameter and set <code>--input-target sequence</code>. ganon will try to retrieve all necessary information to build the database.</li>
+<li>For non-standard filenames and headers, <a href="#non-standard-filesheaders-with-input-file">follow this</a></li>
+</ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>the target and specialization fields (2nd and 4th col) cannot be the same as the node (3rd col)</p>
+<p><code>--input-target sequence</code> will be slower to build and will use more disk space, since files have be re-written separately for each sequence. More information about building by file or sequence can be found <a href="#target-file-or-sequence-input-target">here</a>.</p>
 </div>
-<details>
-  <summary>Examples of --input-file</summary>
-  <br>
-
-With --input-target file (default), where my_target_1 and my_target_2 are just names to assign sequences from (unique) sequence files:
-
-
-<pre><code>sequences.fasta my_target_1
-others.fasta my_target_2
+<p>The <code>--level</code> is a important parameter that will define the (max.) classification level for the database (<a href="#build-level-level">more infos</a>):</p>
+<ul>
+<li><code>--level file</code> or <code>sequence</code> -&gt; default behavior (depending on <code>--input-target</code>), use file/sequence as classification target</li>
+<li><code>--level assembly</code> -&gt; will retrieve assembly related to the file/sequence, use assembly as classification target</li>
+<li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; group input by taxonomy, use tax. nodes at the rank chosen as classification target</li>
+</ul>
+<p>More infos about other parameters <a href="#parameter-details">here</a>.</p>
+<h2 id="non-standard-filesheaders-with-input-file">Non-standard files/headers with <code>--input-file</code><a class="headerlink" href="#non-standard-filesheaders-with-input-file" title="Permanent link">:)</a></h2>
+<p>Alternatively to the automatic input methods, it is possible to manually define the input with either standard or <strong>non-standard filenames, accessions and headers</strong> to build custom databases with <code>--input-file</code>. This file should contain the following fields (tab-separated):</p>
+<p><code>file [&lt;tab&gt; target &lt;tab&gt; node &lt;tab&gt; specialization &lt;tab&gt; specialization_name].</code></p>
+<ul>
+<li><code>file</code>: relative or full path to the sequence file</li>
+<li><code>target</code>: any unique text to name the file, to be used in the taxonomy</li>
+<li><code>node</code>: taxonomic node (e.g. taxid) to link entry with taxonomy</li>
+<li><code>specialization</code>: creates a specialized taxonomic level with a custom name, allowing files to be grouped</li>
+<li><code>specialization_name</code>: a name for the specialization, to be used in the taxonomy</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>the <code>target</code> and <code>specialization</code> fields (2nd and 4th col) cannot be the same as the <code>node</code> (3rd col)</p>
+</div>
+<p>Below you find example of <code>--input-file</code>. Note they are slightly different depending on the <code>--input-target</code> chosen. They need to be <em>tab-separated</em> to be properly parsed (tsv).</p>
+<h3 id="examples-of-input-file-using-the-default-input-target-file">Examples of <code>--input-file</code> using the default <code>--input-target file</code><a class="headerlink" href="#examples-of-input-file-using-the-default-input-target-file" title="Permanent link">:)</a></h3>
+<h4 id="list-of-files">List of files<a class="headerlink" href="#list-of-files" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta
+others.fasta
 </code></pre>
-
-
-With --input-target sequence, second column should match sequence headers on provided sequence files (that should be repeated for each header):
-
-
-<pre><code>sequences.fasta HEADER1
-sequences.fasta HEADER2
-sequences.fasta HEADER3
-others.fasta HEADER4
-others.fasta HEADER5
+<p>No taxonomic information is provided so <code>--taxonomy skip</code> should be set. The classification against the generated database will be performed at file level (<code>--level file</code>), since that is the only available information given.</p>
+<h4 id="list-of-files-with-alternative-names">List of files with alternative names<a class="headerlink" href="#list-of-files-with-alternative-names" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta  sequences
+others.fasta     others
 </code></pre>
-
-
-A third column with taxonomic nodes can be provided to link the data with taxonomy. For example with --taxonomy ncbi:
-
-
-<pre><code>sequences.fasta FILE_A  562
-others.fasta FILE_B 623
+<p>Just like above, but with a specific name to be used for each file.</p>
+<h4 id="files-and-taxonomy">Files and taxonomy<a class="headerlink" href="#files-and-taxonomy" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta  sequences  562
+others.fasta     others     623
 </code></pre>
-
-
-
-<pre><code>sequences.fasta HEADER1 562
-sequences.fasta HEADER2 562
-sequences.fasta HEADER3 562
-others.fasta HEADER4  623
-others.fasta HEADER5  623
+<p>The classification max. level against this database will depend on the value set for <code>--level</code>:</p>
+<ul>
+<li><code>--level file</code> -&gt; use the file (named with target) with node as parent</li>
+<li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; files are grouped by taxonomy</li>
+</ul>
+<h4 id="files-taxonomy-and-specialization">Files, taxonomy and specialization<a class="headerlink" href="#files-taxonomy-and-specialization" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta  sequences  562  ID44444  Escherichia coli TW10119
+others.fasta     others     623  ID55555  Shigella flexneri 1a
 </code></pre>
-
-
-Further specializations can be used to create a additional classification level after the taxonomic leaves. For example (using --level custom):
-
-
-<pre><code>sequences.fasta FILE_A  562 ID44444 Escherichia coli TW10119
-others.fasta FILE_B 623 ID55555  Shigella flexneri 1a
+<p>The classification max. level against this database will depend on the value set for <code>--level</code>:</p>
+<ul>
+<li><code>--level custom</code> -&gt; use the specialization (named with specialization_name) with node as parent</li>
+<li><code>--level file</code> -&gt; use the file (named with target) as a tax. node as parent</li>
+<li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; files are grouped by taxonomy</li>
+</ul>
+<h3 id="examples-of-input-file-using-input-target-sequence">Examples of <code>--input-file</code> using <code>--input-target sequence</code><a class="headerlink" href="#examples-of-input-file-using-input-target-sequence" title="Permanent link">:)</a></h3>
+<p>To provide a tabular information for every sequence in your files, you need to use the <code>target</code> field (2nd col.) of the <code>--input-file</code> to input sequence headers. For example:</p>
+<h4 id="sequences-and-taxonomy">Sequences and taxonomy<a class="headerlink" href="#sequences-and-taxonomy" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta  NZ_CP054001.1  562
+sequences.fasta  NZ_CP117955.1  623
+others.fasta     header1        666
+others.fasta     header2        666
 </code></pre>
-
-
-
-<pre><code>sequences.fasta HEADER1 562 ID443 Escherichia coli TW10119
-sequences.fasta HEADER2 562 ID297 Escherichia coli PCN079
-sequences.fasta HEADER3 562 ID8873  Escherichia coli P0301867.7
-others.fasta HEADER4  623 ID2241  Shigella flexneri 1a
-others.fasta HEADER5  623 ID4422  Shigella flexneri 1b
+<p>The classification max. level against this database will depend on the value set for <code>--level</code>:</p>
+<ul>
+<li><code>--level sequence</code> -&gt; use the sequence header with node as parent</li>
+<li><code>--level assembly</code> -&gt; will attempt to retrieve the assembly related to the sequence with node as parent</li>
+<li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; files are grouped by taxonomy</li>
+</ul>
+<h4 id="sequences-taxonomy-and-specialization">Sequences, taxonomy and specialization<a class="headerlink" href="#sequences-taxonomy-and-specialization" title="Permanent link">:)</a></h4>
+<pre><code>sequences.fasta  NZ_CP054001.1  562  ID44444  Escherichia coli TW10119
+sequences.fasta  NZ_CP117955.1  623  ID55555  Shigella flexneri 1a
+others.fasta     header1        666  StrainA  My Strain
+others.fasta     header2        666  StrainA  My Strain
 </code></pre>
-
-
-</details>
-<p><br></p>
+<p>The classification max. level against this database will depend on the value set for <code>--level</code>:</p>
+<ul>
+<li><code>--level custom</code> -&gt; use the specialization (named with specialization_name) with node as parent</li>
+<li><code>--level sequence</code> -&gt; use the sequence header with node as parent</li>
+<li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; files are grouped by taxonomy</li>
+</ul>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">:)</a></h2>
-<p>Some examples with download and build commands for custom ganon databases from useful and commonly used repositories and datasets for metagenomics analysis:</p>
+<p>Below you will find some examples from commonly used repositories for metagenomics analysis with <code>ganon build-custom</code>: </p>
 <h3 id="humgut">HumGut<a class="headerlink" href="#humgut" title="Permanent link">:)</a></h3>
 <p>Collection of &gt;30000 genomes from healthy human metagenomes. <a href="https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-021-01114-w">Article</a>/<a href="https://arken.nmbu.no/~larssn/humgut/">Website</a>.</p>
 <pre><code class="language-bash"># Download sequence files
@@ -252,27 +284,19 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.n
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
 
-# Split sequences in files and retrieve taxonomy
-mkdir sequences/
-zcat plasmid.* plastid.* mitochondrion.* | awk '$0 ~ &quot;&gt;&quot; {accver=(substr($1,2)); print accver}{print $0 &gt; &quot;sequences/&quot;accver&quot;.fna&quot;}' | ganon-get-seq-info.sh -e -i - | awk '{print &quot;sequences/&quot;$1&quot;.fna\t&quot;$1&quot;\t&quot;$3}' &gt; ppm.tsv
-
-# Build ganon database
-ganon build-custom --input-file ppm.tsv --db-prefix ppm --level species --threads 16
-
-# OPTIONAL Remove temporary folder and downloaded files
-rm -rf sequences/ ppm.tsv plasmid.* plastid.* mitochondrion.* 
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence
 </code></pre>
 <h3 id="univec-univec_core">UniVec, UniVec_core<a class="headerlink" href="#univec-univec_core" title="Permanent link">:)</a></h3>
 <p>"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv">Website</a>. Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.</p>
 <pre><code class="language-bash"># UniVec
 wget -O &quot;UniVec.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec&quot; 
-echo -e &quot;UniVec.fasta\tUniVec\t81077&quot; &gt; UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8
+echo -e &quot;UniVec.fasta\tUniVec\t81077&quot; &gt; UniVec_ganon_input_file.tsv
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8 --skip-genome-size
 
 # UniVec_Core
 wget -O &quot;UniVec_Core.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core&quot; 
 echo -e &quot;UniVec_Core.fasta\tUniVec_Core\t81077&quot; &gt; UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8 --skip-genome-size
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -280,9 +304,11 @@ ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix Uni
 </div>
 <h3 id="mgnify-genome-catalogues-mags">MGnify genome catalogues (MAGs)<a class="headerlink" href="#mgnify-genome-catalogues-mags" title="Permanent link">:)</a></h3>
 <p>"Genome catalogues are biome-specific collections of metagenomic-assembled and isolate genomes". <a href="https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/">Article</a>/<a href="https://www.ebi.ac.uk/metagenomics/browse/genomes">Website</a>/<a href="https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/">FTP</a>.</p>
-<p>There are currently (2023-05-04) 8 genome catalogues available: chicken-gut, human-gut, human-oral, marine, non-model-fish-gut, pig-gut and zebrafish-fecal. An example below how to download and build the human-oral catalog:</p>
+<p>Currently available genome catalogues (2024-02-09): <code>chicken-gut</code> <code>cow-rumen</code> <code>honeybee-gut</code> <code>human-gut</code> <code>human-oral</code> <code>human-vaginal</code> <code>marine</code> <code>mouse-gut</code> <code>non-model-fish-gut</code> <code>pig-gut</code> <code>zebrafish-fecal</code></p>
+<p><em>List currently available entries <code>curl --silent --list-only ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/</code></em></p>
+<p>Example on how to download and build the <code>human-oral</code> catalog:</p>
 <pre><code class="language-bash"># Download metadata
-wget &quot;https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0/genomes-all_metadata.tsv&quot;
+wget &quot;https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-oral/v1.0.1/genomes-all_metadata.tsv&quot;
 
 # Download sequence files with 12 threads
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl --silent ${1}| gzip -d | sed -e &quot;1,/##FASTA/ d&quot; | gzip &gt; ${0}.fna.gz'
@@ -291,7 +317,7 @@ tail -n+2 genomes-all_metadata.tsv | cut -f 1,20 | xargs -P 12 -n2 sh -c 'curl -
 tail -n+2 genomes-all_metadata.tsv | cut -f 1,15  | tr ';' '\t' | awk -F&quot;\t&quot; '{tax=&quot;1&quot;;for(i=NF;i&gt;1;i--){if(length($i)&gt;3){tax=$i;break;}};print $1&quot;.fna.gz\t&quot;$1&quot;\t&quot;tax}' &gt; ganon_input_file.tsv
 
 # Build ganon database
-ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v1 --taxonomy gtdb --level leaves --threads 32
+ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_oral_v101 --taxonomy gtdb --level leaves --threads 8
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -313,16 +339,13 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 </div>
 <h3 id="blast-databases-nt-env_nt-nt_prok">BLAST databases (nt env_nt nt_prok ...)<a class="headerlink" href="#blast-databases-nt-env_nt-nt_prok" title="Permanent link">:)</a></h3>
 <p>BLAST databases. <a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi">Website</a>/<a href="https://ftp.ncbi.nlm.nih.gov/blast/db/">FTP</a>.</p>
-<p>Current available nucleotide databases (2023-05-04): <code>16S_ribosomal_RNA</code> <code>18S_fungal_sequences</code> <code>28S_fungal_sequences</code> <code>Betacoronavirus</code> <code>env_nt</code> <code>human_genome</code> <code>ITS_eukaryote_sequences</code> <code>ITS_RefSeq_Fungi</code> <code>LSU_eukaryote_rRNA</code> <code>LSU_prokaryote_rRNA</code> <code>mito</code> <code>mouse_genome</code> <code>nt</code> <code>nt_euk</code> <code>nt_others</code> <code>nt_prok</code> <code>nt_viruses</code> <code>patnt</code> <code>pdbnt</code> <code>ref_euk_rep_genomes</code> <code>ref_prok_rep_genomes</code> <code>refseq_rna</code> <code>refseq_select_rna</code> <code>ref_viroids_rep_genomes</code> <code>ref_viruses_rep_genomes</code> <code>SSU_eukaryote_rRNA</code> <code>tsa_nt</code></p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>List currently available nucleotide databases <code>curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort</code></p>
-</div>
+<p>Current available nucleotide databases (2024-02-09): <code>16S_ribosomal_RNA</code> <code>18S_fungal_sequences</code> <code>28S_fungal_sequences</code> <code>Betacoronavirus</code> <code>env_nt</code> <code>human_genome</code> <code>ITS_eukaryote_sequences</code> <code>ITS_RefSeq_Fungi</code> <code>LSU_eukaryote_rRNA</code> <code>LSU_prokaryote_rRNA</code> <code>mito</code> <code>mouse_genome</code> <code>nt</code> <code>nt_euk</code> <code>nt_others</code> <code>nt_prok</code> <code>nt_viruses</code> <code>patnt</code> <code>pdbnt</code> <code>ref_euk_rep_genomes</code> <code>ref_prok_rep_genomes</code> <code>refseq_rna</code> <code>refseq_select_rna</code> <code>ref_viroids_rep_genomes</code> <code>ref_viruses_rep_genomes</code> <code>SSU_eukaryote_rRNA</code> <code>tsa_nt</code></p>
+<p><em>List currently available entries <code>curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort</code></em></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some <a href="../default_databases/#reducing-database-size">reduction strategies</a></p>
+<p>Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some <a href="../default_databases/#reducing-database-size">reduction strategies</a>.</p>
 </div>
-<p>The example below extracts sequences and information from a BLAST db to build a ganon database:</p>
+<p>The example shows how to <strong>download</strong>, <strong>parse</strong> and <strong>build</strong> a ganon database from BLAST database files. It does so by splitting the database into taxonomic specific files, to speed-up the build process:</p>
 <pre><code class="language-bash"># Define BLAST db
 db=&quot;16S_ribosomal_RNA&quot;
 threads=8
@@ -342,18 +365,18 @@ find -name &quot;${db}.*tar.gz&quot; -type f -printf '%P\n' | xargs -P ${threads
 seq 0 9 | xargs -i mkdir -p &quot;${db}&quot;/{}
 
 # This command extracts sequences from the blastdb and writes them into taxid specific files
-# It also generates the --input-file for ganon
+# It also generates the --input-file for ganon with the fields: filepath &lt;tab&gt; file &lt;tab&gt; taxid
 blastdbcmd -entry all -db &quot;${db}&quot; -outfmt &quot;%a %T %s&quot; | \
-awk -v db=&quot;$(realpath ${db})&quot; '{file=db&quot;/&quot;substr($2,1,1)&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;\t&quot;$2}' | \
+awk -v db=&quot;$(realpath ${db})&quot; '{file=db&quot;/&quot;substr($2,1,1)&quot;/&quot;$2&quot;.fna&quot;; print &quot;&gt;&quot;$1&quot;\n&quot;$3 &gt;&gt; file; print file&quot;\t&quot;$2&quot;.fna\t&quot;$2}' | \
 sort | uniq &gt; &quot;${db}_ganon_input_file.tsv&quot;
 
 # Build ganon database
-ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --threads 12
+ganon build-custom --input-file &quot;${db}_ganon_input_file.tsv&quot; --db-prefix &quot;${db}&quot; --threads ${threads} --level leaves
 
 # Delete extracted files and auxiliary files
 cat &quot;${db}_extracted_files.txt&quot; | xargs rm
 rm &quot;${db}_extracted_files.txt&quot; &quot;${db}.md5&quot; &quot;${db}_downloaded.md5&quot;
-# Delete sequences
+# Delete sequences and input_file
 rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 </code></pre>
 <div class="admonition note">
@@ -361,7 +384,7 @@ rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 <p><code>blastdbcmd</code> is a command from <a href="https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/">BLAST+ software suite</a> (tested version 2.14.0) and should be installed separately.</p>
 </div>
 <h3 id="files-from-genome_updater">Files from genome_updater<a class="headerlink" href="#files-from-genome_updater" title="Permanent link">:)</a></h3>
-<p>To create a ganon database from files previosly downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>:</p>
+<p>To create a ganon database from files previously downloaded with <a href="https://github.com/pirovc/genome_updater">genome_updater</a>:</p>
 <pre><code class="language-bash">ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
 </code></pre>
 <h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
@@ -371,11 +394,14 @@ rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 <h3 id="minimizers-window-size-kmer-size">minimizers (--window-size, --kmer-size)<a class="headerlink" href="#minimizers-window-size-kmer-size" title="Permanent link">:)</a></h3>
 <p>in <code>ganon build</code>, when <code>--window-size</code> &gt; <code>--kmer-size</code> minimizers are used. That means that for a every window, a single k-mer will be selected. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. Sensitivity and precision can be reduced by small margins. If <code>--window-size</code> = <code>--kmer-size</code>, all k-mers are going to be used to build the database.</p>
 <h3 id="target-file-or-sequence-input-target">Target file or sequence (--input-target)<a class="headerlink" href="#target-file-or-sequence-input-target" title="Permanent link">:)</a></h3>
-<p>Customized builds can be done either by file or sequence. <code>--input-target file</code> will consider every file provided with <code>--input</code> a single unit. <code>--input-target sequence</code> will use every sequence as a unit.</p>
-<p><code>--input-target file</code> is the default behavior and most efficient way to build databases. <code>--input-target sequence</code> should only be used when the input sequences are stored in a single file or when classification at sequence level is desired.</p>
+<p>This is a parameter that defines how ganon will parse your input files:
+ - <code>--input-target file</code> (default) will consider every file provided with <code>--input</code> a single unit  (e.g. multi-fasta files are considered one input, sequence headers ignored).
+ - <code>--input-target sequence</code> will use every sequence as a unit. For this, ganon will first decompose every sequence in the input files provided with <code>--input</code> into a separated file. This will take longer and use more disk space.</p>
+<p><code>--input-target file</code> is the default behavior and most efficient way to build databases. <code>--input-target sequence</code> should only be used when the input sequences are not separated by file (e.g. a single big FASTA file) or when classification at sequence level is desired.</p>
 <h3 id="build-level-level">Build level (--level)<a class="headerlink" href="#build-level-level" title="Permanent link">:)</a></h3>
-<p>The <code>--level</code> parameter defines the max. depth of the database for classification. This parameter is relevant because the <code>--max-fp</code> is going to be guaranteed at the <code>--level</code> chosen. By default, the level will be the same as <code>--input-target</code>, meaning that classification will be done either at file or sequence level.</p>
-<p>Alternatively, <code>--level assembly</code> will link the file or sequence target information with assembly accessions retrieved from NCBI servers. <code>--level leaves</code> or <code>--level species</code> (or genus, family, ...) will link the targets with taxonomic information and prune the tree at the chosen level. <code>--level custom</code> will use specialization level define in the <code>--input-file</code>.</p>
+<p>The <code>--level</code> parameter defines the max. depth of the database for classification. This parameter is relevant because the <code>--max-fp</code> is going to be guaranteed at the <code>--level</code> chosen. </p>
+<p>In <code>ganon build</code> the default value is <code>species</code>. In <code>ganon build-custom</code> the level will be the same as <code>--input-target</code>, meaning that classification will be done either at <code>file</code> or <code>sequence</code> level.</p>
+<p>Alternatively, <code>--level assembly</code> will link the file or sequence target information with assembly accessions retrieved from NCBI. <code>--level leaves</code> or <code>--level species</code> (or <code>genus</code>, <code>family</code>, ...) will link the targets with taxonomic information and prune the tree at the chosen level. <code>--level custom</code> will use specialization (4th col.) defined in the <code>--input-file</code>.</p>
 <h3 id="genome-sizes-genome-size-files">Genome sizes (--genome-size-files)<a class="headerlink" href="#genome-sizes-genome-size-files" title="Permanent link">:)</a></h3>
 <p>Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For <code>--taxonomy ncbi</code> the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/">species_genome_size.txt.gz</a> is used. For <code>--taxonomy gtdb</code> the <a href="https://data.gtdb.ecogenomic.org/releases/latest/">*_metadata.tar.gz</a> files are used. Those files can be directly provided with the <code>--genome-size-files</code> argument.</p>
 <p>Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the <a href="#buildupdate">ganon database</a>.</p>

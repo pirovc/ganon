@@ -143,7 +143,7 @@
 <p>This will download archaeal and bacterial complete genomes from RefSeq and build a database with 30 threads. Some day later, the database can be updated to include newest genomes with:</p>
 <pre><code class="language-bash">ganon update -d arc_bac -t 30
 </code></pre>
-<p>Additionally, <a href="../custom_databases">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
+<p>Additionally, <a href="../custom_databases/">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
 <p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.</p>
@@ -293,7 +293,7 @@
 </code></pre>
 <p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater">repository</a>.</p>
 <h2 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h2>
-<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="gtdb.ecogenomic.org/">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. </p>
+<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="https://gtdb.ecogenomic.org">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. </p>
 <p>Filtering by taxonomic entries also work with GTDB, for example:</p>
 <pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
 </code></pre>
@@ -315,7 +315,7 @@
 </code></pre>
 <h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
 <h3 id="filter-type-ibf-and-hibf">Filter type (IBF and HIBF)<a class="headerlink" href="#filter-type-ibf-and-hibf" title="Permanent link">:)</a></h3>
-<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4">article</a>). However, the HIBF takes longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the <code>--filter-type</code> parameter in <code>ganon build</code> and <code>ganon build-custom</code>-</p>
+<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4">article</a>). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the <code>--filter-type</code> parameter in <code>ganon build</code> and <code>ganon build-custom</code>.</p>
 <p>Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. The default value for high sensitivity is 1% (<code>--filter-type hibf --max-fp 0.001</code>).</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
