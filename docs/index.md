@@ -10,17 +10,17 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 
 ## Features
 
-- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases/#refseq-and-genbank) with incremental [updates](default_databases/#update-ganon-update)
-- NCBI and [GTDB](default_databases/#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
-- [customizable database](custom_databases/) build for local or non-standard sequence files
-- optimized [taxonomic binning](classification/#binning) and [profiling](classification/#profiling) configurations
+- integrated download and build of any subset from [RefSeq/Genbank/GTDB](default_databases.md#refseq-and-genbank) with incremental [updates](default_databases.md#update-ganon-update)
+- NCBI and [GTDB](default_databases.md#gtdb) native support for taxonomic classification, custom taxonomy or no taxonomy at all
+- [customizable database](custom_databases.md) build for local or non-standard sequence files
+- optimized [taxonomic binning](classification.md#binning) and [profiling](classification.md#profiling) configurations
 - build and classify at various taxonomic levels, strain, assembly, file, sequence or custom specialization
-- [hierarchical classification](classification/#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
-- [EM and/or LCA](classification/#reads-with-multiple-matches) algorithms to solve multiple-matching reads
+- [hierarchical classification](classification.md#multiple-and-hierarchical-classification) using several databases in one or more levels in just one run
+- [EM and/or LCA](classification.md#reads-with-multiple-matches) algorithms to solve multiple-matching reads
 - reporting of multiple and unique matches for every read
-- [reporting](reports/#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
-- advanced tree-like [reports](reports) with several filter options
-- generation of [contingency tables](table/) with several filters for multi-sample studies
+- [reporting](reports.md#report-type-report-type) of sequence, taxonomic or multi-match abundances with optional genome size correction
+- advanced tree-like [reports](reports.md) with several filter options
+- generation of [contingency tables](table.md) with several filters for multi-sample studies
 
 ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
 
@@ -39,8 +39,9 @@ However, there are possible performance benefits compiling ganon from source in 
 ### Python dependencies
 
 - python >=3.6
-- pandas >=1.1.0
+- pandas >=1.2.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
+- [genome_updater](https://github.com/pirovc/genome_updater) >=0.6.3
 
 ```bash
 # Python version should be >=3.6
@@ -48,9 +49,11 @@ python3 -V
 
 # Install packages via pip or conda:
 # PIP
-python3 -m pip install "pandas>=1.1.0" "multitax>=1.3.1"
-# Conda (alternative)
-conda install "pandas>=1.1.0" "multitax>=1.3.1"
+python3 -m pip install "pandas>=1.2.0" "multitax>=1.3.1"
+wget --quiet --show-progress https://raw.githubusercontent.com/pirovc/genome_updater/master/genome_updater.sh && chmod +x genome_updater.sh
+
+# Conda/Mamba (alternative)
+conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "genome_updater>=0.6.3"
 ```
 ### C++ dependencies
 
@@ -58,7 +61,7 @@ conda install "pandas>=1.1.0" "multitax>=1.3.1"
 - CMake >=3.4
 - zlib
 - bzip2
-- raptor >=3.0.1
+- raptor ==3.0.1
 
 !!! tip
     If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
@@ -90,7 +93,7 @@ sudo make install  # optional
 
 ### Installing raptor
 
-The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor>=3.0.1"` (already included in ganon install via conda).
+The easiest way to install [raptor](https://github.com/seqan/raptor) is via conda with `conda install -c bioconda -c conda-forge "raptor=3.0.1"` (already included in ganon install via conda).
 
 !!! Note
     raptor is required to build databases with the Hierarchical Interleaved Bloom Filter (`ganon build --filter-type hibf`)
@@ -131,6 +134,7 @@ ganon -h
 #### Running tests
 
 ```bash
+python3 -m pip install "parameterized>=0.9.0" # Alternative: conda install -c conda-forge "parameterized>=0.9.0"
 python3 -m unittest discover -s tests/ganon/integration/
 python3 -m unittest discover -s tests/ganon/integration_online/  # optional - downloads large files
 cd build/
@@ -146,7 +150,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.0.1
+   _|   v. 2.1.0
 - - - - - - - - - -
 
 positional arguments:
@@ -270,18 +274,15 @@ required arguments:
                         Database output prefix (default: None)
 
 custom arguments:
-  -n , --input-file     Manually set information for input files: file <tab> [target <tab> node <tab> specialization
-                        <tab> specialization name]. target is the sequence identifier if --input-target sequence (file
-                        can be repeated for multiple sequences). if --input-target file and target is not set, filename
-                        is used. node is the taxonomic identifier. Mutually exclusive --input (default: None)
-  -a , --input-target   Target to use [file, sequence]. By default: 'file' if multiple input files are provided or
-                        --input-file is set, 'sequence' if a single file is provided. Using 'file' is recommended and
-                        will speed-up the building process (default: None)
-  -l , --level          Use a specialized target to build the database. By default, --level is the --input-target.
-                        Options: any available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy).
-                        Further specialization options [assembly, custom]. assembly will retrieve and use the assembly
-                        accession and name. custom requires and uses the specialization field in the --input-file.
-                        (default: None)
+  -n , --input-file     Tab-separated file with all necessary file/sequence information. Fields: file [<tab> target
+                        <tab> node <tab> specialization <tab> specialization name]. For details:
+                        https://pirovc.github.io/ganon/custom_databases/. Mutually exclusive --input (default: None)
+  -a , --input-target   Target to use [file, sequence]. Parse input by file or by sequence. Using 'file' is recommended
+                        and will speed-up the building process (default: file)
+  -l , --level          Max. level to build the database. By default, --level is the --input-target. Options: any
+                        available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
+                        specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
+                        and name. custom requires and uses the specialization field in the --input-file. (default: None)
   -m [ ...], --taxonomy-files [ ...]
                         Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z [ ...], --genome-size-files [ ...]

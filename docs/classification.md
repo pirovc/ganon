@@ -12,7 +12,7 @@ Output files:
  - `results.rep`: plain report of the run, used to further generate tree-like reports
  - `results.tre`: tree-like report with cumulative abundances by taxonomic ranks (can be re-generated with `ganon report`)
 
-By default, `ganon classify` only write report files. To get files with the classification of each read, use `--output-one` and/or `--output-all`. More information about output files [here](../outputfiles/#ganon-classify).
+By default, `ganon classify` only write report files. To get files with the classification of each read, use `--output-one` and/or `--output-all`. More information about output files [here](outputfiles.md#ganon-classify).
 
 !!! Note
     ganon performs **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.
@@ -23,7 +23,7 @@ By default, `ganon classify` only write report files. To get files with the clas
 
  - strict thresholds: `--rel-cutoff 0.75` and `--rel-filter 0.1`
  - `--min-count 0.00005` (0.005%) to exclude very low abundant taxa
- - `--report-type abundance` to generate taxonomic abundances, correcting for genome sizes  (more infos [here](../reports/#report-type-report-type))
+ - `--report-type abundance` to generate taxonomic abundances, correcting for genome sizes  (more infos [here](reports.md#report-type-report-type))
 
 ### Binning
 
@@ -31,7 +31,7 @@ To achieve better results for taxonomic binning or sequence classification, `gan
 
  - less strict thresholds: `--rel-cutoff 0.25 --rel-filter 0`
  - `--min-count 0` reports all taxa with at least one read assigned to it
- - `--report-type reads` will report sequence abundances instead of taxonomic abundances (more infos [here](../reports/#report-type-report-type))
+ - `--report-type reads` will report sequence abundances instead of taxonomic abundances (more infos [here](reports.md#report-type-report-type))
 
 !!! Tip
     Database parameters in `ganon build` can also influence your results. Lower `--max-fp` (e.g. 0.1, 0.001) and higher `--kmer-size` (e.g. `23`, `27`) will improve sensitivity of your results at cost of a larger database and memory usage.

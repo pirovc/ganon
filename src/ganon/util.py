@@ -72,7 +72,7 @@ def validate_input_files(input_files_folder, input_extension, quiet, input_recur
             valid_input_files.add(i)
         elif os.path.isdir(i):
             if not input_extension:
-                print_log("--input-extension is required when using folders in the --input. Skipping: " + i, quiet)
+                print_log(" - --input-extension is required when using folders in the --input. Skipping: " + i, quiet)
                 continue
             files_in_dir = 0
 
@@ -90,13 +90,13 @@ def validate_input_files(input_files_folder, input_extension, quiet, input_recur
                             files_in_dir += 1
                             valid_input_files.add(f)
 
-            print_log(str(files_in_dir) + " valid file(s) [--input-extension " + input_extension +
+            print_log(" - " + str(files_in_dir) + " valid file(s) [--input-extension " + input_extension +
                       (", --input-recursive" if input_recursive else "") + 
                       "] found in " + i, quiet)
         else:
-            print_log("Skipping invalid file/folder: " + i, quiet)
+            print_log(" - skipping invalid file/folder: " + i, quiet)
 
-    print_log("Total valid files: " + str(len(valid_input_files)) + "\n", quiet)
+    print_log(" - total valid files: " + str(len(valid_input_files)) + "", quiet)
     return valid_input_files
 
 

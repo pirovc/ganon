@@ -14,13 +14,17 @@ from utils import setup_dir
 from utils import build_sanity_check_and_parse
 data_dir = base_dir + "data/"
 
+from parameterized import parameterized_class
 
+@parameterized_class([
+   { "filter_type": "ibf"},
+   { "filter_type": "hibf" },
+])
 class TestUpdate(unittest.TestCase):
 
-    results_dir = base_dir + "results/integration/update/"
-
     @classmethod
-    def setUpClass(self):    
+    def setUpClass(self):
+        self.results_dir = base_dir + "results/integration/update_" + self.filter_type + "/"    
         # 3 small genomes from genbank (also on GTDB R207 for bac arc)
         # archaea GCA_002254805.1
         # bacteria GCA_000147015.1
@@ -40,7 +44,7 @@ class TestUpdate(unittest.TestCase):
                         "taxonomy": "skip",
                         "level": "assembly",
                         "threads": 1,
-                        "filter_type": "ibf",
+                        "filter_type": self.filter_type,
                         "write_info_file": True,
                         "keep_files": True,
                         "verbose": True,
@@ -90,7 +94,7 @@ class TestUpdate(unittest.TestCase):
                         "taxonomy": "skip",
                         "level": "assembly",
                         "threads": 1,
-                        "filter_type": "ibf",
+                        "filter_type": self.filter_type,
                         "write_info_file": True,
                         "keep_files": True,
                         "verbose": True,

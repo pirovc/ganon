@@ -13,10 +13,13 @@ from utils import setup_dir
 from utils import build_sanity_check_and_parse
 data_dir = base_dir + "data/"
 
+from parameterized import parameterized_class
 
+@parameterized_class([
+   { "filter_type": "ibf"},
+   { "filter_type": "hibf" },
+])
 class TestBuild(unittest.TestCase):
-
-    results_dir = base_dir + "results/integration/build/"
 
     default_params = {"organism_group": ["archaea", "bacteria", "viral"],
                       "source": ["genbank"],
@@ -37,6 +40,10 @@ class TestBuild(unittest.TestCase):
         # viral GCA_004132065.1 txid 2161879
         # Export local_dir for genome_updater, uses local folder as repository
         os.environ["local_dir"] = os.path.abspath(data_dir + "build/")
+
+        # parametrization for filter type
+        self.default_params["filter_type"] = self.filter_type
+        self.results_dir = base_dir + "results/integration/build_" + self.filter_type + "/"
         setup_dir(self.results_dir)
 
     def test_og_arc_bac_vir(self):

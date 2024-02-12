@@ -12,18 +12,23 @@ from utils import run_ganon
 from utils import check_files
 data_dir = base_dir + "data/"
 
+from parameterized import parameterized_class
 
+@parameterized_class([
+   { "filter_type": "ibf"},
+   { "filter_type": "hibf" },
+])
 class TestClassify(unittest.TestCase):
 
-    results_dir = base_dir + "results/integration/classify/"
-    default_params = {"db_prefix": [results_dir + "base_build"],
-                      "paired_reads": [data_dir+"classify/sim.1.fq.gz",
+    default_params = {"paired_reads": [data_dir+"classify/sim.1.fq.gz",
                                        data_dir+"classify/sim.2.fq.gz"],
                       "verbose": True,
                       "quiet": False}
 
     @classmethod
     def setUpClass(self):
+        self.results_dir = base_dir + "results/integration/classify_" + self.filter_type + "/"
+        self.default_params["db_prefix"] = [self.results_dir + "base_build"]
         setup_dir(self.results_dir)
         # Build base database
         build_params = {"db_prefix": self.results_dir + "base_build",
@@ -34,7 +39,7 @@ class TestClassify(unittest.TestCase):
                         "genome_size_file": data_dir + "build-custom/species_genome_size.txt.gz",
                         "level": "assembly",
                         "threads": 1,
-                        "filter_type": "ibf",
+                        "filter_type": self.filter_type,
                         "keep_files": True,
                         "write_info_file": True,
                         "verbose": True,
@@ -52,7 +57,7 @@ class TestClassify(unittest.TestCase):
                         "genome_size_file": data_dir + "build-custom/species_genome_size.txt.gz",
                         "level": "assembly",
                         "threads": 1,
-                        "filter_type": "ibf",
+                        "filter_type": self.filter_type,
                         "keep_files": True,
                         "write_info_file": True,
                         "verbose": True,
@@ -194,23 +199,6 @@ class TestClassify(unittest.TestCase):
         
         # There is no .one output
         self.assertFalse(check_files(params["output_prefix"], "one"))
-
-
-    def test_hibf(self):
-        """
-        Test ganon classify with HIBF
-        """
-        params = self.default_params.copy()
-        params["db_prefix"] = data_dir + "classify/test_db"
-        params["output_prefix"] = self.results_dir + "hibf"
-        params["verbose"] = True
-        # Build config from params
-        cfg = Config("classify", **params)
-        # Run
-        self.assertTrue(run_ganon(cfg, params["output_prefix"]), "ganon classify exited with an error")
-        # General sanity check of results
-        res = classify_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon table has inconsistent results")
 
     def test_report_params(self):
         """

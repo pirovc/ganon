@@ -13,7 +13,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
 
     // clang-format off
     options.add_options()
-        ( "i,input-file", "Define sequences to use. Tabular file with the fields: file [<tab> target <tab> seqid]", cxxopts::value< std::string >() )
+        ( "i,input-file", "Define sequences to use. Tabular file with the fields: file [<tab> target]", cxxopts::value< std::string >() )
         ( "o,output-file", "Filter output file", cxxopts::value< std::string >() )
         ( "k,kmer-size", "k-mer size. Default: 19", cxxopts::value< uint8_t >() )
         ( "w,window-size", "window size. Default: 31", cxxopts::value< uint16_t >() )
