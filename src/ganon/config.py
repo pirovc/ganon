@@ -72,7 +72,7 @@ class Config:
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-o", "--top",               type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
         build_download_args.add_argument("-c", "--complete-genomes",        action="store_true",                                         help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-r", "--representative-genomes",  action="store_true",                                         help="Download only sub-set of representative genomes")
+        build_download_args.add_argument("-r", "--reference-genomes",       action="store_true",                                         help="Download only sub-set of reference genomes")
         build_download_args.add_argument("-u", "--genome-updater",    type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         build_download_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
         build_download_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                     help="Specific files for genome size estimation - otherwise files will be downloaded")

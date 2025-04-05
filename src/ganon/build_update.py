@@ -56,7 +56,7 @@ def build(cfg):
                                            "-T '" + ",".join(cfg.taxid) + "'" if cfg.taxid else "",
                                            "-A " + str(cfg.top) if cfg.top else "",
                                            "-l 'complete genome'" if cfg.complete_genomes else "",
-                                           "-c 'representative genome'" if cfg.representative_genomes else "",
+                                           "-c 'reference genome'" if cfg.reference_genomes else "",
                                            "-f 'genomic.fna.gz'",
                                            "-t " + str(cfg.threads),
                                            "-o " + files_output_folder,
