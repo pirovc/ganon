@@ -64,8 +64,8 @@ conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "geno
 - raptor ==3.0.1
 
 !!! tip
-    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
-
+    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda cxx-compiler zlib bzip2 "cmake>=3.21"` and activate the environment with: `source activate gcc-conda`.
+    
     In CMake, you may have set the environment include directory with the following parameter: `-DSEQAN3_CXX_FLAGS="-I/path/to/miniconda3/envs/gcc-conda/include/"` changing `/path/to/miniconda3` with your local path to the conda installation.
 
 ### Downloading and building ganon + submodules
