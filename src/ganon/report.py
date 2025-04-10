@@ -84,7 +84,7 @@ def report(cfg):
     # Parse report file
     for rep_file in rep_files:
         
-        reports, counts = parse_rep(rep_file)
+        reports, counts = parse_rep(rep_file, cfg.normalize)
 
         if not reports:
             print_log(" - nothing to report for " + rep_file, cfg.quiet)
@@ -132,7 +132,7 @@ def report(cfg):
     return True if any_rep else False
 
 
-def parse_rep(rep_file):
+def parse_rep(rep_file, normalize):
     counts = {}
     reports = {}
     total_direct_matches = 0
@@ -142,7 +142,7 @@ def parse_rep(rep_file):
             if fields[0] == "#total_classified":
                 classified_reads = int(fields[1])
             elif fields[0] == "#total_unclassified":
-                unclassified_reads = int(fields[1])
+                unclassified_reads = int(fields[1]) if not normalize else 0
             else:
                 hierarchy_name = fields[0]
                 target = fields[1]
@@ -275,7 +275,7 @@ def build_report(reports, counts, full_tax, genome_sizes, output_file, fixed_ran
     else:
         output_rows = []
         # Reporting reads, first line prints unclassified entries
-        if cfg.report_type != "matches":
+        if cfg.report_type != "matches" and not cfg.normalize:
             unclassified_line = ["unclassified",
                                  "-",
                                  "-",

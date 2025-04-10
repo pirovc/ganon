@@ -213,6 +213,7 @@ class Config:
         report_group_output.add_argument("-p", "--skip-hierarchy", type=str,                              nargs="*", metavar="", default=[],          help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
         report_group_output.add_argument("-k", "--keep-hierarchy", type=str,                              nargs="*", metavar="", default=[],          help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
         report_group_output.add_argument("-c", "--top-percentile", type=int_or_float(minval=0, maxval=0.999999),     metavar="", default=0,           help="Top percentile filter, based on percentage/relative abundance. Applied only at default ranks [" + ", ".join(self.choices_default_ranks) + "]")
+        report_group_output.add_argument("-n", "--normalize",       action="store_true",                                  help="Ignore the number of unclassified reads, normalizing the output to 100%%. Use with caution, can drastically change abundance estimations.")
 
         report_group_optional = report_parser.add_argument_group("optional arguments")
         report_group_optional.add_argument("--verbose", action="store_true", default=False, help="Verbose output mode")
