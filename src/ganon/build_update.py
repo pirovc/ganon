@@ -375,7 +375,8 @@ def build_custom(cfg, which_call: str="build_custom"):
                                                "--kmer " + str(cfg.kmer_size),
                                                "--window " + str(cfg.window_size),
                                                "--quiet" if not cfg.verbose else "",
-                                               "--threads " + str(cfg.threads)])
+                                               "--threads " + str(cfg.threads),
+                                               "--version-check 0"])
             run(run_raptor_prepare_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -388,7 +389,8 @@ def build_custom(cfg, which_call: str="build_custom"):
                                               "--num-hash-functions " + str(cfg.hash_functions),
                                               "--false-positive-rate " + str(cfg.max_fp),
                                               "--output-filename '" + build_output_folder + "raptor_layout.binning.out'",
-                                              "--threads " + str(cfg.threads)])
+                                              "--threads " + str(cfg.threads),
+                                              "--version-check 0"])
             run(run_raptor_layout_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -398,7 +400,8 @@ def build_custom(cfg, which_call: str="build_custom"):
                                              "--output '" + cfg.db_prefix + ".hibf" + "'",
                                              "--threads " + str(cfg.threads),
                                              "--quiet" if not cfg.verbose else "",
-                                             "--input '" + build_output_folder + "raptor_layout.binning.out'"])
+                                             "--input '" + build_output_folder + "raptor_layout.binning.out'",
+                                             "--version-check 0"])
             run(run_raptor_build_cmd, quiet=cfg.quiet)
             print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
