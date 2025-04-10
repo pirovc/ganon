@@ -58,13 +58,13 @@ conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "geno
 ### C++ dependencies
 
 - GCC >=11
-- CMake >=3.4
+- CMake >=3.5
 - zlib
 - bzip2
 - raptor ==3.0.1
 
 !!! tip
-    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda cxx-compiler zlib bzip2 "cmake>=3.21"` and activate the environment with: `source activate gcc-conda`.
+    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda cxx-compiler zlib bzip2 "cmake>=3.5"` and activate the environment with: `source activate gcc-conda`.
     
     In CMake, you may have set the environment include directory with the following parameter: `-DSEQAN3_CXX_FLAGS="-I/path/to/miniconda3/envs/gcc-conda/include/"` changing `/path/to/miniconda3` with your local path to the conda installation.
 
@@ -103,7 +103,7 @@ To install raptor from source, follow the instructions below:
 
 #### Dependencies
  
- - CMake >= 3.18
+ - CMake >= 3.5
  - GCC 11, 12 or 13 (most recent minor version)
 
 #### Downloading and building raptor + submodules

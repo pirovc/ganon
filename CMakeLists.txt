@@ -2,7 +2,7 @@
 # ganon
 # =============================================================================
 
-cmake_minimum_required( VERSION 3.4 FATAL_ERROR )
+cmake_minimum_required( VERSION 3.5 FATAL_ERROR )
 project( ganon VERSION 2.1.1 LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
