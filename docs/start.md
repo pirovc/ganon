@@ -11,7 +11,7 @@ conda install -c bioconda -c conda-forge ganon
 - Bacteria - NCBI RefSeq - representative genomes
 
 ```bash
-ganon build --db-prefix bac_rs_rg --source refseq --organism-group bacteria --representative-genomes --threads 24
+ganon build --db-prefix bac_rs_rg --source refseq --organism-group bacteria --reference-genomes --threads 24
 ```
 
 - If you want to test ganon functionalities with a smaller database, use `archaea` instead of `bacteria` in the example above.

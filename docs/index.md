@@ -1,6 +1,6 @@
 # ganon [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pirovc/ganon)](https://github.com/pirovc/ganon)
 
-[![Build Status](https://travis-ci.com/pirovc/ganon.svg?branch=master)](https://travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458) 
+[![Build Status](https://app.travis-ci.com/pirovc/ganon.svg?token=q6Nfx8pLHh8hV3hLz3Pq&branch=master)](https://app.travis-ci.com/pirovc/ganon) [![codecov](https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg)](https://codecov.io/gh/pirovc/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/downloads.svg)](https://anaconda.org/bioconda/ganon) [![Anaconda-Server Badge](https://anaconda.org/bioconda/ganon/badges/platforms.svg)](https://anaconda.org/bioconda/ganon) [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/ganon/README.html) [![Publication](https://img.shields.io/badge/DOI-10.1101%2F406017-blue)](https://dx.doi.org/10.1093/bioinformatics/btaa458) 
 
 Code: [GitHub repository](https://github.com/pirovc/ganon)
 
@@ -41,7 +41,7 @@ However, there are possible performance benefits compiling ganon from source in 
 - python >=3.6
 - pandas >=1.2.0
 - [multitax](https://github.com/pirovc/multitax) >=1.3.1
-- [genome_updater](https://github.com/pirovc/genome_updater) >=0.6.3
+- [genome_updater](https://github.com/pirovc/genome_updater) >=0.6.4
 
 ```bash
 # Python version should be >=3.6
@@ -53,19 +53,19 @@ python3 -m pip install "pandas>=1.2.0" "multitax>=1.3.1"
 wget --quiet --show-progress https://raw.githubusercontent.com/pirovc/genome_updater/master/genome_updater.sh && chmod +x genome_updater.sh
 
 # Conda/Mamba (alternative)
-conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "genome_updater>=0.6.3"
+conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "genome_updater>=0.6.4"
 ```
 ### C++ dependencies
 
 - GCC >=11
-- CMake >=3.4
+- CMake >=3.5
 - zlib
 - bzip2
 - raptor ==3.0.1
 
 !!! tip
-    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda gcc gxx zlib bzip2 cmake` and activate the environment with: `source activate gcc-conda`.
-
+    If your system has GCC version 10 or below, you can create an environment with the latest conda-forge GCC version and dependencies: `conda create -c conda-forge -n gcc-conda cxx-compiler zlib bzip2 "cmake>=3.5"` and activate the environment with: `source activate gcc-conda`.
+    
     In CMake, you may have set the environment include directory with the following parameter: `-DSEQAN3_CXX_FLAGS="-I/path/to/miniconda3/envs/gcc-conda/include/"` changing `/path/to/miniconda3` with your local path to the conda installation.
 
 ### Downloading and building ganon + submodules
@@ -103,7 +103,7 @@ To install raptor from source, follow the instructions below:
 
 #### Dependencies
  
- - CMake >= 3.18
+ - CMake >= 3.5
  - GCC 11, 12 or 13 (most recent minor version)
 
 #### Downloading and building raptor + submodules

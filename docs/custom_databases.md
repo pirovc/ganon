@@ -130,7 +130,7 @@ wget "https://arken.nmbu.no/~larssn/humgut/ncbi_nodes.dmp"
 wget "https://arken.nmbu.no/~larssn/humgut/ncbi_names.dmp"
 wget "https://arken.nmbu.no/~larssn/humgut/HumGut.tsv"
 # Generate --input-file from metadata
-tail -n+2 HumGut.tsv | awk -F"\t" '{print "fna/"$21"\t"$1"\t"$2}' > HumGut_ganon_input_file.tsv
+tail -n+2 HumGut.tsv | awk -F"\t" '{print "fna/"$21"\t"$1"\t"$6}' > HumGut_ganon_input_file.tsv
 
 # Build ganon database
 ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files ncbi_nodes.dmp ncbi_names.dmp --db-prefix HumGut --level strain --threads 32

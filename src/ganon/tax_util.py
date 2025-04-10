@@ -96,16 +96,16 @@ def parse_genome_size_files(cfg, build_output_folder):
         for file in files:
             with gzip.open(file, "rt") as f:
                 # skip first line wiht header
-                # col 0: accession (with GC_ RF_ prefix), col 13: genome_size, col 16: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
+                # col 0: accession (with GC_ RF_ prefix), col 16: genome_size, col 19: gtdb_taxonomy (d__Archaea;p__Thermoproteota;...)
                 next(f)
                 for line in f:
                     fields = line.rstrip().split("\t")
-                    t = fields[16].split(";")[-1]  # species taxid (leaf)
+                    t = fields[19].split(";")[-1]  # species taxid (leaf)
                     # In GTDB, several genome sizes are available for each node
                     # accumulate them in a list and make average
                     if t not in leaves_sizes:
                         leaves_sizes[t] = []
-                    leaves_sizes[t].append(int(fields[13]))
+                    leaves_sizes[t].append(int(fields[16]))
                     
         # Average sizes
         for t in list(leaves_sizes.keys()):

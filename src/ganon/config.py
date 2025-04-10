@@ -8,7 +8,7 @@ from ganon.util import *
 
 class Config:
 
-    version = "2.1.0"
+    version = "2.1.1"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -72,7 +72,7 @@ class Config:
         build_download_args.add_argument("-b", "--source",            type=str, nargs="*",         default=["refseq"], metavar="", help="Source to download [" + ", ".join(self.choices_db_source) + "]", choices=self.choices_db_source)
         build_download_args.add_argument("-o", "--top",               type=unsigned_int(minval=0), default=0,          metavar="", help="Download limited assemblies for each taxa. 0 for all.")
         build_download_args.add_argument("-c", "--complete-genomes",        action="store_true",                                         help="Download only sub-set of complete genomes")
-        build_download_args.add_argument("-r", "--representative-genomes",  action="store_true",                                         help="Download only sub-set of representative genomes")
+        build_download_args.add_argument("-r", "--reference-genomes",       action="store_true",                                         help="Download only sub-set of reference genomes")
         build_download_args.add_argument("-u", "--genome-updater",    type=str,                                        metavar="", help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)")
         build_download_args.add_argument("-m", "--taxonomy-files",    type=file_exists, nargs="*", metavar="",                     help="Specific files for taxonomy - otherwise files will be downloaded")
         build_download_args.add_argument("-z", "--genome-size-files", type=file_exists, nargs="*", metavar="",                     help="Specific files for genome size estimation - otherwise files will be downloaded")
@@ -213,6 +213,7 @@ class Config:
         report_group_output.add_argument("-p", "--skip-hierarchy", type=str,                              nargs="*", metavar="", default=[],          help="One or more hierarchies to skip in the report (from ganon classify --hierarchy-labels)")
         report_group_output.add_argument("-k", "--keep-hierarchy", type=str,                              nargs="*", metavar="", default=[],          help="One or more hierarchies to keep in the report (from ganon classify --hierarchy-labels)")
         report_group_output.add_argument("-c", "--top-percentile", type=int_or_float(minval=0, maxval=0.999999),     metavar="", default=0,           help="Top percentile filter, based on percentage/relative abundance. Applied only at default ranks [" + ", ".join(self.choices_default_ranks) + "]")
+        report_group_output.add_argument("-n", "--normalize",       action="store_true",                                  help="Ignore the number of unclassified reads, normalizing the output to 100%%. Use with caution, can drastically change abundance estimations.")
 
         report_group_optional = report_parser.add_argument_group("optional arguments")
         report_group_optional.add_argument("--verbose", action="store_true", default=False, help="Verbose output mode")
