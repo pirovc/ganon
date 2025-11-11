@@ -8,7 +8,7 @@
     <title>Databases (ganon build) - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,11 +17,12 @@
         var mkdocs_page_url = null;
       </script>
     
+    <script src="../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-      <script>hljs.highlightAll();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
+      <script>hljs.initHighlightingOnLoad();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -33,7 +34,7 @@
           <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -126,8 +127,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
-      <li class="breadcrumb-item active">Databases (ganon build)</li>
+    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
+      <li>Databases (ganon build)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -146,128 +147,110 @@
 <p>Additionally, <a href="../custom_databases/">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.</p>
+<p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data. See examples below for commonly used sub-sets and the respective commands.</p>
 </div>
 <h2 id="refseq-and-genbank">RefSeq and GenBank<a class="headerlink" href="#refseq-and-genbank" title="Permanent link">:)</a></h2>
-<p>NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered. The choice of those filters can drastically change the outcome of results.</p>
+<p>The NCBI RefSeq and GenBank repositories are common sources of reference sequences for analysing metagenomics data. These repositories are primarily organised by domain/organism group (e.g. Archaea, Bacteria, Fungi, etc.), but can be filtered further. The choice of these filters can drastically affect the outcome of the analysis.</p>
+<p>RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments <a href="http://dx.doi.org/10.1093/nargab/lqaf094">published in the ganon2 article</a>, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.</p>
 <h3 id="commonly-used-sub-sets">Commonly used sub-sets<a class="headerlink" href="#commonly-used-sub-sets" title="Permanent link">:)</a></h3>
 <table>
 <thead>
 <tr>
-<th>RefSeq (2023-03-14)</th>
-<th># assemblies</th>
-<th># species</th>
-<th>Size*</th>
-<th><code>ganon build</code></th>
+<th style="text-align: center;">RefSeq (2025-01-11)</th>
+<th style="text-align: center;"># assemblies</th>
+<th style="text-align: center;"># species</th>
+<th style="text-align: center;">Size (GB)</th>
+<th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>All genomes</td>
-<td>295219</td>
-<td>52781</td>
-<td>160</td>
-<td><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
+<td style="text-align: center;">All genomes</td>
+<td style="text-align: center;">468399</td>
+<td style="text-align: center;">83798</td>
+<td style="text-align: center;">299</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
 </tr>
 <tr>
-<td>All genomes - 1 assembly/species</td>
-<td>52781</td>
-<td>52781</td>
-<td>128</td>
-<td><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_rs_t1s</code></details></td>
+<td style="text-align: center;">Complete genomes (CG)</td>
+<td style="text-align: center;">68639</td>
+<td style="text-align: center;">27598</td>
+<td style="text-align: center;">55</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
 </tr>
 <tr>
-<td>Complete genomes</td>
-<td>44121</td>
-<td>19715</td>
-<td>35</td>
-<td><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
+<td style="text-align: center;">Reference genomes (RG)</td>
+<td style="text-align: center;">22862</td>
+<td style="text-align: center;">22861</td>
+<td style="text-align: center;">89</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg</code></details></td>
 </tr>
 <tr>
-<td>Complete genomes - 1 assembly/species</td>
-<td>19715</td>
-<td>19715</td>
-<td>29</td>
-<td><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --genome-updater "-A 'species:1'" --db-prefix abfv_rs_cg_t1s</code></details></td>
-</tr>
-<tr>
-<td>Representative genomes</td>
-<td>18073</td>
-<td>18073</td>
-<td>69</td>
-<td><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --representative-genomes --db-prefix abfv_rs_rg</code></details></td>
-</tr>
-</tbody>
-</table>
-<table>
-<thead>
-<tr>
-<th>GenBank (2023-03-14)</th>
-<th># assemblies</th>
-<th># species</th>
-<th>Size*</th>
-<th><code>ganon build</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>All genomes</td>
-<td>1595845</td>
-<td>99505</td>
-<td>-</td>
-<td><details><summary></summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_gb</code></details></td>
-</tr>
-<tr>
-<td>All genomes - 1 assembly/species</td>
-<td>99505</td>
-<td>99505</td>
-<td>300</td>
-<td><details><summary></summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --genome-updater "-A 'species:1'" --db-prefix abfv_gb_t1s</code></details></td>
-</tr>
-<tr>
-<td>Complete genomes</td>
-<td>92917</td>
-<td>34815</td>
-<td>42</td>
-<td><details><summary></summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_gb_cg</code></details></td>
-</tr>
-<tr>
-<td>Complete genomes - 1 assembly/species</td>
-<td>34815</td>
-<td>34815</td>
-<td>34</td>
-<td><details><summary></summary><code>ganon build --source genbank --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes "-A 'species:1'" --db-prefix abfv_gb_cg_t1s</code></details></td>
+<td style="text-align: center;">CG + RG</td>
+<td style="text-align: center;">85036</td>
+<td style="text-align: center;">42955</td>
+<td style="text-align: center;">120</td>
+<td style="text-align: center;">-</td>
 </tr>
 </tbody>
 </table>
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>Data obtained in 2023-03-14 for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.</p>
+<p>The database aboce were based on RefSeq files from 2025-01-11 for archaea, bacteria, fungi and viral groups, using ganon v2.1.1 with default parameters. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.</p>
 </div>
+<details>
+  <summary>Older data for comparison</summary>
+
+
+<pre><code class="language-txt">
+|          RefSeq (2024-04-20)          | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes                           | 366941       | 64616     | 215       |
+| Complete genomes (CG)                 | 55114        | 24238     | 42        |
+| Reference genomes (RG)                | 19890        | 19888     | 77        | 
+| CG + RG                               | 69600        | 37864     | 100       | 
+
+</code></pre>
+
+
+
+<pre><code class="language-txt">|          RefSeq (2023-03-14)          | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes                           | 295219       | 52781     | 160       |
+| All genomes - 1 assembly/species      | 52781        | 52781     | 128       |
+| Complete genomes                      | 44121        | 19715     | 35        |
+| Complete genomes - 1 assembly/species | 19715        | 19715     | 29        |
+| Reference genomes                     | 18073        | 18073     | 69        |
+</code></pre>
+
+
+
+<pre><code class="language-txt">|          GenBank (2023-03-14)         | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes - 1 assembly/species      | 99505        | 99505     | 300       |
+| Complete genomes                      | 92917        | 34815     | 42        |
+| Complete genomes - 1 assembly/species | 34815        | 34815     | 34        |
+</code></pre>
+
+</details>
+
 <table>
 <thead>
 <tr>
-<th>GTDB R214</th>
-<th># assemblies</th>
-<th># species</th>
-<th>Size*</th>
-<th><code>ganon build</code></th>
+<th style="text-align: center;">GTDB R226</th>
+<th style="text-align: center;"># assemblies</th>
+<th style="text-align: center;"># species</th>
+<th style="text-align: center;">Size (GB)</th>
+<th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>All genomes</td>
-<td>402709</td>
-<td>85205</td>
-<td>260</td>
-<td><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
-</tr>
-<tr>
-<td>All genomes - 1 assembly/species</td>
-<td>85205</td>
-<td>85205</td>
-<td>213</td>
-<td><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --top 1 --db-prefix ab_gtdb_t1s</code></details></td>
+<td style="text-align: center;">All genomes</td>
+<td style="text-align: center;">731982</td>
+<td style="text-align: center;">143396</td>
+<td style="text-align: center;">501</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
 </tr>
 </tbody>
 </table>
@@ -275,7 +258,29 @@
 <p class="admonition-title">Info</p>
 <p>GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.</p>
 </div>
-<p><strong>* in GB -&gt; ganon requires up-to 2x the database size of memory to build it. The memory required to use it in classification is approx. the same as the database size.</strong></p>
+<details>
+  <summary>Older data for comparison</summary>
+
+
+<pre><code class="language-txt">|             GTDB R220            | # assemblies | # species | Size (GB) |
+|----------------------------------|--------------|-----------|-----------|
+| All genomes                      | 596859       | 113104    | 338       |
+</code></pre>
+
+
+
+<pre><code class="language-txt">|             GTDB R214            | # assemblies | # species | Size (GB) |
+|----------------------------------|--------------|-----------|-----------|
+| All genomes                      | 402709       | 85205     | 260       |
+| All genomes - 1 assembly/species | 85205        | 85205     | 213       |
+</code></pre>
+
+</details>
+
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Memory consumption during the building process will require slightly more memory than the database size (up-to 2x, but usually less). The memory required in classification is approx. the same as the database size.</p>
+</div>
 <ul>
 <li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
 <li>It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
@@ -456,15 +461,14 @@
     
   </span>
 </div>
-    <script src="../js/jquery-3.6.0.min.js"></script>
-    <script>var base_url = "..";</script>
-    <script src="../js/theme_extra.js"></script>
-    <script src="../js/theme.js"></script>
-      <script src="../search/main.js"></script>
-    <script>
-        jQuery(function () {
+    <script>var base_url = '..';</script>
+    <script src="../js/theme_extra.js" defer></script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+    <script defer>
+        window.onload = function () {
             SphinxRtdTheme.Navigation.enable(true);
-        });
+        };
     </script>
 
 </body>
