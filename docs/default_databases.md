@@ -32,11 +32,6 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
 | Complete genomes (CG)  | 68639        | 27598     | 55        | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
 | Reference genomes (RG) | 22862        | 22861     | 89        | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg`</details> |
 | CG + RG                | 85036        | 42955     | 120       | - |
-
-
-!!! info
-    The database aboce were based on RefSeq files from 2025-01-11 for archaea, bacteria, fungi and viral groups, using ganon v2.1.1 with default parameters. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.
-
 <details>
   <summary>Older data for comparison</summary>
 
@@ -70,13 +65,14 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
 ```
 </details>
 
+
+!!! info
+    The database aboce were based on RefSeq files from 2025-01-11 for archaea, bacteria, fungi and viral groups, using ganon v2.1.1 with default parameters. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.
+
+
 |  GTDB R226  | # assemblies | # species | Size (GB) | `ganon build`  |
 |:-----------:|:------------:|:---------:|:---------:|:--------- ----:|
 | All genomes | 731982       | 143396    | 501       | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
-
-!!! info
-    GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.
-
 <details>
   <summary>Older data for comparison</summary>
 
@@ -93,6 +89,10 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
 | All genomes - 1 assembly/species | 85205        | 85205     | 213       |
 ```
 </details>
+
+!!! info
+    GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.
+
 
 
 !!! warning
