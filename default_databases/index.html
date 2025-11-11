@@ -8,7 +8,7 @@
     <title>Databases (ganon build) - ganon2</title>
     <link rel="stylesheet" href="../css/theme.css" />
     <link rel="stylesheet" href="../css/theme_extra.css" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/styles/github.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
     
       <script>
         // Current page data
@@ -17,12 +17,11 @@
         var mkdocs_page_url = null;
       </script>
     
-    <script src="../js/jquery-3.6.0.min.js" defer></script>
     <!--[if lt IE 9]>
       <script src="../js/html5shiv.min.js"></script>
     <![endif]-->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.5.0/highlight.min.js"></script>
-      <script>hljs.initHighlightingOnLoad();</script> 
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
 </head>
 
 <body class="wy-body-for-nav" role="document">
@@ -34,7 +33,7 @@
           <a href=".." class="icon icon-home"> ganon2
         </a><div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
-      <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
       </div>
@@ -127,8 +126,8 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" alt="Docs"></a> &raquo;</li>
-      <li>Databases (ganon build)</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+      <li class="breadcrumb-item active">Databases (ganon build)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -156,10 +155,11 @@
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">RefSeq (2025-01-11)</th>
+<th style="text-align: center;">RefSeq (2025-11-01)</th>
 <th style="text-align: center;"># assemblies</th>
 <th style="text-align: center;"># species</th>
-<th style="text-align: center;">Size (GB)</th>
+<th style="text-align: center;">Size(GB)*</th>
+<th style="text-align: center;">Time/Mem(GB)*</th>
 <th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
@@ -169,6 +169,7 @@
 <td style="text-align: center;">468399</td>
 <td style="text-align: center;">83798</td>
 <td style="text-align: center;">299</td>
+<td style="text-align: center;">13h08m / 409</td>
 <td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
 </tr>
 <tr>
@@ -176,6 +177,7 @@
 <td style="text-align: center;">68639</td>
 <td style="text-align: center;">27598</td>
 <td style="text-align: center;">55</td>
+<td style="text-align: center;">1h28m / 93</td>
 <td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
 </tr>
 <tr>
@@ -183,6 +185,7 @@
 <td style="text-align: center;">22862</td>
 <td style="text-align: center;">22861</td>
 <td style="text-align: center;">89</td>
+<td style="text-align: center;">28m / 160</td>
 <td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg</code></details></td>
 </tr>
 <tr>
@@ -190,6 +193,7 @@
 <td style="text-align: center;">85036</td>
 <td style="text-align: center;">42955</td>
 <td style="text-align: center;">120</td>
+<td style="text-align: center;">1h23m / 191</td>
 <td style="text-align: center;">-</td>
 </tr>
 </tbody>
@@ -232,7 +236,7 @@
 
 <div class="admonition info">
 <p class="admonition-title">Info</p>
-<p>The database aboce were based on RefSeq files from 2025-01-11 for archaea, bacteria, fungi and viral groups, using ganon v2.1.1 with default parameters. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.</p>
+<p>The values above are based on RefSeq files from 1 November 2025 for the archaea, bacteria, fungi and viral groups. By the time you read this, these numbers will certainly have increased slightly. The provided commands will download the latest assemblies and require slightly more resources.</p>
 </div>
 <table>
 <thead>
@@ -240,7 +244,8 @@
 <th style="text-align: center;">GTDB R226</th>
 <th style="text-align: center;"># assemblies</th>
 <th style="text-align: center;"># species</th>
-<th style="text-align: center;">Size (GB)</th>
+<th style="text-align: center;">Size(GB)*</th>
+<th style="text-align: center;">Time/Mem(GB) *</th>
 <th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
@@ -250,6 +255,7 @@
 <td style="text-align: center;">731982</td>
 <td style="text-align: center;">143396</td>
 <td style="text-align: center;">501</td>
+<td style="text-align: center;">21h17m/618</td>
 <td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
 </tr>
 </tbody>
@@ -268,7 +274,6 @@
 <pre><code class="language-txt">|             GTDB R214            | # assemblies | # species | Size (GB) |
 |----------------------------------|--------------|-----------|-----------|
 | All genomes                      | 402709       | 85205     | 260       |
-| All genomes - 1 assembly/species | 85205        | 85205     | 213       |
 </code></pre>
 
 </details>
@@ -277,10 +282,7 @@
 <p class="admonition-title">Info</p>
 <p>GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.</p>
 </div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>Memory consumption during the building process will require slightly more memory than the database size (up-to 2x, but usually less). The memory required in classification is approx. the same as the database size.</p>
-</div>
+<p><em>* "Size" is the final ganon database size. "Time/Mem" accounts for build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.</em></p>
 <ul>
 <li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
 <li>It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
@@ -461,15 +463,16 @@
     
   </span>
 </div>
-    <script>var base_url = '..';</script>
-    <script src="../js/theme_extra.js" defer></script>
-    <script src="../js/theme.js" defer></script>
-      <script src="../js/extra.js" defer></script>
-      <script src="../search/main.js" defer></script>
-    <script defer>
-        window.onload = function () {
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../js/extra.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);
-        };
+        });
     </script>
 
 </body>
