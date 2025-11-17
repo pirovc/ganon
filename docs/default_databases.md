@@ -26,12 +26,12 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
 
 ### Commonly used sub-sets
 
-| RefSeq (2025-11-01)    | # assemblies | # species | Size(GB)* | Time/Mem(GB)* | `ganon build`  |
+| RefSeq 2025-11-01    | #assemblies | #species | Size* | Time/Mem* | `ganon build`  |
 |:----------------------:|:------------:|:---------:|:---------:|:-------------:|:--------------:|
 | All genomes            | 468399       | 83798     | 299       | 13h08m / 409  | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
 | Complete genomes (CG)  | 68639        | 27598     | 55        | 1h28m / 93    | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
 | Reference genomes (RG) | 22862        | 22861     | 89        | 28m / 160     | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg`</details> |
-| CG + RG                | 85036        | 42955     | 120       | 1h23m / 191   | - |
+| CG + RG                | 85036        | 42955     | 120       | 1h23m / 191   | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
 <details>
   <summary>Older data for comparison</summary>
 
@@ -70,7 +70,7 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
     The values above are based on RefSeq files from 1 November 2025 for the archaea, bacteria, fungi and viral groups. By the time you read this, these numbers will certainly have increased slightly. The provided commands will download the latest assemblies and require slightly more resources.
 
 
-|  GTDB R226  | # assemblies | # species | Size(GB)* | Time/Mem(GB) * | `ganon build`  |
+|  GTDB R226  | #assemblies | #species | Size* | Time/Mem* | `ganon build`  |
 |:-----------:|:------------:|:---------:|:---------:|:--------------:|:--------------:|
 | All genomes | 731982       | 143396    | 501       | 21h17m/618     | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
 <details>
@@ -93,7 +93,7 @@ RefSeq is preferred mainly due to its superior sequence curation and quality. In
     GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.
 
 
-*\* "Size" is the final ganon database size. "Time/Mem" accounts for build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.*
+*\* "Size" (in GB) is the final ganon database size. "Time/Mem" accounts for wall time and memory (in GB) for the build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.*
 
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
 - It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches [can reduce the size/RAM requirements with some trade-offs](#reducing-database-size).
