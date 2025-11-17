@@ -48,7 +48,7 @@
                 </li>
               </ul>
               <ul class="current">
-                <li class="toctree-l1 current"><a class="reference internal current" href="./">Databases (ganon build)</a>
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Databases (ganon build)</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#refseq-and-genbank">RefSeq and GenBank</a>
         <ul>
@@ -126,7 +126,7 @@
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href=".." class="icon icon-home" aria-label="Docs"></a> &raquo;</li>
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
       <li class="breadcrumb-item active">Databases (ganon build)</li>
     <li class="wy-breadcrumbs-aside">
     </li>
@@ -155,11 +155,11 @@
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">RefSeq (2025-11-01)</th>
-<th style="text-align: center;"># assemblies</th>
-<th style="text-align: center;"># species</th>
-<th style="text-align: center;">Size(GB)*</th>
-<th style="text-align: center;">Time/Mem(GB)*</th>
+<th style="text-align: center;">RefSeq 2025-11-01</th>
+<th style="text-align: center;">#assemblies</th>
+<th style="text-align: center;">#species</th>
+<th style="text-align: center;">Size*</th>
+<th style="text-align: center;">Time/Mem*</th>
 <th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
@@ -194,7 +194,7 @@
 <td style="text-align: center;">42955</td>
 <td style="text-align: center;">120</td>
 <td style="text-align: center;">1h23m / 191</td>
-<td style="text-align: center;">-</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"</code></details></td>
 </tr>
 </tbody>
 </table>
@@ -242,10 +242,10 @@
 <thead>
 <tr>
 <th style="text-align: center;">GTDB R226</th>
-<th style="text-align: center;"># assemblies</th>
-<th style="text-align: center;"># species</th>
-<th style="text-align: center;">Size(GB)*</th>
-<th style="text-align: center;">Time/Mem(GB) *</th>
+<th style="text-align: center;">#assemblies</th>
+<th style="text-align: center;">#species</th>
+<th style="text-align: center;">Size*</th>
+<th style="text-align: center;">Time/Mem*</th>
 <th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
@@ -282,7 +282,7 @@
 <p class="admonition-title">Info</p>
 <p>GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.</p>
 </div>
-<p><em>* "Size" is the final ganon database size. "Time/Mem" accounts for build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.</em></p>
+<p><em>* "Size" (in GB) is the final ganon database size. "Time/Mem" accounts for wall time and memory (in GB) for the build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.</em></p>
 <ul>
 <li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
 <li>It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
