@@ -53,14 +53,14 @@ install:
   - ctest -VV .
   - sudo make install
   - cd ..
-  
+  - pip install .[dev]
+
 before_script:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
+      python3 -m coverage run --source=ganon -m unittest discover -s tests/ganon/integration/ -v;
     else
       python3 -m unittest discover -s tests/ganon/integration/ -v;
     fi
-  - pip install .[dev]
 
 script:
   - ganon-build --version
