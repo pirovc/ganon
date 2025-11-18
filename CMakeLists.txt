@@ -3,7 +3,10 @@
 # =============================================================================
 
 cmake_minimum_required( VERSION 3.5 FATAL_ERROR )
-project( ganon VERSION 2.1.1 LANGUAGES CXX )
+file(READ "VERSION.txt" ver)
+string(REGEX MATCH "([0-9]*.[0-9]*.[0-9]*)" _ ${ver})
+set(semver ${CMAKE_MATCH_1})
+project( ganon VERSION ${semver} LANGUAGES CXX )
 
 # -----------------------------------------------------------------------------
 # build setup
@@ -136,6 +139,7 @@ endif()
 # -----------------------------------------------------------------------------
 
 if( VERBOSE_CONFIG )
+    message("CMAKE_PROJECT_VERSION = ${CMAKE_PROJECT_VERSION}")
     message( STATUS "SeqAn3 symbols")
     message( STATUS "  SEQAN3_VERSION       : ${SEQAN3_VERSION}" )
     message( STATUS "  SEQAN3_CXX_FLAGS     : ${SEQAN3_CXX_FLAGS}" )
