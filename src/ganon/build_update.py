@@ -734,7 +734,7 @@ def save_config(cfg, config_file):
     save configuration for updates based on an instance of the Config class
     """
     v = vars(cfg)
-    v["version"] = cfg.__version__
+    v["version"] = cfg.version
     with open(config_file, "wb") as file:
         pickle.dump(v, file)
 
