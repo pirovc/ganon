@@ -28,7 +28,7 @@ def main(which: str=None, cfg=None, **kwargs):
 
     tx_total = time.time()
 
-    print_log(logo(cfg.__version__), cfg.quiet)
+    print_log(logo(cfg.version), cfg.quiet)
 
     if cfg.which == 'build':
         ret = build(cfg)
