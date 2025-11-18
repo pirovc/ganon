@@ -68,7 +68,7 @@ script:
       python3 -m coverage run --omit="/usr/*,tests/*" -m unittest discover -s tests/ganon/integration/ -v;
     else
       python3 -m unittest discover -s tests/ganon/integration/ -v &&
-      python3 setup.py install --user &&
+      pip install . &&
       ganon -h;
     fi
 

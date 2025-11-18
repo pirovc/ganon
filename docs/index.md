@@ -76,7 +76,7 @@ git clone --recurse-submodules https://github.com/pirovc/ganon.git
 ```bash
 # Install Python side
 cd ganon
-python3 setup.py install --record files.txt  # optional
+pip install .
 
 # Compile and install C++ side
 mkdir -p build
