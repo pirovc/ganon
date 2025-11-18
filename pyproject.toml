@@ -9,7 +9,7 @@ dependencies = [ "pandas>=1.2.0", "multitax>=1.3.1" ]
 text = "MIT License"
 
 [project.optional-dependencies]
-dev = [ "ruff" ]
+dev = [ "ruff", "coverage", "parameterized>=0.9.0" ]
 
 [build-system]
 requires = [ "setuptools>=80", "setuptools_scm>=8" ]
