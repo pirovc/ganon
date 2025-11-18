@@ -5,10 +5,10 @@ import sys
 import shutil
 from ganon.util import *
 
+from ganon import __version__
 
 class Config:
 
-    version = "2.1.1"
     path_exec = {"build": "", "classify": "", "get_seq_info": "", "genome_updater": ""}
     empty = False
 
@@ -32,9 +32,9 @@ class Config:
 
         parser = argparse.ArgumentParser(prog="ganon",
                                          formatter_class=argparse.RawDescriptionHelpFormatter,
-                                         description=logo(self.version),
+                                         description=logo(__version__),
                                          conflict_handler="resolve")
-        parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + self.version, help="Show program's version number and exit.")
+        parser.add_argument("-v", "--version", action="version", version="version: %(prog)s " + __version__, help="Show program's version number and exit.")
 
         ####################################################################################################
 
