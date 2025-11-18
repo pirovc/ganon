@@ -12,13 +12,15 @@ sys.path.append('src')
 from ganon.util import download
 from ganon.config import Config
 from ganon import ganon
+import contextlib
 
 def run_ganon(cfg, prefix):
     """
     capture stderr to log file and run
     """
-    with open(prefix + ".log", "w") as sys.stderr:
-        return ganon.main(cfg=cfg)
+    with open(prefix + ".log", "w") as test_log_file:
+        with contextlib.redirect_stderr(test_log_file):
+            return ganon.main(cfg=cfg)
 
 
 def setup_dir(results_dir):
