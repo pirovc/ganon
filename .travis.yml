@@ -46,6 +46,7 @@ before_install:
 
 install:
   - conda install -c bioconda -c conda-forge "raptor=3.0.1"
+  - pip install .[dev]
   - mkdir build && cd build 
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
@@ -53,20 +54,17 @@ install:
   - ctest -VV .
   - sudo make install
   - cd ..
-  - pip install .[dev]
-
-before_script:
-  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
-      python3 -m coverage run --source=ganon -m unittest discover -s tests/ganon/integration/ -v;
-    else
-      python3 -m unittest discover -s tests/ganon/integration/ -v;
-    fi
 
 script:
   - ganon-build --version
   - ganon-classify --version
   - raptor --version
   - ganon --version
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m coverage run --source=ganon -m unittest discover -s tests/ganon/integration/ -v;
+    else
+      python3 -m unittest discover -s tests/ganon/integration/ -v;
+    fi
 
 after_success:
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
