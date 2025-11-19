@@ -47,7 +47,7 @@ before_install:
 install:
   - conda install -c bioconda -c conda-forge "raptor=3.0.1"
   - pip install .[dev]
-  - mkdir build && cd build 
+  - rm -rf build && mkdir build && cd build 
   - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
   - cmake --build . -- -j2
