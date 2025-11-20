@@ -42,7 +42,6 @@ jobs:
       python: 3.14
     
     - stage: "Coverage"
-      name: "gcc-11 + coverage"
       language: cpp
       addons:
         apt:
