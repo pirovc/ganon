@@ -3,10 +3,9 @@ language: python
 python:
  - 3.14
  - 3.12
-
+name: "Python tests"
 jobs:
   include:
-    - stage: "C++ tests"
     - name: "linux gcc-11"
       language: cpp
       python: 3.14
@@ -23,6 +22,7 @@ jobs:
 
     - name: "linux gcc-12"
       language: cpp
+      python: 3.14
       addons:
         apt:
           packages:
