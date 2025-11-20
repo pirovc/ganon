@@ -6,17 +6,19 @@ import urllib.request
 from pathlib import Path
 
 
-def run(cmd, ret_stdout: bool=False, shell: bool=False, quiet: bool=False):
+def run(cmd, ret_stdout: bool = False, shell: bool = False, quiet: bool = False):
     errcode = 1
     stdout = None
 
     try:
         # print stdout to stderr if not captured (default log ganon)
-        process = subprocess.Popen(shlex.split(cmd) if not shell else cmd,
-                                   shell=shell,
-                                   universal_newlines=True,  # text= (from py3.7)
-                                   stdout=subprocess.PIPE if ret_stdout else sys.stderr,
-                                   stderr=None if quiet else sys.stderr)
+        process = subprocess.Popen(
+            shlex.split(cmd) if not shell else cmd,
+            shell=shell,
+            universal_newlines=True,  # text= (from py3.7)
+            stdout=subprocess.PIPE if ret_stdout else sys.stderr,
+            stderr=None if quiet else sys.stderr,
+        )
         if ret_stdout:
             stdout, stderr = process.communicate()
             if stderr and not quiet:
@@ -47,9 +49,9 @@ def logo(version):
     return logo
 
 
-def print_log(text, quiet: bool=False):
+def print_log(text, quiet: bool = False):
     if not quiet:
-        sys.stderr.write(text+"\n")
+        sys.stderr.write(text + "\n")
         sys.stderr.flush()
 
 
@@ -61,7 +63,9 @@ def rm_files(files):
             os.remove(f)
 
 
-def validate_input_files(input_files_folder, input_extension, quiet, input_recursive: bool = False):
+def validate_input_files(
+    input_files_folder, input_extension, quiet, input_recursive: bool = False
+):
     """
     given a list of input files and/or folders and an file extension
     check for valid files and return them in a set
@@ -72,12 +76,16 @@ def validate_input_files(input_files_folder, input_extension, quiet, input_recur
             valid_input_files.add(i)
         elif os.path.isdir(i):
             if not input_extension:
-                print_log(" - --input-extension is required when using folders in the --input. Skipping: " + i, quiet)
+                print_log(
+                    " - --input-extension is required when using folders in the --input. Skipping: "
+                    + i,
+                    quiet,
+                )
                 continue
             files_in_dir = 0
 
             if input_recursive:
-                for path in Path(i).rglob('*' + input_extension):
+                for path in Path(i).rglob("*" + input_extension):
                     f = str(path.joinpath())
                     if check_file(f):
                         files_in_dir += 1
@@ -90,9 +98,16 @@ def validate_input_files(input_files_folder, input_extension, quiet, input_recur
                             files_in_dir += 1
                             valid_input_files.add(f)
 
-            print_log(" - " + str(files_in_dir) + " valid file(s) [--input-extension " + input_extension +
-                      (", --input-recursive" if input_recursive else "") + 
-                      "] found in " + i, quiet)
+            print_log(
+                " - "
+                + str(files_in_dir)
+                + " valid file(s) [--input-extension "
+                + input_extension
+                + (", --input-recursive" if input_recursive else "")
+                + "] found in "
+                + i,
+                quiet,
+            )
         else:
             print_log(" - skipping invalid file/folder: " + i, quiet)
 
@@ -148,7 +163,7 @@ def download(urls: list, output_prefix: str):
     for url in urls:
         outfile = output_prefix + os.path.basename(url)
         urlstream = urllib.request.urlopen(url)
-        with open(outfile, 'b+w') as f:
+        with open(outfile, "b+w") as f:
             f.write(urlstream.read())
         urlstream.close()
         files.append(outfile)
