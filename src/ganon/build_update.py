@@ -26,7 +26,6 @@ from multitax import NcbiTx, GtdbTx
 
 
 def build(cfg):
-    
     # Set paths
     if not cfg.set_paths():
         return False
@@ -38,90 +37,120 @@ def build(cfg):
     assembly_summary = files_output_folder + "assembly_summary.txt"
 
     # Skip if already finished download from previous run
-    if load_state("build_download", files_output_folder) and check_file(assembly_summary):
+    if load_state("build_download", files_output_folder) and check_file(
+        assembly_summary
+    ):
         print_log("Download finished - skipping", cfg.quiet)
     else:
         # If assembly_summary.txt was written and some files were already downloaded, try to fix
         resume_download = False
         if check_file(assembly_summary):
-            if check_folder(files_output_folder + get_gu_current_version(assembly_summary) + "/files/"):
+            if check_folder(
+                files_output_folder
+                + get_gu_current_version(assembly_summary)
+                + "/files/"
+            ):
                 print_log("Incomplete files detected, resuming download\n", cfg.quiet)
                 resume_download = True
 
         tx = time.time()
-        print_log("Downloading files from " + ",".join(cfg.source) + " [" + ",".join(cfg.organism_group if cfg.organism_group else cfg.taxid) + "]", cfg.quiet)
-        run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
-                                           "-d '" + ",".join(cfg.source) + "'",
-                                           "-g '" + ",".join(cfg.organism_group) + "'" if cfg.organism_group else "",
-                                           "-T '" + ",".join(cfg.taxid) + "'" if cfg.taxid else "",
-                                           "-A " + str(cfg.top) if cfg.top else "",
-                                           "-l 'complete genome'" if cfg.complete_genomes else "",
-                                           "-c 'reference genome'" if cfg.reference_genomes else "",
-                                           "-f 'genomic.fna.gz'",
-                                           "-t " + str(cfg.threads),
-                                           "-o " + files_output_folder,
-                                           "-M " + cfg.taxonomy if cfg.taxonomy=="gtdb" else "",
-                                           "-m",
-                                           "-N",
-                                           "-i" if resume_download else "",
-                                           "-s" if cfg.quiet else "",
-                                           "-w" if not cfg.verbose else "",
-                                           cfg.genome_updater if cfg.genome_updater else ""])
+        print_log(
+            "Downloading files from "
+            + ",".join(cfg.source)
+            + " ["
+            + ",".join(cfg.organism_group if cfg.organism_group else cfg.taxid)
+            + "]",
+            cfg.quiet,
+        )
+        run_genome_updater_cmd = " ".join(
+            [
+                cfg.path_exec["genome_updater"],
+                "-d '" + ",".join(cfg.source) + "'",
+                "-g '" + ",".join(cfg.organism_group) + "'"
+                if cfg.organism_group
+                else "",
+                "-T '" + ",".join(cfg.taxid) + "'" if cfg.taxid else "",
+                "-A " + str(cfg.top) if cfg.top else "",
+                "-l 'complete genome'" if cfg.complete_genomes else "",
+                "-c 'reference genome'" if cfg.reference_genomes else "",
+                "-f 'genomic.fna.gz'",
+                "-t " + str(cfg.threads),
+                "-o " + files_output_folder,
+                "-M " + cfg.taxonomy if cfg.taxonomy == "gtdb" else "",
+                "-m",
+                "-N",
+                "-i" if resume_download else "",
+                "-s" if cfg.quiet else "",
+                "-w" if not cfg.verbose else "",
+                cfg.genome_updater if cfg.genome_updater else "",
+            ]
+        )
         run(run_genome_updater_cmd, quiet=cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         save_state("build_download", files_output_folder)
 
     # get current version from assembly_summary
-    input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
+    input_folder = (
+        files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
+    )
 
-    build_custom_params = {"input": [input_folder],
-                           "input_extension": "fna.gz",
-                           "input_recursive": True,
-                           "input_target": "file",
-                           "ncbi_file_info": [assembly_summary]}
+    build_custom_params = {
+        "input": [input_folder],
+        "input_extension": "fna.gz",
+        "input_recursive": True,
+        "input_target": "file",
+        "ncbi_file_info": [assembly_summary],
+    }
 
-    build_default_params = {"db_prefix": cfg.db_prefix,
-                            "level": cfg.level,
-                            "taxonomy": cfg.taxonomy,
-                            "taxonomy_files": cfg.taxonomy_files,
-                            "genome_size_files": cfg.genome_size_files,
-                            "threads": cfg.threads,
-                            "max_fp": cfg.max_fp,
-                            "filter_size": cfg.filter_size,
-                            "kmer_size": cfg.kmer_size,
-                            "window_size": cfg.window_size,
-                            "hash_functions": cfg.hash_functions,
-                            "mode": cfg.mode,
-                            "min_length": cfg.min_length,
-                            "verbose": cfg.verbose,
-                            "quiet": cfg.quiet,
-                            "ganon_path": cfg.ganon_path,
-                            "raptor_path": cfg.raptor_path,
-                            "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches,
-                            "filter_type": cfg.filter_type,
-                            "write_info_file": cfg.write_info_file,
-                            "keep_files": cfg.keep_files}
+    build_default_params = {
+        "db_prefix": cfg.db_prefix,
+        "level": cfg.level,
+        "taxonomy": cfg.taxonomy,
+        "taxonomy_files": cfg.taxonomy_files,
+        "genome_size_files": cfg.genome_size_files,
+        "threads": cfg.threads,
+        "max_fp": cfg.max_fp,
+        "filter_size": cfg.filter_size,
+        "kmer_size": cfg.kmer_size,
+        "window_size": cfg.window_size,
+        "hash_functions": cfg.hash_functions,
+        "mode": cfg.mode,
+        "min_length": cfg.min_length,
+        "verbose": cfg.verbose,
+        "quiet": cfg.quiet,
+        "ganon_path": cfg.ganon_path,
+        "raptor_path": cfg.raptor_path,
+        "n_refs": cfg.n_refs,
+        "n_batches": cfg.n_batches,
+        "filter_type": cfg.filter_type,
+        "write_info_file": cfg.write_info_file,
+        "keep_files": cfg.keep_files,
+    }
 
     build_custom_params.update(build_default_params)
 
     build_custom_config = Config("build-custom", **build_custom_params)
     save_config(build_custom_config, files_output_folder + "config.pkl")
 
-    ret_build = build_custom(cfg=build_custom_config,
-                             which_call="build")
+    ret_build = build_custom(cfg=build_custom_config, which_call="build")
 
     if ret_build:
         print_log("", cfg.quiet)
-        print_log(files_output_folder + " contains reference sequences and configuration files.", cfg.quiet)
-        print_log("Keep this folder if you want to update your database later. Otherwise it can be deleted.", cfg.quiet)
+        print_log(
+            files_output_folder
+            + " contains reference sequences and configuration files.",
+            cfg.quiet,
+        )
+        print_log(
+            "Keep this folder if you want to update your database later. Otherwise it can be deleted.",
+            cfg.quiet,
+        )
         print_log("", cfg.quiet)
 
     return ret_build
 
 
 def update(cfg):
-
     # Set paths
     if not cfg.set_paths():
         return False
@@ -136,36 +165,46 @@ def update(cfg):
         print_log("Download finished - skipping", cfg.quiet)
     else:
         print_log("Downloading updated files", cfg.quiet)
-        run_genome_updater_cmd = " ".join([cfg.path_exec['genome_updater'],
-                                           "-o " + files_output_folder,
-                                           "-m",
-                                           "-N",
-                                           "-s" if cfg.quiet else "",
-                                           "-w" if not cfg.verbose else ""])
+        run_genome_updater_cmd = " ".join(
+            [
+                cfg.path_exec["genome_updater"],
+                "-o " + files_output_folder,
+                "-m",
+                "-N",
+                "-s" if cfg.quiet else "",
+                "-w" if not cfg.verbose else "",
+            ]
+        )
         run(run_genome_updater_cmd, quiet=cfg.quiet)
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
         save_state("update_download", files_output_folder)
 
     # get current version from assembly_summary
     assembly_summary = files_output_folder + "assembly_summary.txt"
-    input_folder = files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
+    input_folder = (
+        files_output_folder + get_gu_current_version(assembly_summary) + "/files/"
+    )
 
-    build_custom_params = {"input": [input_folder],
-                           "input_extension": "fna.gz",
-                           "input_recursive": True,
-                           "input_target": "file",
-                           "ncbi_file_info": [assembly_summary]}
+    build_custom_params = {
+        "input": [input_folder],
+        "input_extension": "fna.gz",
+        "input_recursive": True,
+        "input_target": "file",
+        "ncbi_file_info": [assembly_summary],
+    }
 
-    build_default_params = {"db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
-                            "threads": cfg.threads,
-                            "verbose": cfg.verbose,
-                            "quiet": cfg.quiet,
-                            "ganon_path": cfg.ganon_path,
-                            "raptor_path": cfg.raptor_path,
-                            "n_refs": cfg.n_refs,
-                            "n_batches": cfg.n_batches,
-                            "write_info_file": cfg.write_info_file,
-                            "keep_files": cfg.keep_files}
+    build_default_params = {
+        "db_prefix": cfg.output_db_prefix if cfg.output_db_prefix else cfg.db_prefix,
+        "threads": cfg.threads,
+        "verbose": cfg.verbose,
+        "quiet": cfg.quiet,
+        "ganon_path": cfg.ganon_path,
+        "raptor_path": cfg.raptor_path,
+        "n_refs": cfg.n_refs,
+        "n_batches": cfg.n_batches,
+        "write_info_file": cfg.write_info_file,
+        "keep_files": cfg.keep_files,
+    }
     build_custom_params.update(build_default_params)
 
     loaded_params = load_config(files_output_folder + "config.pkl")
@@ -176,8 +215,12 @@ def update(cfg):
     build_custom_params["kmer_size"] = loaded_params["kmer_size"]
     build_custom_params["window_size"] = loaded_params["window_size"]
     build_custom_params["hash_functions"] = loaded_params["hash_functions"]
-    build_custom_params["mode"] = loaded_params["mode"] if "mode" in loaded_params else "avg"  # mode introduce in v1.4.0
-    build_custom_params["min_length"] = loaded_params["min_length"] if "min_length" in loaded_params else 0  # mode introduce in v1.6.0    
+    build_custom_params["mode"] = (
+        loaded_params["mode"] if "mode" in loaded_params else "avg"
+    )  # mode introduce in v1.4.0
+    build_custom_params["min_length"] = (
+        loaded_params["min_length"] if "min_length" in loaded_params else 0
+    )  # mode introduce in v1.6.0
     # filter_type introduced in v2.0.0, before was --hibf
     if "filter_type" in loaded_params:
         ft = loaded_params["filter_type"]  # current definition
@@ -189,18 +232,23 @@ def update(cfg):
 
     build_custom_config = Config("build-custom", **build_custom_params)
 
-    ret_build = build_custom(cfg=build_custom_config,
-                             which_call="update")
+    ret_build = build_custom(cfg=build_custom_config, which_call="update")
 
     if ret_build:
         new_files_output_folder = None
         if cfg.output_db_prefix:
             new_files_output_folder = set_output_folder(cfg.output_db_prefix)
-            
-        # Change input config to new folder    
+
+        # Change input config to new folder
         if new_files_output_folder:
-            build_custom_config.input = [new_files_output_folder + get_gu_current_version(assembly_summary) + "/files/"]
-            build_custom_config.ncbi_file_info = [new_files_output_folder + "assembly_summary.txt"]
+            build_custom_config.input = [
+                new_files_output_folder
+                + get_gu_current_version(assembly_summary)
+                + "/files/"
+            ]
+            build_custom_config.ncbi_file_info = [
+                new_files_output_folder + "assembly_summary.txt"
+            ]
 
         # Save config again (change on db_prefix, input folders)
         save_config(build_custom_config, files_output_folder + "config.pkl")
@@ -211,8 +259,10 @@ def update(cfg):
         if new_files_output_folder:
             if os.path.isfile(new_files_output_folder + "build/target_info.tsv"):
                 # Move target_info.tsv created in the new folder to the old and remove empty folder
-                shutil.move(new_files_output_folder + "build/target_info.tsv",
-                            files_output_folder + "build/target_info.tsv")
+                shutil.move(
+                    new_files_output_folder + "build/target_info.tsv",
+                    files_output_folder + "build/target_info.tsv",
+                )
                 shutil.rmtree(set_output_folder(cfg.output_db_prefix) + "build/")
             # Move files folder to new output_db_prefix
             os.rename(set_output_folder(cfg.db_prefix), new_files_output_folder)
@@ -220,15 +270,16 @@ def update(cfg):
     return ret_build
 
 
-def build_custom(cfg, which_call: str="build_custom"):
-    
+def build_custom(cfg, which_call: str = "build_custom"):
     # Set paths
     if not cfg.set_paths():
         return False
 
-    files_output_folder = set_output_folder(cfg.db_prefix)      # DB_PREFIX_files/
-    build_output_folder = files_output_folder + "build/"        # DB_PREFIX_files/build/
-    target_info_file = build_output_folder + "target_info.tsv"  # DB_PREFIX_files/build/target_info.tsv
+    files_output_folder = set_output_folder(cfg.db_prefix)  # DB_PREFIX_files/
+    build_output_folder = files_output_folder + "build/"  # DB_PREFIX_files/build/
+    target_info_file = (
+        build_output_folder + "target_info.tsv"
+    )  # DB_PREFIX_files/build/target_info.tsv
 
     # calling build_custom internally, already checked folders
     if which_call == "build_custom" and cfg.restart:
@@ -249,8 +300,15 @@ def build_custom(cfg, which_call: str="build_custom"):
         if cfg.input:
             tx = time.time()
             print_log("Parsing --input", cfg.quiet)
-            input_files = validate_input_files(cfg.input, cfg.input_extension, cfg.quiet, input_recursive=cfg.input_recursive)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            input_files = validate_input_files(
+                cfg.input,
+                cfg.input_extension,
+                cfg.quiet,
+                input_recursive=cfg.input_recursive,
+            )
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
             if not input_files:
                 print_log("ERROR: No valid input files found", cfg.quiet)
                 return False
@@ -265,7 +323,9 @@ def build_custom(cfg, which_call: str="build_custom"):
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
             user_bins_col = "specialization"  # if specialization was requested
-        elif cfg.level and cfg.level not in cfg.choices_input_target:  # if any other level is provided (leaves, species, ...) and not at sequence of file level
+        elif (
+            cfg.level and cfg.level not in cfg.choices_input_target
+        ):  # if any other level is provided (leaves, species, ...) and not at sequence of file level
             user_bins_col = "node"
 
         if info.empty:
@@ -298,19 +358,32 @@ def build_custom(cfg, which_call: str="build_custom"):
             unique_nodes = info["node"].unique()
 
             # Check if targets/specializations are not overlapping with taxids
-            if (user_bins_col=="target" and info.index.isin(unique_nodes).any()) or \
-               (user_bins_col=="specialization" and info["specialization"].isin(unique_nodes).any()):
-                print_log("ERROR: " + user_bins_col + " overlaps with taxonomic identifiers", cfg.quiet)
+            if (user_bins_col == "target" and info.index.isin(unique_nodes).any()) or (
+                user_bins_col == "specialization"
+                and info["specialization"].isin(unique_nodes).any()
+            ):
+                print_log(
+                    "ERROR: " + user_bins_col + " overlaps with taxonomic identifiers",
+                    cfg.quiet,
+                )
                 return False
 
             # Get estimates of genome sizes
             genome_sizes = get_genome_size(cfg, unique_nodes, tax, build_output_folder)
-            
+
             # filter only used tax. nodes
-            tax.filter(unique_nodes) 
+            tax.filter(unique_nodes)
 
             # write tax with added nodes and genome sizes
-            write_tax(cfg.db_prefix + ".tax", info, tax, genome_sizes, user_bins_col, cfg.level, cfg.input_target)
+            write_tax(
+                cfg.db_prefix + ".tax",
+                info,
+                tax,
+                genome_sizes,
+                user_bins_col,
+                cfg.level,
+                cfg.input_target,
+            )
 
         # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
@@ -324,7 +397,6 @@ def build_custom(cfg, which_call: str="build_custom"):
     if load_state(which_call + "_run", files_output_folder):
         print_log("Build finished - skipping", cfg.quiet)
     else:
-
         if cfg.filter_type == "hibf":
             print_log("Building index (raptor)", cfg.quiet)
 
@@ -334,7 +406,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             # symbolic link is created for the first time with the target name
             # this is a workaround to name targets with raptor
             target_files = {}
-            with open(target_info_file, 'r') as tif:
+            with open(target_info_file, "r") as tif:
                 for line in tif:
                     col = line.rstrip().split("\t")
                     if col[1] not in target_files:
@@ -343,7 +415,7 @@ def build_custom(cfg, which_call: str="build_custom"):
             n_bins = len(target_files)
 
             raptor_input_file = build_output_folder + "hibf.txt"
- 
+
             # Create symbolic link with target to raptor
             with open(raptor_input_file, "w") as filehibf:
                 for target, files in target_files.items():
@@ -357,7 +429,11 @@ def build_custom(cfg, which_call: str="build_custom"):
                     # Get extension(s)
                     suffixes = Path(first_file).suffixes
                     # If last one is gz, get real suffix
-                    exts = "".join(suffixes[-2:]) if suffixes[-1]==".gz" else suffixes[-1]
+                    exts = (
+                        "".join(suffixes[-2:])
+                        if suffixes[-1] == ".gz"
+                        else suffixes[-1]
+                    )
                     target_file = build_output_folder + new_target + exts
                     # Attempt to remove if exists +
                     # Create symbolic link with correct name for the first file
@@ -365,65 +441,96 @@ def build_custom(cfg, which_call: str="build_custom"):
                     Path(target_file).symlink_to(first_file)
                     # Write input file for raptor (space separated)
                     filehibf.write(target_file + " " + " ".join(files[1:]) + "\n")
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
 
             tx = time.time()
             print_log("raptor prepare", cfg.quiet)
-            run_raptor_prepare_cmd = " ".join([cfg.path_exec['raptor'], "prepare",
-                                               "--input '" + raptor_input_file + "'",
-                                               "--output '" + build_output_folder + "'",
-                                               "--kmer " + str(cfg.kmer_size),
-                                               "--window " + str(cfg.window_size),
-                                               "--quiet" if not cfg.verbose else "",
-                                               "--threads " + str(cfg.threads),
-                                               "--version-check 0"])
+            run_raptor_prepare_cmd = " ".join(
+                [
+                    cfg.path_exec["raptor"],
+                    "prepare",
+                    "--input '" + raptor_input_file + "'",
+                    "--output '" + build_output_folder + "'",
+                    "--kmer " + str(cfg.kmer_size),
+                    "--window " + str(cfg.window_size),
+                    "--quiet" if not cfg.verbose else "",
+                    "--threads " + str(cfg.threads),
+                    "--version-check 0",
+                ]
+            )
             run(run_raptor_prepare_cmd, quiet=cfg.quiet)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
 
             tx = time.time()
             print_log("raptor layout", cfg.quiet)
-            # Use info file as input for raptor 
-            run_raptor_layout_cmd = " ".join([cfg.path_exec['raptor'], "layout",
-                                              "--input-file '" + build_output_folder + "minimiser.list'",
-                                              "--tmax " + str(math.ceil(math.sqrt(n_bins) /64.0 ) * 64),
-                                              "--num-hash-functions " + str(cfg.hash_functions),
-                                              "--false-positive-rate " + str(cfg.max_fp),
-                                              "--output-filename '" + build_output_folder + "raptor_layout.binning.out'",
-                                              "--threads " + str(cfg.threads),
-                                              "--version-check 0"])
+            # Use info file as input for raptor
+            run_raptor_layout_cmd = " ".join(
+                [
+                    cfg.path_exec["raptor"],
+                    "layout",
+                    "--input-file '" + build_output_folder + "minimiser.list'",
+                    "--tmax " + str(math.ceil(math.sqrt(n_bins) / 64.0) * 64),
+                    "--num-hash-functions " + str(cfg.hash_functions),
+                    "--false-positive-rate " + str(cfg.max_fp),
+                    "--output-filename '"
+                    + build_output_folder
+                    + "raptor_layout.binning.out'",
+                    "--threads " + str(cfg.threads),
+                    "--version-check 0",
+                ]
+            )
             run(run_raptor_layout_cmd, quiet=cfg.quiet)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
 
             tx = time.time()
             print_log("raptor build", cfg.quiet)
-            run_raptor_build_cmd = " ".join([cfg.path_exec['raptor'], "build",
-                                             "--output '" + cfg.db_prefix + ".hibf" + "'",
-                                             "--threads " + str(cfg.threads),
-                                             "--quiet" if not cfg.verbose else "",
-                                             "--input '" + build_output_folder + "raptor_layout.binning.out'",
-                                             "--version-check 0"])
+            run_raptor_build_cmd = " ".join(
+                [
+                    cfg.path_exec["raptor"],
+                    "build",
+                    "--output '" + cfg.db_prefix + ".hibf" + "'",
+                    "--threads " + str(cfg.threads),
+                    "--quiet" if not cfg.verbose else "",
+                    "--input '" + build_output_folder + "raptor_layout.binning.out'",
+                    "--version-check 0",
+                ]
+            )
             run(run_raptor_build_cmd, quiet=cfg.quiet)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
 
         else:
             tx = time.time()
             print_log("Building index (ganon-build)", cfg.quiet)
-            run_ganon_build_cmd = " ".join([cfg.path_exec['build'],
-                                            "--input-file '" + target_info_file + "'",
-                                            "--output-file '" + cfg.db_prefix + ".ibf" + "'",
-                                            "--kmer-size " + str(cfg.kmer_size),
-                                            "--window-size " + str(cfg.window_size),
-                                            "--hash-functions " + str(cfg.hash_functions),
-                                            "--mode " + cfg.mode,
-                                            "--min-length " + str(cfg.min_length),
-                                            "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
-                                            "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
-                                            "--tmp-output-folder '" + build_output_folder + "'",
-                                            "--threads " + str(cfg.threads),
-                                            "--verbose" if cfg.verbose else "",
-                                            "--quiet" if cfg.quiet else ""])
+            run_ganon_build_cmd = " ".join(
+                [
+                    cfg.path_exec["build"],
+                    "--input-file '" + target_info_file + "'",
+                    "--output-file '" + cfg.db_prefix + ".ibf" + "'",
+                    "--kmer-size " + str(cfg.kmer_size),
+                    "--window-size " + str(cfg.window_size),
+                    "--hash-functions " + str(cfg.hash_functions),
+                    "--mode " + cfg.mode,
+                    "--min-length " + str(cfg.min_length),
+                    "--max-fp " + str(cfg.max_fp) if cfg.max_fp else "",
+                    "--filter-size " + str(cfg.filter_size) if cfg.filter_size else "",
+                    "--tmp-output-folder '" + build_output_folder + "'",
+                    "--threads " + str(cfg.threads),
+                    "--verbose" if cfg.verbose else "",
+                    "--quiet" if cfg.quiet else "",
+                ]
+            )
             run(run_ganon_build_cmd, quiet=cfg.quiet)
-            print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+            print_log(
+                " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
+            )
 
         save_state(which_call + "_run", files_output_folder)
 
@@ -436,7 +543,10 @@ def build_custom(cfg, which_call: str="build_custom"):
     if cfg.taxonomy != "skip":
         db_files_ext.append("tax")
 
-    print_log("Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]), cfg.quiet)
+    print_log(
+        "Database: " + ", ".join([cfg.db_prefix + "." + e for e in db_files_ext]),
+        cfg.quiet,
+    )
     if all([check_file(cfg.db_prefix + "." + e) for e in db_files_ext]):
         # Do not delete temp (mostly tests, hidden param)
         if not cfg.keep_files:
@@ -452,7 +562,10 @@ def build_custom(cfg, which_call: str="build_custom"):
         print_log("Build finished successfully", cfg.quiet)
         return True
     else:
-        print_log("ERROR: build failed - one or more database files not found or empty", cfg.quiet)
+        print_log(
+            "ERROR: build failed - one or more database files not found or empty",
+            cfg.quiet,
+        )
         return False
 
 
@@ -463,15 +576,11 @@ def parse_input_file(input_file, info_cols, input_target, quiet):
     """
     parse user provided --input-file with all specifications for input
     """
-    info = pd.read_csv(input_file,
-                       sep="\t",
-                       header=None,
-                       skiprows=0,
-                       dtype=object)
+    info = pd.read_csv(input_file, sep="\t", header=None, skiprows=0, dtype=object)
     # Need to rename columns after parsing since file can have 1 to 5
     info.rename(columns=lambda x: info_cols[x], inplace=True)
     info = pd.concat([info, pd.DataFrame(columns=info_cols)])
-    
+
     # If no target was provided and target is file, use filename
     if info["target"].isna().all() and input_target == "file":
         info["target"] = info["file"].apply(os.path.basename)
@@ -481,7 +590,10 @@ def parse_input_file(input_file, info_cols, input_target, quiet):
     valid_files = validate_input_files(info["file"].unique().tolist(), "", quiet)
     if total_files - len(valid_files) > 0:
         info = info[info["file"].isin(valid_files)]
-        print_log(" - " + str(total_files - len(valid_files)) + " invalid files skipped", quiet)
+        print_log(
+            " - " + str(total_files - len(valid_files)) + " invalid files skipped",
+            quiet,
+        )
     return info
 
 
@@ -503,45 +615,68 @@ def load_input(cfg, input_files, build_output_folder):
             print_log("\nMatching --input-file entries with sequences", cfg.quiet)
             shape_tmp = info.shape[0]
             # Split files and return headers obtained
-            info_seqs = parse_sequence_accession(info["file"].unique().tolist(), info_cols, build_output_folder)
-            
+            info_seqs = parse_sequence_accession(
+                info["file"].unique().tolist(), info_cols, build_output_folder
+            )
+
             # Merge with provided file, keeping only matching entries
-            info = pd.merge(left=info, right=info_seqs, on="target", suffixes=("", "_seqs"))[info_cols + ["file_seqs"]]
+            info = pd.merge(
+                left=info, right=info_seqs, on="target", suffixes=("", "_seqs")
+            )[info_cols + ["file_seqs"]]
             info["file"] = info["file_seqs"]
             info.drop("file_seqs", axis=1, inplace=True)
 
             if shape_tmp - info.shape[0] > 0:
-                print_log(" - " + str(shape_tmp - info.shape[0]) + " invalid sequences skipped", cfg.quiet)
+                print_log(
+                    " - "
+                    + str(shape_tmp - info.shape[0])
+                    + " invalid sequences skipped",
+                    cfg.quiet,
+                )
 
     else:
-        
         if cfg.input_target == "sequence":
-            print_log("Parsing sequences from --input (" + str(len(input_files)) + " files)", cfg.quiet)
+            print_log(
+                "Parsing sequences from --input (" + str(len(input_files)) + " files)",
+                cfg.quiet,
+            )
             info = parse_sequence_accession(input_files, info_cols, build_output_folder)
         else:
-            print_log("Parsing files from --input (" + str(len(input_files)) + " files)", cfg.quiet)
+            print_log(
+                "Parsing files from --input (" + str(len(input_files)) + " files)",
+                cfg.quiet,
+            )
             info = parse_file_accession(input_files, info_cols)
 
     # Drop cols without values
     shape_tmp = info.shape[0]
     info.dropna(how="all", inplace=True)
     if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " invalid entries skipped", cfg.quiet)
+        print_log(
+            " - " + str(shape_tmp - info.shape[0]) + " invalid entries skipped",
+            cfg.quiet,
+        )
 
     # Drop cols without target
     shape_tmp = info.shape[0]
     info.dropna(subset=["target"], inplace=True)
     if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " invalid targets skipped", cfg.quiet)
+        print_log(
+            " - " + str(shape_tmp - info.shape[0]) + " invalid targets skipped",
+            cfg.quiet,
+        )
 
     # Drop duplicated target
     shape_tmp = info.shape[0]
-    info.drop_duplicates(subset=['target'], inplace=True)
+    info.drop_duplicates(subset=["target"], inplace=True)
     if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " duplicated targets skipped", cfg.quiet)
+        print_log(
+            " - " + str(shape_tmp - info.shape[0]) + " duplicated targets skipped",
+            cfg.quiet,
+        )
 
     # set target as index
-    info.set_index('target', inplace=True)
+    info.set_index("target", inplace=True)
     print_log(" - " + str(info.shape[0]) + " unique entries", cfg.quiet)
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -567,8 +702,13 @@ def load_taxonomy(cfg, build_output_folder):
     # If level is not in special targets or leaves and present in available ranks
     if cfg.level not in [None, "leaves"] + cfg.choices_level:
         if cfg.level not in set(tax._ranks.values()):
-            print_log(" - " + cfg.level + " not found in taxonomic ranks, changing to --level 'leaves'", cfg.quiet)
-            cfg.level = 'leaves'
+            print_log(
+                " - "
+                + cfg.level
+                + " not found in taxonomic ranks, changing to --level 'leaves'",
+                cfg.quiet,
+            )
+            cfg.level = "leaves"
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     return tax
@@ -585,25 +725,39 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
         # Set rank to level or input_target
         tax_rank = level if level else input_target
         for target, row in info.iterrows():
-            tax_node = row["specialization"] if user_bins_col == "specialization" else target
-            tax_name = row["specialization_name"] if user_bins_col == "specialization" else target
+            tax_node = (
+                row["specialization"] if user_bins_col == "specialization" else target
+            )
+            tax_name = (
+                row["specialization_name"]
+                if user_bins_col == "specialization"
+                else target
+            )
 
             # Check if node is already present with correct parent
             # in case of input-target sequence, info has repeated pairs of node/parent
             if tax.latest(tax_node) is tax.undefined_node:
                 tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
             else:
-                assert tax.parent(tax_node)==row["node"]
-            
+                assert tax.parent(tax_node) == row["node"]
+
     # Write filtered taxonomy with added nodes
     rm_files(tax_file)
     tax.write(tax_file)
 
     # add genome_sizes col, either from node or parent (specialization)
-    tax_df = pd.read_csv(tax_file, names=["node", "parent", "rank", "name"], delimiter='\t', dtype=str)
-    # Get estimated genome size from parent in case of specialization 
-    tax_df["genome_size"] = tax_df.apply(lambda d: genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent], axis=1)
+    tax_df = pd.read_csv(
+        tax_file, names=["node", "parent", "rank", "name"], delimiter="\t", dtype=str
+    )
+    # Get estimated genome size from parent in case of specialization
+    tax_df["genome_size"] = tax_df.apply(
+        lambda d: genome_sizes[d.node]
+        if d.node in genome_sizes
+        else genome_sizes[d.parent],
+        axis=1,
+    )
     tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
+
 
 def write_target_info(info, user_bins_col, target_info_file):
     """
@@ -620,14 +774,9 @@ def write_info_file(info, filename):
     write tabular file to be re-used as --input-file (sort cols in the right order)
     db_prefix.info.tsv
     """
-    info.reset_index()[['file',
-                        'target',
-                        'node',
-                        'specialization',
-                        'specialization_name']].to_csv(filename,
-                                                       sep="\t",
-                                                       header=False,
-                                                       index=False)
+    info.reset_index()[
+        ["file", "target", "node", "specialization", "specialization_name"]
+    ].to_csv(filename, sep="\t", header=False, index=False)
 
 
 def validate_specialization(info, quiet):
@@ -647,10 +796,14 @@ def validate_specialization(info, quiet):
         idx_null_spec = info.specialization.isna()
 
         # get unique tuples node-specialization
-        node_spec = info[['node', 'specialization']].drop_duplicates()
+        node_spec = info[["node", "specialization"]].drop_duplicates()
 
         # check for duplicated specialization in the tuples
-        idx_multi_parent_spec = info.specialization.isin(node_spec.specialization[node_spec.specialization.duplicated(keep=False)].unique())
+        idx_multi_parent_spec = info.specialization.isin(
+            node_spec.specialization[
+                node_spec.specialization.duplicated(keep=False)
+            ].unique()
+        )
 
         # merge indices for invalid entries
         idx_replace = idx_null_spec | idx_multi_parent_spec
@@ -659,13 +812,23 @@ def validate_specialization(info, quiet):
             # replace invalid specialization entries with target
             info.loc[idx_replace, "specialization"] = info.index[idx_replace]
             info.loc[idx_replace, "specialization_name"] = info.index[idx_replace]
-            print_log(" - " + str(sum(idx_replace)) + " invalid specialization entries replaced by target", quiet)
+            print_log(
+                " - "
+                + str(sum(idx_replace))
+                + " invalid specialization entries replaced by target",
+                quiet,
+            )
 
     # Skip invalid nodes
     shape_tmp = info.shape[0]
     info.dropna(subset=["specialization"], inplace=True)
     if shape_tmp - info.shape[0] > 0:
-        print_log(" - " + str(shape_tmp - info.shape[0]) + " entries without valid specialization skipped", quiet)
+        print_log(
+            " - "
+            + str(shape_tmp - info.shape[0])
+            + " entries without valid specialization skipped",
+            quiet,
+        )
 
     # Fill names not provided with specialization
     info["specialization_name"].fillna(info["specialization"], inplace=True)
@@ -693,7 +856,10 @@ def validate_taxonomy(info, tax, cfg):
 
     if na_entries > 0:
         info.dropna(subset=["node"], inplace=True)
-        print_log(" - " + str(na_entries) + " entries without valid taxonomic nodes skipped", cfg.quiet)
+        print_log(
+            " - " + str(na_entries) + " entries without valid taxonomic nodes skipped",
+            cfg.quiet,
+        )
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
@@ -724,9 +890,13 @@ def clear_states(prefix, folder):
     """
     delete all build/update save states
     """
-    rm_files([folder + prefix + "_download",
-              folder + prefix + "_parse",
-              folder + prefix + "_run"])
+    rm_files(
+        [
+            folder + prefix + "_download",
+            folder + prefix + "_parse",
+            folder + prefix + "_run",
+        ]
+    )
 
 
 def save_config(cfg, config_file):
@@ -744,5 +914,5 @@ def load_config(config_file):
     load configuration
     """
     with open(config_file, "rb") as file:
-        cfg = pickle.load(file) 
+        cfg = pickle.load(file)
     return cfg

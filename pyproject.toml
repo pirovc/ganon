@@ -14,7 +14,7 @@ Documentation = "https://pirovc.github.io/ganon/"
 Repository = "https://github.com/pirovc/ganon"
 
 [project.optional-dependencies]
-dev = [ "ruff", "coverage", "parameterized>=0.9.0" ]
+dev = [ "ruff", "coverage", "mkdocs", "parameterized>=0.9.0" ]
 
 [project.scripts]
 ganon = "ganon.ganon:main_cli"
@@ -31,3 +31,6 @@ script-files = ["scripts/ganon-get-seq-info.sh", "libs/genome_updater/genome_upd
 
 [tool.setuptools_scm]
 write_to = "VERSION.txt"
+
+[tool.ruff]
+include = [ "pyproject.toml", "src/**/*.py", "tests/**/*.py" ]
