@@ -4,36 +4,25 @@ python:
  - 3.14
  - 3.12
 name: "Python tests"
+
 jobs:
   include:
-    - name: "linux gcc-11"
+    - stage: "C++ tests"
       language: cpp
       python: 3.14
+      gcc: 
+       - 11
+       - 12
+       - 13
       addons:
         apt:
           packages:
-            - g++-11
             - parallel
       env:
-        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
+        - MATRIX_EVAL="CC=gcc && CXX=g++ && BUILD_TYPE=Release"
       script:
         - eval "${MATRIX_EVAL}"
         - ${CC} --version
-
-    - name: "linux gcc-12"
-      language: cpp
-      python: 3.14
-      addons:
-        apt:
-          packages:
-            - g++-12
-            - parallel
-      env:
-        - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
-      script:
-        - eval "${MATRIX_EVAL}"
-        - ${CC} --version
-
 
 before_install:
   - echo "before for all"
