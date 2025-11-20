@@ -3,11 +3,12 @@ language: python
 python:
  - 3.14
  - 3.12
+name: "Python tests"
 
 jobs:
   include:
     - stage: "C++ tests"
-      name: "linux gcc-11"
+    - name: "linux gcc-11"
       language: cpp
       addons:
         apt:
@@ -20,7 +21,7 @@ jobs:
         - eval "${MATRIX_EVAL}"
         - ${CC} --version
 
-      name: "linux gcc-12"
+    - name: "linux gcc-12"
       language: cpp
       addons:
         apt:
