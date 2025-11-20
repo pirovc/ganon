@@ -1,0 +1,52 @@
+dist: noble
+language: python
+python: 3.14
+
+jobs:
+  include:
+    - name: "python"
+      language: python
+      python:
+        - 3.10
+        - 3.11
+        - 3.12
+        #- 3.12
+        #- 3.13
+        #- 3.14
+      env:
+        - MATRIX_EVAL="CC=gcc && CXX=g++ && BUILD_TYPE=Release"
+      script:
+        - eval "${MATRIX_EVAL}"
+        - ${CC} --version
+        - python --version
+
+    - name: "linux gcc-11"
+      language: cpp
+      addons:
+        apt:
+          packages:
+            - g++-11
+            - parallel
+      env:
+        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
+      script:
+        - eval "${MATRIX_EVAL}"
+        - ${CC} --version
+        - python --version
+
+    - name: "linux gcc-12"
+      language: cpp
+      addons:
+        apt:
+          packages:
+            - g++-12
+            - parallel
+      env:
+        - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
+      script:
+        - eval "${MATRIX_EVAL}"
+        - ${CC} --version
+        - python --version
+
+before_install:
+  - echo "before for all"
