@@ -1,33 +1,44 @@
 dist: noble
 language: python
+python: 3.10
 
 jobs:
   include:
-    - name: "gcc"
+    - name: "gcc-11"
       language: cpp
       addons:
         apt:
           packages:
             - g++-11
-            - g++-12
       env:
         - ENV_VARS="CC=gcc-11 && CXX=g++-11"
+
+    - name: "gcc-12"
+      language: cpp
+      addons:
+        apt:
+          packages:
+            - g++-12
+      env:
         - ENV_VARS="CC=gcc-12 && CXX=g++-12"
 
-    - language: python
-      python: 3.14
-
-    - language: python
-      python: 3.13
-
-    - language: python
-      python: 3.12
+    # gcc-13 is the default on dist: noble
+    # python 3.10 already tested for the GCC builds
+    # commented to save CI time
+    #- language: python
+    #  python: 3.10
 
     - language: python
       python: 3.11
 
     - language: python
-      python: 3.10
+      python: 3.12
+
+    - language: python
+      python: 3.13
+
+    - language: python
+      python: 3.14
     
     - stage: "Coverage"
       name: "gcc-11 + coverage"
@@ -38,7 +49,7 @@ jobs:
             - g++-11
             - lcov
       env:
-        - ENV_VARS="CC=gcc-11 && CXX=g++-11 && GCOV=gcov-11"
+        - ENV_VARS="CC=gcc-11 && CXX=g++-11 && GCOV=gcov-11 && BUILD_TYPE=Coverage"
 
 env: # gcc-13 is the default on dist: noble
   - ENV_VARS="CC=gcc-13 && CXX=g++-13"
