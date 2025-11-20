@@ -3,8 +3,7 @@ language: python
 
 jobs:
   include:
-    - name: "gcc-11"
-      language: cpp
+    - language: cpp
       addons:
         apt:
           packages:
@@ -12,8 +11,7 @@ jobs:
       env:
         - ENV_VARS="CC=gcc-11 && CXX=g++-11"
 
-    - name: "gcc-12"
-      language: cpp
+    - language: cpp
       addons:
         apt:
           packages:
@@ -53,6 +51,9 @@ jobs:
             - lcov
       env:
         - ENV_VARS="CC=gcc-11 && CXX=g++-11 && GCOV=gcov-11 && BUILD_TYPE=Coverage"
+
+env: # gcc-13 is the default on dist: noble
+  - ENV_VARS="CC=gcc-13 && CXX=g++-13"
 
 before_install:
   - eval "${ENV_VARS}"
