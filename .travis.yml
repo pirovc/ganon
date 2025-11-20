@@ -1,5 +1,6 @@
 dist: noble
 language: python
+python: 3.12
 
 jobs:
   include:
@@ -22,20 +23,78 @@ jobs:
         - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
 
     - language: python
+      python: 3.14
+
+    - language: python
+      python: 3.13
+
+    #  python 3.12 is the deafult on dist: noble
+    #- language: python
+    #  python: 3.12
+
+    - language: python
       python: 3.11
 
     - language: python
       python: 3.10
-
-
+    
+    - stage: "Coverage"
+      name: "gcc-11 Coverage"
+      language: cpp
+      addons:
+        apt:
+          packages:
+            - g++-11
+            - lcov
+      env:
+        - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && && BUILD_TYPE=Coverage && GCOV=gcov-11"
 
 env:
-  - MATRIX_EVAL="CC=gcc-13 && CXX=g++-13 && BUILD_TYPE=Release"  # gcc-13 default on dist: noble
+  - MATRIX_EVAL="CC=gcc-13 && CXX=g++-13 && BUILD_TYPE=Release"  # gcc-13 is the default on dist: noble
 
 before_install:
+  - eval "${MATRIX_EVAL}"
+  - ${CC} --version
+  - ${CXX} --version
+  - python --version
   - sudo apt-get -y install parallel
-  - echo "before for all"
+  - wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniforge.sh
+  - bash miniforge.sh -b -p $HOME/miniforge
+  - source "$HOME/miniforge/etc/profile.d/conda.sh"
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
+  - conda activate base
+  - conda install -c bioconda -c conda-forge "raptor=3.0.1"
+
+install:
+  - pip install .[dev]
+  - rm -rf build && mkdir build && cd build
+  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
+  - cat compile_commands.json
+  - cmake --build . -- -j4
+  - ctest -VV .
+  - sudo make install
 
 script:
-  - ${CC} --version
-  - python --version
+  - ganon --version
+  - ganon-build --version
+  - ganon-classify --version
+  - raptor --version
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      python3 -m coverage run --source=ganon -m unittest discover -s tests/ganon/integration/ -v;
+    else
+      python3 -m unittest discover -s tests/ganon/integration/ -v;
+    fi
+
+after_success:
+  - if [ "$BUILD_TYPE" == "Coverage" ]; then 
+      lcov --gcov-tool $(which ${GCOV}) -d . -c -o coverage_cpp.lcov &&
+      python3 -m coverage xml -o coverage_py.xml &&
+      curl -Os https://uploader.codecov.io/latest/linux/codecov &&
+      chmod +x codecov &&
+      ./codecov --nonZero -X search --file coverage_py.xml --file coverage_cpp.lcov;
+    fi
+
+notifications:
+  email: false
