@@ -1,6 +1,5 @@
 dist: noble
 language: python
-python: 3.10
 
 jobs:
   include:
@@ -22,17 +21,21 @@ jobs:
       env:
         - ENV_VARS="CC=gcc-12 && CXX=g++-12"
 
-    # gcc-13 is the default on dist: noble
-    # python 3.10 already tested for the GCC builds
-    # commented to save CI time
-    #- language: python
-    #  python: 3.10
+    # gcc-13 is the default on dist: noble, tested with python, commented to save CI time
+    #- name: "gcc-12"
+    #  language: cpp
+    #  env:
+    #    - ENV_VARS="CC=gcc-13 && CXX=g++-13"
+    
+    - language: python
+      python: 3.10
 
     - language: python
       python: 3.11
 
-    - language: python
-      python: 3.12
+    # python 3.12 is the default on dist: noble, tested with gcc, commented to save CI time
+    #- language: python
+    #  python: 3.12
 
     - language: python
       python: 3.13
@@ -50,9 +53,6 @@ jobs:
             - lcov
       env:
         - ENV_VARS="CC=gcc-11 && CXX=g++-11 && GCOV=gcov-11 && BUILD_TYPE=Coverage"
-
-env: # gcc-13 is the default on dist: noble
-  - ENV_VARS="CC=gcc-13 && CXX=g++-13"
 
 before_install:
   - eval "${ENV_VARS}"
