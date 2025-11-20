@@ -1,65 +1,90 @@
-language: cpp
-dist: jammy
+dist: noble
+language: python
 
-matrix:
+jobs:
   include:
-    - name: "linux gcc-11"
-      os: linux
+    - language: cpp
       addons:
         apt:
           packages:
             - g++-11
-            - parallel
       env:
-        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
-    - name: "linux gcc-12"
-      os: linux
+        - ENV_VARS="CC=gcc-11 && CXX=g++-11"
+
+    - language: cpp
       addons:
         apt:
           packages:
             - g++-12
-            - parallel
       env:
-        - MATRIX_EVAL="CC=gcc-12 && CXX=g++-12 && BUILD_TYPE=Release"
+        - ENV_VARS="CC=gcc-12 && CXX=g++-12"
 
-    - name: "linux gcc-11 (coverage)"
-      os: linux
+    # gcc-13 is the default on dist: noble, tested with python, commented to save CI time
+    #- name: "gcc-12"
+    #  language: cpp
+    #  env:
+    #    - ENV_VARS="CC=gcc-13 && CXX=g++-13"
+    
+    - language: python
+      python: 3.10
+
+    - language: python
+      python: 3.11
+
+    # python 3.12 is the default on dist: noble, tested with gcc, commented to save CI time
+    #- language: python
+    #  python: 3.12
+
+    - language: python
+      python: 3.13
+
+    - language: python
+      python: 3.14
+    
+    - stage: "Coverage"
+      language: cpp
       addons:
         apt:
           packages:
             - g++-11
-            - parallel
             - lcov
       env:
-        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Coverage && GCOV=gcov-11"
+        - ENV_VARS="CC=gcc-11 && CXX=g++-11 && GCOV=gcov-11 && BUILD_TYPE=Coverage"
+
+env: # gcc-13 is the default on dist: noble
+  - ENV_VARS="CC=gcc-13 && CXX=g++-13"
 
 before_install:
-  - eval "${MATRIX_EVAL}"
-  - python3 -m pip install --upgrade pip
-  - wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - eval "${ENV_VARS}"
+  - echo "${BUILD_TYPE:-Release}"
+  - ${CC} --version
+  - ${CXX} --version
+  - python --version
+  - sudo apt-get -y install parallel
+  - wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O miniforge.sh
+  - bash miniforge.sh -b -p $HOME/miniforge
+  - source "$HOME/miniforge/etc/profile.d/conda.sh"
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
   - conda activate base
+  - conda install -c bioconda -c conda-forge "raptor=3.0.1"
 
 install:
-  - conda install -c bioconda -c conda-forge "raptor=3.0.1"
   - pip install .[dev]
-  - rm -rf build && mkdir build && cd build 
-  - cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
+  - rm -rf build && mkdir build && cd build
+  - cmake -DCMAKE_BUILD_TYPE="${BUILD_TYPE:-Release}" -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF ..
   - cat compile_commands.json
-  - cmake --build . -- -j2
+  - cmake --build . -- -j4
   - ctest -VV .
   - sudo make install
   - cd ..
 
 script:
+  - ganon --version
   - ganon-build --version
   - ganon-classify --version
   - raptor --version
-  - ganon --version
   - if [ "$BUILD_TYPE" == "Coverage" ]; then 
       python3 -m coverage run --source=ganon -m unittest discover -s tests/ganon/integration/ -v;
     else
