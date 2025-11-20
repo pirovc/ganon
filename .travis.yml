@@ -9,12 +9,12 @@ jobs:
       python:
         - 3.10
         - 3.11
-        #- 3.12
+        - 3.12
         #- 3.13
         #- 3.14
 
       env:
-        - MATRIX_EVAL="CC=gcc-11 && CXX=g++-11 && BUILD_TYPE=Release"
+        - MATRIX_EVAL="CC=gcc && CXX=g++ && BUILD_TYPE=Release"
       script:
         - eval "${MATRIX_EVAL}"
         - ${CC} --version
