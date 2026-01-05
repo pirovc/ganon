@@ -21,7 +21,7 @@ ganon is designed to index large sets of genomic reference sequences and to clas
 - advanced tree-like [reports](reports.md) with several filter options
 - generation of [contingency tables](table.md) with several filters for multi-sample studies
 
-ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4)
+ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.1093/bioinformatics/btaa458) but also in independent evaluations: [LEMMI](https://lemmi-v1.ezlab.org/), [LEMMI v2](https://lemmi.ezlab.org/) and [CAMI2](https://dx.doi.org/10.1038/s41592-022-01431-4) (taxonomic [profiling](https://cami-challenge.org/taxonomic_profiling/) and [binning](https://cami-challenge.org/taxonomic_binning/)).
 
 ## Installation with conda
 
