@@ -131,9 +131,8 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="ganon">ganon <a href="https://github.com/pirovc/ganon"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/pirovc/ganon" /></a><a class="headerlink" href="#ganon" title="Permanent link">:)</a></h1>
-<p><a href="https://app.travis-ci.com/pirovc/ganon"><img alt="Build Status" src="https://app.travis-ci.com/pirovc/ganon.svg?token=q6Nfx8pLHh8hV3hLz3Pq&amp;branch=master" /></a> <a href="https://codecov.io/gh/pirovc/ganon"><img alt="codecov" src="https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/downloads.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/platforms.svg" /></a> <a href="http://bioconda.github.io/recipes/ganon/README.html"><img alt="install with bioconda" src="https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat" /></a> <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458"><img alt="Publication" src="https://img.shields.io/badge/DOI-10.1101%2F406017-blue" /></a> </p>
+<p><a href="https://app.travis-ci.com/pirovc/ganon"><img alt="Build Status" src="https://app.travis-ci.com/pirovc/ganon.svg?token=q6Nfx8pLHh8hV3hLz3Pq&amp;branch=master" /></a> <a href="https://codecov.io/gh/pirovc/ganon"><img alt="codecov" src="https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/downloads.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/platforms.svg" /></a> <a href="http://bioconda.github.io/recipes/ganon/README.html"><img alt="install with bioconda" src="https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat" /></a> <a href="https://dx.doi.org/10.1093/nargab/lqaf094"><img alt="Publication" src="https://img.shields.io/badge/DOI-10.1093/nargab/lqaf094-blue" /></a></p>
 <p>Code: <a href="https://github.com/pirovc/ganon">GitHub repository</a></p>
-<p><a href="https://www.biorxiv.org/content/10.1101/2023.12.07.570547">ganon2 pre-print</a></p>
 <p>ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses <a href="https://doi.org/10.1186/s13059-023-02971-4">Hierarchical Interleaved Bloom Filters</a> as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic or sequence abundances are estimated and reported.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">:)</a></h2>
 <ul>
@@ -192,7 +191,7 @@ conda install -c bioconda -c conda-forge &quot;pandas&gt;=1.2.0&quot; &quot;mult
 </code></pre>
 <pre><code class="language-bash"># Install Python side
 cd ganon
-python3 setup.py install --record files.txt  # optional
+pip install .
 
 # Compile and install C++ side
 mkdir -p build
@@ -767,5 +766,5 @@ filter arguments:
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-11-17 13:47:01.607533+00:00
+Build Date UTC : 2026-01-05 13:05:48.786584+00:00
 -->
