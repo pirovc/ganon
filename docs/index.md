@@ -35,26 +35,16 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ## Installation from source
 
-### Python dependencies
+### Dependencies
 
-- python >=3.6
+#### Python
+
+- python >=3.10
 - pandas >=1.2.0
-- [multitax](https://github.com/pirovc/multitax) >=1.3.1
-- [genome_updater](https://github.com/pirovc/genome_updater) >=0.6.4
+- [multitax](https://github.com/pirovc/multitax) >=1.3.2
+- [genome_updater](https://github.com/pirovc/genome_updater) >=0.7.0
 
-```bash
-# Python version should be >=3.6
-python3 -V
-
-# Install packages via pip or conda:
-# PIP
-python3 -m pip install "pandas>=1.2.0" "multitax>=1.3.1"
-wget --quiet --show-progress https://raw.githubusercontent.com/pirovc/genome_updater/master/genome_updater.sh && chmod +x genome_updater.sh
-
-# Conda/Mamba (alternative)
-conda install -c bioconda -c conda-forge "pandas>=1.2.0" "multitax>=1.3.1" "genome_updater>=0.6.4"
-```
-### C++ dependencies
+#### C++
 
 - GCC >=11
 - CMake >=3.5

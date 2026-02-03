@@ -3,7 +3,8 @@
 import argparse
 import sys
 import shutil
-from ganon.util import *
+import os
+from ganon.util import print_log, check_file, set_output_folder, check_folder, logo
 
 from ganon import __version__
 
@@ -50,7 +51,7 @@ class Config:
         "genbank_historical",
     ]
     choices_default_ranks = [
-        "superkingdom",
+        "domain",
         "phylum",
         "class",
         "order",
@@ -1076,7 +1077,7 @@ class Config:
             help="One or more taxids to report (including children taxa)",
         )
 
-        formatter_class = lambda prog: argparse.ArgumentDefaultsHelpFormatter(
+        formatter_class = lambda prog: argparse.ArgumentDefaultsHelpFormatter(  # noqa: E731
             prog, width=120
         )
         subparsers = parser.add_subparsers()
@@ -1149,7 +1150,7 @@ class Config:
                     list_kwargs.append(arg_formatted)
                     list_kwargs.extend(value)
                 elif (
-                    type(value) == bool and value is True
+                    type(value) is bool and value is True
                 ):  # add only arg if boolean flag activated
                     list_kwargs.append(arg_formatted)
                 elif value:

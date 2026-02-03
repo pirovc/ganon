@@ -297,7 +297,7 @@ def get_gtdb_target_node(tax, level):
                     index_col="target",
                     converters={
                         "target": lambda x: x[3:],
-                        "node": lambda l: l.split(";")[-1],
+                        "node": lambda lin: lin.split(";")[-1],
                     },
                 ),
             ]

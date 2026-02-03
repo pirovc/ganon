@@ -22,7 +22,7 @@ def report(cfg):
         "undefined_node": "",
         "undefined_rank": "na",
         "undefined_name": "na",
-        "root_rank": "root",
+        "root_node": "root",
         "root_name": "root",
         "root_rank": "root",
     }
@@ -395,9 +395,9 @@ def build_report(
             max_width = [0] * len(output_rows[0])
             for row in output_rows:
                 for i, w in enumerate(max_width):
-                    l = len(row[i])
-                    if l > w:
-                        max_width[i] = l
+                    lin = len(row[i])
+                    if lin > w:
+                        max_width[i] = lin
             # apply format when printing with max_width
             for row in output_rows:
                 print(

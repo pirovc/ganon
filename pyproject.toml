@@ -5,7 +5,7 @@ description = "ganon2 efficiently classifies genomic sequences against large set
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 dependencies = [ "pandas>=1.2.0", "multitax>=1.3.2" ]
 
 [project.urls]
@@ -33,4 +33,4 @@ script-files = ["scripts/ganon-get-seq-info.sh", "libs/genome_updater/genome_upd
 write_to = "VERSION.txt"
 
 [tool.ruff]
-include = [ "pyproject.toml", "src/**/*.py", "tests/**/*.py" ]
+include = [ "pyproject.toml", "src/**/*.py" ]

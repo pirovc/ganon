@@ -96,13 +96,13 @@ def table(cfg):
 
         # "--skip-zeros" trim table on lines and cols
         if cfg.skip_zeros:
-            l = len(out_table)
+            lin = len(out_table)
             # trim rows and cols
             out_table = trim_table(out_table)
-            if len(out_table) < l:
+            if len(out_table) < lin:
                 print_log(
                     " - Skipped "
-                    + str(l - len(out_table))
+                    + str(lin - len(out_table))
                     + " files with only zero counts",
                     cfg.quiet,
                 )

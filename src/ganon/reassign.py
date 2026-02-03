@@ -134,7 +134,6 @@ def reassign(cfg):
             if len(all_files) == 1:
                 output_file = cfg.output_prefix + ".one"
             else:
-                file_pre = os.path.splitext(os.path.basename(af))[0]
                 output_file = cfg.output_prefix + "." + hierarchy + ".one"
 
             # reverse string target <-> integer id
