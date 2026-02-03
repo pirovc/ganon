@@ -22,7 +22,7 @@ def report(cfg):
         "undefined_node": "",
         "undefined_rank": "na",
         "undefined_name": "na",
-        "root_node": "root",
+        "root_node": "1",
         "root_name": "root",
         "root_rank": "root",
     }

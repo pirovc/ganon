@@ -831,7 +831,9 @@ def validate_specialization(info, quiet):
         )
 
     # Fill names not provided with specialization
-    info["specialization_name"].fillna(info["specialization"], inplace=True)
+    info["specialization_name"] = info["specialization_name"].fillna(
+        info["specialization"]
+    )
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
 
