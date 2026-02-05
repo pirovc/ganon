@@ -1,14 +1,10 @@
-from ganon.util import run, print_log, check_file
-from ganon.report import report
-from ganon.config import Config
-from ganon.util import validate_input_files, rm_files
+from ganon.util import print_log, check_file
 
 import os
 from collections import defaultdict
 
 
 def reassign(cfg):
-
     print_log("Reassigning reads", cfg.quiet)
     print_log("", cfg.quiet)
 
@@ -19,7 +15,6 @@ def reassign(cfg):
     rep_file_info = []
 
     if check_file(rep_file):
-
         print_log("Ganon report output found: " + rep_file, cfg.quiet)
         # look for hierarchies
         with open(rep_file) as rep:
@@ -40,7 +35,9 @@ def reassign(cfg):
                 break
             else:
                 print_log(
-                    "No matching files for given .rep [" + cfg.input_prefix + ".all]", cfg.quiet)
+                    "No matching files for given .rep [" + cfg.input_prefix + ".all]",
+                    cfg.quiet,
+                )
                 return False
     else:
         print_log("No .rep file found " + rep_file, cfg.quiet)
@@ -50,15 +47,16 @@ def reassign(cfg):
             all_files[""] = cfg.input_prefix + ".all"
 
     if not all_files:
-        print_log("No .rep or .all file(s) found with prefix --input-prefix " +
-                  cfg.input_prefix, cfg.quiet)
+        print_log(
+            "No .rep or .all file(s) found with prefix --input-prefix "
+            + cfg.input_prefix,
+            cfg.quiet,
+        )
         return False
 
     new_rep = []
     for hierarchy, af in all_files.items():
-
-        print_log(
-            af + (" [" + hierarchy + "]" if hierarchy else ""), cfg.quiet)
+        print_log(af + (" [" + hierarchy + "]" if hierarchy else ""), cfg.quiet)
 
         # Auto-increment dict to save targets (string) into integers, less memory
         targets = defaultdict(lambda: len(targets))
@@ -96,7 +94,6 @@ def reassign(cfg):
         # EM loop
         em_ite_cnt = 0
         while True:
-
             # Make copy of initial weights
             reassigned_matches = initial_weight.copy()
 
@@ -114,13 +111,19 @@ def reassign(cfg):
                 diff += abs(prob[target] - new_prob)
                 prob[target] = new_prob
 
-            print_log(" - Iteration " + str(em_ite_cnt+1) +
-                      " (" + str(round(diff, 6)) + ")", cfg.quiet)
+            print_log(
+                " - Iteration "
+                + str(em_ite_cnt + 1)
+                + " ("
+                + str(round(diff, 6))
+                + ")",
+                cfg.quiet,
+            )
 
             # If abs. difference among old and new probabilities already converged (no change)
             if diff <= cfg.threshold:
                 break
-            if cfg.max_iter > 0 and em_ite_cnt == cfg.max_iter-1:
+            if cfg.max_iter > 0 and em_ite_cnt == cfg.max_iter - 1:
                 break
 
             em_ite_cnt += 1
@@ -131,7 +134,6 @@ def reassign(cfg):
             if len(all_files) == 1:
                 output_file = cfg.output_prefix + ".one"
             else:
-                file_pre = os.path.splitext(os.path.basename(af))[0]
                 output_file = cfg.output_prefix + "." + hierarchy + ".one"
 
             # reverse string target <-> integer id
@@ -140,16 +142,24 @@ def reassign(cfg):
             with open(output_file, "w") as out_file:
                 for readid, matches in read_matches.items():
                     if len(matches) == 1:
-                        print(readid, targets_rev[matches[0][0]], matches[0]
-                              [1], sep="\t", file=out_file)
+                        print(
+                            readid,
+                            targets_rev[matches[0][0]],
+                            matches[0][1],
+                            sep="\t",
+                            file=out_file,
+                        )
                     else:
                         reassigned_reads += 1
                         target, kcount = get_top_match(matches, prob)
-                        print(readid, targets_rev[target],
-                              kcount, sep="\t", file=out_file)
+                        print(
+                            readid, targets_rev[target], kcount, sep="\t", file=out_file
+                        )
 
-            print_log(" - " + str(reassigned_reads) +
-                      " reassigned reads to " + output_file, cfg.quiet)
+            print_log(
+                " - " + str(reassigned_reads) + " reassigned reads to " + output_file,
+                cfg.quiet,
+            )
 
         if rep_file_out:
             with open(rep_file, "r") as rep:
@@ -159,13 +169,24 @@ def reassign(cfg):
                         hierarchy_name = fields[0]
                         target = fields[1]
                         direct_matches = fields[2]
-                        rank = fields[5] if len(fields)>=6 else ""
-                        name = fields[6] if len(fields)>=7 else ""
+                        rank = fields[5] if len(fields) >= 6 else ""
+                        name = fields[6] if len(fields) >= 7 else ""
                         # Only print line of targets
-                        if (hierarchy == "" or hierarchy_name == hierarchy) and targets[target] in reassigned_matches:
+                        if (hierarchy == "" or hierarchy_name == hierarchy) and targets[
+                            target
+                        ] in reassigned_matches:
                             # LCA matches are zero, since they will be reassigned to other nodes
-                            new_rep.append([hierarchy_name, target, direct_matches,
-                                            reassigned_matches[targets[target]], 0, rank, name])
+                            new_rep.append(
+                                [
+                                    hierarchy_name,
+                                    target,
+                                    direct_matches,
+                                    reassigned_matches[targets[target]],
+                                    0,
+                                    rank,
+                                    name,
+                                ]
+                            )
 
     if rep_file_out:
         with open(rep_file_out, "w") as rep_out:

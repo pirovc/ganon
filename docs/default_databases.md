@@ -16,65 +16,84 @@ ganon update -d arc_bac -t 30
 Additionally, [custom databases](custom_databases.md) can be built with customized files and identifiers with the `ganon build-custom` command.
 
 !!! info
-    We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data.
+    We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data. See examples below for commonly used sub-sets and the respective commands.
 
 ## RefSeq and GenBank
 
-NCBI RefSeq and GenBank repositories are common resources to obtain reference sequences to analyze metagenomics data. They are mainly divided into domains/organism groups (e.g. archaea, bacteria, fungi, ...) but can be further filtered. The choice of those filters can drastically change the outcome of results.
+The NCBI RefSeq and GenBank repositories are common sources of reference sequences for analysing metagenomics data. These repositories are primarily organised by domain/organism group (e.g. Archaea, Bacteria, Fungi, etc.), but can be filtered further. The choice of these filters can drastically affect the outcome of the analysis.
 
+RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments [published in the ganon2 article](http://dx.doi.org/10.1093/nargab/lqaf094), the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.
 
 ### Commonly used sub-sets
 
-| RefSeq (2024-04-20) | # assemblies | # species | Size* | `ganon build` |
-|---|---|---|---|---|
-| All genomes | 366941 | 64616 | 215 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
-| Complete genomes | 55114 | 24238 | 42 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
-| Reference genomes | 19890 | 19888 | 77 | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg`</details> |
-
+| RefSeq 2025-11-01    | #assemblies | #species | Size* | Time/Mem* | `ganon build`  |
+|:----------------------:|:------------:|:---------:|:---------:|:-------------:|:--------------:|
+| All genomes            | 468399       | 83798     | 299       | 13h08m / 409  | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| Complete genomes (CG)  | 68639        | 27598     | 55        | 1h28m / 93    | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
+| Reference genomes (RG) | 22862        | 22861     | 89        | 28m / 160     | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg`</details> |
+| CG + RG                | 85036        | 42955     | 120       | 1h23m / 191   | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
 <details>
-  <summary>Data for RefSeq/GenBank 2023-03-14</summary>
+  <summary>Older data for comparison</summary>
+
+```txt
+
+|          RefSeq (2024-04-20)          | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes                           | 366941       | 64616     | 215       |
+| Complete genomes (CG)                 | 55114        | 24238     | 42        |
+| Reference genomes (RG)                | 19890        | 19888     | 77        | 
+| CG + RG                               | 69600        | 37864     | 100       | 
 
 ```
-|          RefSeq (2023-03-14)          | # assemblies | # species | Size |
-|:-------------------------------------:|:------------:|:---------:|:----:|
-| All genomes                           | 295219       | 52781     | 160  |
-| All genomes - 1 assembly/species      | 52781        | 52781     | 128  |
-| Complete genomes                      | 44121        | 19715     | 35   |
-| Complete genomes - 1 assembly/species | 19715        | 19715     | 29   |
-| Reference genomes                     | 18073        | 18073     | 69   |
 
-|          GenBank (2023-03-14)         | # assemblies | # species | Size |
-|:-------------------------------------:|:------------:|:---------:|:----:|
-| All genomes                           | 1595845      | 99505     | -    |
-| All genomes - 1 assembly/species      | 99505        | 99505     | 300  |
-| Complete genomes                      | 92917        | 34815     | 42   |
-| Complete genomes - 1 assembly/species | 34815        | 34815     | 34   |
+```txt
+|          RefSeq (2023-03-14)          | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes                           | 295219       | 52781     | 160       |
+| All genomes - 1 assembly/species      | 52781        | 52781     | 128       |
+| Complete genomes                      | 44121        | 19715     | 35        |
+| Complete genomes - 1 assembly/species | 19715        | 19715     | 29        |
+| Reference genomes                     | 18073        | 18073     | 69        |
+```
+
+```txt
+|          GenBank (2023-03-14)         | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes - 1 assembly/species      | 99505        | 99505     | 300       |
+| Complete genomes                      | 92917        | 34815     | 42        |
+| Complete genomes - 1 assembly/species | 34815        | 34815     | 34        |
 ```
 </details>
 
+
 !!! info
-    Data obtained in 2024-04-20 for archaea, bacteria, fungi and viral groups only. By the time you are reading this, those numbers certainly grew a bit. The commands provided will download up-to-date assemblies and will require slightly larger resources.
+    The values above are based on RefSeq files from 1 November 2025 for the archaea, bacteria, fungi and viral groups. By the time you read this, these numbers will certainly have increased slightly. The provided commands will download the latest assemblies and require slightly more resources.
 
 
-| GTDB R220 | # assemblies | # species | Size* | `ganon build`  |
-|---|---|---|---|---|
-| All genomes | 596859 | 113104 | 338 | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
-
+|  GTDB R226  | #assemblies | #species | Size* | Time/Mem* | `ganon build`  |
+|:-----------:|:------------:|:---------:|:---------:|:--------------:|:--------------:|
+| All genomes | 731982       | 143396    | 501       | 21h17m/618     | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
 <details>
-  <summary>Data for GTDB R214</summary>
+  <summary>Older data for comparison</summary>
 
+```txt
+|             GTDB R220            | # assemblies | # species | Size (GB) |
+|----------------------------------|--------------|-----------|-----------|
+| All genomes                      | 596859       | 113104    | 338       |
 ```
-|             GTDB R214            | # assemblies | # species | Size |
-|:--------------------------------:|:------------:|:---------:|:----:|
-| All genomes                      | 402709       | 85205     | 260  |
-| All genomes - 1 assembly/species | 85205        | 85205     | 213  |
+
+```txt
+|             GTDB R214            | # assemblies | # species | Size (GB) |
+|----------------------------------|--------------|-----------|-----------|
+| All genomes                      | 402709       | 85205     | 260       |
 ```
 </details>
 
 !!! info
     GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.
 
-**\* in GB -> ganon requires up-to 2x the database size of memory to build it. The memory required to use it in classification is approx. the same as the database size.**
+
+*\* "Size" (in GB) is the final ganon database size. "Time/Mem" accounts for wall time and memory (in GB) for the build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.*
 
 - As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources
 - It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches [can reduce the size/RAM requirements with some trade-offs](#reducing-database-size).
