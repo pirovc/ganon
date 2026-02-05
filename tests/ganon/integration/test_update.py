@@ -1,21 +1,15 @@
 import unittest
-import sys
 import os
 import pickle
 from time import sleep
-
-sys.path.append("src")
 from ganon.config import Config
+from tests.ganon.utils import run_ganon
+from tests.ganon.utils import setup_dir
+from tests.ganon.utils import build_sanity_check_and_parse
+from parameterized import parameterized_class
 
 base_dir = "tests/ganon/"
-sys.path.append(base_dir)
-from utils import run_ganon
-from utils import setup_dir
-from utils import build_sanity_check_and_parse
-
 data_dir = base_dir + "data/"
-
-from parameterized import parameterized_class
 
 
 @parameterized_class(

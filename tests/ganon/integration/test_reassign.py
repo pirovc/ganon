@@ -1,20 +1,19 @@
 import unittest
-import sys
 import os
 
-sys.path.append("src")
+
 from ganon.config import Config
 
-base_dir = "tests/ganon/"
-sys.path.append(base_dir)
-from utils import setup_dir
-from utils import build_sanity_check_and_parse
-from utils import classify_sanity_check_and_parse
-from utils import reassign_sanity_check_and_parse
-from utils import parse_all_one, parse_rep
-from utils import run_ganon
-from utils import check_files
 
+from tests.ganon.utils import setup_dir
+from tests.ganon.utils import build_sanity_check_and_parse
+from tests.ganon.utils import classify_sanity_check_and_parse
+from tests.ganon.utils import reassign_sanity_check_and_parse
+from tests.ganon.utils import parse_all_one, parse_rep
+from tests.ganon.utils import run_ganon
+from tests.ganon.utils import check_files
+
+base_dir = "tests/ganon/"
 data_dir = base_dir + "data/"
 
 
@@ -237,7 +236,6 @@ class TestReassign(unittest.TestCase):
         )
         rep = parse_rep(params["output_prefix"] + ".rep")
         one_A = parse_all_one(params["output_prefix"] + ".A.one")
-        one_B = parse_all_one(params["output_prefix"] + ".B.one")
 
         # There are only single matches on output
         self.assertEqual(

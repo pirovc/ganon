@@ -1,17 +1,14 @@
 import unittest
-import sys
 import os
 
-sys.path.append("src")
+
 from ganon.config import Config
+from tests.ganon.utils import run_ganon
+from tests.ganon.utils import setup_dir
+from tests.ganon.utils import build_sanity_check_and_parse
+from tests.ganon.utils import download_bulk_files
 
 base_dir = "tests/ganon/"
-sys.path.append(base_dir)
-from utils import run_ganon
-from utils import setup_dir
-from utils import build_sanity_check_and_parse
-from utils import download_bulk_files
-
 data_dir = base_dir + "data/"
 
 

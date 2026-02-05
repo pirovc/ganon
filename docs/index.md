@@ -61,10 +61,6 @@ However, there are possible performance benefits compiling ganon from source in 
 
 ```bash
 git clone --recurse-submodules https://github.com/pirovc/ganon.git
-```
-  
-```bash
-# Install Python side
 cd ganon
 pip install .
 
@@ -73,7 +69,7 @@ mkdir -p build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DVERBOSE_CONFIG=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCONDA=OFF -DLONGREADS=OFF ..
 make -j 4
-sudo make install  # optional
+sudo make install  # optional, otherwise indicate path when running ganon with --ganon-path
 ```
 
 - to change install location (e.g. `/myprefix/bin/`), set the installation prefix in the cmake command with `-DCMAKE_INSTALL_PREFIX=/myprefix/ `

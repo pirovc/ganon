@@ -1,22 +1,18 @@
 import unittest
-import sys
 import os
-
-sys.path.append("src")
 from ganon.config import Config
+from tests.ganon.utils import (
+    run_ganon,
+    setup_dir,
+    list_files_folder,
+    list_sequences,
+    build_sanity_check_and_parse,
+    write_input_file,
+)
+from parameterized import parameterized_class
 
 base_dir = "tests/ganon/"
-sys.path.append(base_dir)
-from utils import run_ganon
-from utils import setup_dir
-from utils import list_files_folder
-from utils import list_sequences
-from utils import build_sanity_check_and_parse
-from utils import write_input_file
-
 data_dir = base_dir + "data/"
-
-from parameterized import parameterized_class
 
 
 @parameterized_class(
@@ -1267,8 +1263,6 @@ class TestBuildCustom(unittest.TestCase):
         ganon build-custom --input-file with one 1 col and --input-target sequence
         """
         files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
-        sequences = list_sequences(files)
-
         params = self.default_params.copy()
         params["db_prefix"] = self.results_dir + "test_input_file_1col_sequence"
         params["input"] = ""

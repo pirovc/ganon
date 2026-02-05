@@ -1,14 +1,13 @@
 import shutil
 import os
 import gzip
-import sys
 import pandas as pd
 from pathlib import Path
 from math import floor
 
 from multitax import CustomTx
 
-sys.path.append("src")
+
 from ganon.util import download
 from ganon.config import Config
 from ganon import ganon
@@ -424,9 +423,9 @@ def report_sanity_check_and_parse(params, sum_full_percentage: bool = True):
         target_perc = dict(
             zip(res["tre_pd"]["target"], res["tre_pd"]["cumulative_perc"])
         )
-        for l in res["tre_pd"]["lineage"]:
+        for lin in res["tre_pd"]["lineage"]:
             # skip empty nodes (e.g 241||412412 -> 241|412412)
-            lineage = [n for n in l.split("|") if n]
+            lineage = [n for n in lin.split("|") if n]
             # From leaf to root
             for node_idx in list(range(len(lineage)))[::-1]:
                 # if node_idx is not latest (0 -> no parent) and if node is reported

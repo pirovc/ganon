@@ -554,7 +554,7 @@ class Config:
             metavar="",
             default=[],
             help="Ranks to report taxonomic abundances (.tre). empty will report default ranks ["
-            + ", ".join(self.choices_default_ranks)
+            + " ".join(self.choices_default_ranks)
             + "].",
         )
         classify_group_postrep.add_argument(
@@ -826,7 +826,7 @@ class Config:
             metavar="",
             default=[],
             help="Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks ["
-            + ", ".join(self.choices_default_ranks)
+            + " ".join(self.choices_default_ranks)
             + "].",
         )
         report_group_output.add_argument(
@@ -874,7 +874,7 @@ class Config:
             metavar="",
             default=0,
             help="Top percentile filter, based on percentage/relative abundance. Applied only at default ranks ["
-            + ", ".join(self.choices_default_ranks)
+            + " ".join(self.choices_default_ranks)
             + "]",
         )
         report_group_output.add_argument(

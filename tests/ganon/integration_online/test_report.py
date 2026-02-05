@@ -1,18 +1,15 @@
 import os
-from utils import run_ganon
-from utils import download_bulk_files
-from utils import classify_sanity_check_and_parse
-from utils import build_sanity_check_and_parse
-from utils import report_sanity_check_and_parse
-from utils import setup_dir
+from tests.ganon.utils import run_ganon
+from tests.ganon.utils import download_bulk_files
+from tests.ganon.utils import classify_sanity_check_and_parse
+from tests.ganon.utils import build_sanity_check_and_parse
+from tests.ganon.utils import report_sanity_check_and_parse
+from tests.ganon.utils import setup_dir
 from ganon.config import Config
 import unittest
-import sys
 
-sys.path.append("src")
 
 base_dir = "tests/ganon/"
-sys.path.append(base_dir)
 data_dir = base_dir + "data/"
 
 

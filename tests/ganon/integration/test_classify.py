@@ -1,20 +1,22 @@
 import unittest
-import sys
 
-sys.path.append("src")
+
 from ganon.config import Config
 
-base_dir = "tests/ganon/"
-sys.path.append(base_dir)
-from utils import setup_dir
-from utils import build_sanity_check_and_parse
-from utils import classify_sanity_check_and_parse, report_sanity_check_and_parse
-from utils import run_ganon
-from utils import check_files
 
-data_dir = base_dir + "data/"
-
+from tests.ganon.utils import setup_dir
+from tests.ganon.utils import build_sanity_check_and_parse
+from tests.ganon.utils import (
+    classify_sanity_check_and_parse,
+    report_sanity_check_and_parse,
+)
+from tests.ganon.utils import run_ganon
+from tests.ganon.utils import check_files
 from parameterized import parameterized_class
+
+
+base_dir = "tests/ganon/"
+data_dir = base_dir + "data/"
 
 
 @parameterized_class(
