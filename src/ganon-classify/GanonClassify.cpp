@@ -908,26 +908,18 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
 
 void print_stats( Total& total, const double& seq_processed, const double& seq_unclassified )
 {
-
-    const size_t seq_classified       = total.sequences_classified;
-    const size_t seq_unique_matches   = total.unique_sequence_matches;
     const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
-    const size_t total_seq_matches    = total.sequence_matches;
     const double avg_seq_matches =
         total.sequences_classified ? ( total.sequence_matches / static_cast< double >( total.sequences_classified ) )
                                    : 0;
-    const size_t discarded_seq_matches_relfilter = total.discarded_sequence_matches_filter;
-    const size_t discarded_seq_matches_fprquery  = total.discarded_sequence_matches_fprquery;
-    const size_t kmers_from_classified_seq       = total.kmers_from_classified_reads;
-    const size_t kmers_matched                   = total.kmers_matches;
     const double kmers_matched_perc =
         total.kmers_matches ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_reads ) ) * 100
                             : 0;
 
-    std::cerr << " - " << seq_classified << " sequences classified (" << ( seq_classified / seq_processed ) * 100
-              << "%)" << std::endl;
-    std::cerr << "   - " << seq_unique_matches << " with unique matches ("
-              << ( seq_unique_matches / seq_processed ) * 100 << "%)" << std::endl;
+    std::cerr << " - " << total.sequences_classified << " sequences classified ("
+              << ( total.sequences_classified / seq_processed ) * 100 << "%)" << std::endl;
+    std::cerr << "   - " << total.unique_sequence_matches << " with unique matches ("
+              << ( total.unique_sequence_matches / seq_processed ) * 100 << "%)" << std::endl;
     std::cerr << "   - " << seq_multiple_matches << " with multiple matches ("
               << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)" << std::endl;
     if ( seq_unclassified > 0 )
@@ -947,10 +939,10 @@ void print_stats( Total& total, const double& seq_processed, const double& seq_u
     }
 
     std::cerr << std::endl;
-    std::cerr << " - sequence matches: " << total_seq_matches << " valid (avg. " << avg_seq_matches
-              << " match/sequence), " << discarded_seq_matches_relfilter << " discarded (--rel-filter), "
-              << discarded_seq_matches_fprquery << " discarded (--fpr-query)" << std::endl;
-    std::cerr << " - k-mer matches: " << kmers_matched << "/" << kmers_from_classified_seq
+    std::cerr << " - sequence matches: " << total.sequence_matches << " valid (avg. " << avg_seq_matches
+              << " match/sequence), " << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
+              << total.discarded_sequence_matches_fprquery << " discarded (--fpr-query)" << std::endl;
+    std::cerr << " - k-mer matches: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
               << " valid from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
 }
 
