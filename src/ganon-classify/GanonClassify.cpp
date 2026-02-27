@@ -131,10 +131,10 @@ struct ReadOut
 struct Rep
 {
     // Report with counts of matches and reads assigned (unique or lca) for each target
-    size_t matches      = 0;
-    size_t lca_reads    = 0;
-    size_t unique_reads = 0;
-    size_t discarded_matches_filter = 0;
+    size_t matches                    = 0;
+    size_t lca_reads                  = 0;
+    size_t unique_reads               = 0;
+    size_t discarded_matches_filter   = 0;
     size_t discarded_matches_fprquery = 0;
 };
 
@@ -143,17 +143,17 @@ typedef robin_hood::unordered_map< std::string, Node > TTax;
 
 struct Total
 {
-    size_t reads_processed  = 0;
-    size_t reads_skipped_big = 0;
-    size_t reads_skipped_small = 0;
-    size_t length_processed = 0;
-    size_t kmers_processed = 0;
-    size_t sequences_classified = 0;
-    size_t kmers_matches = 0;
-    size_t kmers_from_classified_reads = 0;
-    size_t sequence_matches          = 0;
-    size_t unique_sequence_matches   = 0;
-    size_t discarded_sequence_matches_filter = 0;
+    size_t reads_processed                     = 0;
+    size_t reads_skipped_big                   = 0;
+    size_t reads_skipped_small                 = 0;
+    size_t length_processed                    = 0;
+    size_t kmers_processed                     = 0;
+    size_t sequences_classified                = 0;
+    size_t kmers_matches                       = 0;
+    size_t kmers_from_classified_reads         = 0;
+    size_t sequence_matches                    = 0;
+    size_t unique_sequence_matches             = 0;
+    size_t discarded_sequence_matches_filter   = 0;
     size_t discarded_sequence_matches_fprquery = 0;
 };
 
@@ -190,7 +190,8 @@ struct Stats
             hierarchy_total[hierarchy_label].kmers_matches += t.kmers_matches;
             hierarchy_total[hierarchy_label].kmers_from_classified_reads += t.kmers_from_classified_reads;
             hierarchy_total[hierarchy_label].discarded_sequence_matches_filter += t.discarded_sequence_matches_filter;
-            hierarchy_total[hierarchy_label].discarded_sequence_matches_fprquery += t.discarded_sequence_matches_fprquery;
+            hierarchy_total[hierarchy_label].discarded_sequence_matches_fprquery +=
+                t.discarded_sequence_matches_fprquery;
         }
     }
 
@@ -210,7 +211,6 @@ struct Stats
             hierarchy_total[hierarchy_label].discarded_sequence_matches_fprquery += rep.discarded_matches_fprquery;
         }
     }
-
 };
 
 struct FilterConfig
@@ -352,7 +352,6 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
             report_sum[target].unique_reads += r.unique_reads;
             report_sum[target].discarded_matches_filter += r.discarded_matches_filter;
             report_sum[target].discarded_matches_fprquery += r.discarded_matches_fprquery;
-            
         }
     }
     return report_sum;
@@ -471,7 +470,9 @@ size_t filter_matches(
 
             rep[target].matches++;
             read_out.matches.push_back( ReadMatch{ target, std::get< 0 >( count_fpr ) } );
-        }else{
+        }
+        else
+        {
             rep[target].discarded_matches_filter++;
         }
     }
@@ -577,7 +578,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     {
                         total.reads_processed++;
                         total.length_processed += read1_len + read2_len;
-                        total.kmers_processed+=n_hashes;
+                        total.kmers_processed += n_hashes;
                     }
 
                     // For each filter in the hierarchy
@@ -600,18 +601,22 @@ void classify( std::vector< Filter< TFilter > >& filters,
                                         min_count_read,
                                         n_hashes );
                     }
-                }else{
-                    if ( hierarchy_first )
-                       total.reads_skipped_big++; 
                 }
-            }else{
+                else
+                {
+                    if ( hierarchy_first )
+                        total.reads_skipped_big++;
+                }
+            }
+            else
+            {
                 if ( hierarchy_first )
                     total.reads_skipped_small++;
             }
 
             // store read and matches to be printed
             ReadOut read_out( rb.ids[readID] );
-            
+
             // if read got valid matches (above cutoff)
             if ( max_count_read > 0 )
             {
@@ -623,12 +628,12 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 // Filter matches
                 const size_t count_filtered_matches =
                     filter_matches( read_out, matches, rep, n_hashes, threshold_filter, hierarchy_config.fpr_query );
-                
+
                 if ( count_filtered_matches > 0 )
                 {
                     total.sequences_classified++;
-                    total.kmers_from_classified_reads+=n_hashes;
-                    total.kmers_matches+=max_count_read;
+                    total.kmers_from_classified_reads += n_hashes;
+                    total.kmers_matches += max_count_read;
 
                     if ( !config.skip_lca )
                     {
@@ -901,46 +906,52 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
 }
 
 
-void print_stats( Total& total, const double& seq_processed, const double& seq_unclassified ){
-    
-    const size_t seq_classified = total.sequences_classified;
-    const size_t seq_unique_matches = total.unique_sequence_matches;
-    const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
-    const size_t total_seq_matches = total.sequence_matches;
-    const double avg_seq_matches = total.sequences_classified
-                             ? ( total.sequence_matches / static_cast< double >( total.sequences_classified ) )
-                             : 0;
-    const size_t discarded_seq_matches_relfilter = total.discarded_sequence_matches_filter;
-    const size_t discarded_seq_matches_fprquery = total.discarded_sequence_matches_fprquery;
-    const size_t kmers_from_classified_seq = total.kmers_from_classified_reads;
-    const size_t kmers_matched = total.kmers_matches;
-    const double kmers_matched_perc = total.kmers_matches
-                             ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_reads ) ) * 100
-                             : 0;
+void print_stats( Total& total, const double& seq_processed, const double& seq_unclassified )
+{
 
-    std::cerr << " - " << seq_classified << " sequences classified ("
-              << ( seq_classified / seq_processed ) * 100 << "%)" << std::endl;
+    const size_t seq_classified       = total.sequences_classified;
+    const size_t seq_unique_matches   = total.unique_sequence_matches;
+    const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
+    const size_t total_seq_matches    = total.sequence_matches;
+    const double avg_seq_matches =
+        total.sequences_classified ? ( total.sequence_matches / static_cast< double >( total.sequences_classified ) )
+                                   : 0;
+    const size_t discarded_seq_matches_relfilter = total.discarded_sequence_matches_filter;
+    const size_t discarded_seq_matches_fprquery  = total.discarded_sequence_matches_fprquery;
+    const size_t kmers_from_classified_seq       = total.kmers_from_classified_reads;
+    const size_t kmers_matched                   = total.kmers_matches;
+    const double kmers_matched_perc =
+        total.kmers_matches ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_reads ) ) * 100
+                            : 0;
+
+    std::cerr << " - " << seq_classified << " sequences classified (" << ( seq_classified / seq_processed ) * 100
+              << "%)" << std::endl;
     std::cerr << "   - " << seq_unique_matches << " with unique matches ("
               << ( seq_unique_matches / seq_processed ) * 100 << "%)" << std::endl;
     std::cerr << "   - " << seq_multiple_matches << " with multiple matches ("
-              << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)"
-              << std::endl;
-    if ( seq_unclassified > 0 ){
-        std::cerr << " - " << seq_unclassified << " sequences unclassified (" << ( seq_unclassified / seq_processed ) * 100 << "%)" << std::endl;
+              << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)" << std::endl;
+    if ( seq_unclassified > 0 )
+    {
+        std::cerr << " - " << seq_unclassified << " sequences unclassified ("
+                  << ( seq_unclassified / seq_processed ) * 100 << "%)" << std::endl;
         if ( total.reads_skipped_small )
         {
-            std::cerr << "   - " << total.reads_skipped_small << " sequences skipped (shorter than window size)" << std::endl;
+            std::cerr << "   - " << total.reads_skipped_small << " sequences skipped (shorter than window size)"
+                      << std::endl;
         }
         if ( total.reads_skipped_big )
         {
-            std::cerr << "   - " << total.reads_skipped_big << " sequences skipped (larger than allowed, check -DLONGREADS)" << std::endl;
+            std::cerr << "   - " << total.reads_skipped_big
+                      << " sequences skipped (larger than allowed, check -DLONGREADS)" << std::endl;
         }
     }
-        
+
     std::cerr << std::endl;
-    std::cerr << " - sequence matches: " << total_seq_matches << " valid (avg. " << avg_seq_matches << " match/sequence), " << 
-    discarded_seq_matches_relfilter << " discarded (--rel-filter), " << discarded_seq_matches_fprquery << " discarded (--fpr-query)" << std::endl;
-    std::cerr << " - k-mer matches: " << kmers_matched << "/" << kmers_from_classified_seq << " valid from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
+    std::cerr << " - sequence matches: " << total_seq_matches << " valid (avg. " << avg_seq_matches
+              << " match/sequence), " << discarded_seq_matches_relfilter << " discarded (--rel-filter), "
+              << discarded_seq_matches_fprquery << " discarded (--fpr-query)" << std::endl;
+    std::cerr << " - k-mer matches: " << kmers_matched << "/" << kmers_from_classified_seq
+              << " valid from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
 }
 
 
@@ -1373,15 +1384,16 @@ bool ganon_classify( Config config )
 
         const double elapsed_classification = timeClassPrint.elapsed();
         std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
-                << stats.total.length_processed / 1000000.0 << " Mbp) with " << stats.total.kmers_processed << " k-mers in " << elapsed_classification << " seconds ("
-                << ( stats.total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
-                << std::endl;
+                  << stats.total.length_processed / 1000000.0 << " Mbp) with " << stats.total.kmers_processed
+                  << " k-mers in " << elapsed_classification << " seconds ("
+                  << ( stats.total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
+                  << std::endl;
 
         const size_t seq_unclassified = stats.total.reads_processed - stats.total.sequences_classified;
-        const double seq_processed  = stats.total.reads_processed > 0
-                                        ? static_cast< double >( stats.total.reads_processed )
-                                        : 1; // to not report nan on divisions
-        detail::print_stats( stats.total, seq_processed, seq_unclassified);
+        const double seq_processed    = stats.total.reads_processed > 0
+                                            ? static_cast< double >( stats.total.reads_processed )
+                                            : 1; // to not report nan on divisions
+        detail::print_stats( stats.total, seq_processed, seq_unclassified );
 
         if ( parsed_hierarchy.size() > 1 )
         {
@@ -1391,9 +1403,9 @@ bool ganon_classify( Config config )
             {
                 std::string hierarchy_label = h.first;
                 std::cerr << hierarchy_label << ":" << std::endl;
-                detail::print_stats( stats.hierarchy_total[hierarchy_label], seq_processed, 0);
+                detail::print_stats( stats.hierarchy_total[hierarchy_label], seq_processed, 0 );
             }
-        } 
+        }
     }
 
     return true;
