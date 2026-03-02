@@ -906,7 +906,7 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
 }
 
 
-void print_stats( Total& total, const double& seq_processed, const double& seq_unclassified )
+void print_stats( Total& total, const double& seq_processed, const size_t& seq_unclassified )
 {
     const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
     const double avg_seq_matches =
@@ -916,6 +916,7 @@ void print_stats( Total& total, const double& seq_processed, const double& seq_u
         total.kmers_matches ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_reads ) ) * 100
                             : 0;
 
+    // std::cerr << std::fixed << std::setprecision( 4 );
     std::cerr << " - " << total.sequences_classified << " sequences classified ("
               << ( total.sequences_classified / seq_processed ) * 100 << "%)" << std::endl;
     std::cerr << "   - " << total.unique_sequence_matches << " with unique matches ("
@@ -934,16 +935,16 @@ void print_stats( Total& total, const double& seq_processed, const double& seq_u
         if ( total.reads_skipped_big )
         {
             std::cerr << "   - " << total.reads_skipped_big
-                      << " sequences skipped (larger than allowed, check -DLONGREADS)" << std::endl;
+                      << " sequences skipped (larger than allowed, check compilation with -DLONGREADS)" << std::endl;
         }
     }
 
     std::cerr << std::endl;
-    std::cerr << " - sequence matches: " << total.sequence_matches << " valid (avg. " << avg_seq_matches
-              << " match/sequence), " << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
+    std::cerr << " - sequence-reference matches: " << total.sequence_matches << " (avg. " << avg_seq_matches
+              << " reference/sequence), " << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
               << total.discarded_sequence_matches_fprquery << " discarded (--fpr-query)" << std::endl;
     std::cerr << " - k-mer matches: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
-              << " valid from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
+              << " max. from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
 }
 
 
