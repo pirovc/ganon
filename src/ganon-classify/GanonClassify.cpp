@@ -943,8 +943,9 @@ void print_stats( Total& total, const double& seq_processed, const size_t& seq_u
     std::cerr << " - sequence-reference matches: " << total.sequence_matches << " (avg. " << avg_seq_matches
               << " reference/sequence), " << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
               << total.discarded_sequence_matches_fprquery << " discarded (--fpr-query)" << std::endl;
-    std::cerr << " - k-mer matches: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
-              << " max. from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
+    std::cerr << " - k-mers: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
+              << " (max.) k-mers matched/k-mers from class. sequences" << " (" << kmers_matched_perc << "%)"
+              << std::endl;
 }
 
 
