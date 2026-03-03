@@ -510,6 +510,15 @@ class Config:
             metavar="reads.1.fq[.gz] reads.2.fq[.gz]",
             help="Multi-fastq[.gz] pairs of file[s] to classify",
         )
+        classify_group_required.add_argument(
+            "-a",
+            "--batch-reads",
+            type=str,
+            nargs="*",
+            required=False,
+            metavar="file.tsv",
+            help="File with single- or paired-end reads to be processed in one run. Prefix can be repeated. Example: prefix <tab> file1 [<tab> file2]",
+        )
 
         classify_group_cutoff_filter = classify_parser.add_argument_group(
             "cutoff/filter arguments"
@@ -1303,9 +1312,9 @@ class Config:
                 )
                 return False
 
-            if not self.single_reads and not self.paired_reads:
+            if not self.single_reads and not self.paired_reads and not self.batch_reads:
                 print_log(
-                    "Please provide file[s] with --single-reads or --paired-reads"
+                    "Please provide file[s] with --single-reads, --paired-reads or --batch-reads"
                 )
                 return False
 

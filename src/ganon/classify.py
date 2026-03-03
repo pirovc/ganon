@@ -31,6 +31,7 @@ def classify(cfg):
             cfg.path_exec["classify"],
             "--single-reads " + ",".join(cfg.single_reads) if cfg.single_reads else "",
             "--paired-reads " + ",".join(cfg.paired_reads) if cfg.paired_reads else "",
+            "--batch-reads " + ",".join(cfg.batch_reads) if cfg.batch_reads else "",
             "--ibf " + filter_files,
             "--tax " + tax_files if tax_files else "",
             "--hierarchy-labels " + ",".join(cfg.hierarchy_labels)
