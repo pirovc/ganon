@@ -149,11 +149,9 @@ struct Rep
     size_t discarded_matches_fprquery = 0;
 };
 
-typedef robin_hood::unordered_map< std::string, Rep >  TRep;
-typedef robin_hood::unordered_map< std::string, Node > TTax;
-
 struct Total
 {
+    size_t input_reads                         = 0;
     size_t reads_processed                     = 0;
     size_t reads_skipped_big                   = 0;
     size_t reads_skipped_small                 = 0;
@@ -168,58 +166,70 @@ struct Total
     size_t discarded_sequence_matches_fprquery = 0;
 };
 
+
+typedef std::map< std::pair< std::string, std::string >, Rep > TRep;
+typedef robin_hood::unordered_map< std::string, Total >        TTotal;
+typedef robin_hood::unordered_map< std::string, Node >         TTax;
+
+
 struct Stats
 {
-    Total total;
-    // number of reads in the input files
-    size_t input_reads = 0;
+    // General total
+    TTotal total;
     // Total for each hierarchy
-    std::map< std::string, Total > hierarchy_total;
+    std::map< std::string, TTotal > hierarchy_total;
 
-    void add_totals( std::string hierarchy_label, std::vector< Total > const& totals )
+    void add_totals( std::string hierarchy_label, std::vector< detail::TTotal > const& totals )
     {
         // add several totals (from threads) into the stats
-        for ( auto const& t : totals )
+        for ( auto const& total_thread : totals )
         {
-            total.reads_processed += t.reads_processed;
-            total.reads_skipped_big += t.reads_skipped_big;
-            total.reads_skipped_small += t.reads_skipped_small;
-            total.length_processed += t.length_processed;
-            total.kmers_processed += t.kmers_processed;
-            total.sequences_classified += t.sequences_classified;
-            total.kmers_matches += t.kmers_matches;
-            total.kmers_from_classified_reads += t.kmers_from_classified_reads;
-            total.discarded_sequence_matches_filter += t.discarded_sequence_matches_filter;
-            total.discarded_sequence_matches_fprquery += t.discarded_sequence_matches_fprquery;
+            for ( auto const& [prefix, t] : total_thread )
+            {
+                total[prefix].reads_processed += t.reads_processed;
+                total[prefix].reads_skipped_big += t.reads_skipped_big;
+                total[prefix].reads_skipped_small += t.reads_skipped_small;
+                total[prefix].length_processed += t.length_processed;
+                total[prefix].kmers_processed += t.kmers_processed;
+                total[prefix].sequences_classified += t.sequences_classified;
+                total[prefix].kmers_matches += t.kmers_matches;
+                total[prefix].kmers_from_classified_reads += t.kmers_from_classified_reads;
+                total[prefix].discarded_sequence_matches_filter += t.discarded_sequence_matches_filter;
+                total[prefix].discarded_sequence_matches_fprquery += t.discarded_sequence_matches_fprquery;
 
-            hierarchy_total[hierarchy_label].reads_processed += t.reads_processed;
-            hierarchy_total[hierarchy_label].reads_skipped_big += t.reads_skipped_big;
-            hierarchy_total[hierarchy_label].reads_skipped_small += t.reads_skipped_small;
-            hierarchy_total[hierarchy_label].length_processed += t.length_processed;
-            hierarchy_total[hierarchy_label].kmers_processed += t.kmers_processed;
-            hierarchy_total[hierarchy_label].sequences_classified += t.sequences_classified;
-            hierarchy_total[hierarchy_label].kmers_matches += t.kmers_matches;
-            hierarchy_total[hierarchy_label].kmers_from_classified_reads += t.kmers_from_classified_reads;
-            hierarchy_total[hierarchy_label].discarded_sequence_matches_filter += t.discarded_sequence_matches_filter;
-            hierarchy_total[hierarchy_label].discarded_sequence_matches_fprquery +=
-                t.discarded_sequence_matches_fprquery;
+                hierarchy_total[hierarchy_label][prefix].reads_processed += t.reads_processed;
+                hierarchy_total[hierarchy_label][prefix].reads_skipped_big += t.reads_skipped_big;
+                hierarchy_total[hierarchy_label][prefix].reads_skipped_small += t.reads_skipped_small;
+                hierarchy_total[hierarchy_label][prefix].length_processed += t.length_processed;
+                hierarchy_total[hierarchy_label][prefix].kmers_processed += t.kmers_processed;
+                hierarchy_total[hierarchy_label][prefix].sequences_classified += t.sequences_classified;
+                hierarchy_total[hierarchy_label][prefix].kmers_matches += t.kmers_matches;
+                hierarchy_total[hierarchy_label][prefix].kmers_from_classified_reads += t.kmers_from_classified_reads;
+                hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_filter +=
+                    t.discarded_sequence_matches_filter;
+                hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_fprquery +=
+                    t.discarded_sequence_matches_fprquery;
+            }
         }
     }
 
     void add_reports( std::string hierarchy_label, TRep const& report )
     {
         // add values from reports to stats
-        for ( auto const& [target, rep] : report )
+        for ( auto const& [prefix_target, rep] : report )
         {
-            total.sequence_matches += rep.matches;
-            total.unique_sequence_matches += rep.unique_reads;
-            total.discarded_sequence_matches_filter += rep.discarded_matches_filter;
-            total.discarded_sequence_matches_fprquery += rep.discarded_matches_fprquery;
+            auto prefix = prefix_target.first;
 
-            hierarchy_total[hierarchy_label].sequence_matches += rep.matches;
-            hierarchy_total[hierarchy_label].unique_sequence_matches += rep.unique_reads;
-            hierarchy_total[hierarchy_label].discarded_sequence_matches_filter += rep.discarded_matches_filter;
-            hierarchy_total[hierarchy_label].discarded_sequence_matches_fprquery += rep.discarded_matches_fprquery;
+            total[prefix].sequence_matches += rep.matches;
+            total[prefix].unique_sequence_matches += rep.unique_reads;
+            total[prefix].discarded_sequence_matches_filter += rep.discarded_matches_filter;
+            total[prefix].discarded_sequence_matches_fprquery += rep.discarded_matches_fprquery;
+
+            hierarchy_total[hierarchy_label][prefix].sequence_matches += rep.matches;
+            hierarchy_total[hierarchy_label][prefix].unique_sequence_matches += rep.unique_reads;
+            hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_filter += rep.discarded_matches_filter;
+            hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_fprquery +=
+                rep.discarded_matches_fprquery;
         }
     }
 };
@@ -412,16 +422,16 @@ void print_hierarchy( Config const& config, auto const& parsed_hierarchy )
 
 inline TRep sum_reports( std::vector< TRep > const& reports )
 {
-    TRep report_sum;
+    detail::TRep report_sum;
     for ( auto const& report : reports )
     {
-        for ( auto const& [target, r] : report )
+        for ( auto const& [prefix_target, rep] : report )
         {
-            report_sum[target].matches += r.matches;
-            report_sum[target].lca_reads += r.lca_reads;
-            report_sum[target].unique_reads += r.unique_reads;
-            report_sum[target].discarded_matches_filter += r.discarded_matches_filter;
-            report_sum[target].discarded_matches_fprquery += r.discarded_matches_fprquery;
+            report_sum[prefix_target].matches += rep.matches;
+            report_sum[prefix_target].lca_reads += rep.lca_reads;
+            report_sum[prefix_target].unique_reads += rep.unique_reads;
+            report_sum[prefix_target].discarded_matches_filter += rep.discarded_matches_filter;
+            report_sum[prefix_target].discarded_matches_fprquery += rep.discarded_matches_fprquery;
         }
     }
     return report_sum;
@@ -533,17 +543,17 @@ size_t filter_matches(
                 }
                 if ( q > min_fpr_query )
                 {
-                    rep[target].discarded_matches_fprquery++;
+                    rep[{ read_out.prefix, target }].discarded_matches_fprquery++;
                     continue;
                 }
             }
 
-            rep[target].matches++;
+            rep[{ read_out.prefix, target }].matches++;
             read_out.matches.push_back( ReadMatch{ target, std::get< 0 >( count_fpr ) } );
         }
         else
         {
-            rep[target].discarded_matches_filter++;
+            rep[{ read_out.prefix, target }].discarded_matches_filter++;
         }
     }
 
@@ -560,7 +570,7 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_count_rea
     }
 
     std::string target_lca = lca.getLCA( targets );
-    rep[target_lca].lca_reads++;
+    rep[{ read_out.prefix, target_lca }].lca_reads++;
     read_out_lca.matches.push_back( ReadMatch{ target_lca, max_count_read } );
 }
 
@@ -569,7 +579,7 @@ template < typename TFilter >
 void classify( std::vector< Filter< TFilter > >& filters,
                LCA&                              lca,
                TRep&                             rep,
-               Total&                            total,
+               TTotal&                           total,
                SafeQueue< ReadOut >&             classified_all_queue,
                SafeQueue< ReadOut >&             classified_lca_queue,
                SafeQueue< ReadOut >&             unclassified_queue,
@@ -646,9 +656,9 @@ void classify( std::vector< Filter< TFilter > >& filters,
                     // Sum sequence to totals
                     if ( hierarchy_first )
                     {
-                        total.reads_processed++;
-                        total.length_processed += read1_len + read2_len;
-                        total.kmers_processed += n_hashes;
+                        total[rb.prefix].reads_processed++;
+                        total[rb.prefix].length_processed += read1_len + read2_len;
+                        total[rb.prefix].kmers_processed += n_hashes;
                     }
 
                     // For each filter in the hierarchy
@@ -675,13 +685,13 @@ void classify( std::vector< Filter< TFilter > >& filters,
                 else
                 {
                     if ( hierarchy_first )
-                        total.reads_skipped_big++;
+                        total[rb.prefix].reads_skipped_big++;
                 }
             }
             else
             {
                 if ( hierarchy_first )
-                    total.reads_skipped_small++;
+                    total[rb.prefix].reads_skipped_small++;
             }
 
             // store read and matches to be printed
@@ -701,9 +711,9 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
                 if ( count_filtered_matches > 0 )
                 {
-                    total.sequences_classified++;
-                    total.kmers_from_classified_reads += n_hashes;
-                    total.kmers_matches += max_count_read;
+                    total[rb.prefix].sequences_classified++;
+                    total[rb.prefix].kmers_from_classified_reads += n_hashes;
+                    total[rb.prefix].kmers_matches += max_count_read;
 
                     if ( !config.skip_lca )
                     {
@@ -712,7 +722,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         {
                             // just one match, copy read read_out and set as unique
                             read_out_lca = read_out;
-                            rep[read_out.matches[0].target].unique_reads++;
+                            rep[{ read_out.prefix, read_out.matches[0].target }].unique_reads++;
                         }
                         else
                         {
@@ -727,13 +737,13 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         // Not running lca and has unique match
                         if ( count_filtered_matches == 1 )
                         {
-                            rep[read_out.matches[0].target].unique_reads++;
+                            rep[{ read_out.prefix, read_out.matches[0].target }].unique_reads++;
                         }
                         else
                         {
                             // without tax, no lca, count multi-matches to a root node
                             // to keep consistency among reports (no. of classified reads)
-                            rep[config.tax_root_node].lca_reads++;
+                            rep[{ read_out.prefix, config.tax_root_node }].lca_reads++;
                         }
                     }
 
@@ -770,21 +780,34 @@ void classify( std::vector< Filter< TFilter > >& filters,
     }
 }
 
-void write_report( TRep& rep, TTax& tax, std::ofstream& out_rep, std::string hierarchy_label )
+void write_report( TRep& rep, TTax& tax, std::map< std::string, std::ofstream >& out, std::string hierarchy_label )
 {
-    for ( auto const& [target, report] : rep )
+    for ( auto const& [idx, report] : rep )
     {
+        auto prefix = idx.first;
+        auto target = idx.second;
+
         if ( report.matches || report.lca_reads || report.unique_reads )
         {
-            out_rep << hierarchy_label << '\t' << target << '\t' << report.matches << '\t' << report.unique_reads
-                    << '\t' << report.lca_reads;
+            out[prefix] << hierarchy_label << '\t' << target << '\t' << report.matches << '\t' << report.unique_reads
+                        << '\t' << report.lca_reads;
 
             if ( !tax.empty() )
             {
-                out_rep << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name;
+                out[prefix] << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name;
             }
-            out_rep << '\n';
+            out[prefix] << '\n';
         }
+    }
+}
+
+void write_report_totals( Stats& stats, std::map< std::string, std::ofstream >& out )
+{
+    for ( auto const& [prefix, total] : stats.total )
+    {
+        out[prefix] << "#total_classified\t" << total.sequences_classified << '\n';
+        // account for unclassified and skipped sequences
+        out[prefix] << "#total_unclassified\t" << total.input_reads - total.sequences_classified << '\n';
     }
 }
 
@@ -975,9 +998,11 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
     std::cerr << std::endl;
 }
 
-
-void print_stats( Total& total, const double& seq_processed, const size_t& seq_unclassified )
+void print_stats_db( const Total& total, size_t seq_unclassified )
 {
+
+    const double seq_processed        = total.reads_processed > 0 ? static_cast< double >( total.reads_processed )
+                                                                  : 1; // to not report nan on divisions
     const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
     const double avg_seq_matches =
         total.sequences_classified ? ( total.sequence_matches / static_cast< double >( total.sequences_classified ) )
@@ -1018,6 +1043,36 @@ void print_stats( Total& total, const double& seq_processed, const size_t& seq_u
               << std::endl;
 }
 
+void print_stats( Stats&                                          stats,
+                  double                                          elapsed_classification,
+                  const std::map< std::string, HierarchyConfig >& parsed_hierarchy )
+{
+
+    for ( auto const& [prefix, total] : stats.total )
+    {
+
+        std::cerr << prefix << std::endl;
+        std::cerr << "ganon-classify processed " << total.reads_processed << " sequences ("
+                  << total.length_processed / 1000000.0 << " Mbp) with " << total.kmers_processed << " k-mers in "
+                  << elapsed_classification << " seconds ("
+                  << ( total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
+                  << std::endl;
+        const size_t seq_unclassified = total.reads_processed - total.sequences_classified;
+        detail::print_stats_db( total, seq_unclassified );
+        if ( parsed_hierarchy.size() > 1 )
+        {
+            std::cerr << std::endl;
+            std::cerr << "By database hierarchy:" << std::endl;
+            for ( auto const& h : parsed_hierarchy )
+            {
+                std::string hierarchy_label = h.first;
+                std::cerr << hierarchy_label << ":" << std::endl;
+                detail::print_stats_db( stats.hierarchy_total[hierarchy_label][prefix], 0 );
+            }
+        }
+    }
+}
+
 
 void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& config, TReadConfig& reads_config )
 {
@@ -1051,7 +1106,7 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
                     {
                         rb.seqs2.push_back( std::move( seq ) );
                     }
-                    stats.input_reads += rb.ids.size();
+                    stats.total[prefix].input_reads += rb.ids.size();
                     rb.prefix = prefix;
                     queue1.push( std::move( rb ) );
                 }
@@ -1070,7 +1125,7 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
                         rb.ids.push_back( std::move( id ) );
                         rb.seqs.push_back( std::move( seq ) );
                     }
-                    stats.input_reads += rb.ids.size();
+                    stats.total[prefix].input_reads += rb.ids.size();
                     rb.prefix = prefix;
                     queue1.push( std::move( rb ) );
                 }
@@ -1196,23 +1251,27 @@ bool ganon_classify( Config config )
     StopClock timeClassPrint;
 
     detail::Stats                          stats;
-    std::ofstream                          out_rep; // Set default output stream (file or stdout)
+    std::map< std::string, std::ofstream > out_rep; // Set default output stream (file or stdout)
     std::map< std::string, std::ofstream > out_all; // output all file by read prefix
     std::map< std::string, std::ofstream > out_lca; // output lca file
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
     {
-        out_rep.copyfmt( std::cout ); // STDOUT
-        out_rep.clear( std::cout.rdstate() );
-        out_rep.basic_ios< char >::rdbuf( std::cout.rdbuf() );
+        out_rep[""].copyfmt( std::cout ); // STDOUT
+        out_rep[""].clear( std::cout.rdstate() );
+        out_rep[""].basic_ios< char >::rdbuf( std::cout.rdbuf() );
     }
     else
     {
-        out_rep.open( config.output_prefix + ".rep" );
-        /*for( auto& [prefix, file1, file2] : reads_config){
-            out_rep[prefix].open( config.output_prefix + prefix + ".rep" );
-        }*/
+        for ( auto& [prefix, file1, file2] : reads_config )
+        {
+            // open file once for each read prefix, append if output_single and not first
+            if ( !out_rep[prefix].is_open() )
+            {
+                out_rep[prefix].open( config.output_prefix + prefix + ".rep" );
+            }
+        }
     }
 
     // Queues for internal read handling
@@ -1375,8 +1434,8 @@ bool ganon_classify( Config config )
         }
 
         // One report and total counters for each thread
-        std::vector< detail::TRep >  reports( config.threads );
-        std::vector< detail::Total > totals( config.threads );
+        std::vector< detail::TRep >   reports( config.threads );
+        std::vector< detail::TTotal > totals( config.threads );
 
         std::vector< std::future< void > > tasks;
         // Threads for classification
@@ -1414,7 +1473,7 @@ bool ganon_classify( Config config )
         // Sum reports of each threads into one
         detail::TRep rep = sum_reports( reports );
 
-        // Sum totals for each thread and report into stats
+        // Add reports values into stats
         stats.add_totals( hierarchy_label, totals );
         stats.add_reports( hierarchy_label, rep );
 
@@ -1454,12 +1513,12 @@ bool ganon_classify( Config config )
         write_unclassified_task.get();
     }
 
-    out_rep << "#total_classified\t" << stats.total.sequences_classified << '\n';
-    // account for unclassified and skipped sequences
-    out_rep << "#total_unclassified\t" << stats.input_reads - stats.total.sequences_classified << '\n';
+    detail::write_report_totals( stats, out_rep );
+
     if ( !config.output_prefix.empty() )
     {
-        out_rep.close();
+        for ( auto& [prefix, file] : out_rep )
+            file.close();
     }
 
     timeGanon.stop();
@@ -1472,30 +1531,7 @@ bool ganon_classify( Config config )
             detail::print_time( timeGanon, timeLoadFilters, timeClassPrint );
         }
 
-        const double elapsed_classification = timeClassPrint.elapsed();
-        std::cerr << "ganon-classify processed " << stats.total.reads_processed << " sequences ("
-                  << stats.total.length_processed / 1000000.0 << " Mbp) with " << stats.total.kmers_processed
-                  << " k-mers in " << elapsed_classification << " seconds ("
-                  << ( stats.total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
-                  << std::endl;
-
-        const size_t seq_unclassified = stats.total.reads_processed - stats.total.sequences_classified;
-        const double seq_processed    = stats.total.reads_processed > 0
-                                            ? static_cast< double >( stats.total.reads_processed )
-                                            : 1; // to not report nan on divisions
-        detail::print_stats( stats.total, seq_processed, seq_unclassified );
-
-        if ( parsed_hierarchy.size() > 1 )
-        {
-            std::cerr << std::endl;
-            std::cerr << "By database hierarchy:" << std::endl;
-            for ( auto const& h : parsed_hierarchy )
-            {
-                std::string hierarchy_label = h.first;
-                std::cerr << hierarchy_label << ":" << std::endl;
-                detail::print_stats( stats.hierarchy_total[hierarchy_label], seq_processed, 0 );
-            }
-        }
+        detail::print_stats( stats, timeClassPrint.elapsed(), parsed_hierarchy );
     }
 
     return true;
