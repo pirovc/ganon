@@ -998,11 +998,8 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
     std::cerr << std::endl;
 }
 
-void print_stats_db( const Total& total, size_t seq_unclassified )
+void print_stats_db( const Total& total, double seq_processed, size_t seq_unclassified )
 {
-
-    const double seq_processed        = total.reads_processed > 0 ? static_cast< double >( total.reads_processed )
-                                                                  : 1; // to not report nan on divisions
     const size_t seq_multiple_matches = total.sequences_classified - total.unique_sequence_matches;
     const double avg_seq_matches =
         total.sequences_classified ? ( total.sequence_matches / static_cast< double >( total.sequences_classified ) )
@@ -1057,8 +1054,11 @@ void print_stats( Stats&                                          stats,
                   << elapsed_classification << " seconds ("
                   << ( total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
                   << std::endl;
+
         const size_t seq_unclassified = total.reads_processed - total.sequences_classified;
-        detail::print_stats_db( total, seq_unclassified );
+        const double seq_processed    = total.reads_processed > 0 ? static_cast< double >( total.reads_processed )
+                                                                  : 1; // to not report nan on divisions
+        detail::print_stats_db( total, seq_processed, seq_unclassified );
         if ( parsed_hierarchy.size() > 1 )
         {
             std::cerr << std::endl;
@@ -1067,7 +1067,7 @@ void print_stats( Stats&                                          stats,
             {
                 std::string hierarchy_label = h.first;
                 std::cerr << hierarchy_label << ":" << std::endl;
-                detail::print_stats_db( stats.hierarchy_total[hierarchy_label][prefix], 0 );
+                detail::print_stats_db( stats.hierarchy_total[hierarchy_label][prefix], seq_processed, 0 );
             }
         }
     }
@@ -1080,7 +1080,6 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
     for ( auto& [prefix, filename1, filename2] : reads_config )
     {
         bool paired = filename2.empty() ? false : true;
-        std::cerr << prefix << "," << paired << std::endl;
         try
         {
             if ( paired )
@@ -1159,19 +1158,17 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::map< std::st
     }
 }
 
-void write_unclassified( SafeQueue< ReadOut >& unclassified_queue, std::string out_unclassified_file )
+void write_unclassified( SafeQueue< ReadOut >& unclassified_queue, std::map< std::string, std::ofstream >& out )
 {
-    std::ofstream out_unclassified( out_unclassified_file );
     while ( true )
     {
-        ReadOut rou = unclassified_queue.pop();
-        if ( rou.readID != "" )
+        ReadOut ro = unclassified_queue.pop();
+        if ( ro.readID != "" )
         {
-            out_unclassified << rou.readID << '\n';
+            out[ro.prefix] << ro.readID << '\n';
         }
         else
         {
-            out_unclassified.close();
             break;
         }
     }
@@ -1244,7 +1241,6 @@ bool ganon_classify( Config config )
     detail::TReadConfig reads_config;
     if ( !detail::parse_reads_config( config, reads_config ) )
         return false;
-    seqan3::debug_stream << reads_config << '\n';
 
     // Initialize variables
     StopClock timeLoadFilters;
@@ -1254,6 +1250,7 @@ bool ganon_classify( Config config )
     std::map< std::string, std::ofstream > out_rep; // Set default output stream (file or stdout)
     std::map< std::string, std::ofstream > out_all; // output all file by read prefix
     std::map< std::string, std::ofstream > out_lca; // output lca file
+    std::map< std::string, std::ofstream > out_unc; // output unclassified file
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
@@ -1301,10 +1298,17 @@ bool ganon_classify( Config config )
     std::future< void >          write_unclassified_task;
     if ( config.output_unclassified && !config.output_prefix.empty() )
     {
-        write_unclassified_task = std::async( std::launch::async,
-                                              detail::write_unclassified,
-                                              std::ref( unclassified_queue ),
-                                              config.output_prefix + ".unc" );
+        for ( auto& [prefix, file1, file2] : reads_config )
+        {
+            // open file once for each read prefix, append if output_single and not first
+            if ( !out_unc[prefix].is_open() )
+            {
+                out_unc[prefix].open( config.output_prefix + prefix + ".unc" );
+            }
+        }
+
+        write_unclassified_task = std::async(
+            std::launch::async, detail::write_unclassified, std::ref( unclassified_queue ), std::ref( out_unc ) );
     }
 
 
@@ -1512,6 +1516,10 @@ bool ganon_classify( Config config )
         unclassified_queue.notify_push_over();
         write_unclassified_task.get();
     }
+
+    if ( config.output_unclassified )
+        for ( auto& [prefix, file] : out_unc )
+            file.close();
 
     detail::write_report_totals( stats, out_rep );
 
