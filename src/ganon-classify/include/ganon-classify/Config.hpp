@@ -21,6 +21,7 @@ struct Config
 public:
     std::vector< std::string > single_reads;
     std::vector< std::string > paired_reads;
+    std::vector< std::string > batch_reads;
 
     std::vector< std::string > ibf;
     std::vector< std::string > tax;
@@ -72,14 +73,22 @@ public:
             return false;
         if ( !check_files( paired_reads ) )
             return false;
+        if ( !check_files( batch_reads ) )
+            return false;
         if ( !check_files( ibf ) )
             return false;
         if ( !check_files( tax ) )
             return false;
 
-        if ( ibf.size() == 0 || ( paired_reads.size() == 0 && single_reads.size() == 0 ) )
+        if ( ( paired_reads.size() >= 1 || single_reads.size() >= 1 ) && batch_reads.size() >= 1 )
         {
-            std::cerr << "--ibf and --[single|paired]-reads are mandatory" << std::endl;
+            std::cerr << "--batch-reads cannot be used together with --[single|paired]-reads" << std::endl;
+            return false;
+        }
+
+        if ( ibf.size() == 0 || ( paired_reads.size() == 0 && single_reads.size() == 0 && batch_reads.size() == 0 ) )
+        {
+            std::cerr << "--ibf and --[single|paired|batch]-reads are mandatory" << std::endl;
             return false;
         }
 

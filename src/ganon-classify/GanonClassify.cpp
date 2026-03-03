@@ -25,6 +25,7 @@
 
 #include <cinttypes>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -52,6 +53,7 @@ typedef robin_hood::unordered_map< std::string, std::tuple< size_t, double > >  
 typedef std::vector< std::tuple< size_t, std::string > >                                   TBinMap;
 typedef robin_hood::unordered_map< std::string, std::vector< size_t > >                    TMap;
 typedef robin_hood::unordered_map< std::string, double >                                   TTargetFpr;
+typedef std::vector< std::tuple< std::string, std::string, std::string > >                 TReadConfig;
 
 struct Node
 {
@@ -71,6 +73,12 @@ struct ReadBatches
     ReadBatches( bool _paired )
     {
         paired = _paired;
+    }
+
+    ReadBatches( bool _paired, std::string _prefix )
+    {
+        paired = _paired;
+        prefix = _prefix;
     }
 
     ReadBatches( bool _paired, std::vector< std::string > _ids, std::vector< std::vector< seqan3::dna4 > > _seqs )
@@ -95,6 +103,7 @@ struct ReadBatches
     std::vector< std::string >                 ids;
     std::vector< std::vector< seqan3::dna4 > > seqs;
     std::vector< std::vector< seqan3::dna4 > > seqs2{};
+    std::string                                prefix;
 };
 
 struct ReadMatch
@@ -119,13 +128,15 @@ struct ReadOut
     {
     }
 
-    ReadOut( std::string _readID )
+    ReadOut( std::string _readID, std::string _prefix )
     {
         readID = _readID;
+        prefix = _prefix;
     }
 
     std::string              readID;
     std::vector< ReadMatch > matches;
+    std::string              prefix;
 };
 
 struct Rep
@@ -253,6 +264,70 @@ struct Filter
     FilterConfig filter_config;
 };
 
+bool parse_reads_config( Config& config, TReadConfig& reads_config )
+{
+    if ( config.batch_reads.size() > 0 )
+    {
+        std::string line;
+        for ( auto const& batch_file : config.batch_reads )
+        {
+            std::ifstream infile( batch_file );
+            while ( std::getline( infile, line, '\n' ) )
+            {
+                std::istringstream         stream_line( line );
+                std::vector< std::string > fields;
+                std::string                field;
+                while ( std::getline( stream_line, field, '\t' ) )
+                {
+                    fields.push_back( field ); // prefix <tab> file1 [<tab> file2]
+                }
+
+                if ( fields.size() <= 1 )
+                {
+                    std::cerr << "ERROR: invalid --batch-reads file (prefix <tab> file1.fq[.gz] [<tab> file2.fq[.gz]])"
+                              << std::endl;
+                    return false;
+                }
+
+                if ( fields.size() >= 2 )
+                {
+                    if ( !std::filesystem::exists( fields[1] ) || std::filesystem::file_size( fields[1] ) == 0 )
+                    {
+                        std::cerr << "ERROR: file not found/empty: " << fields[1] << std::endl;
+                        return false;
+                    }
+                    if ( fields.size() == 3 )
+                    {
+                        if ( !std::filesystem::exists( fields[2] ) || std::filesystem::file_size( fields[2] ) == 0 )
+                        {
+                            std::cerr << "ERROR: file not found/empty: " << fields[2] << std::endl;
+                            return false;
+                        }
+                        reads_config.push_back( std::make_tuple( fields[0], fields[1], fields[2] ) );
+                    }
+                    else
+                    {
+                        reads_config.push_back( std::make_tuple( fields[0], fields[1], "" ) );
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        for ( auto const& reads_file : config.single_reads )
+        {
+            reads_config.push_back( std::make_tuple( "", reads_file, "" ) );
+        }
+        for ( size_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
+        {
+            reads_config.push_back(
+                std::make_tuple( "", config.paired_reads[pair_cnt], config.paired_reads[pair_cnt + 1] ) );
+        }
+    }
+    return true;
+}
+
 std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
 {
 
@@ -277,17 +352,12 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
             // validate by hiearchy
             std::vector< FilterConfig > fc;
             fc.push_back( filter_cfg );
-            std::string output_file_lca = "";
-            std::string output_file_all = "";
+            std::string output_file_lca = "one";
+            std::string output_file_all = "all";
             if ( !config.output_prefix.empty() && unique_hierarchy > 1 && !config.output_single )
             {
-                output_file_lca = config.output_prefix + "." + config.hierarchy_labels[h] + ".one";
-                output_file_all = config.output_prefix + "." + config.hierarchy_labels[h] + ".all";
-            }
-            else if ( !config.output_prefix.empty() )
-            {
-                output_file_lca = config.output_prefix + ".one";
-                output_file_all = config.output_prefix + ".all";
+                output_file_lca = config.hierarchy_labels[h] + "." + output_file_lca;
+                output_file_all = config.hierarchy_labels[h] + "." + output_file_all;
             }
 
             parsed_hierarchy[config.hierarchy_labels[h]] = HierarchyConfig{ fc,
@@ -537,7 +607,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             break;
 
         // store unclassified reads for next iteration
-        ReadBatches left_over_reads{ rb.paired };
+        ReadBatches left_over_reads{ rb.paired, rb.prefix };
 
         const size_t hashes_limit = std::numeric_limits< detail::TIntCount >::max();
 
@@ -615,7 +685,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
             }
 
             // store read and matches to be printed
-            ReadOut read_out( rb.ids[readID] );
+            ReadOut read_out( rb.ids[readID], rb.prefix );
 
             // if read got valid matches (above cutoff)
             if ( max_count_read > 0 )
@@ -637,7 +707,7 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
                     if ( !config.skip_lca )
                     {
-                        ReadOut read_out_lca( rb.ids[readID] );
+                        ReadOut read_out_lca( rb.ids[readID], rb.prefix );
                         if ( count_filtered_matches == 1 )
                         {
                             // just one match, copy read read_out and set as unique
@@ -949,44 +1019,25 @@ void print_stats( Total& total, const double& seq_processed, const size_t& seq_u
 }
 
 
-void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& config )
+void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& config, TReadConfig& reads_config )
 {
-    for ( auto const& reads_file : config.single_reads )
+
+    for ( auto& [prefix, filename1, filename2] : reads_config )
     {
+        bool paired = filename2.empty() ? false : true;
+        std::cerr << prefix << "," << paired << std::endl;
         try
         {
-            seqan3::sequence_file_input< raptor::dna4_traits, seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                fin1{ reads_file };
-            for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
-            {
-                ReadBatches rb{ false };
-                for ( auto& [id, seq] : rec )
-                {
-                    rb.ids.push_back( std::move( id ) );
-                    rb.seqs.push_back( std::move( seq ) );
-                }
-                stats.input_reads += rb.ids.size();
-                queue1.push( std::move( rb ) );
-            }
-        }
-        catch ( seqan3::parse_error const& e )
-        {
-            std::cerr << "Error parsing file [" << reads_file << "]. " << e.what() << std::endl;
-            continue;
-        }
-    }
-    if ( config.paired_reads.size() > 0 )
-    {
-        for ( size_t pair_cnt = 0; pair_cnt < config.paired_reads.size(); pair_cnt += 2 )
-        {
-            try
+            if ( paired )
             {
                 seqan3::sequence_file_input< raptor::dna4_traits,
                                              seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                    fin1{ config.paired_reads[pair_cnt] };
+                    fin1{ filename1 };
+
                 seqan3::sequence_file_input< raptor::dna4_traits,
                                              seqan3::fields< seqan3::field::id, seqan3::field::seq > >
-                    fin2{ config.paired_reads[pair_cnt + 1] };
+                    fin2{ filename2 };
+
                 for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
                 {
                     ReadBatches rb{ true };
@@ -1001,21 +1052,40 @@ void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& 
                         rb.seqs2.push_back( std::move( seq ) );
                     }
                     stats.input_reads += rb.ids.size();
+                    rb.prefix = prefix;
                     queue1.push( std::move( rb ) );
                 }
             }
-            catch ( seqan3::parse_error const& ext )
+            else
             {
-                std::cerr << "Error parsing files [" << config.paired_reads[pair_cnt] << "/"
-                          << config.paired_reads[pair_cnt + 1] << "]. " << ext.what() << std::endl;
-                continue;
+                seqan3::sequence_file_input< raptor::dna4_traits,
+                                             seqan3::fields< seqan3::field::id, seqan3::field::seq > >
+                    fin1{ filename1 };
+
+                for ( auto&& rec : fin1 | seqan3::views::chunk( config.n_reads ) )
+                {
+                    ReadBatches rb{ false };
+                    for ( auto& [id, seq] : rec )
+                    {
+                        rb.ids.push_back( std::move( id ) );
+                        rb.seqs.push_back( std::move( seq ) );
+                    }
+                    stats.input_reads += rb.ids.size();
+                    rb.prefix = prefix;
+                    queue1.push( std::move( rb ) );
+                }
             }
+        }
+        catch ( seqan3::parse_error const& ext )
+        {
+            std::cerr << "Error parsing file(s) [" << filename1 << ", " << filename2 << "]" << ext.what() << std::endl;
+            continue;
         }
     }
     queue1.notify_push_over();
 }
 
-void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& out )
+void write_classified( SafeQueue< ReadOut >& classified_queue, std::map< std::string, std::ofstream >& out )
 {
     while ( true )
     {
@@ -1024,7 +1094,7 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::ofstream& ou
         {
             for ( size_t i = 0; i < ro.matches.size(); ++i )
             {
-                out << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
+                out[ro.prefix] << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
             }
         }
         else
@@ -1115,14 +1185,20 @@ bool ganon_classify( Config config )
     if ( config.verbose )
         detail::print_hierarchy( config, parsed_hierarchy );
 
+    // Prepare reads
+    detail::TReadConfig reads_config;
+    if ( !detail::parse_reads_config( config, reads_config ) )
+        return false;
+    seqan3::debug_stream << reads_config << '\n';
+
     // Initialize variables
     StopClock timeLoadFilters;
     StopClock timeClassPrint;
 
-    detail::Stats stats;
-    std::ofstream out_rep; // Set default output stream (file or stdout)
-    std::ofstream out_all; // output all file
-    std::ofstream out_lca; // output lca file
+    detail::Stats                          stats;
+    std::ofstream                          out_rep; // Set default output stream (file or stdout)
+    std::map< std::string, std::ofstream > out_all; // output all file by read prefix
+    std::map< std::string, std::ofstream > out_lca; // output lca file
 
     // If there's no output prefix, redirect to STDOUT
     if ( config.output_prefix.empty() )
@@ -1134,6 +1210,9 @@ bool ganon_classify( Config config )
     else
     {
         out_rep.open( config.output_prefix + ".rep" );
+        /*for( auto& [prefix, file1, file2] : reads_config){
+            out_rep[prefix].open( config.output_prefix + prefix + ".rep" );
+        }*/
     }
 
     // Queues for internal read handling
@@ -1151,8 +1230,12 @@ bool ganon_classify( Config config )
     seqan3::contrib::bgzf_thread_count = 1u;
 
     // Thread for reading input files
-    std::future< void > read_task = std::async(
-        std::launch::async, detail::parse_reads, std::ref( queue1 ), std::ref( stats ), std::ref( config ) );
+    std::future< void > read_task = std::async( std::launch::async,
+                                                detail::parse_reads,
+                                                std::ref( queue1 ),
+                                                std::ref( stats ),
+                                                std::ref( config ),
+                                                std::ref( reads_config ) );
 
     // Thread for printing unclassified reads
     SafeQueue< detail::ReadOut > unclassified_queue;
@@ -1249,15 +1332,21 @@ bool ganon_classify( Config config )
 
         SafeQueue< detail::ReadOut > classified_all_queue;
         SafeQueue< detail::ReadOut > classified_lca_queue;
+        const auto file_mode = hierarchy_first || !config.output_single ? std::ofstream::out : std::ofstream::app;
 
         if ( !config.output_prefix.empty() )
         {
             if ( config.output_lca && !config.skip_lca )
             {
-                if ( hierarchy_first || !config.output_single )
-                    out_lca.open( hierarchy_config.output_file_lca );
-                else // append if not first and output_single
-                    out_lca.open( hierarchy_config.output_file_lca, std::ofstream::app );
+                for ( auto& [prefix, file1, file2] : reads_config )
+                {
+                    // open file once for each read prefix, append if output_single and not first
+                    if ( !out_lca[prefix].is_open() )
+                    {
+                        out_lca[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_lca,
+                                              file_mode );
+                    }
+                }
 
                 // Start writing thread for lca matches
                 write_tasks.emplace_back( std::async( std::launch::async,
@@ -1267,10 +1356,15 @@ bool ganon_classify( Config config )
             }
             if ( config.output_all )
             {
-                if ( hierarchy_first || !config.output_single )
-                    out_all.open( hierarchy_config.output_file_all );
-                else // append if not first and output_single
-                    out_all.open( hierarchy_config.output_file_all, std::ofstream::app );
+                for ( auto& [prefix, file1, file2] : reads_config )
+                {
+                    // open file once for each read prefix, append if output_single and not first
+                    if ( !out_all[prefix].is_open() )
+                    {
+                        out_all[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_all,
+                                              file_mode );
+                    }
+                }
 
                 // Start writing thread for all matches
                 write_tasks.emplace_back( std::async( std::launch::async,
@@ -1338,9 +1432,11 @@ bool ganon_classify( Config config )
         if ( !config.output_prefix.empty() )
         {
             if ( config.output_lca )
-                out_lca.close();
+                for ( auto& [prefix, file] : out_lca )
+                    file.close();
             if ( config.output_all )
-                out_all.close();
+                for ( auto& [prefix, file] : out_all )
+                    file.close();
         }
 
         if ( hierarchy_first )

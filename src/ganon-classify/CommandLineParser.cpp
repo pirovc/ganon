@@ -15,6 +15,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     options.add_options()
         ( "r,single-reads", "single-end reads file[s] (comma-separated, flat or gzipped)", cxxopts::value< std::vector< std::string > >() )
         ( "p,paired-reads", "paired-end reads file[s] (comma-separated, flat or gzipped)", cxxopts::value< std::vector< std::string > >() )
+        ( "b,batch-reads", "file with single- or paired-end reads to be processed in batches: prefix <tab> file1 [<tab> file2]", cxxopts::value< std::vector< std::string > >() )
         
         ( "i,ibf", "ibf file[s] from ganon-build (comma-separated)", cxxopts::value< std::vector< std::string > >() )
         ( "x,tax", "tax file[s] from ganon-build for LCA calculation (comma-separated)", cxxopts::value< std::vector< std::string > >() )
@@ -68,6 +69,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.single_reads = args["single-reads"].as< std::vector< std::string > >();
     if ( args.count( "paired-reads" ) )
         config.paired_reads = args["paired-reads"].as< std::vector< std::string > >();
+    if ( args.count( "batch-reads" ) )
+        config.batch_reads = args["batch-reads"].as< std::vector< std::string > >();
 
     if ( args.count( "ibf" ) )
         config.ibf = args["ibf"].as< std::vector< std::string > >();
