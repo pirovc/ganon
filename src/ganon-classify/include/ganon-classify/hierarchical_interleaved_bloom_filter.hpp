@@ -16,9 +16,9 @@
 
 #include <seqan3/search/dream_index/interleaved_bloom_filter.hpp>
 
-//#ifndef RAPTOR_HIBF_HAS_COUNT
-//#define RAPTOR_HIBF_HAS_COUNT 0
-//#endif
+// #ifndef RAPTOR_HIBF_HAS_COUNT
+// #define RAPTOR_HIBF_HAS_COUNT 0
+// #endif
 #define RAPTOR_HIBF_HAS_COUNT 1
 
 namespace raptor
@@ -350,12 +350,12 @@ public:
     /*!\name Constructors, destructor and assignment
      * \{
      */
-    membership_agent()                          = default;            //!< Defaulted.
-    membership_agent( membership_agent const& ) = default;            //!< Defaulted.
+    membership_agent()                                     = default; //!< Defaulted.
+    membership_agent( membership_agent const& )            = default; //!< Defaulted.
     membership_agent& operator=( membership_agent const& ) = default; //!< Defaulted.
     membership_agent( membership_agent&& )                 = default; //!< Defaulted.
-    membership_agent& operator=( membership_agent&& ) = default;      //!< Defaulted.
-    ~membership_agent()                               = default;      //!< Defaulted.
+    membership_agent& operator=( membership_agent&& )      = default; //!< Defaulted.
+    ~membership_agent()                                    = default; //!< Defaulted.
 
     /*!\brief Construct a membership_agent for an existing hierarchical_interleaved_bloom_filter.
      * \private
@@ -463,12 +463,12 @@ public:
     /*!\name Constructors, destructor and assignment
      * \{
      */
-    counting_agent_type()                             = default;            //!< Defaulted.
-    counting_agent_type( counting_agent_type const& ) = default;            //!< Defaulted.
+    counting_agent_type()                                        = default; //!< Defaulted.
+    counting_agent_type( counting_agent_type const& )            = default; //!< Defaulted.
     counting_agent_type& operator=( counting_agent_type const& ) = default; //!< Defaulted.
     counting_agent_type( counting_agent_type&& )                 = default; //!< Defaulted.
-    counting_agent_type& operator=( counting_agent_type&& ) = default;      //!< Defaulted.
-    ~counting_agent_type()                                  = default;      //!< Defaulted.
+    counting_agent_type& operator=( counting_agent_type&& )      = default; //!< Defaulted.
+    ~counting_agent_type()                                       = default; //!< Defaulted.
 
     /*!\brief Construct a counting_agent_type for an existing hierarchical_interleaved_bloom_filter.
      * \private

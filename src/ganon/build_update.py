@@ -751,9 +751,9 @@ def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_tar
     )
     # Get estimated genome size from parent in case of specialization
     tax_df["genome_size"] = tax_df.apply(
-        lambda d: genome_sizes[d.node]
-        if d.node in genome_sizes
-        else genome_sizes[d.parent],
+        lambda d: (
+            genome_sizes[d.node] if d.node in genome_sizes else genome_sizes[d.parent]
+        ),
         axis=1,
     )
     tax_df.to_csv(tax_file, sep="\t", header=False, index=False)
