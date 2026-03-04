@@ -179,6 +179,11 @@ struct Stats
     // Total for each hierarchy
     std::map< std::string, TTotal > hierarchy_total;
 
+    // Total among many files
+    size_t total_reads_processed  = 0;
+    size_t total_length_processed = 0;
+    size_t total_kmers_processed  = 0;
+
     void add_totals( std::string hierarchy_label, std::vector< detail::TTotal > const& totals )
     {
         // add several totals (from threads) into the stats
@@ -186,6 +191,10 @@ struct Stats
         {
             for ( auto const& [prefix, t] : total_thread )
             {
+                total_reads_processed += t.reads_processed;
+                total_length_processed += t.length_processed;
+                total_kmers_processed += t.kmers_processed;
+
                 total[prefix].reads_processed += t.reads_processed;
                 total[prefix].reads_skipped_big += t.reads_skipped_big;
                 total[prefix].reads_skipped_small += t.reads_skipped_small;
@@ -194,8 +203,6 @@ struct Stats
                 total[prefix].sequences_classified += t.sequences_classified;
                 total[prefix].kmers_matches += t.kmers_matches;
                 total[prefix].kmers_from_classified_reads += t.kmers_from_classified_reads;
-                total[prefix].discarded_sequence_matches_filter += t.discarded_sequence_matches_filter;
-                total[prefix].discarded_sequence_matches_fprquery += t.discarded_sequence_matches_fprquery;
 
                 hierarchy_total[hierarchy_label][prefix].reads_processed += t.reads_processed;
                 hierarchy_total[hierarchy_label][prefix].reads_skipped_big += t.reads_skipped_big;
@@ -205,10 +212,6 @@ struct Stats
                 hierarchy_total[hierarchy_label][prefix].sequences_classified += t.sequences_classified;
                 hierarchy_total[hierarchy_label][prefix].kmers_matches += t.kmers_matches;
                 hierarchy_total[hierarchy_label][prefix].kmers_from_classified_reads += t.kmers_from_classified_reads;
-                hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_filter +=
-                    t.discarded_sequence_matches_filter;
-                hierarchy_total[hierarchy_label][prefix].discarded_sequence_matches_fprquery +=
-                    t.discarded_sequence_matches_fprquery;
             }
         }
     }
@@ -364,7 +367,7 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
             fc.push_back( filter_cfg );
             std::string output_file_lca = "one";
             std::string output_file_all = "all";
-            if ( !config.output_prefix.empty() && unique_hierarchy > 1 && !config.output_single )
+            if ( unique_hierarchy > 1 && !config.output_single )
             {
                 output_file_lca = config.hierarchy_labels[h] + "." + output_file_lca;
                 output_file_all = config.hierarchy_labels[h] + "." + output_file_all;
@@ -388,34 +391,41 @@ std::map< std::string, HierarchyConfig > parse_hierarchy( Config& config )
     return parsed_hierarchy;
 }
 
-void print_hierarchy( Config const& config, auto const& parsed_hierarchy )
+void print_hierarchy( auto const& parsed_hierarchy )
 {
-
     constexpr auto newl{ "\n" };
+    std::cerr << "Database(s):" << newl;
     for ( auto const& hierarchy_config : parsed_hierarchy )
     {
-        std::cerr << hierarchy_config.first << newl;
+        std::cerr << hierarchy_config.first << ":" << newl;
         std::cerr << "--rel-filter " << hierarchy_config.second.rel_filter << newl;
         std::cerr << "--fpr-query " << hierarchy_config.second.fpr_query << newl;
         for ( auto const& filter_config : hierarchy_config.second.filters )
         {
-            std::cerr << "    " << filter_config.ibf_file;
+            if ( filter_config.rel_cutoff > -1 )
+                std::cerr << "--rel-cutoff " << filter_config.rel_cutoff;
+            std::cerr << " " << filter_config.ibf_file;
             if ( !filter_config.tax_file.empty() )
                 std::cerr << ", " << filter_config.tax_file;
-            if ( filter_config.rel_cutoff > -1 )
-                std::cerr << " --rel-cutoff " << filter_config.rel_cutoff;
+
             std::cerr << newl;
         }
-        if ( !config.output_prefix.empty() )
-        {
-            std::cerr << "    Output files: ";
-            std::cerr << config.output_prefix + ".rep";
-            if ( config.output_lca )
-                std::cerr << ", " << hierarchy_config.second.output_file_lca;
-            if ( config.output_all )
-                std::cerr << ", " << hierarchy_config.second.output_file_all;
-            std::cerr << newl;
-        }
+    }
+    std::cerr << "----------------------------------------------------------------------" << newl;
+}
+
+void print_reads_config( detail::TReadConfig const& reads_config )
+{
+    constexpr auto newl{ "\n" };
+    std::cerr << "Sequence(s):" << newl;
+    for ( auto const& [prefix, filename1, filename2] : reads_config )
+    {
+        if ( !prefix.empty() )
+            std::cerr << prefix << ":" << newl;
+        std::cerr << filename1;
+        if ( !filename2.empty() )
+            std::cerr << ", " << filename2;
+        std::cerr << newl;
     }
     std::cerr << "----------------------------------------------------------------------" << newl;
 }
@@ -991,10 +1001,11 @@ void print_time( const StopClock& timeGanon, const StopClock& timeLoadFilters, c
 {
     using ::operator<<;
     std::cerr << "ganon-classify        start time: " << StopClock_datetime( timeGanon.begin() ) << std::endl;
-    std::cerr << "loading filters      elapsed (s): " << timeLoadFilters.elapsed() << " seconds" << std::endl;
-    std::cerr << "classifying+printing elapsed (s): " << timeClassPrint.elapsed() << " seconds" << std::endl;
-    std::cerr << "ganon-classify       elapsed (s): " << timeGanon.elapsed() << " seconds" << std::endl;
     std::cerr << "ganon-classify          end time: " << StopClock_datetime( timeGanon.end() ) << std::endl;
+    std::cerr << "loading filter(s)    elapsed (s): " << timeLoadFilters.elapsed() << " seconds" << std::endl;
+    std::cerr << "classifying+printing elapsed (s): " << timeClassPrint.elapsed() << " seconds" << std::endl;
+    std::cerr << "total                elapsed (s): " << timeGanon.elapsed() << " seconds" << std::endl;
+    std::cerr << "----------------------------------------------------------------------" << std::endl;
     std::cerr << std::endl;
 }
 
@@ -1009,33 +1020,31 @@ void print_stats_db( const Total& total, double seq_processed, size_t seq_unclas
                             : 0;
 
     // std::cerr << std::fixed << std::setprecision( 4 );
-    std::cerr << " - " << total.sequences_classified << " sequences classified ("
+    std::cerr << "" << total.sequences_classified << " sequences classified ("
               << ( total.sequences_classified / seq_processed ) * 100 << "%)" << std::endl;
-    std::cerr << "   - " << total.unique_sequence_matches << " with unique matches ("
+    std::cerr << "  " << total.unique_sequence_matches << " with unique matches ("
               << ( total.unique_sequence_matches / seq_processed ) * 100 << "%)" << std::endl;
-    std::cerr << "   - " << seq_multiple_matches << " with multiple matches ("
+    std::cerr << "  " << seq_multiple_matches << " with multiple matches ("
               << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)" << std::endl;
     if ( seq_unclassified > 0 )
     {
-        std::cerr << " - " << seq_unclassified << " sequences unclassified ("
-                  << ( seq_unclassified / seq_processed ) * 100 << "%)" << std::endl;
+        std::cerr << "" << seq_unclassified << " sequences unclassified (" << ( seq_unclassified / seq_processed ) * 100
+                  << "%)" << std::endl;
         if ( total.reads_skipped_small )
         {
-            std::cerr << "   - " << total.reads_skipped_small << " sequences skipped (shorter than window size)"
+            std::cerr << "  " << total.reads_skipped_small << " sequences skipped (shorter than window size)"
                       << std::endl;
         }
         if ( total.reads_skipped_big )
         {
-            std::cerr << "   - " << total.reads_skipped_big
+            std::cerr << "  " << total.reads_skipped_big
                       << " sequences skipped (larger than allowed, check compilation with -DLONGREADS)" << std::endl;
         }
     }
-
-    std::cerr << std::endl;
-    std::cerr << " - sequence-reference: " << total.sequence_matches << " matches (avg. " << avg_seq_matches
-              << " reference/sequence), " << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
+    std::cerr << "matches: " << total.sequence_matches << " (avg. " << avg_seq_matches << " reference/sequence), "
+              << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
               << total.discarded_sequence_matches_fprquery << " discarded (--fpr-query)" << std::endl;
-    std::cerr << " - k-mers: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
+    std::cerr << "k-mers: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
               << " (max.) k-mers matched/all k-mers from class. sequences" << " (" << kmers_matched_perc << "%)"
               << std::endl;
 }
@@ -1044,25 +1053,31 @@ void print_stats( Stats&                                          stats,
                   double                                          elapsed_classification,
                   const std::map< std::string, HierarchyConfig >& parsed_hierarchy )
 {
+    std::cerr << "ganon-classify processed " << stats.total_reads_processed << " sequences ("
+              << stats.total_length_processed / 1000000.0 << " Mbp) with " << stats.total_kmers_processed
+              << " k-mers in " << elapsed_classification << " seconds ("
+              << ( stats.total_length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
+              << std::endl;
 
     for ( auto const& [prefix, total] : stats.total )
     {
-
-        std::cerr << prefix << std::endl;
-        std::cerr << "ganon-classify processed " << total.reads_processed << " sequences ("
-                  << total.length_processed / 1000000.0 << " Mbp) with " << total.kmers_processed << " k-mers in "
-                  << elapsed_classification << " seconds ("
-                  << ( total.length_processed / 1000000.0 ) / ( elapsed_classification / 60.0 ) << " Mbp/m)"
-                  << std::endl;
+        if ( stats.total.size() > 1 )
+        {
+            std::cerr << std::endl;
+            std::cerr << "[" << prefix << "] " << total.reads_processed << " sequences ("
+                      << total.length_processed / 1000000.0 << " Mbp) with " << total.kmers_processed << " k-mers"
+                      << std::endl;
+        }
 
         const size_t seq_unclassified = total.reads_processed - total.sequences_classified;
         const double seq_processed    = total.reads_processed > 0 ? static_cast< double >( total.reads_processed )
                                                                   : 1; // to not report nan on divisions
         detail::print_stats_db( total, seq_processed, seq_unclassified );
+
         if ( parsed_hierarchy.size() > 1 )
         {
             std::cerr << std::endl;
-            std::cerr << "By database hierarchy:" << std::endl;
+            std::cerr << "By database hierarchical level:" << std::endl;
             for ( auto const& h : parsed_hierarchy )
             {
                 std::string hierarchy_label = h.first;
@@ -1234,13 +1249,17 @@ bool ganon_classify( Config config )
 
     auto parsed_hierarchy = detail::parse_hierarchy( config );
 
-    if ( config.verbose )
-        detail::print_hierarchy( config, parsed_hierarchy );
-
     // Prepare reads
     detail::TReadConfig reads_config;
     if ( !detail::parse_reads_config( config, reads_config ) )
         return false;
+
+    if ( config.verbose )
+    {
+        detail::print_hierarchy( parsed_hierarchy );
+        detail::print_reads_config( reads_config );
+        // detail::print_output_files( config, reads_config );
+    }
 
     // Initialize variables
     StopClock timeLoadFilters;
@@ -1252,22 +1271,12 @@ bool ganon_classify( Config config )
     std::map< std::string, std::ofstream > out_lca; // output lca file
     std::map< std::string, std::ofstream > out_unc; // output unclassified file
 
-    // If there's no output prefix, redirect to STDOUT
-    if ( config.output_prefix.empty() )
+    for ( auto& [prefix, file1, file2] : reads_config )
     {
-        out_rep[""].copyfmt( std::cout ); // STDOUT
-        out_rep[""].clear( std::cout.rdstate() );
-        out_rep[""].basic_ios< char >::rdbuf( std::cout.rdbuf() );
-    }
-    else
-    {
-        for ( auto& [prefix, file1, file2] : reads_config )
+        // open file once for each read prefix, append if output_single and not first
+        if ( !out_rep[prefix].is_open() )
         {
-            // open file once for each read prefix, append if output_single and not first
-            if ( !out_rep[prefix].is_open() )
-            {
-                out_rep[prefix].open( config.output_prefix + prefix + ".rep" );
-            }
+            out_rep[prefix].open( config.output_prefix + prefix + ".rep" );
         }
     }
 
@@ -1296,7 +1305,7 @@ bool ganon_classify( Config config )
     // Thread for printing unclassified reads
     SafeQueue< detail::ReadOut > unclassified_queue;
     std::future< void >          write_unclassified_task;
-    if ( config.output_unclassified && !config.output_prefix.empty() )
+    if ( config.output_unclassified )
     {
         for ( auto& [prefix, file1, file2] : reads_config )
         {
@@ -1397,45 +1406,39 @@ bool ganon_classify( Config config )
         SafeQueue< detail::ReadOut > classified_lca_queue;
         const auto file_mode = hierarchy_first || !config.output_single ? std::ofstream::out : std::ofstream::app;
 
-        if ( !config.output_prefix.empty() )
+        if ( config.output_lca && !config.skip_lca )
         {
-            if ( config.output_lca && !config.skip_lca )
+            for ( auto& [prefix, file1, file2] : reads_config )
             {
-                for ( auto& [prefix, file1, file2] : reads_config )
+                // open file once for each read prefix, append if output_single and not first
+                if ( !out_lca[prefix].is_open() )
                 {
-                    // open file once for each read prefix, append if output_single and not first
-                    if ( !out_lca[prefix].is_open() )
-                    {
-                        out_lca[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_lca,
-                                              file_mode );
-                    }
+                    out_lca[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_lca,
+                                          file_mode );
                 }
-
-                // Start writing thread for lca matches
-                write_tasks.emplace_back( std::async( std::launch::async,
-                                                      detail::write_classified,
-                                                      std::ref( classified_lca_queue ),
-                                                      std::ref( out_lca ) ) );
             }
-            if ( config.output_all )
-            {
-                for ( auto& [prefix, file1, file2] : reads_config )
-                {
-                    // open file once for each read prefix, append if output_single and not first
-                    if ( !out_all[prefix].is_open() )
-                    {
-                        out_all[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_all,
-                                              file_mode );
-                    }
-                }
 
-                // Start writing thread for all matches
-                write_tasks.emplace_back( std::async( std::launch::async,
-                                                      detail::write_classified,
-                                                      std::ref( classified_all_queue ),
-                                                      std::ref( out_all ) ) );
-            }
+            // Start writing thread for lca matches
+            write_tasks.emplace_back( std::async(
+                std::launch::async, detail::write_classified, std::ref( classified_lca_queue ), std::ref( out_lca ) ) );
         }
+        if ( config.output_all )
+        {
+            for ( auto& [prefix, file1, file2] : reads_config )
+            {
+                // open file once for each read prefix, append if output_single and not first
+                if ( !out_all[prefix].is_open() )
+                {
+                    out_all[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_all,
+                                          file_mode );
+                }
+            }
+
+            // Start writing thread for all matches
+            write_tasks.emplace_back( std::async(
+                std::launch::async, detail::write_classified, std::ref( classified_all_queue ), std::ref( out_all ) ) );
+        }
+
 
         // One report and total counters for each thread
         std::vector< detail::TRep >   reports( config.threads );
@@ -1491,16 +1494,12 @@ bool ganon_classify( Config config )
         }
         timeClassPrint.stop();
 
-        // Close file for writing (if not STDOUT)
-        if ( !config.output_prefix.empty() )
-        {
-            if ( config.output_lca )
-                for ( auto& [prefix, file] : out_lca )
-                    file.close();
-            if ( config.output_all )
-                for ( auto& [prefix, file] : out_all )
-                    file.close();
-        }
+        if ( config.output_lca )
+            for ( auto& [prefix, file] : out_lca )
+                file.close();
+        if ( config.output_all )
+            for ( auto& [prefix, file] : out_all )
+                file.close();
 
         if ( hierarchy_first )
         {
@@ -1516,24 +1515,19 @@ bool ganon_classify( Config config )
         unclassified_queue.notify_push_over();
         write_unclassified_task.get();
     }
-
     if ( config.output_unclassified )
         for ( auto& [prefix, file] : out_unc )
             file.close();
 
     detail::write_report_totals( stats, out_rep );
 
-    if ( !config.output_prefix.empty() )
-    {
-        for ( auto& [prefix, file] : out_rep )
-            file.close();
-    }
+    for ( auto& [prefix, file] : out_rep )
+        file.close();
 
     timeGanon.stop();
 
     if ( !config.quiet )
     {
-        std::cerr << std::endl;
         if ( config.verbose )
         {
             detail::print_time( timeGanon, timeLoadFilters, timeClassPrint );

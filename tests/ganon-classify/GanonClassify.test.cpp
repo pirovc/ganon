@@ -467,27 +467,6 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         }
     }
 
-    SECTION( "without --output-prefix" )
-    {
-        // avoid printing on test results (ignoring STDOUT)
-        std::streambuf* old = std::cout.rdbuf( 0 );
-
-        std::string prefix{ folder_prefix + "wo_output_prefix" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.single_reads  = { folder_prefix + "readA.fasta" };
-        cfg.output_prefix = "";
-
-        REQUIRE( GanonClassify::run( cfg ) );
-        // No files created
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.rep" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.one" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.all" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.unc" ) );
-
-        std::cout.rdbuf( old );
-    }
-
     SECTION( "--hierarchy-labels" )
     {
         // Additional filter with repeated sequences (As) and new sequence (CG)
