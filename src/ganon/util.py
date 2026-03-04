@@ -1,3 +1,4 @@
+from dataclasses import is_dataclass
 import sys
 import subprocess
 import shlex
@@ -173,4 +174,7 @@ def download(urls: list, output_prefix: str):
 
 def find_rep_files(input_prefix):
     p = Path(input_prefix)
-    return p.parent.glob(f"{p.name}*.rep")
+    if p.is_dir():
+        return p.glob("*.rep")
+    else:
+        return p.parent.glob(f"{p.name}*.rep")
