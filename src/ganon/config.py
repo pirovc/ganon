@@ -692,7 +692,7 @@ class Config:
             "-o",
             "--output-prefix",
             type=str,
-            required=True,
+            default="",
             help="Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.out'",
         )
 
@@ -726,6 +726,11 @@ class Config:
             help="Do not write output file (.one) after processing.",
         )
         reassign_group_other.add_argument(
+            "--skip-rep",
+            action="store_true",
+            help="Do not re-write output file (.rep) after processing.",
+        )
+        reassign_group_other.add_argument(
             "--verbose", action="store_true", help="Verbose output mode"
         )
         reassign_group_other.add_argument(
@@ -752,13 +757,6 @@ class Config:
             type=str,
             default="rep",
             help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).",
-        )
-        report_group_required.add_argument(
-            "-o",
-            "--output-prefix",
-            type=str,
-            required=True,
-            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'",
         )
 
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
@@ -805,6 +803,13 @@ class Config:
         )
 
         report_group_output = report_parser.add_argument_group("output arguments")
+        report_group_output.add_argument(
+            "-o",
+            "--output-prefix",
+            type=str,
+            default="",
+            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'",
+        )
         report_group_output.add_argument(
             "-f",
             "--output-format",

@@ -169,3 +169,8 @@ def download(urls: list, output_prefix: str):
         files.append(outfile)
 
     return files
+
+
+def find_rep_files(input_prefix):
+    p = Path(input_prefix)
+    return p.parent.glob(f"{p.name}*.rep")

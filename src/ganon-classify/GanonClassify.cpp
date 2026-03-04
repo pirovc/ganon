@@ -1045,8 +1045,7 @@ void print_stats_db( const Total& total, double seq_processed, size_t seq_unclas
               << total.discarded_sequence_matches_filter << " discarded (--rel-filter), "
               << total.discarded_sequence_matches_fprquery << " discarded (--fpr-query)" << std::endl;
     std::cerr << "k-mers: " << total.kmers_matches << "/" << total.kmers_from_classified_reads
-              << " (max.) k-mers matched/all k-mers from class. sequences" << " (" << kmers_matched_perc << "%)"
-              << std::endl;
+              << " k-mers matched/k-mers from classified sequences" << " (" << kmers_matched_perc << "%)" << std::endl;
 }
 
 void print_stats( Stats&                                          stats,

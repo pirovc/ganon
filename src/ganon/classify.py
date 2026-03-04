@@ -1,4 +1,4 @@
-from ganon.util import run, print_log, check_file
+from ganon.util import find_rep_files, run, print_log, check_file
 from ganon.report import report
 from ganon.reassign import reassign
 from ganon.config import Config
@@ -68,7 +68,6 @@ def classify(cfg):
         if cfg.multiple_matches == "em":
             reassign_params = {
                 "input_prefix": cfg.output_prefix,
-                "output_prefix": cfg.output_prefix,
                 "remove_all": False if cfg.output_all else True,
                 "skip_one": False if cfg.output_one else True,
                 "verbose": cfg.verbose,
@@ -83,8 +82,7 @@ def classify(cfg):
         if tax_files and not cfg.skip_report:
             report_params = {
                 "db_prefix": cfg.db_prefix,
-                "input": cfg.output_prefix + ".rep",
-                "output_prefix": cfg.output_prefix,
+                "input": [str(p) for p in find_rep_files(cfg.output_prefix)],
                 "min_count": cfg.min_count,
                 "ranks": cfg.ranks,
                 "output_format": "tsv",
