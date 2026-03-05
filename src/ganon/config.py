@@ -493,6 +493,14 @@ class Config:
             help="Database input prefix[es]",
         )
         classify_group_required.add_argument(
+            "-o",
+            "--output-prefix",
+            type=str,
+            required=True,
+            default="ganon_out",
+            help="Output prefix for base report (.rep) and tree-like report (.tre).",
+        )
+        classify_group_required.add_argument(
             "-s",
             "--single-reads",
             type=str,
@@ -590,14 +598,6 @@ class Config:
         )
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
-        classify_group_output.add_argument(
-            "-o",
-            "--output-prefix",
-            type=str,
-            default="ganon_out",
-            metavar="",
-            help="Output prefix for base report (.rep) and tree-like report (.tre).",
-        )
         classify_group_output.add_argument(
             "--output-one",
             action="store_true",
