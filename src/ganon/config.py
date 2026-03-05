@@ -497,7 +497,6 @@ class Config:
             "--output-prefix",
             type=str,
             required=True,
-            default="ganon_out",
             help="Output prefix for base report (.rep) and tree-like report (.tre).",
         )
         classify_group_required.add_argument(
