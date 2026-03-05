@@ -688,14 +688,14 @@ class Config:
             required=True,
             nargs="*",
             metavar="",
-            help="Input prefix to find files from ganon classify (.all and optionally .rep)",
+            help="Input prefix to find files from ganon classify (.rep and .all)",
         )
         reassign_group_required.add_argument(
             "-o",
             "--output-prefix",
             type=str,
             default="",
-            help="Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.out'",
+            help="Alternative output prefix for reassigned files. If not provided, will use same path of input files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example: {output_prefix}{filename}.one",
         )
 
         reassign_em = reassign_parser.add_argument_group("EM arguments")
@@ -730,7 +730,7 @@ class Config:
         reassign_group_other.add_argument(
             "--skip-rep",
             action="store_true",
-            help="Do not re-write output file (.rep) after processing.",
+            help="Do not write report file (.rep) after processing.",
         )
         reassign_group_other.add_argument(
             "--verbose", action="store_true", help="Verbose output mode"
@@ -1325,6 +1325,12 @@ class Config:
                 )
                 return False
 
+            if self.batch_reads and (self.single_reads or self.paired_reads):
+                print_log(
+                    "--batch-reads cannot be used at the same time with --single-reads and/or --paired-reads"
+                )
+                return False
+
             if self.single_reads:
                 for f in self.single_reads:
                     if not check_file(f):
@@ -1341,13 +1347,11 @@ class Config:
                     print_log("Invalid number of paired reads")
                     return False
 
-            if not self.output_prefix and (
-                self.output_all or self.output_one or self.output_unclassified
-            ):
-                print_log(
-                    "--output-all / --output-one / --output-unclassified requires --output-prefix to be set"
-                )
-                return False
+            if self.batch_reads:
+                for f in self.batch_reads:
+                    if not check_file(f):
+                        print_log("File not found: " + f)
+                        return False
 
             if self.output_one and self.multiple_matches == "skip":
                 print_log("--output-one requires --multiple-matches em/lca")
