@@ -29,6 +29,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
+#include <map>
 #include <string>
 #include <tuple>
 #include <type_traits>

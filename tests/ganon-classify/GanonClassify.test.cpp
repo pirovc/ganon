@@ -442,7 +442,13 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
 
     SECTION( "--batch-reads and --hierarchy-labels and --tax" )
     {
-        std::string prefix{ folder_prefix + "batch_reads_w_prefix_hiearchy" };
+        std::string   prefix{ folder_prefix + "batch_reads_w_prefix_hiearchy" };
+        std::ofstream tsvFile( prefix + ".tsv" );
+        tsvFile << "batchA" << '\t' << folder_prefix + "readC.fasta" << std::endl;
+        tsvFile << "batchB" << '\t' << folder_prefix + "readG.fasta" << std::endl;
+        tsvFile << "batchC" << '\t' << folder_prefix + "readA.fasta" << '\t' << folder_prefix + "readT.fasta"
+                << std::endl;
+        tsvFile.close();
 
         config_classify::write_tax( prefix + ".tax",
                                     { { "A", "AT" },
@@ -455,7 +461,7 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
 
         auto cfg             = config_classify::defaultConfig( prefix );
         cfg.ibf              = { base_prefix + ".ibf", base_prefix + ".ibf" };
-        cfg.batch_reads      = { folder_prefix + "batch_reads_w_prefix.tsv" };
+        cfg.batch_reads      = { prefix + ".tsv" };
         cfg.rel_cutoff       = { 0 };
         cfg.rel_filter       = { 1 };
         cfg.tax              = { prefix + ".tax", prefix + ".tax" };
