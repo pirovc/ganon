@@ -105,9 +105,42 @@ ganon classify --db-prefix            db1     db2      db3 \
 
 ## Parameter details
 
-### reads (--single-reads, --paired-reads)
+### input reads/sequences
 
-ganon accepts single-end and paired-end reads. Both types can be use at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535 (accounting both reads in paired mode).
+ganon accepts `--single-reads`  and `--paired-reads` reads. Both types can be used at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. 
+
+!!! info
+    The max. k-mers that can be processed for each sequence is 65535 (accounting both reads in paired mode), but this can be increased when compiling ganon with `-DLONGREADS=ON`.
+
+### batch classification
+
+ganon can classify several sets of sequences independently in one run with `--batch-reads`. This is useful when analysing several files using the same database(s) - saving time by loading the database(s) in memory just once. The `--batch-reads` file should contain `prefix <tab> file1 <tab> file2`. For example:
+
+```
+reads1  path/to/my/single_end_reads.fq
+reads2  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+```
+
+This will classify two sets of reads: `reads1` and `reads2` independently.
+
+Prefixes can be repeated to include several sequences:
+
+```
+reads1  path/to/my/single_end_reads.fq
+reads1  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+reads1  path/to/my/another_paired_end_reads.1.fq.gz path/to/my/another_paired_end_reads.2.fq.gz
+reads2  path/to/my/single_end_reads_again.fq
+```
+
+Prefixes can also be directories. If not existing, they will be created (they will be appended to the `--output-prefix` value):
+
+```
+path/to/results/reads1/output  path/to/my/single_end_reads.fq
+path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+```
+
+!!! warning
+    If `--hierarchy-labels` is used with several database levels, sequences unclassified in between levels will be store in memory. This issue can lead to higher memory consumption when several inputs are processed in one run with `--batch-reads`.
 
 ### cutoff and filter (--rel-cutoff, --rel-filter)
 
