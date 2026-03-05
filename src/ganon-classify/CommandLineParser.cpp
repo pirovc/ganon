@@ -15,6 +15,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
     options.add_options()
         ( "r,single-reads", "single-end reads file[s] (comma-separated, flat or gzipped)", cxxopts::value< std::vector< std::string > >() )
         ( "p,paired-reads", "paired-end reads file[s] (comma-separated, flat or gzipped)", cxxopts::value< std::vector< std::string > >() )
+        ( "b,batch-reads", "file describing several files of single- or paired-end reads to be processed in one run: prefix <tab> file1 [<tab> file2]. Prefixes can be repeated for multiple files.", cxxopts::value< std::vector< std::string > >() )
         
         ( "i,ibf", "ibf file[s] from ganon-build (comma-separated)", cxxopts::value< std::vector< std::string > >() )
         ( "x,tax", "tax file[s] from ganon-build for LCA calculation (comma-separated)", cxxopts::value< std::vector< std::string > >() )
@@ -25,7 +26,7 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "d,rel-filter", "Relative filter. Additional percentage of matches allowed (relative to the best match). 1 for no filtering. one or one per hierarchy label (comma-separated). Default: 0.0", cxxopts::value< std::vector< double > >() )
         ( "f,fpr-query", "Min. False positive for a query. 1 for no filtering. one or one per hierarchy label (comma-separated). Default: 1.0", cxxopts::value< std::vector< double > >() )
         
-        ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.one, prefix.all, prefix.unc]). If multi-level --hierarchy-labels is provided, files are generated accordingly (prefix.hierarchy.one and prefix.hierarchy.all). Omit to output to STDOUT (only .rep will be printed)", cxxopts::value< std::string >() )
+        ( "o,output-prefix", "Output prefix (prefix.rep, [prefix.one, prefix.all, prefix.unc]). With multi-level --hierarchy-labels a '.label' is added to the output. With many sequence prefixes, a '.prefix' is added to the output.", cxxopts::value< std::string >() )
         ( "l,output-lca", "Runs and outputs file with lca classification (prefix.one)", cxxopts::value< bool >() )
         ( "a,output-all", "Outputs file with all matches (prefix.all)", cxxopts::value< bool >() )
         ( "u,output-unclassified", "Outputs unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
@@ -68,6 +69,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.single_reads = args["single-reads"].as< std::vector< std::string > >();
     if ( args.count( "paired-reads" ) )
         config.paired_reads = args["paired-reads"].as< std::vector< std::string > >();
+    if ( args.count( "batch-reads" ) )
+        config.batch_reads = args["batch-reads"].as< std::vector< std::string > >();
 
     if ( args.count( "ibf" ) )
         config.ibf = args["ibf"].as< std::vector< std::string > >();

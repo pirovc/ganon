@@ -21,9 +21,11 @@ struct Config
 public:
     std::vector< std::string > single_reads;
     std::vector< std::string > paired_reads;
+    std::vector< std::string > batch_reads;
 
     std::vector< std::string > ibf;
     std::vector< std::string > tax;
+    std::string                output_prefix;
 
     std::vector< std::string > hierarchy_labels{ "H1" };
 
@@ -31,11 +33,10 @@ public:
     std::vector< double > rel_filter{ 0.0 };
     std::vector< double > fpr_query{ 1.0 };
 
-    std::string output_prefix       = "";
-    bool        output_lca          = false;
-    bool        output_all          = false;
-    bool        output_unclassified = false;
-    bool        output_single       = false;
+    bool output_lca          = false;
+    bool output_all          = false;
+    bool output_unclassified = false;
+    bool output_single       = false;
 
     bool        hibf          = false;
     bool        skip_lca      = false;
@@ -68,18 +69,27 @@ public:
 
     bool validate()
     {
-        if ( !check_files( single_reads ) )
-            return false;
-        if ( !check_files( paired_reads ) )
-            return false;
-        if ( !check_files( ibf ) )
-            return false;
-        if ( !check_files( tax ) )
-            return false;
-
-        if ( ibf.size() == 0 || ( paired_reads.size() == 0 && single_reads.size() == 0 ) )
+        if ( output_prefix.size() == 0 )
         {
-            std::cerr << "--ibf and --[single|paired]-reads are mandatory" << std::endl;
+            std::cerr << "--output-prefix is mandatory" << std::endl;
+            return false;
+        }
+
+        if ( paired_reads.size() == 0 && single_reads.size() == 0 && batch_reads.size() == 0 )
+        {
+            std::cerr << "At least one of --[single|paired|batch]-reads is mandatory" << std::endl;
+            return false;
+        }
+
+        if ( ibf.size() == 0 )
+        {
+            std::cerr << "--ibf is mandatory" << std::endl;
+            return false;
+        }
+
+        if ( ( paired_reads.size() >= 1 || single_reads.size() >= 1 ) && batch_reads.size() >= 1 )
+        {
+            std::cerr << "--batch-reads cannot be used together with --[single|paired]-reads" << std::endl;
             return false;
         }
 
@@ -88,6 +98,17 @@ public:
             std::cerr << "--paired-reads should be an even number of files (pairs)" << std::endl;
             return false;
         }
+
+        if ( !check_files( single_reads ) )
+            return false;
+        if ( !check_files( paired_reads ) )
+            return false;
+        if ( !check_files( batch_reads ) )
+            return false;
+        if ( !check_files( ibf ) )
+            return false;
+        if ( !check_files( tax ) )
+            return false;
 
         bool valid_val = true;
         for ( uint16_t i = 0; i < rel_cutoff.size(); ++i )
@@ -139,13 +160,6 @@ public:
 
         if ( n_reads < 1 )
             n_reads = 1;
-
-        if ( output_prefix.empty() )
-        {
-            output_lca          = false;
-            output_all          = false;
-            output_unclassified = false;
-        }
 
         if ( validate_hierarchy() == false )
             return false;
@@ -246,6 +260,12 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     {
         stream << "--paired-reads        " << newl;
         for ( const auto& s : config.paired_reads )
+            stream << "                      " << s << newl;
+    }
+    if ( config.batch_reads.size() )
+    {
+        stream << "--batch-reads        " << newl;
+        for ( const auto& s : config.batch_reads )
             stream << "                      " << s << newl;
     }
     stream << "--output-prefix       " << config.output_prefix << newl;

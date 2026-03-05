@@ -1,4 +1,4 @@
-from ganon.util import run, print_log, check_file
+from ganon.util import find_rep_files, run, print_log, check_file
 from ganon.report import report
 from ganon.reassign import reassign
 from ganon.config import Config
@@ -31,6 +31,7 @@ def classify(cfg):
             cfg.path_exec["classify"],
             "--single-reads " + ",".join(cfg.single_reads) if cfg.single_reads else "",
             "--paired-reads " + ",".join(cfg.paired_reads) if cfg.paired_reads else "",
+            "--batch-reads " + ",".join(cfg.batch_reads) if cfg.batch_reads else "",
             "--ibf " + filter_files,
             "--tax " + tax_files if tax_files else "",
             "--hierarchy-labels " + ",".join(cfg.hierarchy_labels)
@@ -59,42 +60,47 @@ def classify(cfg):
             "--quiet" if cfg.quiet else "",
         ]
     )
-    stdout = run(run_ganon_classify, ret_stdout=True, quiet=cfg.quiet)
+    _ = run(run_ganon_classify, ret_stdout=False, quiet=cfg.quiet)
 
-    if not cfg.output_prefix:
-        print(stdout)
+    if cfg.batch_reads:
+        prefixes = set()
+        for br in cfg.batch_reads:
+            with open(br) as f:
+                prefixes.update(
+                    set(cfg.output_prefix + row.split("\t")[0] for row in f)
+                )
     else:
-        if cfg.multiple_matches == "em":
-            reassign_params = {
-                "input_prefix": cfg.output_prefix,
-                "output_prefix": cfg.output_prefix,
-                "remove_all": False if cfg.output_all else True,
-                "skip_one": False if cfg.output_one else True,
-                "verbose": cfg.verbose,
-                "quiet": cfg.quiet,
-            }
-            reassign_cfg = Config("reassign", **reassign_params)
-            print_log("- - - - - - - - - -", cfg.quiet)
-            ret = reassign(reassign_cfg)
-            if not ret:
-                return False
+        prefixes = [cfg.output_prefix]
 
-        if tax_files and not cfg.skip_report:
-            report_params = {
-                "db_prefix": cfg.db_prefix,
-                "input": cfg.output_prefix + ".rep",
-                "output_prefix": cfg.output_prefix,
-                "min_count": cfg.min_count,
-                "ranks": cfg.ranks,
-                "output_format": "tsv",
-                "verbose": cfg.verbose,
-                "report_type": cfg.report_type,
-                "quiet": cfg.quiet,
-            }
-            report_cfg = Config("report", **report_params)
-            print_log("- - - - - - - - - -", cfg.quiet)
-            ret = report(report_cfg)
-            if not ret:
-                return False
+    if cfg.multiple_matches == "em":
+        reassign_params = {
+            "input_prefix": list(prefixes),
+            "remove_all": False if cfg.output_all else True,
+            "skip_one": False if cfg.output_one else True,
+            "verbose": cfg.verbose,
+            "quiet": cfg.quiet,
+        }
+        reassign_cfg = Config("reassign", **reassign_params)
+        print_log("- - - - - - - - - -", cfg.quiet)
+        ret = reassign(reassign_cfg)
+        if not ret:
+            return False
+
+    if tax_files and not cfg.skip_report:
+        report_params = {
+            "db_prefix": cfg.db_prefix,
+            "input": [str(rep) for pre in prefixes for rep in find_rep_files(pre)],
+            "min_count": cfg.min_count,
+            "ranks": cfg.ranks,
+            "output_format": "tsv",
+            "verbose": cfg.verbose,
+            "report_type": cfg.report_type,
+            "quiet": cfg.quiet,
+        }
+        report_cfg = Config("report", **report_params)
+        print_log("- - - - - - - - - -", cfg.quiet)
+        ret = report(report_cfg)
+        if not ret:
+            return False
 
     return True
