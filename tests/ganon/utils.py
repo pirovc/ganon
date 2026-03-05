@@ -320,7 +320,7 @@ def reassign_sanity_check_and_parse(params):
 
     res = {}
     if not params["remove_all"]:
-        res["all_pd"] = parse_all_one(params["input_prefix"] + ".all")
+        res["all_pd"] = parse_all_one(params["input_prefix"][0] + ".all")
         if res["all_pd"].empty:
             return None
 

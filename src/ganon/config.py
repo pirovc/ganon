@@ -594,8 +594,9 @@ class Config:
             "-o",
             "--output-prefix",
             type=str,
+            default="ganon_out",
             metavar="",
-            help="Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only .rep)",
+            help="Output prefix for base report (.rep) and tree-like report (.tre).",
         )
         classify_group_output.add_argument(
             "--output-one",
@@ -685,6 +686,7 @@ class Config:
             "--input-prefix",
             type=str,
             required=True,
+            nargs="*",
             metavar="",
             help="Input prefix to find files from ganon classify (.all and optionally .rep)",
         )

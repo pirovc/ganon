@@ -9,7 +9,9 @@ def reassign(cfg):
     print_log("Reassigning reads", cfg.quiet)
     print_log("", cfg.quiet)
 
-    rep_files = list(find_rep_files(cfg.input_prefix))
+    rep_files = []
+    for ip in cfg.input_prefix:
+        rep_files.extend(list(find_rep_files(ip)))
 
     for rep_file in rep_files:
         rep_file_path = pathlib.Path(rep_file)

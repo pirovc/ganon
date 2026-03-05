@@ -1,4 +1,3 @@
-from dataclasses import is_dataclass
 import sys
 import subprocess
 import shlex

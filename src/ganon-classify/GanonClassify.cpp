@@ -1253,11 +1253,20 @@ bool ganon_classify( Config config )
     if ( !detail::parse_reads_config( config, reads_config ) )
         return false;
 
+    // Create dirs if necessary
+    for ( auto& [prefix, file1, file2] : reads_config )
+    {
+        std::filesystem::path filepath = std::string( config.output_prefix + prefix );
+        if ( !std::filesystem::is_directory( filepath ) && !filepath.parent_path().empty() )
+        {
+            std::filesystem::create_directories( filepath.parent_path() );
+        }
+    }
+
     if ( config.verbose )
     {
         detail::print_hierarchy( parsed_hierarchy );
         detail::print_reads_config( reads_config );
-        // detail::print_output_files( config, reads_config );
     }
 
     // Initialize variables
@@ -1380,7 +1389,7 @@ bool ganon_classify( Config config )
         }
 
 
-        // Thread for printing classified reads (.lca, .all)
+        // Thread for printing classified reads (.one, .all)
         std::vector< std::future< void > > write_tasks;
 
         // hierarchy_id = 1
@@ -1403,13 +1412,14 @@ bool ganon_classify( Config config )
 
         SafeQueue< detail::ReadOut > classified_all_queue;
         SafeQueue< detail::ReadOut > classified_lca_queue;
+        // Append to files if not first hierarchy or not output single
         const auto file_mode = hierarchy_first || !config.output_single ? std::ofstream::out : std::ofstream::app;
 
         if ( config.output_lca && !config.skip_lca )
         {
             for ( auto& [prefix, file1, file2] : reads_config )
             {
-                // open file once for each read prefix, append if output_single and not first
+                // open file once for each read prefix
                 if ( !out_lca[prefix].is_open() )
                 {
                     out_lca[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_lca,
@@ -1428,6 +1438,7 @@ bool ganon_classify( Config config )
                 // open file once for each read prefix, append if output_single and not first
                 if ( !out_all[prefix].is_open() )
                 {
+                    std::cerr << config.output_prefix + prefix + "." + hierarchy_config.output_file_all << std::endl;
                     out_all[prefix].open( config.output_prefix + prefix + "." + hierarchy_config.output_file_all,
                                           file_mode );
                 }
