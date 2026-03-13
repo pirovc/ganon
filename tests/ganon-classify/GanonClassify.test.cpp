@@ -397,14 +397,14 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         config_classify::sanity_check( cfg, res );
 
         // Batch results should be exactly the same as not batched
-        REQUIRE( aux::filesAreEqual( prefix_paired + ".all", prefix + "batch_paired.all" ) );
-        REQUIRE( aux::filesAreEqual( prefix_paired + ".one", prefix + "batch_paired.one" ) );
-        REQUIRE( aux::filesAreEqual( prefix_paired + ".unc", prefix + "batch_paired.unc" ) );
-        REQUIRE( aux::filesAreEqual( prefix_paired + ".rep", prefix + "batch_paired.rep" ) );
-        REQUIRE( aux::filesAreEqual( prefix_single + ".all", prefix + "batch_single.all" ) );
-        REQUIRE( aux::filesAreEqual( prefix_single + ".one", prefix + "batch_single.one" ) );
-        REQUIRE( aux::filesAreEqual( prefix_single + ".unc", prefix + "batch_single.unc" ) );
-        REQUIRE( aux::filesAreEqual( prefix_single + ".rep", prefix + "batch_single.rep" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".all", prefix + "batch_paired.all" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".one", prefix + "batch_paired.one" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".unc", prefix + "batch_paired.unc" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".rep", prefix + "batch_paired.rep" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".all", prefix + "batch_single.all" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".one", prefix + "batch_single.one" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".unc", prefix + "batch_single.unc" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".rep", prefix + "batch_single.rep" ) );
     }
 
     SECTION( "--batch-reads without prefix" )

@@ -107,23 +107,21 @@ ganon classify --db-prefix            db1     db2      db3 \
 
 ### input reads/sequences
 
-ganon accepts `--single-reads`  and `--paired-reads` reads. Both types can be used at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. 
+ganon accepts both `--single-reads` and `--paired-reads` input. Both types can be used simultaneously. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in the standard forward-reverse orientation. 
 
 !!! info
-    The max. k-mers that can be processed for each sequence is 65535 (accounting both reads in paired mode), but this can be increased when compiling ganon with `-DLONGREADS=ON`.
+    The maximum number of k-mers that can be processed for each sequence/pair is 65,535, but this can be increased when compiling ganon with the `-DLONGREADS=ON` flag.
 
 ### batch classification
 
-ganon can classify several sets of sequences independently in one run with `--batch-reads`. This is useful when analysing several files using the same database(s) - saving time by loading the database(s) in memory just once. The `--batch-reads` file should contain `prefix <tab> file1 <tab> file2`. For example:
+ganon can independently classify several sets of sequences in one run using `--batch-reads`. This is useful when analysing multiple files using the same database(s), as it saves time by only loading the database(s) in memory once. The `--batch-reads` input should contain `prefix <tab> file1 [<tab> file2]`. For example:
 
 ```
-reads1  path/to/my/single_end_reads.fq
+seqs1  path/to/my/single_end_reads.fq
 reads2  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
 ```
 
-This will classify two sets of reads: `reads1` and `reads2` independently.
-
-Prefixes can be repeated to include several sequences:
+will classify two sets of reads: `seqs1` and `reads2` independently. Prefixes can be repeated to include several sequences per batch:
 
 ```
 reads1  path/to/my/single_end_reads.fq
@@ -132,7 +130,7 @@ reads1  path/to/my/another_paired_end_reads.1.fq.gz path/to/my/another_paired_en
 reads2  path/to/my/single_end_reads_again.fq
 ```
 
-Prefixes can also be directories. If not existing, they will be created (they will be appended to the `--output-prefix` value):
+Prefixes can also be directories. If they do not already exist, they will be created. Note that those prefixes are appended to main  `--output-prefix` value:
 
 ```
 path/to/results/reads1/output  path/to/my/single_end_reads.fq
@@ -140,7 +138,7 @@ path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/pa
 ```
 
 !!! warning
-    If `--hierarchy-labels` is used with several database levels, sequences unclassified in between levels will be store in memory. This issue can lead to higher memory consumption when several inputs are processed in one run with `--batch-reads`.
+    When using the `--hierarchy-labels` option with several database levels, sequences that are not classified between levels will be stored in memory. This can result in higher memory usage when processing multiple inputs in one run with the `--batch-reads` option.
 
 ### cutoff and filter (--rel-cutoff, --rel-filter)
 
@@ -205,8 +203,6 @@ since `82` is the best match and `25` is the worst remaining match, the filter w
 
 !!! Note
     Reads that remain with only one reference match (after `cutoff` and `filter` are applied) are considered a unique match.
-
-
 
 ### False positive of a query (--fpr-query)
 

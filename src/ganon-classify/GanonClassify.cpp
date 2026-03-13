@@ -56,6 +56,16 @@ typedef robin_hood::unordered_map< std::string, std::vector< size_t > >         
 typedef robin_hood::unordered_map< std::string, double >                                   TTargetFpr;
 typedef std::map< std::string, std::vector< std::pair< std::string, std::string > > >      TReadConfig;
 
+struct PairHash {
+    size_t operator()(const std::pair<std::string, std::string>& p) const {
+        // Combine hashes of both strings
+        size_t h1 = std::hash<std::string>{}(p.first);
+        size_t h2 = std::hash<std::string>{}(p.second);
+        // Use a simple combination (XOR is common, but not perfect)
+        return h1 ^ (h2 << 1);
+    }
+};
+
 struct Node
 {
     std::string parent;
@@ -168,7 +178,7 @@ struct Total
 };
 
 
-typedef std::map< std::pair< std::string, std::string >, Rep > TRep;
+typedef robin_hood::unordered_map< std::pair< std::string, std::string >, Rep, PairHash > TRep;
 typedef robin_hood::unordered_map< std::string, Total >        TTotal;
 typedef robin_hood::unordered_map< std::string, Node >         TTax;
 
