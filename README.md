@@ -22,7 +22,7 @@ Find out more information in the user manual: https://pirovc.github.io/ganon/
 
 ```sh
 # Install
-conda install -c bioconda -c conda-forge ganon
+conda install -c conda-forge -c bioconda ganon
 # Download and Build (Archaea - complete genomes - NCBI RefSeq)
 ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --complete-genomes --threads 24
 # Classify
