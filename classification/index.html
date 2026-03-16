@@ -48,6 +48,10 @@
                 </li>
               </ul>
               <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                </li>
+              </ul>
+              <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../default_databases/">Databases (ganon build)</a>
                 </li>
               </ul>
@@ -70,7 +74,9 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#reads-single-reads-paired-reads">reads (--single-reads, --paired-reads)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#input-readssequences">input reads/sequences</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#batch-classification">batch classification</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#cutoff-and-filter-rel-cutoff-rel-filter">cutoff and filter (--rel-cutoff, --rel-filter)</a>
     </li>
@@ -221,8 +227,31 @@ In this example, classification will be performed with different `--rel-cutoff` 
 </details>
 <p><br></p>
 <h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
-<h3 id="reads-single-reads-paired-reads">reads (--single-reads, --paired-reads)<a class="headerlink" href="#reads-single-reads-paired-reads" title="Permanent link">:)</a></h3>
-<p>ganon accepts single-end and paired-end reads. Both types can be use at the same time. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in a standard forward-reverse orientation. The max. read length accepted is 65535 (accounting both reads in paired mode).</p>
+<h3 id="input-readssequences">input reads/sequences<a class="headerlink" href="#input-readssequences" title="Permanent link">:)</a></h3>
+<p>ganon accepts both <code>--single-reads</code> and <code>--paired-reads</code> input. Both types can be used simultaneously. In paired-end mode, reads are always reported with the header of the first pair. Paired-end reads are classified in the standard forward-reverse orientation. </p>
+<div class="admonition info">
+<p class="admonition-title">Info</p>
+<p>The maximum number of k-mers that can be processed for each sequence/pair is 65,535, but this can be increased when compiling ganon with the <code>-DLONGREADS=ON</code> flag.</p>
+</div>
+<h3 id="batch-classification">batch classification<a class="headerlink" href="#batch-classification" title="Permanent link">:)</a></h3>
+<p>ganon can independently classify several sets of sequences in one run using <code>--batch-reads</code>. This is useful when analysing multiple files using the same database(s), as it saves time by only loading the database(s) in memory once. The <code>--batch-reads</code> input should contain <code>prefix &lt;tab&gt; file1 [&lt;tab&gt; file2]</code>. For example:</p>
+<pre><code>seqs1  path/to/my/single_end_reads.fq
+reads2  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+</code></pre>
+<p>will classify two sets of reads: <code>seqs1</code> and <code>reads2</code> independently. Prefixes can be repeated to include several sequences per batch:</p>
+<pre><code>reads1  path/to/my/single_end_reads.fq
+reads1  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+reads1  path/to/my/another_paired_end_reads.1.fq.gz path/to/my/another_paired_end_reads.2.fq.gz
+reads2  path/to/my/single_end_reads_again.fq
+</code></pre>
+<p>Prefixes can also be directories. If they do not already exist, they will be created. Note that those prefixes are appended to main  <code>--output-prefix</code> value:</p>
+<pre><code>path/to/results/reads1/output  path/to/my/single_end_reads.fq
+path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
+</code></pre>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When using the <code>--hierarchy-labels</code> option with several database levels, sequences that are not classified between levels will be stored in memory. This can result in higher memory usage when processing multiple inputs in one run with the <code>--batch-reads</code> option.</p>
+</div>
 <h3 id="cutoff-and-filter-rel-cutoff-rel-filter">cutoff and filter (--rel-cutoff, --rel-filter)<a class="headerlink" href="#cutoff-and-filter-rel-cutoff-rel-filter" title="Permanent link">:)</a></h3>
 <p>ganon has two main parameters to control the number and strictess of matches between reads and references: <code>--rel-cutoff</code> and <code>--rel-filter</code>.</p>
 <p>Every read can be classified against none, one or more references. ganon will report only matches after <code>cutoff</code> and <code>filter</code> thresholds are applied, based on the number of shared k-mers between sequences (use <code>--rel-cutoff 0</code> and <code>--rel-filter 1</code> to deactivate them).</p>
