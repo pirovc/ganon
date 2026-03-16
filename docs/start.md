@@ -3,7 +3,7 @@
 ## Install
 
 ```sh
-conda install -c bioconda -c conda-forge ganon
+conda install -c conda-forge -c bioconda ganon
 ```
 
 ## Download and Build a database 

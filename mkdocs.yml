@@ -3,6 +3,7 @@ theme: readthedocs
 nav:
     - ganon2: index.md
     - Quick Start: start.md
+    - Parameters: params.md
     - Databases (ganon build): default_databases.md
     - Custom databases (ganon build-custom): custom_databases.md
     - Classification (ganon classify): classification.md
