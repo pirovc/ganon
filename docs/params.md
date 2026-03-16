@@ -7,7 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.3.0.dev0+gf55e87c20.d20260303
+   _|   v. 2.3.0
 - - - - - - - - - -
 
 positional arguments:
