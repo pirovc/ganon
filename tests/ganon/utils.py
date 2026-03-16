@@ -320,7 +320,7 @@ def reassign_sanity_check_and_parse(params):
 
     res = {}
     if not params["remove_all"]:
-        res["all_pd"] = parse_all_one(params["input_prefix"] + ".all")
+        res["all_pd"] = parse_all_one(params["input_prefix"][0] + ".all")
         if res["all_pd"].empty:
             return None
 
@@ -333,10 +333,11 @@ def reassign_sanity_check_and_parse(params):
             if res["one_pd"].empty:
                 return None
 
-    if check_files(params["output_prefix"], ["rep"]):
-        res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
-        if res["rep_pd"].empty:
-            return None
+    if not params["skip_rep"]:
+        if check_files(params["output_prefix"], ["rep"]):
+            res["rep_pd"] = parse_rep(params["output_prefix"] + ".rep")
+            if res["rep_pd"].empty:
+                return None
 
     return res
 

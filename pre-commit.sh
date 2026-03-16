@@ -4,3 +4,4 @@ ruff check --fix
 
 # C++
 find src/ -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
+find tests/ -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i

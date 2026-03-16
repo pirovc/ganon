@@ -493,6 +493,13 @@ class Config:
             help="Database input prefix[es]",
         )
         classify_group_required.add_argument(
+            "-o",
+            "--output-prefix",
+            type=str,
+            required=True,
+            help="Output prefix for base report (.rep) and tree-like report (.tre).",
+        )
+        classify_group_required.add_argument(
             "-s",
             "--single-reads",
             type=str,
@@ -509,6 +516,15 @@ class Config:
             required=False,
             metavar="reads.1.fq[.gz] reads.2.fq[.gz]",
             help="Multi-fastq[.gz] pairs of file[s] to classify",
+        )
+        classify_group_required.add_argument(
+            "-a",
+            "--batch-reads",
+            type=str,
+            nargs="*",
+            required=False,
+            metavar="file.tsv",
+            help="File with single- or paired-end reads to be processed in one run. Prefix can be repeated. Example: prefix <tab> file1 [<tab> file2]",
         )
 
         classify_group_cutoff_filter = classify_parser.add_argument_group(
@@ -581,13 +597,6 @@ class Config:
         )
 
         classify_group_output = classify_parser.add_argument_group("output arguments")
-        classify_group_output.add_argument(
-            "-o",
-            "--output-prefix",
-            type=str,
-            metavar="",
-            help="Output prefix for output (.rep) and tree-like report (.tre). Empty to output to STDOUT (only .rep)",
-        )
         classify_group_output.add_argument(
             "--output-one",
             action="store_true",
@@ -676,15 +685,16 @@ class Config:
             "--input-prefix",
             type=str,
             required=True,
+            nargs="*",
             metavar="",
-            help="Input prefix to find files from ganon classify (.all and optionally .rep)",
+            help="Input prefix to find files from ganon classify (.rep and .all)",
         )
         reassign_group_required.add_argument(
             "-o",
             "--output-prefix",
             type=str,
-            required=True,
-            help="Output prefix for reassigned file (.one and optionally .rep). In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.out'",
+            default="",
+            help="Alternative output prefix for reassigned files. If not provided, will use same path of input files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example: {output_prefix}{filename}.one",
         )
 
         reassign_em = reassign_parser.add_argument_group("EM arguments")
@@ -717,6 +727,11 @@ class Config:
             help="Do not write output file (.one) after processing.",
         )
         reassign_group_other.add_argument(
+            "--skip-rep",
+            action="store_true",
+            help="Do not write report file (.rep) after processing.",
+        )
+        reassign_group_other.add_argument(
             "--verbose", action="store_true", help="Verbose output mode"
         )
         reassign_group_other.add_argument(
@@ -743,13 +758,6 @@ class Config:
             type=str,
             default="rep",
             help="Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).",
-        )
-        report_group_required.add_argument(
-            "-o",
-            "--output-prefix",
-            type=str,
-            required=True,
-            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'",
         )
 
         report_group_dbtax = report_parser.add_argument_group("db/tax arguments")
@@ -796,6 +804,13 @@ class Config:
         )
 
         report_group_output = report_parser.add_argument_group("output arguments")
+        report_group_output.add_argument(
+            "-o",
+            "--output-prefix",
+            type=str,
+            default="",
+            help="Output prefix for report file 'output_prefix.tre'. In case of multiple files, the base input filename will be appended at the end of the output file 'output_prefix + FILENAME.tre'",
+        )
         report_group_output.add_argument(
             "-f",
             "--output-format",
@@ -1303,9 +1318,15 @@ class Config:
                 )
                 return False
 
-            if not self.single_reads and not self.paired_reads:
+            if not self.single_reads and not self.paired_reads and not self.batch_reads:
                 print_log(
-                    "Please provide file[s] with --single-reads or --paired-reads"
+                    "Please provide file[s] with --single-reads, --paired-reads or --batch-reads"
+                )
+                return False
+
+            if self.batch_reads and (self.single_reads or self.paired_reads):
+                print_log(
+                    "--batch-reads cannot be used at the same time with --single-reads and/or --paired-reads"
                 )
                 return False
 
@@ -1325,13 +1346,11 @@ class Config:
                     print_log("Invalid number of paired reads")
                     return False
 
-            if not self.output_prefix and (
-                self.output_all or self.output_one or self.output_unclassified
-            ):
-                print_log(
-                    "--output-all / --output-one / --output-unclassified requires --output-prefix to be set"
-                )
-                return False
+            if self.batch_reads:
+                for f in self.batch_reads:
+                    if not check_file(f):
+                        print_log("File not found: " + f)
+                        return False
 
             if self.output_one and self.multiple_matches == "skip":
                 print_log("--output-one requires --multiple-matches em/lca")

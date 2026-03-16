@@ -28,7 +28,7 @@ ganon achieved very good results in [our own evaluations](https://dx.doi.org/10.
 The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:
 
 ```bash
-conda install -c bioconda -c conda-forge ganon
+conda install -c conda-forge -c bioconda ganon
 ```
 
 However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:

@@ -345,6 +345,151 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
         REQUIRE( res.all["readG"]["C"] == 5 );
     }
 
+    SECTION( "--batch-reads" )
+    {
+        std::string prefix{ folder_prefix + "batch_reads" };
+        config_classify::write_tax( prefix + ".tax",
+                                    { { "A", "AT" },
+                                      { "C", "CG" },
+                                      { "T", "AT" },
+                                      { "G", "CG" },
+                                      { "CG", "ATCG" },
+                                      { "AT", "ATCG" },
+                                      { "ATCG", "1" } } );
+
+        // run with --paired-reads
+        std::string prefix_paired{ folder_prefix + "batch_reads_tmp_paired" };
+        auto        cfg_paired  = config_classify::defaultConfig( prefix_paired );
+        cfg_paired.ibf          = { base_prefix + ".ibf" };
+        cfg_paired.tax          = { folder_prefix + "batch_reads.tax" };
+        cfg_paired.paired_reads = { folder_prefix + "readA.fasta", folder_prefix + "readT.fasta" };
+        cfg_paired.rel_cutoff   = { 0 };
+        cfg_paired.rel_filter   = { 1 };
+        REQUIRE( GanonClassify::run( cfg_paired ) );
+        config_classify::Res res_paired{ cfg_paired };
+        config_classify::sanity_check( cfg_paired, res_paired );
+        // run with --single-reads
+        std::string prefix_single{ folder_prefix + "batch_reads_tmp_single" };
+        auto        cfg_single  = config_classify::defaultConfig( prefix_single );
+        cfg_single.ibf          = { base_prefix + ".ibf" };
+        cfg_single.tax          = { folder_prefix + "batch_reads.tax" };
+        cfg_single.single_reads = { folder_prefix + "readC.fasta" };
+        cfg_single.rel_cutoff   = { 0 };
+        cfg_single.rel_filter   = { 1 };
+        REQUIRE( GanonClassify::run( cfg_single ) );
+        config_classify::Res res_single{ cfg_single };
+        config_classify::sanity_check( cfg_single, res_single );
+
+        // Run with --batch-reads
+        std::ofstream tsvFile( prefix + ".tsv" );
+        tsvFile << "batch_paired" << '\t' << folder_prefix + "readA.fasta" << '\t' << folder_prefix + "readT.fasta"
+                << std::endl;
+        tsvFile << "batch_single" << '\t' << folder_prefix + "readC.fasta" << std::endl;
+        tsvFile.close();
+        auto cfg        = config_classify::defaultConfig( prefix );
+        cfg.ibf         = { base_prefix + ".ibf" };
+        cfg.tax         = { prefix + ".tax" };
+        cfg.batch_reads = { prefix + ".tsv" };
+        cfg.rel_cutoff  = { 0 };
+        cfg.rel_filter  = { 1 };
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        // Batch results should be exactly the same as not batched
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".all", prefix + "batch_paired.all" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".one", prefix + "batch_paired.one" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".unc", prefix + "batch_paired.unc" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_paired + ".rep", prefix + "batch_paired.rep" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".all", prefix + "batch_single.all" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".one", prefix + "batch_single.one" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".unc", prefix + "batch_single.unc" ) );
+        REQUIRE( aux::filesAreEqualSorted( prefix_single + ".rep", prefix + "batch_single.rep" ) );
+    }
+
+    SECTION( "--batch-reads without prefix" )
+    {
+        std::string prefix{ folder_prefix + "batch_reads_wo_prefix" };
+
+        // Write batch file without prefix - same behaviour as using --paired and --single-reads
+        std::ofstream tsvFile( prefix + ".tsv" );
+        tsvFile << "" << '\t' << folder_prefix + "readC.fasta" << std::endl;
+        tsvFile << "" << '\t' << folder_prefix + "readG.fasta" << std::endl;
+        tsvFile << "" << '\t' << folder_prefix + "readA.fasta" << '\t' << folder_prefix + "readT.fasta" << std::endl;
+        tsvFile.close();
+
+        auto cfg        = config_classify::defaultConfig( prefix );
+        cfg.ibf         = { base_prefix + ".ibf" };
+        cfg.batch_reads = { prefix + ".tsv" };
+        cfg.rel_cutoff  = { 0 };
+        cfg.rel_filter  = { 1 };
+
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        // same as paired and single C and G
+        REQUIRE( res.all["readA"].size() == 2 );
+        REQUIRE( res.all["readC"].size() == 2 );
+        REQUIRE( res.all["readG"].size() == 2 );
+        REQUIRE( res.all["readA"]["A"] == 10 );
+        REQUIRE( res.all["readC"]["C"] == 5 );
+        REQUIRE( res.all["readG"]["C"] == 5 );
+        REQUIRE( res.all["readA"]["T"] == 10 );
+        REQUIRE( res.all["readC"]["C"] == 5 );
+        REQUIRE( res.all["readG"]["C"] == 5 );
+    }
+
+    SECTION( "--batch-reads and --hierarchy-labels and --tax" )
+    {
+        std::string   prefix{ folder_prefix + "batch_reads_w_prefix_hiearchy" };
+        std::ofstream tsvFile( prefix + ".tsv" );
+        tsvFile << "batchA" << '\t' << folder_prefix + "readC.fasta" << std::endl;
+        tsvFile << "batchB" << '\t' << folder_prefix + "readG.fasta" << std::endl;
+        tsvFile << "batchC" << '\t' << folder_prefix + "readA.fasta" << '\t' << folder_prefix + "readT.fasta"
+                << std::endl;
+        tsvFile.close();
+
+        config_classify::write_tax( prefix + ".tax",
+                                    { { "A", "AT" },
+                                      { "C", "CG" },
+                                      { "T", "AT" },
+                                      { "G", "CG" },
+                                      { "CG", "ATCG" },
+                                      { "AT", "ATCG" },
+                                      { "ATCG", "1" } } );
+
+        auto cfg             = config_classify::defaultConfig( prefix );
+        cfg.ibf              = { base_prefix + ".ibf", base_prefix + ".ibf" };
+        cfg.batch_reads      = { prefix + ".tsv" };
+        cfg.rel_cutoff       = { 0 };
+        cfg.rel_filter       = { 1 };
+        cfg.tax              = { prefix + ".tax", prefix + ".tax" };
+        cfg.hierarchy_labels = { "DB1", "DB2" };
+
+        REQUIRE( GanonClassify::run( cfg ) );
+        config_classify::Res res{ cfg };
+        config_classify::sanity_check( cfg, res );
+
+        REQUIRE( std::filesystem::exists( prefix + "batchA.DB1.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchA.DB2.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.DB1.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.DB2.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.DB1.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.DB2.all" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchA.DB1.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchA.DB2.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.DB1.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.DB2.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.DB1.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.DB2.one" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchA.unc" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.unc" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.unc" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchA.rep" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchB.rep" ) );
+        REQUIRE( std::filesystem::exists( prefix + "batchC.rep" ) );
+    }
 
     SECTION( "--tax" )
     {
@@ -465,27 +610,6 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             REQUIRE( res.all["readA"]["A"] == 2 );
             REQUIRE( res.all["readA"]["T"] == 2 );
         }
-    }
-
-    SECTION( "without --output-prefix" )
-    {
-        // avoid printing on test results (ignoring STDOUT)
-        std::streambuf* old = std::cout.rdbuf( 0 );
-
-        std::string prefix{ folder_prefix + "wo_output_prefix" };
-        auto        cfg   = config_classify::defaultConfig( prefix );
-        cfg.ibf           = { base_prefix + ".ibf" };
-        cfg.single_reads  = { folder_prefix + "readA.fasta" };
-        cfg.output_prefix = "";
-
-        REQUIRE( GanonClassify::run( cfg ) );
-        // No files created
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.rep" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.one" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.all" ) );
-        REQUIRE_FALSE( std::filesystem::exists( "wo_output_prefix.unc" ) );
-
-        std::cout.rdbuf( old );
     }
 
     SECTION( "--hierarchy-labels" )
@@ -697,8 +821,8 @@ SCENARIO( "classifying reads with errors", "[ganon-classify][with-errors]" )
                               "CTC-TGTT-CCT----GGG-CTCTTGGT"_dna4, "CTC-TGTT-CCT----GGG-CTCT-GGT"_dna4 };
     auto                seqtarget_refs = aux::SeqTarget( folder_prefix,
                                           refs,
-                                          { "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" },
-                                          { "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" } );
+                                                         { "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" },
+                                                         { "e0", "e1F", "e1F_e1R", "e1F_e2R", "e2F_e1R", "e2F_e2R", "e3F_e3R" } );
 
     std::string base_prefix{ folder_prefix + "base_build3" };
     seqtarget_refs.write_input_file( base_prefix + ".tsv" );

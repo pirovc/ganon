@@ -1,5 +1,5 @@
+import pathlib
 import time
-import os
 from math import floor, ceil
 
 from copy import deepcopy
@@ -98,17 +98,20 @@ def report(cfg):
                 reports, counts, cfg.skip_hierarchy, cfg.keep_hierarchy, cfg.quiet
             )
 
-        # General output file
-        if len(rep_files) == 1:
-            output_file = cfg.output_prefix
+        rep_file_path = pathlib.Path(rep_file)
+        rep_file_prefix = str(pathlib.Path(rep_file_path.parent, rep_file_path.stem))
+        if cfg.output_prefix:
+            if len(rep_files) == 1:
+                out_file_prefix = cfg.output_prefix
+            else:
+                out_file_prefix = cfg.output_prefix + str(rep_file_path.stem)
         else:
-            file_pre = os.path.splitext(os.path.basename(rep_file))[0]
-            output_file = cfg.output_prefix + file_pre
+            out_file_prefix = rep_file_prefix
 
         if cfg.split_hierarchy:
             for h in reports:
                 if h not in cfg.skip_hierarchy:
-                    output_file_h = output_file + "." + h + ".tre"
+                    output_file_h = out_file_prefix + "." + h + ".tre"
                     r = build_report(
                         {h: reports[h]},
                         counts,
@@ -134,13 +137,13 @@ def report(cfg):
                         any_rep = True
 
         else:
-            output_file = output_file + ".tre"
+            out_file_prefix = out_file_prefix + ".tre"
             r = build_report(
                 reports,
                 counts,
                 tax,
                 genome_sizes,
-                output_file,
+                out_file_prefix,
                 fixed_ranks,
                 default_ranks,
                 cfg,
@@ -150,7 +153,7 @@ def report(cfg):
                 print_log(" - nothing to report for " + rep_file, cfg.quiet)
                 continue
             else:
-                print_log(" - report saved to " + output_file, cfg.quiet)
+                print_log(" - report saved to " + out_file_prefix, cfg.quiet)
                 any_rep = True
         print_log("", cfg.quiet)
 
