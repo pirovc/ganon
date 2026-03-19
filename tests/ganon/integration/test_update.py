@@ -56,8 +56,8 @@ class TestUpdate(unittest.TestCase):
             run_ganon(cfg, build_params["db_prefix"]), "ganon build run failed"
         )
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(open(build_params["db_prefix"] + "_files/config.pkl", "rb"))
-        res = build_sanity_check_and_parse(cfg)
+        with open(build_params["db_prefix"] + "_files/config.pkl", "rb") as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         # check if all 2 assemblies were used
@@ -87,11 +87,10 @@ class TestUpdate(unittest.TestCase):
             run_ganon(cfg, update_params["output_db_prefix"]), "ganon update run failed"
         )
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(
-            open(update_params["output_db_prefix"] + "_files/config.pkl", "rb")
-        )
-
-        res = build_sanity_check_and_parse(cfg)
+        with open(
+            update_params["output_db_prefix"] + "_files/config.pkl", "rb"
+        ) as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
         # check if all 3 assemblies were used
         self.assertEqual(res["info"].shape[0], 3, "Wrong number of files")
@@ -120,8 +119,8 @@ class TestUpdate(unittest.TestCase):
             run_ganon(cfg, build_params["db_prefix"]), "ganon build run failed"
         )
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(open(build_params["db_prefix"] + "_files/config.pkl", "rb"))
-        res = build_sanity_check_and_parse(cfg)
+        with open(build_params["db_prefix"] + "_files/config.pkl", "rb") as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         # check if all 2 assemblies were used
@@ -150,9 +149,8 @@ class TestUpdate(unittest.TestCase):
             run_ganon(cfg, update_params["db_prefix"]), "ganon update run failed"
         )
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(open(update_params["db_prefix"] + "_files/config.pkl", "rb"))
-
-        res = build_sanity_check_and_parse(cfg)
+        with open(update_params["db_prefix"] + "_files/config.pkl", "rb") as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
         # check if all 3 assemblies were used
         self.assertEqual(res["info"].shape[0], 3, "Wrong number of files")

@@ -58,9 +58,8 @@ class TestBuild(unittest.TestCase):
         # Run ganon build
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build run failed")
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(open(params["db_prefix"] + "_files/config.pkl", "rb"))
-
-        res = build_sanity_check_and_parse(cfg)
+        with open(params["db_prefix"] + "_files/config.pkl", "rb") as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         # check if all 3 assemblies were used
@@ -80,9 +79,8 @@ class TestBuild(unittest.TestCase):
         # Run ganon build
         self.assertTrue(run_ganon(cfg, params["db_prefix"]), "ganon build run failed")
         # Load config from written file (to get all arguments generated on build for build custom)
-        cfg = pickle.load(open(params["db_prefix"] + "_files/config.pkl", "rb"))
-
-        res = build_sanity_check_and_parse(cfg)
+        with open(params["db_prefix"] + "_files/config.pkl", "rb") as pkl_file:
+            res = build_sanity_check_and_parse(pickle.load(pkl_file))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
         # Only 2 assemblies should be part of cellular organisms (bac, arc)
