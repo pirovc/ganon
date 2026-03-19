@@ -220,6 +220,11 @@ def build_report(
     cfg,
     rep_file,
 ):
+    # rank stats
+    rank_stats = {}
+    for r in fixed_ranks:
+        rank_stats[r] = {"unique": 0, "shared": 0, "children":0, "total":0}
+
     # total
     if cfg.report_type == "matches":
         total = counts["total"]["matches"]
@@ -372,8 +377,9 @@ def build_report(
             else:
                 lineage = tax.lineage(node)
 
+            rank = tax.rank(node)
             out_line = [
-                tax.rank(node),
+                rank,
                 node,
                 "|".join(lineage),
                 tax.name(node),
@@ -383,6 +389,12 @@ def build_report(
                 str(cum_count),
                 str("%.5f" % cum_perc),
             ]
+
+            rank_stats[rank]["unique"]+=unique
+            rank_stats[rank]["shared"]+=shared
+            rank_stats[rank]["children"]+=children
+            rank_stats[rank]["total"]+=cum_count
+
             if cfg.output_format in ["tsv", "csv"]:
                 print(
                     *out_line,
@@ -427,6 +439,25 @@ def build_report(
             cfg.quiet,
         )
     print_log(" - " + str(len(sorted_nodes)) + " entries reported", cfg.quiet)
+
+    offset_len = 3
+    max_width_rank = max([len(r) for r in rank_stats])
+    max_width_n = 8
+    for i, (rank, stats) in enumerate(rank_stats.items()):
+        if i==0:
+            print(" " * offset_len, end="")
+            print(" " * max_width_rank, end=" ")
+            for s in stats:
+                print("{0: <{width}}".format(s, width=max_width_n), end=" ")
+            print()
+
+        print(" " * offset_len, end="")
+        print("{0: <{width}}".format(rank, width=max_width_rank), end=" ")
+
+        for v in stats.values():   
+            print("{0: <{width}}".format("%.4g%%" % ((v/total)*100), width=max_width_n), end=" ")
+        print()
+
     return True
 
 
