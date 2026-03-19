@@ -63,7 +63,7 @@ def parse_file_accession(input_files, info_cols):
     info = pd.DataFrame(columns=info_cols)
 
     assembly_accessions = []
-    assembly_accession_pattern = re.compile("GC[A|F]_[0-9]+\.[0-9]+")
+    assembly_accession_pattern = re.compile(r"GC[A|F]_[0-9]+\.[0-9]+")
     for file in input_files:
         match = assembly_accession_pattern.search(file)
         assembly_accessions.append(
