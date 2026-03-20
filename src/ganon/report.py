@@ -222,8 +222,6 @@ def build_report(
 ):
     # rank stats
     rank_stats = {}
-    for r in fixed_ranks:
-        rank_stats[r] = {"unique": 0, "shared": 0, "children":0, "total":0}
 
     # total
     if cfg.report_type == "matches":
@@ -297,87 +295,81 @@ def build_report(
     # Output file
     tre_file = open(output_file, "w")
 
+    output_rows = []
+    # Reporting reads, first line prints unclassified entries
+    if cfg.report_type != "matches" and not cfg.normalize:
+        unclassified_line = [
+            "unclassified",
+            "-",
+            "-",
+            "unclassified",
+            "0",
+            "0",
+            "0",
+            str(counts["total"]["unclassified"]),
+            str("%.5f" % ((counts["total"]["unclassified"] / total) * 100)),
+        ]
+        if cfg.output_format in ["tsv", "csv"]:
+            print(
+                *unclassified_line,
+                file=tre_file,
+                sep="\t" if cfg.output_format == "tsv" else ",",
+            )
+        else:
+            output_rows.append(unclassified_line)
+
     if cfg.output_format == "bioboxes":
         print("@Version:0.10.0", file=tre_file)
         print("@SampleID:" + rep_file + " " + ",".join(reports.keys()), file=tre_file)
         print("@Ranks:" + "|".join(fixed_ranks[1:]), file=tre_file)
         print("@Taxonomy:" + ",".join(tax.sources), file=tre_file)
         print("@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE", file=tre_file)
-        for node in sorted_nodes:
-            cum_perc = tree_cum_perc[node] * 100
+
+    # All entries
+    for node in sorted_nodes:
+        cum_count = filtered_cum_counts[node]
+        cum_perc = tree_cum_perc[node] * 100
+        unique = 0
+        shared = 0
+        children = cum_count
+        if node in merged_rep:
+            unique = merged_rep[node]["unique_reads"]
+            if cfg.report_type == "matches":
+                shared = (
+                    merged_rep[node]["direct_matches"]
+                    - merged_rep[node]["unique_reads"]
+                )
+            else:
+                shared = merged_rep[node]["lca_reads"]
+
+        children = children - unique - shared
+        rank = tax.rank(node)
+
+        if fixed_ranks:
+            rank_idx = fixed_ranks.index(rank)
+            lineage = tax.lineage(node, ranks=fixed_ranks[: rank_idx + 1])
+        else:
+            lineage = tax.lineage(node)
+
+        if cfg.output_format == "bioboxes":
             # Do not report root
             if node == tax.root_node:
                 continue
-
-            cum_perc = tree_cum_perc[node] * 100
-
+            # Get name lineage
             if fixed_ranks:
-                r = fixed_ranks.index(tax.rank(node))
-                lineage = tax.lineage(node, ranks=fixed_ranks[: r + 1])
-                name_lineage = tax.name_lineage(node, ranks=fixed_ranks[: r + 1])
+                rank_idx = fixed_ranks.index(rank)
+                name_lineage = tax.name_lineage(node, ranks=fixed_ranks[: rank_idx + 1])
             else:
-                lineage = tax.lineage(node)
                 name_lineage = tax.name_lineage(node)
 
             out_line = [
                 node,
-                tax.rank(node),
+                rank,
                 "|".join(lineage[1:]),  # ignore root
                 "|".join(name_lineage[1:]),  # ignore root
-                str("%.5f" % cum_perc),
+                str("%g" % cum_perc),
             ]
-            print(*out_line, file=tre_file, sep="\t")
-
-    else:
-        output_rows = []
-        # Reporting reads, first line prints unclassified entries
-        if cfg.report_type != "matches" and not cfg.normalize:
-            unclassified_line = [
-                "unclassified",
-                "-",
-                "-",
-                "unclassified",
-                "0",
-                "0",
-                "0",
-                str(counts["total"]["unclassified"]),
-                str("%.5f" % ((counts["total"]["unclassified"] / total) * 100)),
-            ]
-            if cfg.output_format in ["tsv", "csv"]:
-                print(
-                    *unclassified_line,
-                    file=tre_file,
-                    sep="\t" if cfg.output_format == "tsv" else ",",
-                )
-            else:
-                output_rows.append(unclassified_line)
-
-        # All entries
-        for node in sorted_nodes:
-            cum_count = filtered_cum_counts[node]
-            cum_perc = tree_cum_perc[node] * 100
-            unique = 0
-            shared = 0
-            children = cum_count
-            if node in merged_rep:
-                unique = merged_rep[node]["unique_reads"]
-                if cfg.report_type == "matches":
-                    shared = (
-                        merged_rep[node]["direct_matches"]
-                        - merged_rep[node]["unique_reads"]
-                    )
-                else:
-                    shared = merged_rep[node]["lca_reads"]
-
-            children = children - unique - shared
-
-            if fixed_ranks:
-                r = fixed_ranks.index(tax.rank(node))
-                lineage = tax.lineage(node, ranks=fixed_ranks[: r + 1])
-            else:
-                lineage = tax.lineage(node)
-
-            rank = tax.rank(node)
+        else:
             out_line = [
                 rank,
                 node,
@@ -390,40 +382,43 @@ def build_report(
                 str("%.5f" % cum_perc),
             ]
 
-            rank_stats[rank]["unique"]+=unique
-            rank_stats[rank]["shared"]+=shared
-            rank_stats[rank]["children"]+=children
-            rank_stats[rank]["total"]+=cum_count
+        if rank not in rank_stats:
+            rank_stats[rank] = {"unique": 0, "shared": 0, "children": 0, "total": 0}
+        else:
+            rank_stats[rank]["unique"] += unique
+            rank_stats[rank]["shared"] += shared
+            rank_stats[rank]["children"] += children
+            rank_stats[rank]["total"] += cum_count
 
-            if cfg.output_format in ["tsv", "csv"]:
-                print(
-                    *out_line,
-                    file=tre_file,
-                    sep="\t" if cfg.output_format == "tsv" else ",",
-                )
-            else:
-                output_rows.append(out_line)
-
-        # Print formated text
         if cfg.output_format == "text":
-            # Check max width for each col
-            max_width = [0] * len(output_rows[0])
-            for row in output_rows:
-                for i, w in enumerate(max_width):
-                    lin = len(row[i])
-                    if lin > w:
-                        max_width[i] = lin
-            # apply format when printing with max_width
-            for row in output_rows:
-                print(
-                    "\t".join(
-                        [
-                            "{0: <{width}}".format(field, width=max_width[i])
-                            for i, field in enumerate(row)
-                        ]
-                    ),
-                    file=tre_file,
-                )
+            output_rows.append(out_line)
+        else:
+            print(
+                *out_line,
+                file=tre_file,
+                sep="," if cfg.output_format == "csv" else "\t",
+            )
+
+    # Print formated text
+    if cfg.output_format == "text" and output_rows:
+        # Check max width for each col
+        max_width = [0] * len(output_rows[0])
+        for row in output_rows:
+            for i, w in enumerate(max_width):
+                lin = len(row[i])
+                if lin > w:
+                    max_width[i] = lin
+        # apply format when printing with max_width
+        for row in output_rows:
+            print(
+                "\t".join(
+                    [
+                        "{0: <{width}}".format(field, width=max_width[i])
+                        for i, field in enumerate(row)
+                    ]
+                ),
+                file=tre_file,
+            )
 
     if output_file:
         tre_file.close()
@@ -438,25 +433,38 @@ def build_report(
             "\n   Too ommit them, use --no-orphan",
             cfg.quiet,
         )
-    print_log(" - " + str(len(sorted_nodes)) + " entries reported", cfg.quiet)
+    print_log(
+        " - "
+        + str(len(sorted_nodes))
+        + " entries reported (--report-type "
+        + cfg.report_type
+        + ")",
+        cfg.quiet,
+    )
 
+    # Print stats
     offset_len = 3
     max_width_rank = max([len(r) for r in rank_stats])
-    max_width_n = 8
+    max_width_n = 10
     for i, (rank, stats) in enumerate(rank_stats.items()):
-        if i==0:
-            print(" " * offset_len, end="")
-            print(" " * max_width_rank, end=" ")
+        if i == 0:
+            print_log(" " * offset_len, end="")
+            print_log(" " * max_width_rank, end=" ")
             for s in stats:
-                print("{0: <{width}}".format(s, width=max_width_n), end=" ")
-            print()
+                print_log("{0: <{width}}".format(s, width=max_width_n), end=" ")
+            print_log("")
 
-        print(" " * offset_len, end="")
-        print("{0: <{width}}".format(rank, width=max_width_rank), end=" ")
+        print_log(" " * offset_len, end="")
+        print_log("{0: <{width}}".format(rank, width=max_width_rank), end=" ")
 
-        for v in stats.values():   
-            print("{0: <{width}}".format("%.4g%%" % ((v/total)*100), width=max_width_n), end=" ")
-        print()
+        for v in stats.values():
+            print_log(
+                "{0: <{width}}".format(
+                    "%.4g%%" % ((v / total) * 100), width=max_width_n
+                ),
+                end=" ",
+            )
+        print_log("")
 
     return True
 
@@ -675,36 +683,36 @@ def filter_report(
     filtered_cum_counts = {}
 
     filter_counts_msg = {}
-    filter_counts_msg["orphan"] = {"count": 0, "msg": "orphan entries removed"}
+    filter_counts_msg["orphan"] = {"count": 0, "msg": "orphan entries ignored"}
     filter_counts_msg["ranks"] = {
         "count": 0,
-        "msg": "entries removed not in --ranks ["
+        "msg": "entries ignored not in --ranks ["
         + (",".join(fixed_ranks[1:]) if fixed_ranks else "")
         + "]",
     }
     filter_counts_msg["percentile"] = {
         "count": 0,
-        "msg": "entries removed with --top-percentile " + str(cfg.top_percentile),
+        "msg": "entries ignored with --top-percentile " + str(cfg.top_percentile),
     }
     filter_counts_msg["min_count"] = {
         "count": 0,
-        "msg": "entries removed with --min-count " + str(cfg.min_count),
+        "msg": "entries ignored with --min-count " + str(cfg.min_count),
     }
     filter_counts_msg["max_count"] = {
         "count": 0,
-        "msg": "entries removed with --max-count " + str(cfg.min_count),
+        "msg": "entries ignored with --max-count " + str(cfg.min_count),
     }
     filter_counts_msg["taxids"] = {
         "count": 0,
-        "msg": "entries removed not in --taxids [" + ",".join(cfg.taxids) + "]",
+        "msg": "entries ignored not in --taxids [" + ",".join(cfg.taxids) + "]",
     }
     filter_counts_msg["names"] = {
         "count": 0,
-        "msg": "entries removed not in --names [" + ",".join(cfg.names) + "]",
+        "msg": "entries ignored not in --names [" + ",".join(cfg.names) + "]",
     }
     filter_counts_msg["names_with"] = {
         "count": 0,
-        "msg": "entries removed not in --names-with [" + ",".join(cfg.names_with) + "]",
+        "msg": "entries ignored not in --names-with [" + ",".join(cfg.names_with) + "]",
     }
 
     rank_cutoff_percentile = {}

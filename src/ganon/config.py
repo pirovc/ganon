@@ -57,7 +57,7 @@ class Config:
         "order",
         "family",
         "genus",
-        "species"
+        "species",
     ]
     choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
     choices_multiple_matches = ["em", "lca", "skip"]

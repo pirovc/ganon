@@ -20,6 +20,16 @@ class TestReport(unittest.TestCase):
         "input": results_dir + "base_classify.rep",
         "db_prefix": [results_dir + "base_build2", results_dir + "base_build"],
         "verbose": True,
+        "ranks": [
+            "domain",
+            "phylum",
+            "class",
+            "order",
+            "family",
+            "genus",
+            "species",
+            "assembly",
+        ],
         "quiet": False,
     }
 
@@ -749,6 +759,7 @@ class TestReport(unittest.TestCase):
 
         # count output taxa by rank
         total_by_rank = res["tre_pd"][~res["idx_base"]].groupby(["rank"]).size()
+        print(total_by_rank)
 
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_top_percentile_50"
