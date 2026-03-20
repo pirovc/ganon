@@ -38,15 +38,15 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 | col | field        | obs | example |
 |-----|--------------|-----|---------|
-| 1   | rank         | taxonomic rank | phylum |
-| 2   | target       | taxonomic id. or specialization (assembly id.) | 562 |
-| 3   | lineage      | taxonomic id. lineage | 1\|131567\|2\|1224\|28211\|766\|942\|768\|769 |
-| 4   | name         | scientific name | Chromobacterium rhizoryzae |
+| 1   | rank         | taxonomic rank | species |
+| 2   | target       | taxonomic id. or specialization (assembly id.) | 80878 |
+| 3   | lineage      | taxonomic id. lineage | 1\|2\|1224\|28216\|80840\|80864\|12916\|80878 |
+| 4   | name         | scientific name | Acidovorax temperans |
 | 5   | # unique     | reads that matched exclusively to this target | 5 |
-| 6   | # shared     | reads with non-unique matches (re)assigned to this target via <br> EM/LCA/`--report-type abundance/dist` <br> or shared matches with `--report-type matches` | 10 |
+| 6   | # shared     | reads with non-unique matches (re)assigned to this target with <br> em/lca/`--report-type abundance/dist` <br> OR shared matches with `--report-type matches` | 10 |
 | 7   | # children   | unique + shared assignments to all children nodes of this target | 20 |
 | 8   | # cumulative | unique + shared + children assignments up-to this target | 35 |
-| 9   | % cumulative | percentage of cumulative assignments <br> or estimated relative abundance for `--report-type abundance/corr` | 43.24 |
+| 9   | % cumulative | percentage of cumulative assignments <br> OR estimated relative abundance with `--report-type abundance/corr` | 43.24 |
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches` or `--normalize`)
 
@@ -56,14 +56,8 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 - For all report type but `matches`, only taxa that received direct read matches, either unique or by LCA assignment, are considered. Some reads may have only shared matches and will not be reported directly but will be accounted for on some parent level. To visualize those matches, create a report with `--report-type matches` or use directly the file {prefix}**.rep**.
 
-## ganon table
-
- - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples
- 
----
-
 <details>
-  <summary>Examples of output files</summary>
+  <summary>Examples of report output files</summary>
 
 The main output file is the `{prefix}.tre` which will summarize the results:
 
@@ -138,3 +132,8 @@ with `--output-format bioboxes`
 ```
 </details>
 <br>
+
+## ganon table
+
+ - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples
+ 
