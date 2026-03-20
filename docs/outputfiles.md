@@ -19,7 +19,7 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
     - 2: target
     - 3: # total matches
     - 4: # unique reads
-    - 5: # lca reads
+    - 5: # em/lca reads
     - 6: rank
     - 7: name
 - {prefix}**.one**: output with one match for each classified read after EM or LCA algorithm. Only generated with `--output-one` active. If multiple hierarchy levels are set, one file for each level will be created: {prefix}.{hierarchy}.one *(fields: read identifier, target, (max) k-mer/minimizer count)*
@@ -28,25 +28,25 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
 ## ganon report
 
 - {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible `--report-type`. More information on the different types of reports can be found [here](#report-type---report-type):
-    - *abundance*: will attempt to estimate **taxonomic abundances** by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes.
+    - *abundance*: will attempt to estimate **taxonomic abundances** by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes. If EM was previously used to re-distribute reads, will only correct for sequence abundance.
     - *reads*: **sequence abundances**, reports the proportion of sequences assigned to a taxa, each read classified is counted once.
-    - *dist*: like *reads* with read count re-distribution.
-    - *corr*: like *reads* with correction by genome size.
+    - *dist*: same as *reads* with read count re-distribution.
+    - *corr*: same as *reads* with correction by genome size.
     - *matches*: every match is reported to their original target, including multiple and shared matches.
 
 Each line in this report is a taxonomic entry (including the root node), with the following fields: 
 
-| col | field        | obs                                                                                                                                                                                                                            | example                                       |
-|-----|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------|
-| 1   | rank         |                                                                                                                                                                                                                                | phylum                                        |
-| 2   | target       | taxonomic id. or specialization (assembly id.)                                                                                                                                                                                 | 562                                           |
-| 3   | lineage      |                                                                                                                                                                                                                                | 1\|131567\|2\|1224\|28211\|766\|942\|768\|769 |
-| 4   | name         |                                                                                                                                                                                                                                | Chromobacterium rhizoryzae                    |
-| 5   | # unique     | number of reads that matched exclusively to this target                                                                                                                                                                        | 5                                             |
-| 6   | # shared     | number of reads with non-unique matches directly assigned to this target. Represents the LCA matches (`--report-type reads`), re-assigned matches (`--report-type abundance/dist`) or shared matches (`--report-type matches`) | 10                                            |
-| 7   | # children   | number of unique and shared assignments to all children nodes of this target                                                                                                                                                   | 20                                            |
-| 8   | # cumulative | the sum of the unique, shared and children assignments up-to this target                                                                                                                                                       | 35                                            |
-| 9   | % cumulative | percentage of assignments or estimated relative abundance for `--report-type abundance`                                                                                                                                                                     | 43.24                                         |
+| col | field        | obs | example |
+|-----|--------------|-----|---------|
+| 1   | rank         | taxonomic rank | species |
+| 2   | target       | taxonomic id. or specialization (assembly id.) | 80878 |
+| 3   | lineage      | taxonomic id. lineage | 1\|2\|1224\|28216\|80840\|80864\|12916\|80878 |
+| 4   | name         | scientific name | Acidovorax temperans |
+| 5   | # unique     | reads that matched exclusively to this target | 5 |
+| 6   | # shared     | reads with non-unique matches (re)assigned to this target with <br> em/lca/`--report-type abundance/dist` <br> OR shared matches with `--report-type matches` | 10 |
+| 7   | # children   | unique + shared assignments to all children nodes of this target | 20 |
+| 8   | # cumulative | unique + shared + children assignments up-to this target | 35 |
+| 9   | % cumulative | percentage of cumulative assignments <br> OR estimated relative abundance with `--report-type abundance/corr` | 43.24 |
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches` or `--normalize`)
 
@@ -56,14 +56,8 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 - For all report type but `matches`, only taxa that received direct read matches, either unique or by LCA assignment, are considered. Some reads may have only shared matches and will not be reported directly but will be accounted for on some parent level. To visualize those matches, create a report with `--report-type matches` or use directly the file {prefix}**.rep**.
 
-## ganon table
-
- - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples
- 
----
-
 <details>
-  <summary>Examples of output files</summary>
+  <summary>Examples of report output files</summary>
 
 The main output file is the `{prefix}.tre` which will summarize the results:
 
@@ -138,3 +132,8 @@ with `--output-format bioboxes`
 ```
 </details>
 <br>
+
+## ganon table
+
+ - {output_file}: a tab-separated file with counts/percentages of taxa for multiple samples
+ 
