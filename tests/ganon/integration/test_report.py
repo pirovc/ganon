@@ -20,16 +20,6 @@ class TestReport(unittest.TestCase):
         "input": results_dir + "base_classify.rep",
         "db_prefix": [results_dir + "base_build2", results_dir + "base_build"],
         "verbose": True,
-        "ranks": [
-            "domain",
-            "phylum",
-            "class",
-            "order",
-            "family",
-            "genus",
-            "species",
-            "assembly",
-        ],
         "quiet": False,
     }
 

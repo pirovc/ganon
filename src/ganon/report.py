@@ -726,8 +726,8 @@ def filter_report(
             rank = tax.rank(node)
             if rank in default_ranks:
                 rank_perc[rank].append(perc)
-        # Define threhsold for percentile
 
+        # Define threhsold for percentile
         for rank, perc_list in rank_perc.items():
             top = ceil(cfg.top_percentile * len(perc_list))
             if top < len(perc_list):
