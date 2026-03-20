@@ -223,6 +223,10 @@ def build_report(
     # rank stats
     rank_stats = {}
 
+    # If fixed ranks are given (empty = all), initialize to always show even without values
+    for rank in fixed_ranks:
+        rank_stats[rank] = {"unique": 0, "shared": 0, "children": 0, "total": 0}
+
     # total
     if cfg.report_type == "matches":
         total = counts["total"]["matches"]
