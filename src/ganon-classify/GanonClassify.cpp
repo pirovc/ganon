@@ -1,7 +1,7 @@
 #include "GanonClassify.hpp"
 #include "hierarchical_interleaved_bloom_filter.hpp"
 
-#include <robin_hood.h>
+#include <unordered_dense.h>
 
 #include <utils/IBFConfig.hpp>
 #include <utils/LCA.hpp>
@@ -50,10 +50,10 @@ typedef uint16_t TIntCount;
 
 typedef raptor::hierarchical_interleaved_bloom_filter< seqan3::data_layout::uncompressed > THIBF;
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed >              TIBF;
-typedef robin_hood::unordered_map< std::string, std::tuple< size_t, double > >             TMatches;
+typedef ankerl::unordered_dense::map< std::string, std::tuple< size_t, double > >          TMatches;
 typedef std::vector< std::tuple< size_t, std::string > >                                   TBinMap;
-typedef robin_hood::unordered_map< std::string, std::vector< size_t > >                    TMap;
-typedef robin_hood::unordered_map< std::string, double >                                   TTargetFpr;
+typedef ankerl::unordered_dense::map< std::string, std::vector< size_t > >                 TMap;
+typedef ankerl::unordered_dense::map< std::string, double >                                TTargetFpr;
 typedef std::map< std::string, std::vector< std::pair< std::string, std::string > > >      TReadConfig;
 
 struct PairHash
@@ -177,9 +177,9 @@ struct Total
 };
 
 
-typedef robin_hood::unordered_map< std::pair< std::string, std::string >, Rep, PairHash > TRep;
-typedef robin_hood::unordered_map< std::string, Total >                                   TTotal;
-typedef robin_hood::unordered_map< std::string, Node >                                    TTax;
+typedef ankerl::unordered_dense::map< std::pair< std::string, std::string >, Rep, PairHash > TRep;
+typedef ankerl::unordered_dense::map< std::string, Total >                                   TTotal;
+typedef ankerl::unordered_dense::map< std::string, Node >                                    TTax;
 
 
 struct Stats

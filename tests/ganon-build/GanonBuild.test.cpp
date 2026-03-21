@@ -10,7 +10,7 @@
 #include <utils/adjust_seed.hpp>
 
 #include <catch2/catch.hpp>
-#include <robin_hood.h>
+#include <unordered_dense.h>
 
 #include <iostream>
 
@@ -69,7 +69,7 @@ void validate_elements( const GanonBuild::Config cfg, const aux::SeqTarget& seqt
                                                          seqan3::seed{ raptor::adjust_seed( cfg.kmer_size ) } );
 
     // create map with targets and respective binnos {target: (binnos)}
-    robin_hood::unordered_map< std::string, std::vector< uint64_t > > targets;
+    ankerl::unordered_dense::map< std::string, std::vector< uint64_t > > targets;
     for ( auto const& [binno, target] : bin_map )
     {
         targets[target].push_back( binno );

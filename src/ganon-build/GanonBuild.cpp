@@ -1,6 +1,6 @@
 #include "GanonBuild.hpp"
 
-#include <robin_hood.h>
+#include <unordered_dense.h>
 
 #include <defaults/defaults.hpp>
 #include <utils/IBFConfig.hpp>
@@ -38,9 +38,9 @@ namespace detail
 
 typedef seqan3::interleaved_bloom_filter< seqan3::data_layout::uncompressed > TIBF;
 
-typedef robin_hood::unordered_map< std::string, uint64_t > THashesCount;
+typedef ankerl::unordered_dense::map< std::string, uint64_t > THashesCount;
 
-typedef robin_hood::unordered_map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
+typedef ankerl::unordered_dense::map< uint64_t, std::tuple< std::string, uint64_t, uint64_t > > TBinMapHash;
 
 struct InputFileMap
 {
@@ -83,10 +83,10 @@ inline std::string get_seqid( std::string header )
     return header.substr( 0, header.find( ' ' ) );
 }
 
-robin_hood::unordered_map< std::string, std::vector< std::string > > parse_input_file( const std::string& input_file,
-                                                                                       THashesCount&      hashes_count,
-                                                                                       bool               quiet,
-                                                                                       Stats&             stats )
+ankerl::unordered_dense::map< std::string, std::vector< std::string > > parse_input_file( const std::string& input_file,
+                                                                                          THashesCount& hashes_count,
+                                                                                          bool          quiet,
+                                                                                          Stats&        stats )
 {
     /*
      * Funtion to parse input file -> tabular file with the fields: file [<tab> target <tab> seqid]
@@ -94,10 +94,10 @@ robin_hood::unordered_map< std::string, std::vector< std::string > > parse_input
      * In case of sequence parsing (provided seqids on third row), seqids is a set of sequence ids
      * In case of file parsing, each file has only one target and seqids is empty
      */
-    robin_hood::unordered_map< std::string, std::vector< std::string > > input_map;
-    std::string                                                          line;
-    robin_hood::unordered_set< std::string >                             files;
-    std::ifstream                                                        infile( input_file );
+    ankerl::unordered_dense::map< std::string, std::vector< std::string > > input_map;
+    std::string                                                             line;
+    ankerl::unordered_dense::set< std::string >                             files;
+    std::ifstream                                                           infile( input_file );
     while ( std::getline( infile, line, '\n' ) )
     {
         std::istringstream         stream_line( line );
@@ -136,9 +136,9 @@ robin_hood::unordered_map< std::string, std::vector< std::string > > parse_input
 }
 
 
-void store_hashes( const std::string                            target,
-                   const robin_hood::unordered_set< uint64_t >& hashes,
-                   const std::string                            tmp_output_folder )
+void store_hashes( const std::string                               target,
+                   const ankerl::unordered_dense::set< uint64_t >& hashes,
+                   const std::string                               tmp_output_folder )
 {
     /*
      * store hashes from set to disk in the specified folder (or current folder ".")
@@ -222,7 +222,7 @@ void count_hashes( SafeQueue< InputFileMap >& ifm_queue,
                 // File as target - generate all hashes from file with possible multiple sequences
                 // before counting and storing
 
-                robin_hood::unordered_set< uint64_t > hashes;
+                ankerl::unordered_dense::set< uint64_t > hashes;
                 for ( auto const& [header, seq] : fin )
                 {
                     if ( seq.size() < config.min_length )
@@ -677,7 +677,7 @@ void build( TIBF&                       ibf,
 
         // store files and the hashes into a map for quick access
         // since the bin batch could have repeated and muliple files
-        robin_hood::unordered_map< std::string, std::vector< uint64_t > > target_hashes;
+        ankerl::unordered_dense::map< std::string, std::vector< uint64_t > > target_hashes;
 
         // Insert hashes by index to the ibf
         for ( uint64_t binno = batch_start; binno <= batch_end; binno++ )

@@ -4,7 +4,7 @@
 
 add_library( utils INTERFACE )
 target_include_directories( utils INTERFACE utils/include )
-target_link_libraries ( utils INTERFACE robin-hood-hashing)
+target_link_libraries ( utils INTERFACE unordered_dense)
 
 # =============================================================================
 # config files
@@ -31,7 +31,7 @@ function( link_to_ganon_dependencies target )
         PRIVATE
         Threads::Threads
         cxxopts
-        robin-hood-hashing
+        unordered_dense
         utils
         defaults )
     target_link_libraries ( ${target} PUBLIC seqan3::seqan3 )

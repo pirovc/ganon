@@ -128,13 +128,13 @@ else()
     target_include_directories( Catch2 SYSTEM INTERFACE libs/Catch2/single_include )
 endif()
 
-# 6. robin-hood-hashing:
+# 6. unordered_dense:
 
-add_library( robin-hood-hashing INTERFACE )
+add_library( unordered_dense INTERFACE )
 if( INCLUDE_DIRS )
-    target_include_directories( robin-hood-hashing SYSTEM INTERFACE ${INCLUDE_DIRS} )
+    target_include_directories( unordered_dense SYSTEM INTERFACE ${INCLUDE_DIRS} )
 else()
-    target_include_directories( robin-hood-hashing SYSTEM INTERFACE libs/robin-hood-hashing/src/include )
+    target_include_directories( unordered_dense SYSTEM INTERFACE libs/unordered_dense/include/ankerl )
 endif()
 
 # -----------------------------------------------------------------------------
