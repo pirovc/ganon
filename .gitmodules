@@ -13,3 +13,6 @@
 [submodule "libs/genome_updater"]
 	path = libs/genome_updater
 	url = https://github.com/pirovc/genome_updater.git
+[submodule "libs/unordered_dense"]
+	path = libs/unordered_dense
+	url = https://github.com/martinus/unordered_dense
