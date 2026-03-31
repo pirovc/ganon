@@ -4,6 +4,7 @@ import os
 import shutil
 import pickle
 import math
+import sys
 from pathlib import Path
 
 from ganon.config import Config
@@ -341,7 +342,8 @@ def build_custom(cfg, which_call: str = "build_custom"):
 
         # Validate taxonomic node only if taxonomy is provided
         if tax:
-            validate_taxonomy(info, tax, cfg)
+            validate_convert_taxonomy(info, tax, cfg)
+
             if info.empty:
                 print_log("ERROR: Unable to match taxonomy to targets", cfg.quiet)
                 return False
@@ -694,10 +696,14 @@ def load_taxonomy(cfg, build_output_folder):
     else:
         print_log("Downloading and parsing " + cfg.taxonomy + " taxonomy", cfg.quiet)
 
-    if cfg.taxonomy == "ncbi":
+    tax_ver = cfg.taxonomy.split("-")
+    if tax_ver[0] == "ncbi":
         tax = NcbiTx(files=cfg.taxonomy_files)
-    elif cfg.taxonomy == "gtdb":
-        tax = GtdbTx(files=cfg.taxonomy_files, output_prefix=build_output_folder)
+    elif tax_ver[0] == "gtdb":
+        if len(tax_ver) > 1:
+            tax = GtdbTx(version=tax_ver[1], files=cfg.taxonomy_files, output_prefix=build_output_folder)
+        else:
+            tax = GtdbTx(files=cfg.taxonomy_files, output_prefix=build_output_folder)
 
     # If level is not in special targets or leaves and present in available ranks
     if cfg.level not in [None, "leaves"] + cfg.choices_level:
@@ -838,20 +844,57 @@ def validate_specialization(info, quiet):
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", quiet)
 
 
-def validate_taxonomy(info, tax, cfg):
+def validate_convert_taxonomy(info, tax, cfg):
     """
-    validate taxonomy: convert to latest nodes (tax.latest)
-    and chosen level (tax.parent_rank)
+    validate and convert to chosen taxonomy or latest nodes 
+    in the case of ncbi (tax.latest) and chosen level (tax.parent_rank)
     """
     tx = time.time()
-    print_log("Validating taxonomy", cfg.quiet)
+    print_log("Validating and converting taxonomy", cfg.quiet)
+    ranks_stats = []
 
     # Get latest and valid taxonomic nodes
     info["node"] = info["node"].apply(tax.latest)
+    ranks_stats.append(info["node"].apply(tax.rank).value_counts().rename(cfg.taxonomy))
+
+    tax_ver_from = cfg.taxonomy.split("-")
+
+    if cfg.convert_to_taxonomy:
+        tax_ver_to = cfg.convert_to_taxonomy.split("-")
+
+        if tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "ncbi" and cfg.taxonomy_files:
+            target_tax = NcbiTx()
+            info["node"] = info["node"].apply(target_tax.latest)
+        elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "gtdb":
+            target_tax = GtdbTx(version=tax_ver_to[1])
+            tax.build_conversion(version=tax_ver_to[1])
+            info["node"] = info["node"].apply(tax.convert).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
+        elif tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "gtdb":
+            target_tax = GtdbTx(version=tax_ver_to[1])
+            tax.build_translation(target_tax)
+            info["node"] = info["node"].apply(tax.translate).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
+        elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "ncbi":
+            target_tax = NcbiTx()
+            tax.build_translation(target_tax)
+            info["node"] = info["node"].apply(tax.translate).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
+    
+        ranks_stats.append(info["node"].apply(target_tax.rank).value_counts().rename(f"-->  {cfg.convert_to_taxonomy}"))
+
+        # todo improve
+        cfg.taxonomy = tax_ver_to[0]
+    else:
+        target_tax = tax
 
     # If level is set and not leaves or reserved
     if cfg.level and cfg.level not in ["leaves"] + cfg.choices_level:
-        info["node"] = info["node"].apply(lambda n: tax.parent_rank(n, cfg.level))
+        info["node"] = info["node"].apply(lambda n: target_tax.parent_rank(n, cfg.level))
+        ranks_stats.append(info["node"].apply(target_tax.rank).value_counts().rename(f"-->  {cfg.taxonomy} [{cfg.level}]"))
+
+    # Print stats
+    ranks = pd.concat(ranks_stats, axis=1).fillna(0).astype(int)
+    ranks.index.name = None
+    if not cfg.quiet:
+        print(ranks, file=sys.stderr)
 
     # Skip invalid nodes (na == tax.undefined_node (None))
     na_entries = info["node"].isna().sum()
@@ -864,6 +907,7 @@ def validate_taxonomy(info, tax, cfg):
         )
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
+    return target_tax
 
 
 def get_gu_current_version(assembly_summary):

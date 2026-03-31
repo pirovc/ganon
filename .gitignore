@@ -52,3 +52,6 @@ tests/ganon/results
 
 # Versioning from setuptools_scm
 /VERSION.txt
+
+# Coveraga
+.coverage
