@@ -15,10 +15,12 @@ class Config:
     empty = False
 
     choices_taxonomy = ["ncbi", "gtdb", "skip"]  # get from multitax
-    
-    choices_taxonomy_custom = ["ncbi"]
+
+    choices_taxonomy_custom = ["ncbi", "gtdb"]
+    choices_convert_to_taxonomy_custom = ["ncbi-latest"]
     for gtdb_version in GtdbTx._supported_versions:
         choices_taxonomy_custom.append(f"gtdb-{gtdb_version}")
+        choices_convert_to_taxonomy_custom.append(f"gtdb-{gtdb_version}")
     choices_taxonomy_custom.append("skip")
 
     choices_og = [
@@ -216,9 +218,7 @@ class Config:
             help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis",
         )
 
-        build_taxonomy_args = build_parser.add_argument_group(
-            "taxonomy arguments"
-        )
+        build_taxonomy_args = build_parser.add_argument_group("taxonomy arguments")
         build_taxonomy_args.add_argument(
             "-x",
             "--taxonomy",
@@ -378,7 +378,7 @@ class Config:
             type=str,
             metavar="",
             default="ncbi",
-            help="Set taxonomy to enable taxonomic classification, lca and reports ["
+            help="Taxonomy of the input. Enables taxonomic classification, lca and reports ["
             + ", ".join(self.choices_taxonomy_custom)
             + "]",
             choices=self.choices_taxonomy_custom,
@@ -388,11 +388,11 @@ class Config:
             "--convert-to-taxonomy",
             type=str,
             metavar="",
-            default=None,
+            default="",
             help="Convert input taxonomy nodes (--taxonomy) to ["
-            + ", ".join(self.choices_taxonomy_custom[:-1])
+            + ", ".join(self.choices_convert_to_taxonomy_custom)
             + "]",
-            choices=self.choices_taxonomy_custom[:-1],
+            choices=self.choices_convert_to_taxonomy_custom,
         )
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
@@ -433,9 +433,7 @@ class Config:
             help="Existing database input prefix",
         )
 
-        update_general_args = update_parser.add_argument_group(
-            "general arguments"
-        )
+        update_general_args = update_parser.add_argument_group("general arguments")
         update_general_args.add_argument(
             "-o",
             "--output-db-prefix",
@@ -1275,7 +1273,18 @@ class Config:
                 print_log("--taxonomy is required for --level " + self.level)
                 return False
 
-            if self.taxonomy == "ncbi":
+            # If using "latest" gtdb, cannot guarantee conversion (in case of new release and outdated multitax)
+            if self.taxonomy == "gtdb" and self.convert_to_taxonomy == "ncbi-latest":
+                print_log(
+                    "--taxonomy gtdb need to be set to a specific version to convert to ncbi-latest"
+                )
+                return False
+
+            if self.taxonomy == "skip" and self.convert_to_taxonomy:
+                print_log("--taxonomy needs to be set to enable --convert-to-taxonomy")
+                return False
+
+            if self.taxonomy.startswith("ncbi"):
                 for entry in self.ncbi_sequence_info:
                     if entry not in self.choices_ncbi_sequence_info and not check_file(
                         entry

@@ -89,12 +89,12 @@ def parse_genome_size_files(cfg, build_output_folder):
             "Downloading and parsing auxiliary files for genome size estimation",
             cfg.quiet,
         )
-        if cfg.taxonomy == "ncbi":
+        if cfg.taxonomy.startswith("ncbi"):
             files = download(
                 [cfg.ncbi_url + "/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz"],
                 build_output_folder,
             )
-        elif cfg.taxonomy == "gtdb":
+        elif cfg.taxonomy.startswith("gtdb"):
             files = download(
                 [
                     cfg.gtdb_url + "/ar53_metadata.tsv.gz",
@@ -107,7 +107,7 @@ def parse_genome_size_files(cfg, build_output_folder):
         files = cfg.genome_size_files
 
     leaves_sizes = {}
-    if cfg.taxonomy == "ncbi":
+    if cfg.taxonomy.startswith("ncbi"):
         for file in files:
             with gzip.open(file, "rt") as f:
                 # skip first line wiht header
@@ -117,7 +117,7 @@ def parse_genome_size_files(cfg, build_output_folder):
                     fields = line.rstrip().split("\t")
                     leaves_sizes[fields[0]] = int(fields[3])
 
-    elif cfg.taxonomy == "gtdb":
+    elif cfg.taxonomy.startswith("gtdb"):
         for file in files:
             with gzip.open(file, "rt") as f:
                 # skip first line wiht header
@@ -188,7 +188,6 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
 
         # Calculate genome size estimates for used nodes (and their lineage)
         # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
-
         for node in nodes:
             # For the lineage of each target node
             for t in tax.lineage(node):
@@ -211,6 +210,7 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                 )
             else:
                 genome_sizes[tax.root_node] = 1
+
         # Check nodes without genome size info (0) and use closest value from parent lineage
         for node in nodes:
             if genome_sizes[node] == 0:
@@ -225,7 +225,9 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
 
 
 def get_file_info(cfg, info, tax, build_output_folder):
-    if cfg.taxonomy == "ncbi" or (cfg.taxonomy == "skip" and cfg.level == "assembly"):
+    if cfg.taxonomy.startswiht("ncbi") or (
+        cfg.taxonomy == "skip" and cfg.level == "assembly"
+    ):
         assembly_summary_urls = []
         assembly_summary_files = []
 
@@ -270,7 +272,7 @@ def get_file_info(cfg, info, tax, build_output_folder):
             )
         print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    elif cfg.taxonomy == "gtdb":
+    elif cfg.taxonomy.startswith("gtdb"):
         tx = time.time()
         print_log("Parsing gtdb files", cfg.quiet)
         # update nodes to info
@@ -314,7 +316,7 @@ def get_gtdb_target_node(tax, level):
 
 
 def get_sequence_info(cfg, info, tax, build_output_folder):
-    if cfg.taxonomy == "ncbi":
+    if cfg.taxonomy.statswith("ncbi"):
         # Max. sequences to use eutils in auto mode
         max_seqs_eutils = 50000
 
@@ -399,7 +401,7 @@ def get_sequence_info(cfg, info, tax, build_output_folder):
                     " - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet
                 )
 
-    elif cfg.taxonomy == "gtdb":
+    elif cfg.taxonomy.startswith("gtdb"):
         tx = time.time()
         # The only way to link gtdb to sequences is through NCBI assembly accessions
         print_log("Retrieving assembly/name information from NCBI e-utils", cfg.quiet)

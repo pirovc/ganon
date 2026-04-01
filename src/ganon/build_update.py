@@ -342,7 +342,7 @@ def build_custom(cfg, which_call: str = "build_custom"):
 
         # Validate taxonomic node only if taxonomy is provided
         if tax:
-            validate_convert_taxonomy(info, tax, cfg)
+            tax = validate_convert_taxonomy(info, tax, cfg)
 
             if info.empty:
                 print_log("ERROR: Unable to match taxonomy to targets", cfg.quiet)
@@ -701,7 +701,11 @@ def load_taxonomy(cfg, build_output_folder):
         tax = NcbiTx(files=cfg.taxonomy_files)
     elif tax_ver[0] == "gtdb":
         if len(tax_ver) > 1:
-            tax = GtdbTx(version=tax_ver[1], files=cfg.taxonomy_files, output_prefix=build_output_folder)
+            tax = GtdbTx(
+                version=tax_ver[1],
+                files=cfg.taxonomy_files,
+                output_prefix=build_output_folder,
+            )
         else:
             tax = GtdbTx(files=cfg.taxonomy_files, output_prefix=build_output_folder)
 
@@ -846,60 +850,103 @@ def validate_specialization(info, quiet):
 
 def validate_convert_taxonomy(info, tax, cfg):
     """
-    validate and convert to chosen taxonomy or latest nodes 
+    validate and convert to chosen taxonomy or latest nodes
     in the case of ncbi (tax.latest) and chosen level (tax.parent_rank)
     """
     tx = time.time()
     print_log("Validating and converting taxonomy", cfg.quiet)
     ranks_stats = []
-
-    # Get latest and valid taxonomic nodes
+    invalid_str = "-INVALID-"
+    # Get latest and valid taxonomic nodes on current tax
     info["node"] = info["node"].apply(tax.latest)
     ranks_stats.append(info["node"].apply(tax.rank).value_counts().rename(cfg.taxonomy))
-
-    tax_ver_from = cfg.taxonomy.split("-")
+    ranks_stats[-1][invalid_str] = info["node"].isna().sum()
 
     if cfg.convert_to_taxonomy:
+        tax_ver_from = cfg.taxonomy.split("-")
         tax_ver_to = cfg.convert_to_taxonomy.split("-")
 
-        if tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "ncbi" and cfg.taxonomy_files:
-            target_tax = NcbiTx()
-            info["node"] = info["node"].apply(target_tax.latest)
-        elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "gtdb":
-            target_tax = GtdbTx(version=tax_ver_to[1])
-            tax.build_conversion(version=tax_ver_to[1])
-            info["node"] = info["node"].apply(tax.convert).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
-        elif tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "gtdb":
-            target_tax = GtdbTx(version=tax_ver_to[1])
-            tax.build_translation(target_tax)
-            info["node"] = info["node"].apply(tax.translate).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
-        elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "ncbi":
-            target_tax = NcbiTx()
-            tax.build_translation(target_tax)
-            info["node"] = info["node"].apply(tax.translate).apply(lambda x: target_tax.lca(x) if x else target_tax.undefined_node)
-    
-        ranks_stats.append(info["node"].apply(target_tax.rank).value_counts().rename(f"-->  {cfg.convert_to_taxonomy}"))
+        if (
+            tax_ver_from[0] == "ncbi"
+            and tax_ver_to[0] == "ncbi"
+            and not cfg.taxonomy_files
+        ):
+            # NCBI to NCBI without tax files, alread on latest
+            print_log(
+                f" - {cfg.taxonomy} already converted to {cfg.convert_to_taxonomy}",
+                cfg.quiet,
+            )
+            target_tax = tax
+        else:
+            print_log(
+                f" - Downloading taxonomy and conversion table [{cfg.taxonomy} -> {cfg.convert_to_taxonomy}]",
+                cfg.quiet,
+            )
+            if tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "ncbi":
+                target_tax = NcbiTx()
+                info["node"] = info["node"].apply(target_tax.latest)
+            elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "gtdb":
+                target_tax = GtdbTx(version=tax_ver_to[1])
+                tax.build_conversion(version=tax_ver_to[1])
+                info["node"] = info["node"].apply(
+                    lambda x: tax.convert(x, version=tax_ver_to[1])
+                )
+            elif tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "gtdb":
+                target_tax = GtdbTx(version=tax_ver_to[1])
+                tax.build_translation(target_tax)
+                info["node"] = info["node"].apply(tax.translate)
+            elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "ncbi":
+                target_tax = NcbiTx()
+                tax.build_translation(target_tax)
+                info["node"] = info["node"].apply(tax.translate)
 
-        # todo improve
-        cfg.taxonomy = tax_ver_to[0]
+            # Filter nodes and apply lca to get a one-to-one mapping
+            target_tax.filter([n for nodes in info["node"].to_list() for n in nodes])
+            target_tax.build_lca()
+            info["node"] = info["node"].apply(
+                lambda x: target_tax.lca(x) if x else target_tax.undefined_node
+            )
+
+        # Stats after conversion
+        ranks_stats.append(
+            info["node"]
+            .apply(target_tax.rank)
+            .value_counts()
+            .rename(f"-->  {cfg.convert_to_taxonomy}")
+        )
+        ranks_stats[-1][invalid_str] = info["node"].isna().sum()
+
+        # Switch tax
+        cfg.taxonomy = cfg.convert_to_taxonomy
     else:
         target_tax = tax
 
-    # If level is set and not leaves or reserved
+    # If level is set and not leaves or reserved (cfg.choices_level)
     if cfg.level and cfg.level not in ["leaves"] + cfg.choices_level:
-        info["node"] = info["node"].apply(lambda n: target_tax.parent_rank(n, cfg.level))
-        ranks_stats.append(info["node"].apply(target_tax.rank).value_counts().rename(f"-->  {cfg.taxonomy} [{cfg.level}]"))
+        info["node"] = info["node"].apply(
+            lambda n: target_tax.parent_rank(n, cfg.level)
+        )
+        ranks_stats.append(
+            info["node"]
+            .apply(target_tax.rank)
+            .value_counts()
+            .rename(f"-->  {cfg.taxonomy} [{cfg.level}]")
+        )
+        ranks_stats[-1][invalid_str] = info["node"].isna().sum()
 
     # Print stats
     ranks = pd.concat(ranks_stats, axis=1).fillna(0).astype(int)
+    # Move -not found- to the end
+    ranks = pd.concat(
+        [ranks[ranks.index != invalid_str], ranks[ranks.index == invalid_str]]
+    )
     ranks.index.name = None
     if not cfg.quiet:
         print(ranks, file=sys.stderr)
 
-    # Skip invalid nodes (na == tax.undefined_node (None))
-    na_entries = info["node"].isna().sum()
-
+    na_entries = ranks.iloc[-1, -1]
     if na_entries > 0:
+        # Skip invalid nodes (na == target_tax.undefined_node (None))
         info.dropna(subset=["node"], inplace=True)
         print_log(
             " - " + str(na_entries) + " entries without valid taxonomic nodes skipped",
