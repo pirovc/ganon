@@ -862,9 +862,9 @@ def validate_convert_taxonomy(info, tax, cfg):
     ranks_stats.append(info["node"].apply(tax.rank).value_counts().rename(cfg.taxonomy))
     ranks_stats[-1][invalid_str] = info["node"].isna().sum()
 
-    if cfg.convert_to_taxonomy:
+    if cfg.convert_taxonomy:
         tax_ver_from = cfg.taxonomy.split("-")
-        tax_ver_to = cfg.convert_to_taxonomy.split("-")
+        tax_ver_to = cfg.convert_taxonomy.split("-")
 
         if (
             tax_ver_from[0] == "ncbi"
@@ -872,32 +872,42 @@ def validate_convert_taxonomy(info, tax, cfg):
             and not cfg.taxonomy_files
         ):
             # NCBI to NCBI without tax files, alread on latest
-            print_log(
-                f" - {cfg.taxonomy} already converted to {cfg.convert_to_taxonomy}",
-                cfg.quiet,
-            )
             target_tax = tax
         else:
             print_log(
-                f" - Downloading taxonomy and conversion table [{cfg.taxonomy} -> {cfg.convert_to_taxonomy}]",
+                f" - {'Downloading' if not cfg.convert_taxonomy_files else 'Parsing'} {cfg.convert_taxonomy} taxonomy",
                 cfg.quiet,
             )
+            print_log(
+                f" - {'Downloading' if not cfg.convert_gtdb_files else 'Parsing'} conversion [{cfg.taxonomy} -> {cfg.convert_taxonomy}]",
+                cfg.quiet,
+            )
+
             if tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "ncbi":
-                target_tax = NcbiTx()
+                target_tax = NcbiTx(files=cfg.convert_taxonomy_files)
                 info["node"] = info["node"].apply(target_tax.latest)
             elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "gtdb":
-                target_tax = GtdbTx(version=tax_ver_to[1])
-                tax.build_conversion(version=tax_ver_to[1])
+                target_tax = GtdbTx(
+                    version=tax_ver_to[1], files=cfg.convert_taxonomy_files
+                )
+                tax.build_conversion(
+                    version=tax_ver_to[1],
+                    files=tuple(cfg.convert_gtdb_files)
+                    if cfg.convert_gtdb_files
+                    else ("", ""),
+                )
                 info["node"] = info["node"].apply(
                     lambda x: tax.convert(x, version=tax_ver_to[1])
                 )
             elif tax_ver_from[0] == "ncbi" and tax_ver_to[0] == "gtdb":
-                target_tax = GtdbTx(version=tax_ver_to[1])
-                tax.build_translation(target_tax)
+                target_tax = GtdbTx(
+                    version=tax_ver_to[1], files=cfg.convert_taxonomy_files
+                )
+                tax.build_translation(target_tax, file=cfg.convert_gtdb_files[0])
                 info["node"] = info["node"].apply(tax.translate)
             elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "ncbi":
-                target_tax = NcbiTx()
-                tax.build_translation(target_tax)
+                target_tax = NcbiTx(files=cfg.convert_taxonomy_files)
+                tax.build_translation(target_tax, file=cfg.convert_gtdb_files[0])
                 info["node"] = info["node"].apply(tax.translate)
 
             # Filter nodes and apply lca to get a one-to-one mapping
@@ -912,12 +922,12 @@ def validate_convert_taxonomy(info, tax, cfg):
             info["node"]
             .apply(target_tax.rank)
             .value_counts()
-            .rename(f"-->  {cfg.convert_to_taxonomy}")
+            .rename(f"-->  {cfg.convert_taxonomy}")
         )
         ranks_stats[-1][invalid_str] = info["node"].isna().sum()
 
         # Switch tax
-        cfg.taxonomy = cfg.convert_to_taxonomy
+        cfg.taxonomy = cfg.convert_taxonomy
     else:
         target_tax = tax
 

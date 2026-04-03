@@ -17,10 +17,10 @@ class Config:
     choices_taxonomy = ["ncbi", "gtdb", "skip"]  # get from multitax
 
     choices_taxonomy_custom = ["ncbi", "gtdb"]
-    choices_convert_to_taxonomy_custom = ["ncbi-latest"]
+    choices_convert_taxonomy_custom = ["ncbi-latest"]
     for gtdb_version in GtdbTx._supported_versions:
         choices_taxonomy_custom.append(f"gtdb-{gtdb_version}")
-        choices_convert_to_taxonomy_custom.append(f"gtdb-{gtdb_version}")
+        choices_convert_taxonomy_custom.append(f"gtdb-{gtdb_version}")
     choices_taxonomy_custom.append("skip")
 
     choices_og = [
@@ -225,12 +225,19 @@ class Config:
             type=str,
             metavar="",
             default="ncbi",
-            help="Set taxonomy to enable taxonomic classification, lca and reports ["
+            help="Use taxonomy to enable taxonomic classification, lca and tax. reports ["
             + ", ".join(self.choices_taxonomy)
             + "]",
             choices=self.choices_taxonomy,
         )
-
+        build_taxonomy_args.add_argument(
+            "-m",
+            "--taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
+        )
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument(
             "-b",
@@ -268,14 +275,6 @@ class Config:
             type=str,
             metavar="",
             help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)",
-        )
-        build_download_args.add_argument(
-            "-m",
-            "--taxonomy-files",
-            type=file_exists,
-            nargs="*",
-            metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
         )
         build_download_args.add_argument(
             "-z",
@@ -348,14 +347,6 @@ class Config:
             + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.",
         )
         build_custom_args.add_argument(
-            "-m",
-            "--taxonomy-files",
-            type=file_exists,
-            nargs="*",
-            metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
-        )
-        build_custom_args.add_argument(
             "-z",
             "--genome-size-files",
             type=file_exists,
@@ -378,21 +369,45 @@ class Config:
             type=str,
             metavar="",
             default="ncbi",
-            help="Taxonomy of the input. Enables taxonomic classification, lca and reports ["
+            help="Taxonomy matching the --input/--input-file. Enables taxonomic classification, lca and tax. reports ["
             + ", ".join(self.choices_taxonomy_custom)
             + "]",
             choices=self.choices_taxonomy_custom,
         )
         build_custom_taxonomy_args.add_argument(
             "-b",
-            "--convert-to-taxonomy",
+            "--convert-taxonomy",
             type=str,
             metavar="",
-            default="",
+            default=None,
             help="Convert input taxonomy nodes (--taxonomy) to ["
-            + ", ".join(self.choices_convert_to_taxonomy_custom)
-            + "]",
-            choices=self.choices_convert_to_taxonomy_custom,
+            + ", ".join(self.choices_convert_taxonomy_custom)
+            + "]. ",
+            choices=self.choices_convert_taxonomy_custom,
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-m",
+            "--taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-u",
+            "--convert-taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi-latest: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb-version: *taxonomy.tsv.gz",
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-g",
+            "--convert-gtdb-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local gtdb conversion files instead of downloading. One for each version used in --taxonomy and --convert-taxonomy. Files from https://github.com/pirovc/multitax/tree/main/data/gtdb",
         )
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
@@ -817,7 +832,7 @@ class Config:
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
         )
         report_group_dbtax.add_argument(
             "-z",
@@ -1274,15 +1289,44 @@ class Config:
                 return False
 
             # If using "latest" gtdb, cannot guarantee conversion (in case of new release and outdated multitax)
-            if self.taxonomy == "gtdb" and self.convert_to_taxonomy == "ncbi-latest":
+            if self.taxonomy == "gtdb" and self.convert_taxonomy == "ncbi-latest":
                 print_log(
                     "--taxonomy gtdb need to be set to a specific version to convert to ncbi-latest"
                 )
                 return False
 
-            if self.taxonomy == "skip" and self.convert_to_taxonomy:
-                print_log("--taxonomy needs to be set to enable --convert-to-taxonomy")
+            if self.taxonomy == "skip" and self.convert_taxonomy:
+                print_log("--taxonomy needs to be set to enable --convert-taxonomy")
                 return False
+
+            if self.convert_gtdb_files:
+                if (
+                    self.taxonomy.startswith("gtdb")
+                    and self.convert_taxonomy.startswith("gtdb")
+                    and len(self.convert_gtdb_files) != 2
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires two files: one for {self.taxonomy} and one for {self.convert_taxonomy}"
+                    )
+                    return False
+                elif (
+                    self.taxonomy.startswith("gtdb")
+                    and self.convert_taxonomy.startswith("ncbi")
+                    and len(self.convert_gtdb_files) != 1
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires one file for {self.taxonomy}"
+                    )
+                    return False
+                elif (
+                    self.taxonomy.startswith("ncbi")
+                    and self.convert_taxonomy.startswith("gtdb")
+                    and len(self.convert_gtdb_files) != 1
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires one file for {self.convert_taxonomy}"
+                    )
+                    return False
 
             if self.taxonomy.startswith("ncbi"):
                 for entry in self.ncbi_sequence_info:

@@ -225,7 +225,7 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
 
 
 def get_file_info(cfg, info, tax, build_output_folder):
-    if cfg.taxonomy.startswiht("ncbi") or (
+    if cfg.taxonomy.startswith("ncbi") or (
         cfg.taxonomy == "skip" and cfg.level == "assembly"
     ):
         assembly_summary_urls = []
@@ -316,7 +316,7 @@ def get_gtdb_target_node(tax, level):
 
 
 def get_sequence_info(cfg, info, tax, build_output_folder):
-    if cfg.taxonomy.statswith("ncbi"):
+    if cfg.taxonomy.startswith("ncbi"):
         # Max. sequences to use eutils in auto mode
         max_seqs_eutils = 50000
 
