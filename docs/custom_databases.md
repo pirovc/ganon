@@ -9,13 +9,59 @@ Besides the automated download and build (`ganon build`) ganon provides a highly
 !!! warning
     `--input-target sequence` will be slower to build and will use more disk space, since files have be re-written separately for each sequence. More information about building by file or sequence can be found [here](#target-file-or-sequence-input-target).
 
-The `--level` is a important parameter that will define the (max.) classification level for the database ([more infos](#build-level-level)):
+## Level
 
-- `--level file` or `sequence` -> default behavior (depending on `--input-target `), use file/sequence as classification target
+The `--level` is a important parameter that will define the (max.) classification level (target) for the database ([more infos](#build-level-level)):
+
+- `--level file` or `sequence` -> default behavior (depending on `--input-target`), use file/sequence as classification target
 - `--level assembly` -> will retrieve assembly related to the file/sequence, use assembly as classification target
 - `--level leaves` or `species`,`genus`,... -> group input by taxonomy, use tax. nodes at the rank chosen as classification target
 
 More infos about other parameters [here](#parameter-details).
+
+## Taxonomy
+
+Biological taxonomies are not fixed, but evolve and change over time. Using and keeping track of the correct taxonomy is crucial to achieving accurate results from your classification. Ideally, the same taxonomy and version should be used for comparison and merging of results. Ganon provides some options that facilitate the creation of databases in the desired taxonomy and version.
+
+### Versioning
+
+#### NCBI
+
+By default, the latest NCBI taxonomy is downloaded and used to build the databases. As the NCBI taxonomy is updated daily, the input nodes from the `--input`/`--input-file` parameters are converted to the latest node using the information in the `merged.dmp`. A specific version or local taxonomy files can be used with the `--taxonomy-files` option.
+
+#### GTDB
+
+If the `--taxonomy gtdb` option is selected, the latest GTDB taxonomy is downloaded and used to build the databases. The GTDB is released yearly. Alternatively, it is possible to use a specific GTDB version with the `--taxonomy` (e.g. `gtdb-95`, `gtdb-214.1`, `gtdb-226`, ... check `ganon build-custom --help` for supported versions). Local taxonomy files can be used with the `--taxonomy-files` option.
+
+### Conversion
+
+When building, it is possible to convert the input taxonomic nodes to another using the `--convert-taxonomy` option. The database will then be built based on the chosen conversion. Conversion works between pre-defined GTDB versions (see the `ganon build-custom --help` output for a list of supported versions), between NCBI versions, and between GTDB and NCBI (or NCBI and GTDB).
+
+ - GTDB to GTDB: conversion is based on the representative genome node between versions. 
+ - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB. 
+ - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB.
+ - NCBI to NCBI: conversion based on the `merged.dmp` file.
+
+Note that resolution of taxonomic nodes may be lost during conversion. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between NCBI and GTDB is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.
+
+Please check the output log from `ganon build-custom` for details on the conversion. The example below uses the command `--taxonomy gtdb-95 --convert-taxonomy gtdb-226` on an input containing 1787 entries:
+
+```
+Validating and converting taxonomy
+ - Downloading taxonomy and conversion table [gtdb-95 -> gtdb-226]
+           gtdb-95  -->  gtdb-226
+genus          850            770
+species        501            497
+family         340            366
+order           67             97
+class           23             39
+phylum           6              5
+domain           0              1
+-INVALID-        0             12
+ - 12 entries without valid taxonomic nodes skipped
+```
+
+The log shows how many input entries were mapped for each rank between GTDB versions 95 and 226. Twelve entries could not be translated and will not be used for the build. The number of entries that can be mapped directly between ranks (e.g. species to species or genus to genus) is also reduced, resulting in some loss of resolution.
 
 ## Non-standard files/headers with `--input-file`
 
