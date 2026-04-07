@@ -258,9 +258,10 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
                     print("Rank missing from tax")
                     return None
             else:
-                if not (res["target"]["target"] == res["info"]["node"]).all():
-                    print("Wrong target")
-                    return None
+                if not params["convert_taxonomy"]:
+                    if not (res["target"]["target"] == res["info"]["node"]).all():
+                        print("Wrong target")
+                        return None
 
         else:  # if not given, default to --input-target
             if not (res["target"]["target"] == res["info"]["target"]).all():
