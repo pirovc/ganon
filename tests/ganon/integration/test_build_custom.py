@@ -326,6 +326,184 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
+    def test_convert_taxonomy_gtdb_gtdb(self):
+        """
+        ganon build-custom with --taxonomy gtdb-95 --convert-taxonomy gtdb-226
+
+        same RS_GCF_900200805.1
+            95: s__Neisseria meningitidis -> 226: s__Neisseria meningitidis
+        missing GB_GCA_003520315.1
+            95: s__Bact-08 sp003520315 -> 226:
+        one-to-one RS_GCF_003473685.1
+            95: s__Ruminococcus_A sp003011855 -> 226: s__Oliverpabstia intestinalis
+        one-to-many RS_GCF_002198735.1
+            95: g__JOSHI-001 -> 226: g__Aquabacterium_A, g__AHLZ01 (lca: f__Burkholderiaceae)
+
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_convert_taxonomy_gtdb_gtdb"
+        params["input"] = None
+        params["input_file"] = data_dir + "build-custom/convert/convert_gtdb.tsv"
+        params["input_target"] = "sequence"
+        params["skip_genome_size"] = True
+        params["level"] = "leaves"
+        params["taxonomy"] = "gtdb-95"
+        params["taxonomy_files"] = [
+            data_dir + "build-custom/convert/bac120_taxonomy_r95.tsv.gz",
+        ]
+        params["convert_taxonomy"] = "gtdb-226"
+        params["convert_taxonomy_files"] = [
+            data_dir + "build-custom/convert/bac120_taxonomy_r226.tsv.gz",
+        ]
+        params["convert_gtdb_files"] = [
+            data_dir + "build-custom/convert/95_acc_rep_lin_ncbi.tsv.gz",
+            data_dir + "build-custom/convert/226_acc_rep_lin_ncbi.tsv.gz",
+        ]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg), skipped_targets=True)
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Lost one entry
+        # Check conversion
+        self.assertCountEqual(
+            res["target"]["target"],
+            [
+                "s__Neisseria meningitidis",
+                "s__Oliverpabstia intestinalis",
+                "f__Burkholderiaceae",
+            ],
+        )
+
+    def test_convert_taxonomy_gtdb_ncbi(self):
+        """
+        ganon build-custom with
+            --taxonomy gtdb-95
+            --convert-taxonomy ncbi-latest
+            --level family
+
+        RS_GCF_900200805.1
+            95: s__Neisseria meningitidis -> ncbi: 481
+        GB_GCA_003520315.1
+            95: s__Bact-08 sp003520315 -> ncbi: 171550
+        RS_GCF_003473685.1
+            95: s__Ruminococcus_A sp003011855 -> ncbi: 186803
+        RS_GCF_002198735.1
+            95: g__JOSHI-001 -> ncbi: 2975441
+
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_convert_taxonomy_gtdb_ncbi"
+        params["input"] = None
+        params["input_file"] = data_dir + "build-custom/convert/convert_gtdb.tsv"
+        params["input_target"] = "sequence"
+        params["skip_genome_size"] = True
+        params["level"] = "family"
+        params["taxonomy"] = "gtdb-95"
+        params["taxonomy_files"] = [
+            data_dir + "build-custom/convert/bac120_taxonomy_r95.tsv.gz",
+        ]
+        params["convert_taxonomy"] = "ncbi-latest"
+        params["convert_taxonomy_files"] = [
+            data_dir + "build-custom/convert/convert_nodes.dmp",
+        ]
+        params["convert_gtdb_files"] = [
+            data_dir + "build-custom/convert/95_acc_rep_lin_ncbi.tsv.gz",
+        ]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Kept all entries
+        # Check conversion to family nodes
+        self.assertCountEqual(
+            res["target"]["target"], ["481", "171550", "186803", "2975441"]
+        )
+
+    def test_convert_taxonomy_ncbi_gtdb(self):
+        """
+        ganon build-custom with
+            --taxonomy ncbi
+            --convert-taxonomy gtdb-226
+            --level species
+
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_convert_taxonomy_ncbi_gtdb"
+        params["input"] = None
+        params["input_file"] = data_dir + "build-custom/convert/convert_ncbi.tsv"
+        params["input_target"] = "sequence"
+        params["skip_genome_size"] = True
+        params["level"] = "species"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = [
+            data_dir + "build-custom/convert/convert_nodes.dmp",
+        ]
+        params["convert_taxonomy"] = "gtdb-226"
+        params["convert_taxonomy_files"] = [
+            data_dir + "build-custom/convert/bac120_taxonomy_r226.tsv.gz",
+        ]
+        params["convert_gtdb_files"] = [
+            data_dir + "build-custom/convert/226_acc_rep_lin_ncbi.tsv.gz",
+        ]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg), skipped_targets=True)
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # one entry cannot be translated (GCF_003473685.1 not present in 226)
+        # Check conversion to family nodes
+        self.assertCountEqual(
+            res["target"]["target"],
+            [
+                "s__Neisseria meningitidis",
+                "s__Aquabacterium_A sp001770815",
+                "s__Aquabacterium_A sp002198735",
+            ],
+        )
+
+    def test_convert_taxonomy_ncbi_ncbi(self):
+        """
+        ganon build-custom with
+            --taxonomy ncbi
+            --convert-taxonomy ncbi-latest
+            --level class
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_convert_taxonomy_ncbi_ncbi"
+        params["input"] = None
+        params["input_file"] = data_dir + "build-custom/convert/convert_ncbi.tsv"
+        params["input_target"] = "sequence"
+        params["skip_genome_size"] = True
+        params["level"] = "class"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = [
+            data_dir + "build-custom/convert/convert_nodes.dmp",
+        ]
+        params["convert_taxonomy"] = "ncbi-latest"
+        params["convert_taxonomy_files"] = [
+            data_dir + "build-custom/convert/convert_nodes.dmp",
+        ]
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Check conversion to family nodes
+        self.assertCountEqual(
+            res["target"]["target"], ["28216", "28216", "186801", "28216"]
+        )
+
     def test_input_target_file(self):
         """
         ganon build-custom with --input-target file
