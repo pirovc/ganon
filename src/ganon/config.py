@@ -409,6 +409,11 @@ class Config:
             metavar="",
             help="Use local gtdb conversion files instead of downloading. One for each version used in --taxonomy and --convert-taxonomy. Files from https://github.com/pirovc/multitax/tree/main/data/gtdb",
         )
+        build_custom_taxonomy_args.add_argument(
+            "--keep-invalid-taxa",
+            action="store_true",
+            help="Keep invalid taxa in the database, will be assigned to the root of the taxonomic tree.",
+        )
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
         ncbi_args.add_argument(

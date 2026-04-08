@@ -947,6 +947,19 @@ def validate_convert_taxonomy(info, tax, cfg):
         )
         ranks_stats[-1][invalid_str] = info["node"].isna().sum()
 
+    # Keep invalid taxa as root
+    if cfg.keep_invalid_taxa:
+        kept_at_root_entries = info["node"].isna().sum()
+        info["node"] = info["node"].fillna(target_tax.root_node)
+        ranks_stats[-1][target_tax.root_rank] = ranks_stats[-1][invalid_str]
+        ranks_stats[-1][invalid_str] = 0
+        print_log(
+            " - "
+            + str(kept_at_root_entries)
+            + " entries without valid taxonomic kept at the root",
+            cfg.quiet,
+        )
+
     # Print stats
     ranks = pd.concat(ranks_stats, axis=1).fillna(0).astype(int)
     # Move -not found- to the end
@@ -960,11 +973,14 @@ def validate_convert_taxonomy(info, tax, cfg):
     na_entries = ranks.iloc[-1, -1]
     if na_entries > 0:
         # Skip invalid nodes (na == target_tax.undefined_node (None))
-        info.dropna(subset=["node"], inplace=True)
         print_log(
             " - " + str(na_entries) + " entries without valid taxonomic nodes skipped",
             cfg.quiet,
         )
+        # Print skipped entries
+        if cfg.verbose:
+            print_log("\n".join(info[info["node"].isna()].index), cfg.quiet)
+        info.dropna(subset=["node"], inplace=True)
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     return target_tax

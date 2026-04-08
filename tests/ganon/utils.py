@@ -1,6 +1,7 @@
 import shutil
 import os
 import gzip
+import sys
 import pandas as pd
 from pathlib import Path
 from math import floor
@@ -12,6 +13,8 @@ from ganon.util import download
 from ganon.config import Config
 from ganon import ganon
 import contextlib
+
+unittest_verbose = True if "-v" in sys.argv else False
 
 
 def run_ganon(cfg, prefix):
@@ -32,10 +35,12 @@ def check_files(prefix, extensions):
     for ext in extensions:
         f = prefix + "." + ext if ext else prefix
         if not Path(f).is_file():
-            print("File (" + f + ") was not created")
+            if unittest_verbose:
+                print("File (" + f + ") was not created")
             return False
         elif Path(f).stat().st_size == 0:
-            print("File (" + f + ") is empty")
+            if unittest_verbose:
+                print("File (" + f + ") is empty")
             return False
     return True
 
