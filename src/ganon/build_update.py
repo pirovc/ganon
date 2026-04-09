@@ -958,13 +958,25 @@ def validate_convert_taxonomy(info, tax, cfg):
         print(ranks, file=sys.stderr)
 
     na_entries = ranks.iloc[-1, -1]
-    if na_entries > 0:
+    # Keep invalid taxa as root or remove
+    if cfg.keep_invalid_taxa:
+        info["node"] = info["node"].fillna(target_tax.root_node)
+        print_log(
+            " - "
+            + str(na_entries)
+            + " entries without valid taxonomic kept at the root node",
+            cfg.quiet,
+        )
+    elif na_entries > 0:
         # Skip invalid nodes (na == target_tax.undefined_node (None))
-        info.dropna(subset=["node"], inplace=True)
         print_log(
             " - " + str(na_entries) + " entries without valid taxonomic nodes skipped",
             cfg.quiet,
         )
+        # Print skipped entries
+        if cfg.verbose:
+            print_log("\n".join(info[info["node"].isna()].index), cfg.quiet)
+        info.dropna(subset=["node"], inplace=True)
 
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
     return target_tax

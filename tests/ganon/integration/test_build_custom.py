@@ -326,6 +326,31 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
+    def test_taxonomy_keep_invalid_taxa(self):
+        """
+        ganon build-custom with --taxonomy ncbi --keep-invalid-taxa
+        """
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_taxonomy_keep_invalid_taxa"
+        params["taxonomy"] = "ncbi"
+        params["level"] = "strain"
+        params["keep_invalid_taxa"] = True
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = (
+            data_dir + "build-custom/species_genome_size.txt.gz"
+        )
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # Only one entry at strain level, others set to root
+        self.assertCountEqual(res["info"]["node"].unique(), ["1", "871271"])
+
     def test_convert_taxonomy_gtdb_gtdb(self):
         """
         ganon build-custom with --taxonomy gtdb-95 --convert-taxonomy gtdb-226
