@@ -32,8 +32,8 @@ options:
 
 ```
 usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-u ] [-z [ ...]]
-                   [--skip-genome-size] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart]
-                   [--verbose] [--quiet] [--write-info-file]
+                   [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ]
+                   [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -46,7 +46,7 @@ required arguments:
   -a, --taxid [ ...]    One or more taxonomic identifiers to download. e.g. 562 (-x ncbi) or 's__Escherichia coli' (-x
                         gtdb). Mutually exclusive --organism-group (default: None)
   -d, --db-prefix DB_PREFIX
-                        Database output prefix (default: None)
+                        Database output prefix
 
 database arguments:
   -l, --level           Highest level to build the database. Options: any available taxonomic rank [species, genus,
@@ -73,6 +73,7 @@ download arguments:
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
   --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
                         full genomes. (default: False)
+  --download-threads    Number of parallel sequence downloads from NCBI. (default: 8)
 
 general arguments:
   -t, --threads         Number of sub-processes/threads to use (default: 1)
@@ -112,8 +113,9 @@ optional arguments:
 
 ```
 usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [-z [ ...]] [--skip-genome-size] [-x ] [-b ]
-                          [-m [ ...]] [-u [ ...]] [-g [ ...]] [-r [ ...]] [-q [ ...]] -d DB_PREFIX [-t ] [-p ] [-k ]
-                          [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+                          [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]] -d DB_PREFIX
+                          [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet]
+                          [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -126,7 +128,7 @@ required arguments:
   -c, --input-recursive
                         Look for files recursively in folder(s) provided with --input (default: False)
   -d, --db-prefix DB_PREFIX
-                        Database output prefix (default: None)
+                        Database output prefix
 
 custom arguments:
   -n, --input-file      Tab-separated file with all necessary file/sequence information. Fields: file [<tab> target
@@ -160,6 +162,8 @@ taxonomy arguments:
                         Use local gtdb conversion files instead of downloading. One for each version used in --taxonomy
                         and --convert-taxonomy. Files from https://github.com/pirovc/multitax/tree/main/data/gtdb
                         (default: None)
+  --keep-invalid-taxa   Keep invalid taxa in the database, will be assigned to the root of the taxonomic tree. (default:
+                        False)
 
 ncbi arguments:
   -r, --ncbi-sequence-info [ ...]
@@ -217,13 +221,13 @@ options:
 
 required arguments:
   -d, --db-prefix DB_PREFIX
-                        Existing database input prefix (default: None)
+                        Existing database input prefix
 
 general arguments:
   -o, --output-db-prefix 
                         Output database prefix. By default will be the same as --db-prefix and overwrite files (default:
                         None)
-  -t, --threads 
+  -t, --threads         Number of sub-processes/threads to use (default: 1)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -250,9 +254,9 @@ options:
 
 required arguments:
   -d, --db-prefix [DB_PREFIX ...]
-                        Database input prefix[es] (default: None)
+                        Database input prefix[es]
   -o, --output-prefix OUTPUT_PREFIX
-                        Output prefix for base report (.rep) and tree-like report (.tre). (default: None)
+                        Output prefix for base report (.rep) and tree-like report (.tre).
   -s, --single-reads [reads.fq[.gz] ...]
                         Multi-fastq[.gz] file[s] to classify (default: None)
   -p, --paired-reads [reads.1.fq[.gz] reads.2.fq[.gz] ...]
@@ -325,7 +329,7 @@ options:
 
 required arguments:
   -i, --input-prefix [ ...]
-                        Input prefix to find files from ganon classify (.rep and .all) (default: None)
+                        Input prefix to find files from ganon classify (.rep and .all)
   -o, --output-prefix OUTPUT_PREFIX
                         Alternative output prefix for reassigned files. If not provided, will use same path of input
                         files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example:
@@ -359,7 +363,7 @@ options:
   -h, --help            show this help message and exit
 
 required arguments:
-  -i, --input [ ...]    Input file(s) and/or folder(s). '.rep' file(s) from ganon classify. (default: None)
+  -i, --input [ ...]    Input file(s) and/or folder(s). '.rep' file(s) from ganon classify.
   -e, --input-extension INPUT_EXTENSION
                         Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
                         (default: rep)
@@ -440,12 +444,12 @@ options:
   -h, --help            show this help message and exit
 
 required arguments:
-  -i, --input [ ...]    Input file(s) and/or folder(s). '.tre' file(s) from ganon report. (default: None)
+  -i, --input [ ...]    Input file(s) and/or folder(s). '.tre' file(s) from ganon report.
   -e, --input-extension 
                         Required if --input contains folder(s). Wildcards/Shell Expansions not supported (e.g. *).
                         (default: tre)
   -o, --output-file OUTPUT_FILE
-                        Output filename for the table (default: None)
+                        Output filename for the table
 
 output arguments:
   -l, --output-value    Output value on the table [percentage, counts]. percentage values are reported between [0-1]

@@ -289,6 +289,13 @@ class Config:
             action="store_true",
             help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.",
         )
+        build_download_args.add_argument(
+            "--download-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=8,
+            help="Number of parallel sequence downloads from NCBI.",
+        )
 
         ####################################################################################################
 
@@ -467,7 +474,7 @@ class Config:
             type=unsigned_int(minval=1),
             metavar="",
             default=1,
-            help="",
+            help="Number of sub-processes/threads to use",
         )
 
         ####################################################################################################
