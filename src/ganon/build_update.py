@@ -75,7 +75,7 @@ def build(cfg):
                 "-l 'complete genome'" if cfg.complete_genomes else "",
                 "-c 'reference genome'" if cfg.reference_genomes else "",
                 "-f 'genomic.fna.gz'",
-                "-t " + str(cfg.threads),
+                "-t " + str(cfg.download_threads),
                 "-o " + files_output_folder,
                 "-M " + cfg.taxonomy if cfg.taxonomy == "gtdb" else "",
                 "-m",
