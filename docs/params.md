@@ -247,7 +247,8 @@ optional arguments:
 usage: ganon classify [-h] -d [DB_PREFIX ...] -o OUTPUT_PREFIX [-s [reads.fq[.gz] ...]]
                       [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]] [-a [file.tsv ...]] [-c [ ...]] [-e [ ...]] [-m ]
                       [--ranks [ ...]] [--min-count ] [--report-type ] [--skip-report] [--output-one] [--output-all]
-                      [--output-unclassified] [--output-single] [-t ] [-b] [-f [ ...]] [-l [ ...]] [--verbose] [--quiet]
+                      [--output-unclassified] [--output-stats] [--output-single] [-t ] [-b] [-f [ ...]] [-l [ ...]]
+                      [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -296,6 +297,7 @@ output arguments:
   --output-all          Output a file with all unique and multiple matches (.all) (default: False)
   --output-unclassified
                         Output a file with unclassified read headers (.unc) (default: False)
+  --output-stats        Output a file with statistic of classification (.sta) (default: False)
   --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
                         hierarchy (default: False)
 

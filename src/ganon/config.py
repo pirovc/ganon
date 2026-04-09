@@ -670,6 +670,11 @@ class Config:
             help="Output a file with unclassified read headers (.unc)",
         )
         classify_group_output.add_argument(
+            "--output-stats",
+            action="store_true",
+            help="Output a file with statistic of classification (.sta)",
+        )
+        classify_group_output.add_argument(
             "--output-single",
             action="store_true",
             help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy",

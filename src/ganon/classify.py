@@ -51,6 +51,7 @@ def classify(cfg):
             "--output-lca" if cfg.multiple_matches == "lca" and cfg.output_one else "",
             "--output-all" if cfg.output_all or cfg.multiple_matches == "em" else "",
             "--output-unclassified" if cfg.output_unclassified else "",
+            "--output-stats" if cfg.output_stats else "",
             "--output-single" if cfg.output_single else "",
             "--threads " + str(cfg.threads) if cfg.threads else "",
             "--n-reads " + str(cfg.n_reads) if cfg.n_reads is not None else "",
