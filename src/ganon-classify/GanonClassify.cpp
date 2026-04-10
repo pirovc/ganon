@@ -1065,7 +1065,7 @@ void print_stats_db( const Total& total, double seq_processed, size_t seq_unclas
     std::cerr << "  " << total.seqs_unique << " with unique matches (" << ( total.seqs_unique / seq_processed ) * 100
               << "%)" << std::endl;
     std::cerr << "  " << seq_multiple_matches << " with multiple matches ("
-              << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)" << std::endl;
+              << ( seq_multiple_matches / seq_processed ) * 100 << "%)" << std::endl;
     if ( seq_unclassified > 0 )
     {
         std::cerr << "" << seq_unclassified << " sequences unclassified (" << ( seq_unclassified / seq_processed ) * 100
@@ -1140,25 +1140,27 @@ void write_stats_db( const Total&   total,
     const double avg_seq_matches =
         total.seqs_classified ? ( total.matches / static_cast< double >( total.seqs_classified ) ) : 0;
     const double kmers_matched_perc =
-        total.kmers_matches ? total.kmers_matches / static_cast< double >( total.kmers_from_classified_seqs ) : 0;
+        total.kmers_matches ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_seqs ) ) * 100
+                            : 0;
 
+    out_sta << std::fixed << std::setprecision( 6 );
     out_sta << prefix << '\t';
     out_sta << hierarchy_level << '\t';
-    out_sta << seq_processed << '\t';
+    out_sta << static_cast< size_t >( seq_processed ) << '\t';
     out_sta << seq_unclassified << '\t';
     out_sta << total.seqs_classified << '\t';
-    out_sta << total.seqs_classified / seq_processed << '\t';
+    out_sta << ( total.seqs_classified / seq_processed ) * 100 << '\t';
     out_sta << total.seqs_unique << '\t';
-    out_sta << total.seqs_unique / seq_processed << '\t';
+    out_sta << ( total.seqs_unique / seq_processed ) * 100 << '\t';
     out_sta << seq_multiple_matches << '\t';
-    out_sta << seq_multiple_matches / seq_processed << '\t';
+    out_sta << ( seq_multiple_matches / seq_processed ) * 100 << '\t';
     out_sta << total.matches << '\t';
     out_sta << avg_seq_matches << '\t';
     out_sta << total.discarded_matches_filter << '\t';
     out_sta << total.discarded_matches_fprquery << '\t';
     out_sta << kmers_processed << '\t';
-    out_sta << total.kmers_from_classified_seqs << '\t';
     out_sta << total.kmers_matches << '\t';
+    out_sta << total.kmers_from_classified_seqs << '\t';
     out_sta << kmers_matched_perc << '\n';
 }
 
@@ -1186,9 +1188,9 @@ void write_stats( std::string                                     output_prefix,
         out_sta << "dis_matches_rel_filter" << '\t';
         out_sta << "dis_matches_fpr_query" << '\t';
         out_sta << "kmers_proccessed" << '\t';
-        out_sta << "kmers_from_classified_seqs" << '\t';
         out_sta << "kmers_matched" << '\t';
-        out_sta << "kmers_perc" << '\n';
+        out_sta << "kmers_from_classified_seqs" << '\t';
+        out_sta << "kmers_matched_perc" << '\n';
 
         const size_t seq_unclassified = total.seqs_processed - total.seqs_classified;
         const double seq_processed    = total.seqs_processed > 0 ? static_cast< double >( total.seqs_processed )
