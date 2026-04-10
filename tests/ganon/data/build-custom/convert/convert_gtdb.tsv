@@ -1,0 +1,4 @@
+tests/ganon/data/build-custom/convert/convert.fasta.gz	GCF_900200805.1	s__Neisseria meningitidis
+tests/ganon/data/build-custom/convert/convert.fasta.gz	GCA_003520315.1	s__Bact-08 sp003520315
+tests/ganon/data/build-custom/convert/convert.fasta.gz	GCF_003473685.1	s__Ruminococcus_A sp003011855
+tests/ganon/data/build-custom/convert/convert.fasta.gz	GCF_002198735.1	g__JOSHI-001

@@ -36,6 +36,7 @@ public:
     bool output_lca          = false;
     bool output_all          = false;
     bool output_unclassified = false;
+    bool output_stats        = false;
     bool output_single       = false;
 
     bool        hibf          = false;
@@ -272,6 +273,7 @@ inline std::ostream& operator<<( std::ostream& stream, const Config& config )
     stream << "--output-lca          " << config.output_lca << newl;
     stream << "--output-all          " << config.output_all << newl;
     stream << "--output-unclassified " << config.output_unclassified << newl;
+    stream << "--output-stats        " << config.output_stats << newl;
     stream << "--output-single       " << config.output_single << newl;
     stream << "--hibf                " << config.hibf << newl;
     stream << "--threads             " << config.threads << newl;

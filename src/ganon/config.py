@@ -5,7 +5,7 @@ import sys
 import shutil
 import os
 from ganon.util import print_log, check_file, set_output_folder, check_folder, logo
-
+from multitax import GtdbTx
 from ganon import __version__
 
 
@@ -15,6 +15,14 @@ class Config:
     empty = False
 
     choices_taxonomy = ["ncbi", "gtdb", "skip"]  # get from multitax
+
+    choices_taxonomy_custom = ["ncbi", "gtdb"]
+    choices_convert_taxonomy_custom = ["ncbi-latest"]
+    for gtdb_version in GtdbTx._supported_versions:
+        choices_taxonomy_custom.append(f"gtdb-{gtdb_version}")
+        choices_convert_taxonomy_custom.append(f"gtdb-{gtdb_version}")
+    choices_taxonomy_custom.append("skip")
+
     choices_og = [
         "archaea",
         "bacteria",
@@ -92,33 +100,18 @@ class Config:
             "-d", "--db-prefix", type=str, required=True, help="Database output prefix"
         )
 
-        build_default_important_args = build_default_parser.add_argument_group(
-            "important arguments"
+        build_default_general_args = build_default_parser.add_argument_group(
+            "general arguments"
         )
-        build_default_important_args.add_argument(
-            "-x",
-            "--taxonomy",
-            type=str,
-            metavar="",
-            default="ncbi",
-            help="Set taxonomy to enable taxonomic classification, lca and reports ["
-            + ", ".join(self.choices_taxonomy)
-            + "]",
-            choices=self.choices_taxonomy,
-        )
-        build_default_important_args.add_argument(
+        build_default_general_args.add_argument(
             "-t",
             "--threads",
             type=unsigned_int(minval=1),
             metavar="",
             default=1,
-            help="",
+            help="Number of sub-processes/threads to use",
         )
-
-        build_default_advanced_args = build_default_parser.add_argument_group(
-            "advanced arguments"
-        )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-p",
             "--max-fp",
             type=int_or_float(minval=0, maxval=1),
@@ -126,7 +119,7 @@ class Config:
             default=None,
             help="Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with --filter-type hibf or 0.05 with --filter-type ibf.",
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-k",
             "--kmer-size",
             type=unsigned_int(minval=1),
@@ -134,7 +127,7 @@ class Config:
             default=19,
             help="The k-mer size to split sequences.",
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-w",
             "--window-size",
             type=unsigned_int(minval=1),
@@ -142,7 +135,7 @@ class Config:
             default=31,
             help="The window-size to build filter with minimizers.",
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-s",
             "--hash-functions",
             type=unsigned_int(minval=0, maxval=5),
@@ -151,7 +144,7 @@ class Config:
             help="The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0 will try to set optimal value.",
             choices=range(6),
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-f",
             "--filter-size",
             type=unsigned_float(),
@@ -159,7 +152,7 @@ class Config:
             default=0,
             help="Fixed size for filter in Megabytes (MB). Mutually exclusive --max-fp. Only valid for --filter-type ibf.",
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-j",
             "--mode",
             type=str,
@@ -170,7 +163,7 @@ class Config:
             + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.",
             choices=self.choices_mode,
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-y",
             "--min-length",
             type=unsigned_int(minval=0),
@@ -178,7 +171,7 @@ class Config:
             default=0,
             help="Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-type ibf.",
         )
-        build_default_advanced_args.add_argument(
+        build_default_general_args.add_argument(
             "-v",
             "--filter-type",
             type=str,
@@ -225,6 +218,26 @@ class Config:
             help="Highest level to build the database. Options: any available taxonomic rank [species, genus, ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis",
         )
 
+        build_taxonomy_args = build_parser.add_argument_group("taxonomy arguments")
+        build_taxonomy_args.add_argument(
+            "-x",
+            "--taxonomy",
+            type=str,
+            metavar="",
+            default="ncbi",
+            help="Use taxonomy to enable taxonomic classification, lca and tax. reports ["
+            + ", ".join(self.choices_taxonomy)
+            + "]",
+            choices=self.choices_taxonomy,
+        )
+        build_taxonomy_args.add_argument(
+            "-m",
+            "--taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
+        )
         build_download_args = build_parser.add_argument_group("download arguments")
         build_download_args.add_argument(
             "-b",
@@ -264,14 +277,6 @@ class Config:
             help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)",
         )
         build_download_args.add_argument(
-            "-m",
-            "--taxonomy-files",
-            type=file_exists,
-            nargs="*",
-            metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
-        )
-        build_download_args.add_argument(
             "-z",
             "--genome-size-files",
             type=file_exists,
@@ -283,6 +288,13 @@ class Config:
             "--skip-genome-size",
             action="store_true",
             help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.",
+        )
+        build_download_args.add_argument(
+            "--download-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=8,
+            help="Number of parallel sequence downloads from NCBI.",
         )
 
         ####################################################################################################
@@ -342,14 +354,6 @@ class Config:
             + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.",
         )
         build_custom_args.add_argument(
-            "-m",
-            "--taxonomy-files",
-            type=file_exists,
-            nargs="*",
-            metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
-        )
-        build_custom_args.add_argument(
             "-z",
             "--genome-size-files",
             type=file_exists,
@@ -361,6 +365,61 @@ class Config:
             "--skip-genome-size",
             action="store_true",
             help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.",
+        )
+
+        build_custom_taxonomy_args = build_custom_parser.add_argument_group(
+            "taxonomy arguments"
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-x",
+            "--taxonomy",
+            type=str,
+            metavar="",
+            default="ncbi",
+            help="Taxonomy matching the --input/--input-file. Enables taxonomic classification, lca and tax. reports ["
+            + ", ".join(self.choices_taxonomy_custom)
+            + "]",
+            choices=self.choices_taxonomy_custom,
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-b",
+            "--convert-taxonomy",
+            type=str,
+            metavar="",
+            default=None,
+            help="Convert input taxonomy nodes (--taxonomy) to ["
+            + ", ".join(self.choices_convert_taxonomy_custom)
+            + "]. ",
+            choices=self.choices_convert_taxonomy_custom,
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-m",
+            "--taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-u",
+            "--convert-taxonomy-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local taxonomy files instead of downloading. For ncbi-latest: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb-version: *taxonomy.tsv.gz",
+        )
+        build_custom_taxonomy_args.add_argument(
+            "-g",
+            "--convert-gtdb-files",
+            type=file_exists,
+            nargs="*",
+            metavar="",
+            help="Use local gtdb conversion files instead of downloading. One for each version used in --taxonomy and --convert-taxonomy. Files from https://github.com/pirovc/multitax/tree/main/data/gtdb",
+        )
+        build_custom_taxonomy_args.add_argument(
+            "--keep-invalid-taxa",
+            action="store_true",
+            help="Keep invalid taxa in the database, will be assigned to the root of the taxonomic tree.",
         )
 
         ncbi_args = build_custom_parser.add_argument_group("ncbi arguments")
@@ -401,23 +460,21 @@ class Config:
             help="Existing database input prefix",
         )
 
-        update_default_important_args = update_parser.add_argument_group(
-            "important arguments"
-        )
-        update_default_important_args.add_argument(
+        update_general_args = update_parser.add_argument_group("general arguments")
+        update_general_args.add_argument(
             "-o",
             "--output-db-prefix",
             type=str,
             metavar="",
             help="Output database prefix. By default will be the same as --db-prefix and overwrite files",
         )
-        update_default_important_args.add_argument(
+        update_general_args.add_argument(
             "-t",
             "--threads",
             type=unsigned_int(minval=1),
             metavar="",
             default=1,
-            help="",
+            help="Number of sub-processes/threads to use",
         )
 
         ####################################################################################################
@@ -613,6 +670,11 @@ class Config:
             help="Output a file with unclassified read headers (.unc)",
         )
         classify_group_output.add_argument(
+            "--output-stats",
+            action="store_true",
+            help="Output a file with statistic of classification (.sta)",
+        )
+        classify_group_output.add_argument(
             "--output-single",
             action="store_true",
             help="When using multiple hierarchical levels, output everything in one file instead of one per hierarchy",
@@ -787,7 +849,7 @@ class Config:
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Specific files for taxonomy - otherwise files will be downloaded",
+            help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
         )
         report_group_dbtax.add_argument(
             "-z",
@@ -1217,6 +1279,10 @@ class Config:
                 return False
 
         elif self.which == "build-custom":
+            if not self.input_file and not self.input:
+                print_log("--input-file or --input is required")
+                return False
+
             if self.input_file and self.input:
                 print_log("--input-file is mutually exclusive with --input")
                 return False
@@ -1239,7 +1305,47 @@ class Config:
                 print_log("--taxonomy is required for --level " + self.level)
                 return False
 
-            if self.taxonomy == "ncbi":
+            # If using "latest" gtdb, cannot guarantee conversion (in case of new release and outdated multitax)
+            if self.taxonomy == "gtdb" and self.convert_taxonomy == "ncbi-latest":
+                print_log(
+                    "--taxonomy gtdb need to be set to a specific version to convert to ncbi-latest"
+                )
+                return False
+
+            if self.taxonomy == "skip" and self.convert_taxonomy:
+                print_log("--taxonomy needs to be set to enable --convert-taxonomy")
+                return False
+
+            if self.convert_gtdb_files:
+                if (
+                    self.taxonomy.startswith("gtdb")
+                    and self.convert_taxonomy.startswith("gtdb")
+                    and len(self.convert_gtdb_files) != 2
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires two files: one for {self.taxonomy} and one for {self.convert_taxonomy}"
+                    )
+                    return False
+                elif (
+                    self.taxonomy.startswith("gtdb")
+                    and self.convert_taxonomy.startswith("ncbi")
+                    and len(self.convert_gtdb_files) != 1
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires one file for {self.taxonomy}"
+                    )
+                    return False
+                elif (
+                    self.taxonomy.startswith("ncbi")
+                    and self.convert_taxonomy.startswith("gtdb")
+                    and len(self.convert_gtdb_files) != 1
+                ):
+                    print_log(
+                        f"--convert-gtdb-files requires one file for {self.convert_taxonomy}"
+                    )
+                    return False
+
+            if self.taxonomy.startswith("ncbi"):
                 for entry in self.ncbi_sequence_info:
                     if entry not in self.choices_ncbi_sequence_info and not check_file(
                         entry

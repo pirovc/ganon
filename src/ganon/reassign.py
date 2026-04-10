@@ -189,6 +189,7 @@ def reassign(cfg):
                             hierarchy_name = fields[0]
                             target = fields[1]
                             direct_matches = fields[2]
+                            unique = int(fields[3])
                             rank = fields[5] if len(fields) >= 6 else ""
                             name = fields[6] if len(fields) >= 7 else ""
                             # Only print line of targets
@@ -201,8 +202,8 @@ def reassign(cfg):
                                         hierarchy_name,
                                         target,
                                         direct_matches,
-                                        reassigned_matches[targets[target]],
-                                        0,
+                                        unique,
+                                        reassigned_matches[targets[target]] - unique,
                                         rank,
                                         name,
                                     ]

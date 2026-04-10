@@ -1,5 +1,8 @@
 codecov:
-  branch: master
+  branch: main
+  ci:
+    - "travis.org"
+  require_ci_to_pass: yes
 
 ignore:
   - "/usr/.*"

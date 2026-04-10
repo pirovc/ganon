@@ -1,7 +1,10 @@
 # Classification
 
-`ganon classify` will match single and/or paired-end sets of reads against one or [more databases](#multiple-and-hierarchical-classification). 
-By default, parameters are optimized for **taxonomic profiling**, meaning that less reads will be classified but with a higher sensitivity. For example:
+`ganon classify` will match single and/or paired-end sets of reads/sequences against one or [more databases](#multiple-and-hierarchical-classification). 
+
+By default, parameters are optimized for [**taxonomic profiling**](#profiling), meaning that less reads will be classified but with a higher sensitivity. A pre-set of parameters is availble for [**binning**](#binning). To understand the effects of classification parameters, plese check the [cutoffs section](#cutoff-and-filter-rel-cutoff-rel-filter) and choose the parameters according to your application.
+
+For example:
 
 ```bash
 ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
@@ -14,27 +17,42 @@ Output files:
 
 By default, `ganon classify` only write report files. To get files with the classification of each read, use `--output-one` and/or `--output-all`. More information about output files [here](outputfiles.md#ganon-classify).
 
-!!! Note
-    ganon performs **taxonomic profiling** and/or **binning** (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.
-
-### Profiling
+## Profiling
 
 `ganon classify` is set-up by default to perform taxonomic profiling. It uses:
 
  - strict thresholds: `--rel-cutoff 0.75` and `--rel-filter 0.1`
  - `--min-count 0.00005` (0.005%) to exclude very low abundant taxa
- - `--report-type abundance` to generate taxonomic abundances, correcting for genome sizes  (more infos [here](reports.md#report-type-report-type))
+ - `--report-type abundance` to generate taxonomic abundances, correcting for genome sizes  (more infos [here](reports.md#report-types-report-type))
 
-### Binning
+## Binning
 
 To achieve better results for taxonomic binning or sequence classification, `ganon classify` can be configured with `--binning`, that is the same as:
 
  - less strict thresholds: `--rel-cutoff 0.25 --rel-filter 0`
  - `--min-count 0` reports all taxa with at least one read assigned to it
- - `--report-type reads` will report sequence abundances instead of taxonomic abundances (more infos [here](reports.md#report-type-report-type))
+ - `--report-type reads` will report sequence abundances instead of taxonomic abundances (more infos [here](reports.md#report-types-report-type))
 
 !!! Tip
     Database parameters in `ganon build` can also influence your results. Lower `--max-fp` (e.g. 0.1, 0.001) and higher `--kmer-size` (e.g. `23`, `27`) will improve sensitivity of your results at cost of a larger database and memory usage.
+
+## Summary and stats
+
+After finishing the run, `ganon classify` will show statistics of classification on the log (STDERR). Those values can be written in a tab-separated file with the `--output-stats` parameter. The log will look like this and are relative to the parameters chosen:
+
+```txt
+ganon-classify processed 2000 sequences (0.2 Mbp) with 21237 k-mers in 0.0322319 seconds (372.302 Mbp/m)
+1435 sequences classified (71.75%)
+  877 with unique matches (43.85%)
+  558 with multiple matches (27.9%)
+565 sequences unclassified (28.25%)
+matches: 3791 (avg. 2.64181 reference/sequence), 6506 discarded (--rel-filter), 0 discarded (--fpr-query)
+k-mers: 12025/15235 k-mers matched/k-mers from classified sequences (78.9301%)
+```
+
+- The first 5 lines show the number of processed sequences/k-mers from the input reads as well as the general classification numbers. `sequences classified with multiple matches` are the number of reads that matched more than one reference.
+- The line starting with `matches` reports the total number of matches between reads and references (unique and multiple), with an average and the number of the discarded matches for each parameter.
+- The line starting with `k-mers` show k-mers stats: the number of matching k-mers in relation to the number of possible k-mers (considering classified sequences) with a ratio. This value is useful to have an idea on the quality of the classification run, with lower ratios meaning that reads are poorly matching the references.
 
 ## Reads with multiple matches
 
@@ -44,12 +62,16 @@ There are two ways to solve reads with multiple-matches in `ganon classify`:
  - `--multiple-matches lca`: uses the Lowest Common Ancestor algorithm, re-assigning reads with multiple matches to higher common ancestors in the taxonomic tree.
  - `--multiple-matches skip`: will not resolve multi-matching reads
 
-!!! Tip
-    - The Expectation-Maximization can be performed independently with `ganon reassign` using the output files `.rep` and `.all`.
-    - Reports can be generated independently with `ganon report` using the output file `.rep`
+The Expectation-Maximization can be performed independently with `ganon reassign` using the output files `.rep` and `.all`. Reports can be generated independently with `ganon report` using the output file `.rep`
 
-!!! Note
-    `--multiple-matches lca` paired with `--report-type abundance` or `dist` will distribute read **counts** with multiple matches to one most probable target (defined by `--level` in the build procedure), instead of a higher taxonomic rank. In this case the distribution is simply based on the number of taxa with unique matches and it is not as precise as the EM algorithm, but it will run faster since the per-read basis re-assignment can be skipped.
+!!! Tip
+    To get both LCA and EM result in one classification run:
+
+    - run `ganon classify` with `--multiple-matches lca --output-all` to generate LCA results and reports.
+    - run `ganon reassign` + `ganon report` to generate the EM results and reports.
+
+!!! Warning
+    `--multiple-matches lca` with `--report-type abundance` or `dist` will re-distribute read **counts** with multiple matches simply based on the distribution of unique matches among targets and it is not as precise as the EM re-assign algorithm.
 
 ## Classifying more reads
 
@@ -211,4 +233,4 @@ ganon uses Bloom Filters, probabilistic data structures that may return false po
 By default, `--fpr-query 1e-5` is used and it is applied after the `--rel-cutoff` and `--rel-filter`. Values between `1e-3` and `1e-10` are recommended. This threshold becomes more important when building smaller databases with higher `--max-fp`, assuring that the false positive is under control. In this case however, sensitivity of results may decrease.
 
 !!! Note
-    The false positive of a query was first propose in: Solomon, Brad, and Carl Kingsford. “Fast Search of Thousands of Short-Read Sequencing Experiments.” Nature Biotechnology 34, no. 3 (2016): 1–6. https://doi.org/10.1038/nbt.3442.
+    The false positive of a query was first propose in: Solomon, Brad, and Carl Kingsford. “Fast Search of Thousands of Short-Read Sequencing Experiments.” Nature Biotechnology 34, no. 3 (2016): 1–6. [10.1038/nbt.3442](https://doi.org/10.1038/nbt.3442){target="_blank"}.

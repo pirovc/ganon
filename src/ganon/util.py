@@ -49,9 +49,9 @@ def logo(version):
     return logo
 
 
-def print_log(text, quiet: bool = False):
+def print_log(text, quiet: bool = False, end: str = "\n"):
     if not quiet:
-        sys.stderr.write(text + "\n")
+        sys.stderr.write(text + end)
         sys.stderr.flush()
 
 

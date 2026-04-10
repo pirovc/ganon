@@ -22,7 +22,7 @@ Additionally, [custom databases](custom_databases.md) can be built with customiz
 
 The NCBI RefSeq and GenBank repositories are common sources of reference sequences for analysing metagenomics data. These repositories are primarily organised by domain/organism group (e.g. Archaea, Bacteria, Fungi, etc.), but can be filtered further. The choice of these filters can drastically affect the outcome of the analysis.
 
-RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments [published in the ganon2 article](http://dx.doi.org/10.1093/nargab/lqaf094), the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.
+RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments [published in the ganon2 article](https://dx.doi.org/10.1093/nargab/lqaf094){target="_blank"}, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.
 
 ### Commonly used sub-sets
 
@@ -113,17 +113,17 @@ will download and build a database for all *Escherichia coli* (taxid:562) and *P
 
 ### More filter options
 
-ganon uses [genome_updater](https://github.com/pirovc/genome_updater) to manage downloads and further specific options and filters can be provided with the paramer `-u/--genome-updater`, for example:
+ganon uses [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"} to manage downloads and further specific options and filters can be provided with the paramer `-u/--genome-updater`, for example:
 
 ```bash
 ganon build -g bacteria -t 48 -d bac_refseq --genome-updater "-A 'genus:3' -E 20230101"
 ```
 
-will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the [repository](https://github.com/pirovc/genome_updater).
+will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the [repository](https://github.com/pirovc/genome_updater){target="_blank"}.
 
 ## GTDB
 
-By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](https://gtdb.ecogenomic.org) is fully supported and can be used with the parameter `--taxonomy gtdb`. 
+By default, ganon will use the NCBI Taxonomy to build the database. However, [GTDB](https://gtdb.ecogenomic.org){target="_blank"} is fully supported and can be used with the parameter `--taxonomy gtdb`. 
 
 Filtering by taxonomic entries also work with GTDB, for example:
 
@@ -152,7 +152,7 @@ ganon update --db-prefix arc_cg_rs --threads 12
 
 ## Reproducibility
 
-If you use ganon with default databases and want to re-generate it later or keep track of the content for reproducibility purposes, you can save the `assembly_summary.txt` file located inside the `{output_prefix}_files/` directory. To re-download the exact same snapshot of files used, one could use [genome_updater](https://github.com/pirovc/genome_updater), for example:
+If you use ganon with default databases and want to re-generate it later or keep track of the content for reproducibility purposes, you can save the `assembly_summary.txt` file located inside the `{output_prefix}_files/` directory. To re-download the exact same snapshot of files used, one could use [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"}, for example:
 
 ```bash
 genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files -m -t 12 
@@ -162,7 +162,7 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ### Filter type (IBF and HIBF)
 
-The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates *smaller* databases with *faster* query times ([article](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4)). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the `--filter-type` parameter in `ganon build` and `ganon build-custom`.
+The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates *smaller* databases with *faster* query times ([article](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4){target="_blank"}). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the `--filter-type` parameter in `ganon build` and `ganon build-custom`.
 
 Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. The default value for high sensitivity is 1% (`--filter-type hibf --max-fp 0.001`).
 

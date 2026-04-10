@@ -7,7 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.3.0
+   _|   v. 2.4.0
 - - - - - - - - - -
 
 positional arguments:
@@ -31,9 +31,9 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-b [ ...]] [-o ] [-c] [-r] [-u ] [-m [ ...]] [-z [ ...]]
-                   [--skip-genome-size] -d DB_PREFIX [-x ] [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ]
-                   [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-u ] [-z [ ...]]
+                   [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ]
+                   [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -53,6 +53,13 @@ database arguments:
                         ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis (default:
                         species)
 
+taxonomy arguments:
+  -x, --taxonomy        Use taxonomy to enable taxonomic classification, lca and tax. reports [ncbi, gtdb, skip]
+                        (default: ncbi)
+  -m, --taxonomy-files [ ...]
+                        Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
+                        [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
+
 download arguments:
   -b, --source [ ...]   Source to download [refseq, genbank] (default: ['refseq'])
   -o, --top             Download limited assemblies for each taxa. 0 for all. (default: 0)
@@ -62,19 +69,14 @@ download arguments:
                         Download only sub-set of reference genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
-  -m, --taxonomy-files [ ...]
-                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z, --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
   --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
                         full genomes. (default: False)
+  --download-threads    Number of parallel sequence downloads from NCBI. (default: 8)
 
-important arguments:
-  -x, --taxonomy        Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
-                        ncbi)
-  -t, --threads 
-
-advanced arguments:
+general arguments:
+  -t, --threads         Number of sub-processes/threads to use (default: 1)
   -p, --max-fp          Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
                         --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k, --kmer-size       The k-mer size to split sequences. (default: 19)
@@ -110,9 +112,10 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [-m [ ...]] [-z [ ...]] [--skip-genome-size]
-                          [-r [ ...]] [-q [ ...]] -d DB_PREFIX [-x ] [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ]
-                          [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [-z [ ...]] [--skip-genome-size] [-x ] [-b ]
+                          [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]] -d DB_PREFIX
+                          [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet]
+                          [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -137,12 +140,30 @@ custom arguments:
                         available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
                         specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
-  -m, --taxonomy-files [ ...]
-                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
   -z, --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
   --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
                         full genomes. (default: False)
+
+taxonomy arguments:
+  -x, --taxonomy        Taxonomy matching the --input/--input-file. Enables taxonomic classification, lca and tax.
+                        reports [ncbi, gtdb, gtdb-80, gtdb-83, gtdb-86.2, gtdb-89, gtdb-95, gtdb-202, gtdb-207,
+                        gtdb-214.1, gtdb-220, gtdb-226, skip] (default: ncbi)
+  -b, --convert-taxonomy 
+                        Convert input taxonomy nodes (--taxonomy) to [ncbi-latest, gtdb-80, gtdb-83, gtdb-86.2, gtdb-89,
+                        gtdb-95, gtdb-202, gtdb-207, gtdb-214.1, gtdb-220, gtdb-226]. (default: None)
+  -m, --taxonomy-files [ ...]
+                        Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
+                        [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
+  -u, --convert-taxonomy-files [ ...]
+                        Use local taxonomy files instead of downloading. For ncbi-latest: taxdump.tar.gz OR nodes.dmp
+                        [names.dmp merged.dmp]. For gtdb-version: *taxonomy.tsv.gz (default: None)
+  -g, --convert-gtdb-files [ ...]
+                        Use local gtdb conversion files instead of downloading. One for each version used in --taxonomy
+                        and --convert-taxonomy. Files from https://github.com/pirovc/multitax/tree/main/data/gtdb
+                        (default: None)
+  --keep-invalid-taxa   Keep invalid taxa in the database, will be assigned to the root of the taxonomic tree. (default:
+                        False)
 
 ncbi arguments:
   -r, --ncbi-sequence-info [ ...]
@@ -156,12 +177,8 @@ ncbi arguments:
                         refseq_historical, genbank_historical or one or more assembly_summary files from
                         https://ftp.ncbi.nlm.nih.gov/genomes/] (default: ['refseq', 'genbank'])
 
-important arguments:
-  -x, --taxonomy        Set taxonomy to enable taxonomic classification, lca and reports [ncbi, gtdb, skip] (default:
-                        ncbi)
-  -t, --threads 
-
-advanced arguments:
+general arguments:
+  -t, --threads         Number of sub-processes/threads to use (default: 1)
   -p, --max-fp          Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
                         --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
   -k, --kmer-size       The k-mer size to split sequences. (default: 19)
@@ -206,11 +223,11 @@ required arguments:
   -d, --db-prefix DB_PREFIX
                         Existing database input prefix
 
-important arguments:
+general arguments:
   -o, --output-db-prefix 
                         Output database prefix. By default will be the same as --db-prefix and overwrite files (default:
                         None)
-  -t, --threads 
+  -t, --threads         Number of sub-processes/threads to use (default: 1)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
@@ -230,7 +247,8 @@ optional arguments:
 usage: ganon classify [-h] -d [DB_PREFIX ...] -o OUTPUT_PREFIX [-s [reads.fq[.gz] ...]]
                       [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]] [-a [file.tsv ...]] [-c [ ...]] [-e [ ...]] [-m ]
                       [--ranks [ ...]] [--min-count ] [--report-type ] [--skip-report] [--output-one] [--output-all]
-                      [--output-unclassified] [--output-single] [-t ] [-b] [-f [ ...]] [-l [ ...]] [--verbose] [--quiet]
+                      [--output-unclassified] [--output-stats] [--output-single] [-t ] [-b] [-f [ ...]] [-l [ ...]]
+                      [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -279,6 +297,7 @@ output arguments:
   --output-all          Output a file with all unique and multiple matches (.all) (default: False)
   --output-unclassified
                         Output a file with unclassified read headers (.unc) (default: False)
+  --output-stats        Output a file with statistic of classification (.sta) (default: False)
   --output-single       When using multiple hierarchical levels, output everything in one file instead of one per
                         hierarchy (default: False)
 
@@ -358,7 +377,8 @@ db/tax arguments:
   -x, --taxonomy        Taxonomy database to use [ncbi, gtdb, skip]. Mutually exclusive with --db-prefix. (default:
                         ncbi)
   -m, --taxonomy-files [ ...]
-                        Specific files for taxonomy - otherwise files will be downloaded (default: None)
+                        Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
+                        [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
   -z, --genome-size-files [ ...]
                         Specific files for genome size estimation - otherwise files will be downloaded (default: None)
   --skip-genome-size    Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when

@@ -1,6 +1,6 @@
 # Table
 
-`ganon table` filters and summarizes several reports obtained with `ganon report` into a table. Filters for each sample or for averages among all samples can also be applied.
+`ganon table` filters and summarizes several reports obtained with `ganon report` (`.tre` files) into a table. Filters for each sample or for averages among all samples can also be applied.
 
 ## Examples
 
