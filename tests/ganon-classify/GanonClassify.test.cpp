@@ -24,6 +24,7 @@ GanonClassify::Config defaultConfig( const std::string prefix )
     cfg.output_prefix       = prefix;
     cfg.output_all          = true;
     cfg.output_lca          = true;
+    cfg.output_stats        = true;
     cfg.output_unclassified = true;
     cfg.threads             = 4;
     cfg.verbose             = false;
@@ -296,6 +297,21 @@ SCENARIO( "classifying reads without errors", "[ganon-classify][without-errors]"
             config_classify::Res res{ cfg };
             config_classify::sanity_check( cfg, res );
             REQUIRE_FALSE( std::filesystem::exists( prefix + ".all" ) );
+        }
+        SECTION( "without --output-stats" )
+        {
+            std::string prefix{ folder_prefix + "default_wo_output_stats" };
+            auto        cfg  = config_classify::defaultConfig( prefix );
+            cfg.output_stats = false;
+            cfg.ibf          = { base_prefix + ".ibf" };
+            cfg.single_reads = { folder_prefix + "readA.fasta" };
+            cfg.rel_cutoff   = { 0 };
+            cfg.rel_filter   = { 1 };
+
+            REQUIRE( GanonClassify::run( cfg ) );
+            config_classify::Res res{ cfg };
+            config_classify::sanity_check( cfg, res );
+            REQUIRE_FALSE( std::filesystem::exists( prefix + ".sta" ) );
         }
     }
 

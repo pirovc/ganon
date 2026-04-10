@@ -459,6 +459,8 @@ void print_output_files( const Config&                                   config,
         std::cerr << config.output_prefix + prefix + ".rep" << newl;
         if ( config.output_unclassified )
             std::cerr << config.output_prefix + prefix + ".unc" << newl;
+        if ( config.output_stats )
+            std::cerr << config.output_prefix + prefix + ".sta" << newl;
         for ( auto& [hierarchy_label, hierarchy_config] : parsed_hierarchy )
         {
             if ( config.output_lca )
@@ -1063,7 +1065,7 @@ void print_stats_db( const Total& total, double seq_processed, size_t seq_unclas
     std::cerr << "  " << total.seqs_unique << " with unique matches (" << ( total.seqs_unique / seq_processed ) * 100
               << "%)" << std::endl;
     std::cerr << "  " << seq_multiple_matches << " with multiple matches ("
-              << ( ( seq_multiple_matches ) / seq_processed ) * 100 << "%)" << std::endl;
+              << ( seq_multiple_matches / seq_processed ) * 100 << "%)" << std::endl;
     if ( seq_unclassified > 0 )
     {
         std::cerr << "" << seq_unclassified << " sequences unclassified (" << ( seq_unclassified / seq_processed ) * 100
@@ -1125,6 +1127,95 @@ void print_stats( Stats&                                          stats,
     }
 }
 
+void write_stats_db( const Total&   total,
+                     double         seq_processed,
+                     size_t         seq_unclassified,
+                     size_t         kmers_processed,
+                     std::string    prefix,
+                     std::string    hierarchy_level,
+                     std::ofstream& out_sta )
+{
+
+    const size_t seq_multiple_matches = total.seqs_classified - total.seqs_unique;
+    const double avg_seq_matches =
+        total.seqs_classified ? ( total.matches / static_cast< double >( total.seqs_classified ) ) : 0;
+    const double kmers_matched_perc =
+        total.kmers_matches ? ( total.kmers_matches / static_cast< double >( total.kmers_from_classified_seqs ) ) * 100
+                            : 0;
+
+    out_sta << std::fixed << std::setprecision( 6 );
+    out_sta << prefix << '\t';
+    out_sta << hierarchy_level << '\t';
+    out_sta << static_cast< size_t >( seq_processed ) << '\t';
+    out_sta << seq_unclassified << '\t';
+    out_sta << total.seqs_classified << '\t';
+    out_sta << ( total.seqs_classified / seq_processed ) * 100 << '\t';
+    out_sta << total.seqs_unique << '\t';
+    out_sta << ( total.seqs_unique / seq_processed ) * 100 << '\t';
+    out_sta << seq_multiple_matches << '\t';
+    out_sta << ( seq_multiple_matches / seq_processed ) * 100 << '\t';
+    out_sta << total.matches << '\t';
+    out_sta << avg_seq_matches << '\t';
+    out_sta << total.discarded_matches_filter << '\t';
+    out_sta << total.discarded_matches_fprquery << '\t';
+    out_sta << kmers_processed << '\t';
+    out_sta << total.kmers_matches << '\t';
+    out_sta << total.kmers_from_classified_seqs << '\t';
+    out_sta << kmers_matched_perc << '\n';
+}
+
+void write_stats( std::string                                     output_prefix,
+                  Stats&                                          stats,
+                  const std::map< std::string, HierarchyConfig >& parsed_hierarchy )
+{
+
+    for ( auto const& [prefix, total] : stats.total )
+    {
+        std::ofstream out_sta{ output_prefix + prefix + ".sta" };
+
+        out_sta << "prefix" << '\t';
+        out_sta << "hierarchy_label" << '\t';
+        out_sta << "seq_processed" << '\t';
+        out_sta << "seq_unclassified" << '\t';
+        out_sta << "seq_classified" << '\t';
+        out_sta << "seq_classified_perc" << '\t';
+        out_sta << "seq_unique_matches" << '\t';
+        out_sta << "seq_unique_matches_perc" << '\t';
+        out_sta << "seq_multiple_matches" << '\t';
+        out_sta << "seq_multiple_matches_perc" << '\t';
+        out_sta << "matches" << '\t';
+        out_sta << "avg_matches_ref_seq" << '\t';
+        out_sta << "dis_matches_rel_filter" << '\t';
+        out_sta << "dis_matches_fpr_query" << '\t';
+        out_sta << "kmers_proccessed" << '\t';
+        out_sta << "kmers_matched" << '\t';
+        out_sta << "kmers_from_classified_seqs" << '\t';
+        out_sta << "kmers_matched_perc" << '\n';
+
+        const size_t seq_unclassified = total.seqs_processed - total.seqs_classified;
+        const double seq_processed    = total.seqs_processed > 0 ? static_cast< double >( total.seqs_processed )
+                                                                 : 1; // to not report nan on divisions
+
+        for ( auto const& h : parsed_hierarchy )
+        {
+            detail::write_stats_db( stats.hierarchy_total[h.first][prefix],
+                                    seq_processed,
+                                    seq_unclassified,
+                                    total.kmers_processed,
+                                    prefix,
+                                    h.first,
+                                    out_sta );
+        }
+
+        // If multiple hierarchy levels, print -total- line with sum
+        if ( parsed_hierarchy.size() > 1 )
+        {
+            detail::write_stats_db(
+                total, seq_processed, seq_unclassified, total.kmers_processed, prefix, "-total-", out_sta );
+        }
+        out_sta.close();
+    }
+}
 
 void parse_reads( SafeQueue< ReadBatches >& queue1, Stats& stats, Config const& config, TReadConfig& reads_config )
 {
@@ -1561,6 +1652,11 @@ bool ganon_classify( Config config )
 
     for ( auto& [prefix, file] : out_rep )
         file.close();
+
+    if ( config.output_stats )
+    {
+        detail::write_stats( config.output_prefix, stats, parsed_hierarchy );
+    }
 
     timeGanon.stop();
 

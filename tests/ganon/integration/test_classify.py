@@ -1,5 +1,5 @@
 import unittest
-
+from pathlib import Path
 
 from ganon.config import Config
 
@@ -166,6 +166,7 @@ class TestClassify(unittest.TestCase):
         params["output_one"] = True
         params["output_all"] = True
         params["output_unclassified"] = True
+        params["output_stats"] = True
 
         # Build config from params
         cfg = Config("classify", **params)
@@ -177,6 +178,12 @@ class TestClassify(unittest.TestCase):
         # General sanity check of results
         res = classify_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon table has inconsistent results")
+
+        # Files exist and are not empty
+        self.assertTrue(Path(params["output_prefix"] + ".one").stat().st_size > 0)
+        self.assertTrue(Path(params["output_prefix"] + ".all").stat().st_size > 0)
+        self.assertTrue(Path(params["output_prefix"] + ".unc").stat().st_size > 0)
+        self.assertTrue(Path(params["output_prefix"] + ".sta").stat().st_size > 0)
 
     def test_multiple_matches_em(self):
         """

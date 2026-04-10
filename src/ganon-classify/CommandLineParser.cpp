@@ -30,7 +30,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         ( "l,output-lca", "Runs and outputs file with lca classification (prefix.one)", cxxopts::value< bool >() )
         ( "a,output-all", "Outputs file with all matches (prefix.all)", cxxopts::value< bool >() )
         ( "u,output-unclassified", "Outputs unclassified read ids (prefix.unc)", cxxopts::value< bool >() )
-        ( "s,output-single", "Do not split output files (lca and all) with multi-level --hierarchy-labels", cxxopts::value< bool >() )
+        ( "z,output-stats", "Outputs classification statistics (prefix.sta)", cxxopts::value< bool >() )
+        ( "s,output-single", "Do not split output files (one and all) with multi-level --hierarchy-labels", cxxopts::value< bool >() )
         
         ( "hibf", "Input is an Hierarchical IBF (.hibf) generated from raptor.", cxxopts::value< bool >())
         ( "skip-lca", "Skip LCA step.", cxxopts::value< bool >())
@@ -95,6 +96,8 @@ std::optional< Config > CommandLineParser::parse( int argc, char** argv )
         config.output_all = args["output-all"].as< bool >();
     if ( args.count( "output-unclassified" ) )
         config.output_unclassified = args["output-unclassified"].as< bool >();
+    if ( args.count( "output-stats" ) )
+        config.output_stats = args["output-stats"].as< bool >();
     if ( args.count( "output-single" ) )
         config.output_single = args["output-single"].as< bool >();
 
