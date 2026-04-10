@@ -113,10 +113,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
-                </li>
-              </ul>
       </div>
     </div>
     </nav>
@@ -154,7 +150,7 @@
 </div>
 <h2 id="refseq-and-genbank">RefSeq and GenBank<a class="headerlink" href="#refseq-and-genbank" title="Permanent link">:)</a></h2>
 <p>The NCBI RefSeq and GenBank repositories are common sources of reference sequences for analysing metagenomics data. These repositories are primarily organised by domain/organism group (e.g. Archaea, Bacteria, Fungi, etc.), but can be filtered further. The choice of these filters can drastically affect the outcome of the analysis.</p>
-<p>RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments <a href="http://dx.doi.org/10.1093/nargab/lqaf094">published in the ganon2 article</a>, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.</p>
+<p>RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments <a href="https://dx.doi.org/10.1093/nargab/lqaf094" target="_blank">published in the ganon2 article</a>, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.</p>
 <h3 id="commonly-used-sub-sets">Commonly used sub-sets<a class="headerlink" href="#commonly-used-sub-sets" title="Permanent link">:)</a></h3>
 <table>
 <thead>
@@ -299,12 +295,12 @@
 </code></pre>
 <p>will download and build a database for all <em>Escherichia coli</em> (taxid:562) and <em>Pseudomonas syringae</em> (taxid:317) assemblies from RefSeq.</p>
 <h3 id="more-filter-options">More filter options<a class="headerlink" href="#more-filter-options" title="Permanent link">:)</a></h3>
-<p>ganon uses <a href="https://github.com/pirovc/genome_updater">genome_updater</a> to manage downloads and further specific options and filters can be provided with the paramer <code>-u/--genome-updater</code>, for example:</p>
+<p>ganon uses <a href="https://github.com/pirovc/genome_updater" target="_blank">genome_updater</a> to manage downloads and further specific options and filters can be provided with the paramer <code>-u/--genome-updater</code>, for example:</p>
 <pre><code class="language-bash">ganon build -g bacteria -t 48 -d bac_refseq --genome-updater &quot;-A 'genus:3' -E 20230101&quot;
 </code></pre>
-<p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater">repository</a>.</p>
+<p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater" target="_blank">repository</a>.</p>
 <h2 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h2>
-<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="https://gtdb.ecogenomic.org">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. </p>
+<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="https://gtdb.ecogenomic.org" target="_blank">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. </p>
 <p>Filtering by taxonomic entries also work with GTDB, for example:</p>
 <pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
 </code></pre>
@@ -321,12 +317,12 @@
 <p>To not overwrite the current database and create a new one with the updated files, use the <code>--output-db-prefix</code> parameter.</p>
 </div>
 <h2 id="reproducibility">Reproducibility<a class="headerlink" href="#reproducibility" title="Permanent link">:)</a></h2>
-<p>If you use ganon with default databases and want to re-generate it later or keep track of the content for reproducibility purposes, you can save the <code>assembly_summary.txt</code> file located inside the <code>{output_prefix}_files/</code> directory. To re-download the exact same snapshot of files used, one could use <a href="https://github.com/pirovc/genome_updater">genome_updater</a>, for example:</p>
+<p>If you use ganon with default databases and want to re-generate it later or keep track of the content for reproducibility purposes, you can save the <code>assembly_summary.txt</code> file located inside the <code>{output_prefix}_files/</code> directory. To re-download the exact same snapshot of files used, one could use <a href="https://github.com/pirovc/genome_updater" target="_blank">genome_updater</a>, for example:</p>
 <pre><code class="language-bash">genome_updater.sh -e assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o recovered_files -m -t 12 
 </code></pre>
 <h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
 <h3 id="filter-type-ibf-and-hibf">Filter type (IBF and HIBF)<a class="headerlink" href="#filter-type-ibf-and-hibf" title="Permanent link">:)</a></h3>
-<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4">article</a>). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the <code>--filter-type</code> parameter in <code>ganon build</code> and <code>ganon build-custom</code>.</p>
+<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4" target="_blank">article</a>). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the <code>--filter-type</code> parameter in <code>ganon build</code> and <code>ganon build-custom</code>.</p>
 <p>Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. The default value for high sensitivity is 1% (<code>--filter-type hibf --max-fp 0.001</code>).</p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>

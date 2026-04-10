@@ -66,6 +66,8 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#binning">Binning</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#summary-and-stats">Summary and stats</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#reads-with-multiple-matches">Reads with multiple matches</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#classifying-more-reads">Classifying more reads</a>
@@ -99,10 +101,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
-                </li>
-              </ul>
       </div>
     </div>
     </nav>
@@ -127,8 +125,9 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="classification">Classification<a class="headerlink" href="#classification" title="Permanent link">:)</a></h1>
-<p><code>ganon classify</code> will match single and/or paired-end sets of reads against one or <a href="#multiple-and-hierarchical-classification">more databases</a>. 
-By default, parameters are optimized for <strong>taxonomic profiling</strong>, meaning that less reads will be classified but with a higher sensitivity. For example:</p>
+<p><code>ganon classify</code> will match single and/or paired-end sets of reads/sequences against one or <a href="#multiple-and-hierarchical-classification">more databases</a>. </p>
+<p>By default, parameters are optimized for <a href="#profiling"><strong>taxonomic profiling</strong></a>, meaning that less reads will be classified but with a higher sensitivity. A pre-set of parameters is availble for <a href="#binning"><strong>binning</strong></a>. To understand the effects of classification parameters, plese check the <a href="#cutoff-and-filter-rel-cutoff-rel-filter">cutoffs section</a> and choose the parameters according to your application.</p>
+<p>For example:</p>
 <pre><code class="language-bash">ganon classify --db-prefix my_db --paired-reads reads.1.fq.gz reads.2.fq.gz --output-prefix results --threads 32
 </code></pre>
 <p>Output files:</p>
@@ -137,28 +136,39 @@ By default, parameters are optimized for <strong>taxonomic profiling</strong>, m
 <li><code>results.tre</code>: tree-like report with cumulative abundances by taxonomic ranks (can be re-generated with <code>ganon report</code>)</li>
 </ul>
 <p>By default, <code>ganon classify</code> only write report files. To get files with the classification of each read, use <code>--output-one</code> and/or <code>--output-all</code>. More information about output files <a href="../outputfiles/#ganon-classify">here</a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>ganon performs <strong>taxonomic profiling</strong> and/or <strong>binning</strong> (one tax. assignment for each read) at a taxonomic, strain or sequence level. Some guidelines are listed below, please choose the parameters according to your application.</p>
-</div>
-<h3 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">:)</a></h3>
+<h2 id="profiling">Profiling<a class="headerlink" href="#profiling" title="Permanent link">:)</a></h2>
 <p><code>ganon classify</code> is set-up by default to perform taxonomic profiling. It uses:</p>
 <ul>
 <li>strict thresholds: <code>--rel-cutoff 0.75</code> and <code>--rel-filter 0.1</code></li>
 <li><code>--min-count 0.00005</code> (0.005%) to exclude very low abundant taxa</li>
-<li><code>--report-type abundance</code> to generate taxonomic abundances, correcting for genome sizes  (more infos <a href="../reports/#report-type-report-type">here</a>)</li>
+<li><code>--report-type abundance</code> to generate taxonomic abundances, correcting for genome sizes  (more infos <a href="../reports/#report-types-report-type">here</a>)</li>
 </ul>
-<h3 id="binning">Binning<a class="headerlink" href="#binning" title="Permanent link">:)</a></h3>
+<h2 id="binning">Binning<a class="headerlink" href="#binning" title="Permanent link">:)</a></h2>
 <p>To achieve better results for taxonomic binning or sequence classification, <code>ganon classify</code> can be configured with <code>--binning</code>, that is the same as:</p>
 <ul>
 <li>less strict thresholds: <code>--rel-cutoff 0.25 --rel-filter 0</code></li>
 <li><code>--min-count 0</code> reports all taxa with at least one read assigned to it</li>
-<li><code>--report-type reads</code> will report sequence abundances instead of taxonomic abundances (more infos <a href="../reports/#report-type-report-type">here</a>)</li>
+<li><code>--report-type reads</code> will report sequence abundances instead of taxonomic abundances (more infos <a href="../reports/#report-types-report-type">here</a>)</li>
 </ul>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
 <p>Database parameters in <code>ganon build</code> can also influence your results. Lower <code>--max-fp</code> (e.g. 0.1, 0.001) and higher <code>--kmer-size</code> (e.g. <code>23</code>, <code>27</code>) will improve sensitivity of your results at cost of a larger database and memory usage.</p>
 </div>
+<h2 id="summary-and-stats">Summary and stats<a class="headerlink" href="#summary-and-stats" title="Permanent link">:)</a></h2>
+<p>After finishing the run, <code>ganon classify</code> will show statistics of classification on the log (STDERR). Those values can be written in a tab-separated file with the <code>--output-stats</code> parameter. The log will look like this and are relative to the parameters chosen:</p>
+<pre><code class="language-txt">ganon-classify processed 2000 sequences (0.2 Mbp) with 21237 k-mers in 0.0322319 seconds (372.302 Mbp/m)
+1435 sequences classified (71.75%)
+  877 with unique matches (43.85%)
+  558 with multiple matches (27.9%)
+565 sequences unclassified (28.25%)
+matches: 3791 (avg. 2.64181 reference/sequence), 6506 discarded (--rel-filter), 0 discarded (--fpr-query)
+k-mers: 12025/15235 k-mers matched/k-mers from classified sequences (78.9301%)
+</code></pre>
+<ul>
+<li>The first 5 lines show the number of processed sequences/k-mers from the input reads as well as the general classification numbers. <code>sequences classified with multiple matches</code> are the number of reads that matched more than one reference.</li>
+<li>The line starting with <code>matches</code> reports the total number of matches between reads and references (unique and multiple), with an average and the number of the discarded matches for each parameter.</li>
+<li>The line starting with <code>k-mers</code> show k-mers stats: the number of matching k-mers in relation to the number of possible k-mers (considering classified sequences) with a ratio. This value is useful to have an idea on the quality of the classification run, with lower ratios meaning that reads are poorly matching the references.</li>
+</ul>
 <h2 id="reads-with-multiple-matches">Reads with multiple matches<a class="headerlink" href="#reads-with-multiple-matches" title="Permanent link">:)</a></h2>
 <p>There are two ways to solve reads with multiple-matches in <code>ganon classify</code>:</p>
 <ul>
@@ -166,16 +176,18 @@ By default, parameters are optimized for <strong>taxonomic profiling</strong>, m
 <li><code>--multiple-matches lca</code>: uses the Lowest Common Ancestor algorithm, re-assigning reads with multiple matches to higher common ancestors in the taxonomic tree.</li>
 <li><code>--multiple-matches skip</code>: will not resolve multi-matching reads</li>
 </ul>
+<p>The Expectation-Maximization can be performed independently with <code>ganon reassign</code> using the output files <code>.rep</code> and <code>.all</code>. Reports can be generated independently with <code>ganon report</code> using the output file <code>.rep</code></p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
+<p>To get both LCA and EM result in one classification run:</p>
 <ul>
-<li>The Expectation-Maximization can be performed independently with <code>ganon reassign</code> using the output files <code>.rep</code> and <code>.all</code>.</li>
-<li>Reports can be generated independently with <code>ganon report</code> using the output file <code>.rep</code></li>
+<li>run <code>ganon classify</code> with <code>--multiple-matches lca --output-all</code> to generate LCA results and reports.</li>
+<li>run <code>ganon reassign</code> + <code>ganon report</code> to generate the EM results and reports.</li>
 </ul>
 </div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><code>--multiple-matches lca</code> paired with <code>--report-type abundance</code> or <code>dist</code> will distribute read <strong>counts</strong> with multiple matches to one most probable target (defined by <code>--level</code> in the build procedure), instead of a higher taxonomic rank. In this case the distribution is simply based on the number of taxa with unique matches and it is not as precise as the EM algorithm, but it will run faster since the per-read basis re-assignment can be skipped.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code>--multiple-matches lca</code> with <code>--report-type abundance</code> or <code>dist</code> will re-distribute read <strong>counts</strong> with multiple matches simply based on the distribution of unique matches among targets and it is not as precise as the EM re-assign algorithm.</p>
 </div>
 <h2 id="classifying-more-reads">Classifying more reads<a class="headerlink" href="#classifying-more-reads" title="Permanent link">:)</a></h2>
 <p>By default ganon will classify less reads in favour of sensitivity. To classify more reads, use less strict <code>--rel-cutoff</code> and <code>--rel-filter</code> values (e.g. <code>0.25</code> and <code>0</code>, respectively). More details <a href="#cutoff-and-filter-rel-cutoff-rel-filter">here</a>.</p>
@@ -400,7 +412,7 @@ path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/pa
 <p>By default, <code>--fpr-query 1e-5</code> is used and it is applied after the <code>--rel-cutoff</code> and <code>--rel-filter</code>. Values between <code>1e-3</code> and <code>1e-10</code> are recommended. This threshold becomes more important when building smaller databases with higher <code>--max-fp</code>, assuring that the false positive is under control. In this case however, sensitivity of results may decrease.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>The false positive of a query was first propose in: Solomon, Brad, and Carl Kingsford. “Fast Search of Thousands of Short-Read Sequencing Experiments.” Nature Biotechnology 34, no. 3 (2016): 1–6. https://doi.org/10.1038/nbt.3442.</p>
+<p>The false positive of a query was first propose in: Solomon, Brad, and Carl Kingsford. “Fast Search of Thousands of Short-Read Sequencing Experiments.” Nature Biotechnology 34, no. 3 (2016): 1–6. <a href="https://doi.org/10.1038/nbt.3442" target="_blank">10.1038/nbt.3442</a>.</p>
 </div>
               
             </div>

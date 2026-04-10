@@ -66,6 +66,10 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Reports (ganon report)</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#report-types-report-type">Report types (--report-type)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#filter-and-format">Filter and format</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#taxonomic-profile-with-abundance-estimation-default">Taxonomic profile with abundance estimation (default)</a>
@@ -78,12 +82,6 @@
     </li>
         </ul>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
-        <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#report-type-report-type">report type (--report-type)</a>
-    </li>
-        </ul>
-    </li>
     </ul>
                 </li>
               </ul>
@@ -93,10 +91,6 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
-                </li>
-              </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
                 </li>
               </ul>
       </div>
@@ -123,7 +117,45 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="reports">Reports<a class="headerlink" href="#reports" title="Permanent link">:)</a></h1>
-<p><code>ganon report</code> filters and generates several reports and summaries from the results obtained with <code>ganon classify</code>. It is possible to summarize the results in terms of taxonomic and sequence abundances as well as total number of matches.</p>
+<p><code>ganon report</code> generates taxonomic reports and summaries based on the results obtained using <code>ganon classify</code>. Optionally filters and formats the report. Results results can be summarised in terms of taxonomic and sequence abundances, as well as the total number of matches.</p>
+<p>A file with <code>.tre</code> extension is generated containing the taxonomic report, more infos about the format <a href="../outputfiles/#ganon-report">here</a>. Additionaly, a summary is reported (STDERR) ny taxonomic rank, for example:</p>
+<pre><code class="language-txt">         unique     shared     children   total      
+root     0%         0%         71.75%     71.75%     
+domain   0%         0%         71.75%     71.75%     
+phylum   0%         0%         71.75%     71.75%     
+class    0%         0%         71.55%     71.55%     
+order    0%         0%         71.7%      71.7%      
+family   0%         0%         71.6%      71.6%      
+genus    0%         0%         71.75%     71.75%     
+species  26.65%     16.25%     28.85%     71.75%     
+assembly 17.2%      11.65%     0%         28.85%  
+</code></pre>
+<p>Details on unique, shared and children values can be found <a href="../outputfiles/#ganon-report">here</a>.</p>
+<h2 id="report-types-report-type">Report types (--report-type)<a class="headerlink" href="#report-types-report-type" title="Permanent link">:)</a></h2>
+<p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
+<ul>
+<li><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</li>
+<li><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). If EM was previously used to re-distribute reads, will only correct for sequence abundance (same as <code>corr</code>). Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</li>
+<li><code>dist</code> is the same of <code>reads</code> with read count re-distribution</li>
+<li><code>corr</code> is the same of <code>reads</code> with correction by genome size</li>
+<li><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This option will output the total number of matches instead the total number of reads</em></li>
+</ul>
+<h2 id="filter-and-format">Filter and format<a class="headerlink" href="#filter-and-format" title="Permanent link">:)</a></h2>
+<p>Results can be filtered in several ways:</p>
+<ul>
+<li><code>--ranks</code> filters specific taxonomic ranks.</li>
+<li><code>--top-percentile</code> keeps only the top percentile chosen for each rank (e.g. <code>0.5</code> will keep 50% of taxa for each rank).</li>
+<li><code>--min-count/--max-count</code> min/max percentage or number of counts to keep an taxa. Values between 0-1 for percentage, &gt;1 for number of counts (total).</li>
+<li><code>--names/--names-with/--taxids</code> keeps only entries matching specific names or taxids.</li>
+<li><code>--skip-hierarchy/--keep-hierarchy</code> skip or keep hiearchy levels on the report</li>
+</ul>
+<p>Results can be formatted with:</p>
+<ul>
+<li><code>--output-format</code> file output format: <code>text, tsv, csv, bioboxes</code>.</li>
+<li><code>--sort</code> order of the output: <code>rank, lineage, count, unique</code>.</li>
+<li><code>--normalize</code> will ignore the number of unclassified reads, normalizing the output to 100%.</li>
+<li><code>--split-hierarchy</code> splits output reports by hierarchy levels.</li>
+</ul>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">:)</a></h2>
 <p>Given the output <code>.rep</code> from <code>ganon classify</code> and the database used (<code>--db-prefix</code>):</p>
 <h3 id="taxonomic-profile-with-abundance-estimation-default">Taxonomic profile with abundance estimation (default)<a class="headerlink" href="#taxonomic-profile-with-abundance-estimation-default" title="Permanent link">:)</a></h3>
@@ -139,14 +171,6 @@
 <pre><code class="language-bash">ganon report --db-prefix mydb --input results.rep --output-prefix filtered --min-count 0.0005 --top-percentile 0.8
 </code></pre>
 <p>This will keep only results with a min. abundance of <code>0.05%</code> and only the top <code>80%</code> most abundant.</p>
-<h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
-<h3 id="report-type-report-type">report type (--report-type)<a class="headerlink" href="#report-type-report-type" title="Permanent link">:)</a></h3>
-<p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
-<p><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</p>
-<p><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</p>
-<p><code>dist</code> is the same of <code>reads</code> with read count re-distribution</p>
-<p><code>corr</code> is the same of <code>reads</code> with correction by genome size</p>
-<p><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This option will output the total number of matches instead the total number of reads</em></p>
               
             </div>
           </div><footer>

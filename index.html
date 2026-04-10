@@ -109,10 +109,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="outputfiles/">Output files</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="tutorials/">Tutorials</a>
-                </li>
-              </ul>
       </div>
     </div>
     </nav>
@@ -136,38 +132,52 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="ganon">ganon <a href="https://github.com/pirovc/ganon"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/pirovc/ganon" /></a><a class="headerlink" href="#ganon" title="Permanent link">:)</a></h1>
-<p><a href="https://app.travis-ci.com/pirovc/ganon"><img alt="Build Status" src="https://app.travis-ci.com/pirovc/ganon.svg?token=q6Nfx8pLHh8hV3hLz3Pq&amp;branch=master" /></a> <a href="https://codecov.io/gh/pirovc/ganon"><img alt="codecov" src="https://codecov.io/gh/pirovc/ganon/branch/master/graph/badge.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/downloads.svg" /></a> <a href="https://anaconda.org/bioconda/ganon"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/platforms.svg" /></a> <a href="http://bioconda.github.io/recipes/ganon/README.html"><img alt="install with bioconda" src="https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat" /></a> <a href="https://dx.doi.org/10.1093/nargab/lqaf094"><img alt="Publication" src="https://img.shields.io/badge/DOI-10.1093/nargab/lqaf094-blue" /></a></p>
-<p>Code: <a href="https://github.com/pirovc/ganon">GitHub repository</a></p>
-<p>ganon is designed to index large sets of genomic reference sequences and to classify reads against them efficiently. The tool uses <a href="https://doi.org/10.1186/s13059-023-02971-4">Hierarchical Interleaved Bloom Filters</a> as indices based on k-mers with optional minimizers. It was mainly developed, but not limited, to the metagenomics classification problem: quickly assign sequence fragments to their closest reference among thousands of references. After classification, taxonomic or sequence abundances are estimated and reported.</p>
+                <h1 id="ganon2">ganon2<a class="headerlink" href="#ganon2" title="Permanent link">:)</a></h1>
+<p><a href="https://github.com/pirovc/ganon" target="_blank"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/pirovc/ganon" /></a> <a href="https://app.travis-ci.com/pirovc/ganon" target="_blank"><img alt="Build Status" src="https://app.travis-ci.com/pirovc/ganon.svg?token=q6Nfx8pLHh8hV3hLz3Pq&amp;branch=main" /></a> <a href="https://codecov.io/gh/pirovc/ganon" target="_blank"><img alt="codecov" src="https://codecov.io/gh/pirovc/ganon/branch/main/graph/badge.svg" /></a> <a href="https://anaconda.org/bioconda/ganon" target="_blank"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/downloads.svg" /></a> <a href="https://anaconda.org/bioconda/ganon" target="_blank"><img alt="Anaconda-Server Badge" src="https://anaconda.org/bioconda/ganon/badges/platforms.svg" /></a> <a href="https://bioconda.github.io/recipes/ganon/README.html" target="_blank"><img alt="install with bioconda" src="https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat" /></a> <a href="https://dx.doi.org/10.1093/nargab/lqaf094" target="_blank"><img alt="Publication" src="https://img.shields.io/badge/DOI-10.1093/nargab/lqaf094-blue" /></a></p>
+<p>Code: <a href="https://github.com/pirovc/ganon" target="_blank">GitHub repository</a></p>
+<p>ganon index large sets of genomic reference sequences efficiently and quickly classify sequence fragments to their closest matching reference. It uses <a href="https://doi.org/10.1186/s13059-023-02971-4" target="_blank">Hierarchical Interleaved Bloom Filters</a> as indices based on k-mers/minimizers. After classification, taxonomic or sequence abundances are estimated and reported.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">:)</a></h2>
 <ul>
-<li>integrated download and build of any subset from <a href="default_databases/#refseq-and-genbank">RefSeq/Genbank/GTDB</a> with incremental <a href="default_databases/#update-ganon-update">updates</a></li>
-<li>NCBI and <a href="default_databases/#gtdb">GTDB</a> native support for taxonomic classification, custom taxonomy or no taxonomy at all</li>
-<li><a href="custom_databases/">customizable database</a> build for local or non-standard sequence files</li>
-<li>optimized <a href="classification/#binning">taxonomic binning</a> and <a href="classification/#profiling">profiling</a> configurations</li>
-<li>build and classify at various taxonomic levels, strain, assembly, file, sequence or custom specialization</li>
-<li><a href="classification/#multiple-and-hierarchical-classification">hierarchical classification</a> using several databases in one or more levels in just one run</li>
-<li><a href="classification/#reads-with-multiple-matches">EM and/or LCA</a> algorithms to solve multiple-matching reads</li>
-<li>reporting of multiple and unique matches for every read</li>
-<li><a href="reports/#report-type-report-type">reporting</a> of sequence, taxonomic or multi-match abundances with optional genome size correction</li>
-<li>advanced tree-like <a href="reports/">reports</a> with several filter options</li>
-<li>generation of <a href="table/">contingency tables</a> with several filters for multi-sample studies</li>
+<li><a href="default_databases/">Default database build</a><ul>
+<li>integrated download of any subset from <a href="default_databases/#refseq-and-genbank">RefSeq/Genbank/GTDB</a></li>
+<li>incremental <a href="default_databases/#update-ganon-update">updates</a></li>
+<li><a href="custom_databases/#taxonomy">multi-taxonomy</a> support: <a href="https://www.ncbi.nlm.nih.gov/taxonomy" target="_blank">NCBI</a>, <a href="default_databases/#gtdb" target="_blank">GTDB</a></li>
 </ul>
-<p>ganon achieved very good results in <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458">our own evaluations</a> but also in independent evaluations: <a href="https://lemmi-v1.ezlab.org/">LEMMI</a>, <a href="https://lemmi.ezlab.org/">LEMMI v2</a> and <a href="https://dx.doi.org/10.1038/s41592-022-01431-4">CAMI2</a> (taxonomic <a href="https://cami-challenge.org/taxonomic_profiling/">profiling</a> and <a href="https://cami-challenge.org/taxonomic_binning/">binning</a>).</p>
+</li>
+<li><a href="custom_databases/">Custom database build</a><ul>
+<li>using local or <a href="custom_databases/#non-standard-filesheaders-with-input-file">non-standard</a> sequence files</li>
+<li>supports all taxonomic <a href="custom_databases/#level">levels</a> plus strain, assembly, file, sequence or custom specialization</li>
+<li><a href="custom_databases/#conversion">conversion</a> between NCBI&lt;&gt;GTDB and GTDB versions</li>
+</ul>
+</li>
+<li><a href="classification/">Classification</a> <ul>
+<li><a href="classification/#binning">taxonomic binning</a> and <a href="classification/#profiling">profiling</a> configurations</li>
+<li><a href="classification/#batch-classification">batch classification</a> processing several samples in one run</li>
+<li><a href="classification/#multiple-and-hierarchical-classification">hierarchical classification</a> to classify against several databases in one or more levels</li>
+<li><a href="classification/#reads-with-multiple-matches">EM and/or LCA</a> algorithms to solve multiple-matching reads</li>
+</ul>
+</li>
+<li><a href="reports/">Reports</a> <ul>
+<li>reports of multiple and unique matches for every read</li>
+<li><a href="reports/#report-types-report-type">reporting</a> of sequence, taxonomic or match abundances with optional genome size correction</li>
+<li>tree-like <a href="reports/">reports</a> with several filter options</li>
+</ul>
+</li>
+<li><a href="table/">Contingency tables</a> with several filters for multi-sample studies</li>
+</ul>
+<p>ganon achieved very good results in <a href="https://dx.doi.org/10.1093/bioinformatics/btaa458" target="_blank">our own evaluations</a> but also in independent evaluations: <a href="https://lemmi-v1.ezlab.org/" target="_blank">LEMMI</a>, <a href="https://lemmi.ezlab.org/" target="_blank">LEMMI v2</a> and <a href="https://dx.doi.org/10.1038/s41592-022-01431-4" target="_blank">CAMI2</a> (taxonomic <a href="https://cami-challenge.org/taxonomic_profiling/" target="_blank">profiling</a> and <a href="https://cami-challenge.org/taxonomic_binning/" target="_blank">binning</a>).</p>
 <h2 id="installation-with-conda">Installation with conda<a class="headerlink" href="#installation-with-conda" title="Permanent link">:)</a></h2>
 <p>The easiest way to install ganon is via conda, using the bioconda and conda-forge channels:</p>
 <pre><code class="language-bash">conda install -c conda-forge -c bioconda ganon
 </code></pre>
-<p>However, there are possible performance benefits compiling ganon from source in the target machine rather than using the conda version. To do so, please follow the instructions below:</p>
 <h2 id="installation-from-source">Installation from source<a class="headerlink" href="#installation-from-source" title="Permanent link">:)</a></h2>
 <h3 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">:)</a></h3>
 <h4 id="python">Python<a class="headerlink" href="#python" title="Permanent link">:)</a></h4>
 <ul>
 <li>python &gt;=3.10</li>
 <li>pandas &gt;=1.2.0</li>
-<li><a href="https://github.com/pirovc/multitax">multitax</a> &gt;=1.4.0</li>
-<li><a href="https://github.com/pirovc/genome_updater">genome_updater</a> &gt;=0.7.0</li>
+<li><a href="https://github.com/pirovc/multitax" target="_blank">multitax</a> &gt;=1.5.1</li>
+<li><a href="https://github.com/pirovc/genome_updater" target="_blank">genome_updater</a> &gt;=0.7.2</li>
 </ul>
 <h4 id="c">C++<a class="headerlink" href="#c" title="Permanent link">:)</a></h4>
 <ul>
@@ -200,7 +210,7 @@ sudo make install  # optional, otherwise indicate path when running ganon with -
 <li>to classify extremely large reads or contigs that would need more than 65000 k-mers, use <code>-DLONGREADS=ON</code></li>
 </ul>
 <h3 id="installing-raptor">Installing raptor<a class="headerlink" href="#installing-raptor" title="Permanent link">:)</a></h3>
-<p>The easiest way to install <a href="https://github.com/seqan/raptor">raptor</a> is via conda with <code>conda install -c bioconda -c conda-forge "raptor=3.0.1"</code> (already included in ganon install via conda).</p>
+<p>The easiest way to install <a href="https://github.com/seqan/raptor" target="_blank">raptor</a> is via conda with <code>conda install -c bioconda -c conda-forge "raptor=3.0.1"</code> (already included in ganon install via conda).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>raptor is required to build databases with the Hierarchical Interleaved Bloom Filter (<code>ganon build --filter-type hibf</code>)
@@ -285,5 +295,5 @@ ctest -VV .
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2026-03-16 12:47:26.510947+00:00
+Build Date UTC : 2026-04-10 13:38:08.123605+00:00
 -->

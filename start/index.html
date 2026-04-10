@@ -93,10 +93,6 @@
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../tutorials/">Tutorials</a>
-                </li>
-              </ul>
       </div>
     </div>
     </nav>
@@ -135,7 +131,7 @@
 </ul>
 <h2 id="classify-and-generate-a-tax-profile">Classify and generate a tax. profile<a class="headerlink" href="#classify-and-generate-a-tax-profile" title="Permanent link">:)</a></h2>
 <ul>
-<li><a href="https://github.com/pirovc/ganon_benchmark/raw/master/files/reads/cami/toy/H01_1M_0.1.fq.gz">Download test reads</a></li>
+<li><a href="https://github.com/pirovc/ganon_benchmark/raw/master/files/reads/cami/toy/H01_1M_0.1.fq.gz" target="_blank">Download test reads</a></li>
 </ul>
 <pre><code class="language-bash">ganon classify --db-prefix bac_rs_rg --output-prefix classify_results --single-reads H01_1M_0.1.fq.gz --threads 24
 </code></pre>
@@ -170,7 +166,7 @@
 <li><code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>corr</code> or <code>abundance</code> for taxonomic profiling, <code>reads</code> or <code>dist</code> for sequence profiling and <code>matches</code> to report a summary of all matches.</li>
 <li><code>--min-count</code>: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between <code>0.0001</code> (0.01%) and <code>0.001</code> (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively <code>--top-percentile</code> can be used to keep a relative amount of taxa instead a hard cutoff.</li>
 </ul>
-<p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues">issue</a>.</p>
+<p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues" target="_blank">issue</a>.</p>
               
             </div>
           </div><footer>
