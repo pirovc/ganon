@@ -27,14 +27,9 @@ Every run on `ganon build`, `ganon build-custom` or `ganon update` will generate
 
 ## ganon report
 
-- {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible `--report-type`. More information on the different types of reports can be found [here](#report-type---report-type):
-    - *abundance*: will attempt to estimate **taxonomic abundances** by re-disributing read counts from LCA matches and correcting sequence abundance by approximate genome sizes. If EM was previously used to re-distribute reads, will only correct for sequence abundance.
-    - *reads*: **sequence abundances**, reports the proportion of sequences assigned to a taxa, each read classified is counted once.
-    - *dist*: same as *reads* with read count re-distribution.
-    - *corr*: same as *reads* with correction by genome size.
-    - *matches*: every match is reported to their original target, including multiple and shared matches.
+- {prefix}**.tre**: tab-separated tree-like report with cumulative counts and taxonomic lineage. There are several possible `--report-type`. More information on the different types of reports can be found [here](reports.md/#report-types-report-type).
 
-Each line in this report is a taxonomic entry (including the root node), with the following fields: 
+Each line in this report is a taxonomic entry (including the root node), with the following fields:
 
 | col | field        | obs | example |
 |-----|--------------|-----|---------|
@@ -50,7 +45,7 @@ Each line in this report is a taxonomic entry (including the root node), with th
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches` or `--normalize`)
 
-- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd) is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are omitted.
+- The CAMI challenge [bioboxes profiling format](https://github.com/bioboxes/rfc/blob/master/data-format/profiling.mkd){target="_blank"} is supported using `--output-format bioboxes`. In this format, only values for the percentage/abundance (col. 9) are reported. The root node and unclassified entries are omitted.
 
 - The sum of cumulative assignments for the unclassified and root lines is 100%. The final cumulative sum of reads/matches may be under 100% if any filter is successfully applied and/or hierarchical selection is selected (keep/skip/split).
 

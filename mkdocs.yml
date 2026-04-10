@@ -10,7 +10,6 @@ nav:
     - Reports (ganon report): reports.md
     - Table (ganon table): table.md
     - Output files: outputfiles.md
-    - Tutorials: tutorials.md
 markdown_extensions:
   - tables
   - attr_list

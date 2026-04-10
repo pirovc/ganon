@@ -92,6 +92,7 @@ others.fasta
 No taxonomic information is provided so `--taxonomy skip` should be set. The classification against the generated database will be performed at file level (`--level file`), since that is the only available information given.
 
 #### List of files with alternative names
+
 ```
 sequences.fasta  sequences
 others.fasta     others
@@ -164,11 +165,11 @@ Below you will find some examples from commonly used repositories for metagenomi
 
 ### HumGut
 
-Collection of >30000 genomes from healthy human metagenomes. [Article](https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-021-01114-w)/[Website](https://arken.nmbu.no/~larssn/humgut/).
+Collection of >30000 genomes from healthy human metagenomes. [Article](https://microbiomejournal.biomedcentral.com/articles/10.1186/s40168-021-01114-w){target="_blank"}/[Website](https://arken.nmbu.no/~larssn/humgut/){target="_blank"}.
 
 ```bash
 # Download sequence files
-wget --quiet --show-progress "http://arken.nmbu.no/~larssn/humgut/HumGut.tar.gz"
+wget --quiet --show-progress "https://arken.nmbu.no/~larssn/humgut/HumGut.tar.gz"
 tar xf HumGut.tar.gz 
 
 # Download taxonomy and metadata files
@@ -198,7 +199,7 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 
 ### Plasmid, Plastid and Mitochondrion from RefSeq
 
-Extra repositories from RefSeq release not included as default databases. [Website](https://www.ncbi.nlm.nih.gov/refseq/).
+Extra repositories from RefSeq release not included as default databases. [Website](https://www.ncbi.nlm.nih.gov/refseq/){target="_blank"}.
 
 ```bash
 # Download sequence files
@@ -206,12 +207,12 @@ wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.go
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
 
-ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --skip-genome-size
 ```
 
 ### UniVec, UniVec_core
 
-"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." [Website](https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv). Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.
+"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." [Website](https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv){target="_blank"}. Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.
 
 ```bash
 # UniVec
@@ -226,15 +227,13 @@ ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix Uni
 ```
 
 !!! note
-    All UniVec entries in the examples are categorized as [Artificial Sequence](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=81077) (NCBI txid:81077). Some are completely artificial but others may be derived from real biological sources. More information in this [link](https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.vector.origins).
+    All UniVec entries in the examples are categorized as [Artificial Sequence](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?mode=Info&id=81077){target="_blank"} (NCBI txid:81077). Some are completely artificial but others may be derived from real biological sources. More information in this [link](https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.vector.origins){target="_blank"}.
 
 ### MGnify genome catalogues (MAGs)
 
-"Genome catalogues are biome-specific collections of metagenomic-assembled and isolate genomes". [Article](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/)/[Website](https://www.ebi.ac.uk/metagenomics/browse/genomes)/[FTP](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/).
+"Genome catalogues are biome-specific collections of metagenomic-assembled and isolate genomes". [Article](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/){target="_blank"}/[Website](https://www.ebi.ac.uk/metagenomics/browse/genomes){target="_blank"}/[FTP](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/){target="_blank"}.
 
-Currently available genome catalogues (2024-02-09): `chicken-gut` `cow-rumen` `honeybee-gut` `human-gut` `human-oral` `human-vaginal` `marine` `mouse-gut` `non-model-fish-gut` `pig-gut` `zebrafish-fecal`
-
-*List currently available entries `curl --silent --list-only ftp://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/`*
+[Currently available genome catalogues](https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/){target="_blank"} (2026-04-10): `barley-rhizosphere`, `chicken-gut`, `cow-rumen`, `honeybee-gut`, `human-gut`, `human-oral`, `human-skin`, `human-vaginal`, `maize-rhizosphere`, `marine-eukaryotes`, `marine`, `marine_sediment`, `mouse-gut`, `non-model`, `pig-gut`, `sheep-rumen`, `soil`, `tomato-rhizosphere`, `zebrafish-fecal`, `
 
 Example on how to download and build the `human-oral` catalog:
 
@@ -253,11 +252,11 @@ ganon build-custom --input-file ganon_input_file.tsv --db-prefix mgnify_human_or
 ```
 
 !!! note
-    MGnify genomes catalogues will be build with GTDB taxonomy.
+    MGnify genomes catalogues will be build with GTDB taxonomy. You may need to set the specific version of the taxonomy (e.g. `--taxonomy gtdb-220` for R220) to get all valid entries and optionally can convert to the most recent with `--convert-taxonomy`.
 
 ### Pathogen detection FDA-ARGOS
 
-A collection of >1400 "microbes that include biothreat microorganisms, common clinical pathogens and closely related species". [Article](https://www.ncbi.nlm.nih.gov/bioproject/231221)/[Website](https://www.ncbi.nlm.nih.gov/bioproject/231221)/[BioProject](https://www.ncbi.nlm.nih.gov/bioproject/231221).
+A collection of >1400 "microbes that include biothreat microorganisms, common clinical pathogens and closely related species". [Article](https://www.ncbi.nlm.nih.gov/bioproject/231221){target="_blank"}/[Website](https://www.ncbi.nlm.nih.gov/bioproject/231221){target="_blank"}/[BioProject](https://www.ncbi.nlm.nih.gov/bioproject/231221){target="_blank"}.
 
 ```bash
 # Download sequence files
@@ -270,15 +269,15 @@ ganon build-custom --input download/ --input-recursive --db-prefix fdaargos --nc
 ```
 
 !!! note
-    The example above uses [genome_updater](https://github.com/pirovc/genome_updater) to download files
+    The example above uses [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"} to download files
 
 ### BLAST databases (nt env_nt nt_prok ...)
 
-BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi)/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/).
+BLAST databases. [Website](https://blast.ncbi.nlm.nih.gov/Blast.cgi){target="_blank"}/[FTP](https://ftp.ncbi.nlm.nih.gov/blast/db/){target="_blank"}.
 
-Current available nucleotide databases (2024-02-09): `16S_ribosomal_RNA` `18S_fungal_sequences` `28S_fungal_sequences` `Betacoronavirus` `env_nt` `human_genome` `ITS_eukaryote_sequences` `ITS_RefSeq_Fungi` `LSU_eukaryote_rRNA` `LSU_prokaryote_rRNA` `mito` `mouse_genome` `nt` `nt_euk` `nt_others` `nt_prok` `nt_viruses` `patnt` `pdbnt` `ref_euk_rep_genomes` `ref_prok_rep_genomes` `refseq_rna` `refseq_select_rna` `ref_viroids_rep_genomes` `ref_viruses_rep_genomes` `SSU_eukaryote_rRNA` `tsa_nt`
+Current available nucleotide databases (2026-04-10): `16S_ribosomal_RNA`, `18S_fungal_sequences`, `28S_fungal_sequences`, `Betacoronavirus`, `core_nt`, `env_nt`, `human_genome`, `ITS_eukaryote_sequences`, `ITS_RefSeq_Fungi`, `LSU_eukaryote_rRNA`, `LSU_prokaryote_rRNA`, `mito`, `mouse_genome`, `nt`, `nt_euk`, `nt_others`, `nt_prok`, `nt_viruses`, `patnt`, `pdbnt`, `ref_euk_rep_genomes`, `ref_prok_rep_genomes`, `refseq_rna`, `refseq_select_rna`, `ref_viroids_rep_genomes`, `ref_viruses_rep_genomes`, `SSU_eukaryote_rRNA`, `tsa_nt`
 
-*List currently available entries `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/, /g' | sort`*
+*List currently available entries `curl --silent --list-only ftp://ftp.ncbi.nlm.nih.gov/blast/db/ | grep "nucl-metadata.json" | sed 's/-nucl-metadata.json/`,` /g' | sort | tr -d '\n'`*
 
 !!! warning
     Some BLAST databases are very big and may require extreme computational resources to build. You may need to use some [reduction strategies](default_databases.md#reducing-database-size).
@@ -321,11 +320,11 @@ rm -rf "${db}" "${db}_ganon_input_file.tsv"
 ```
 
 !!! note
-    `blastdbcmd` is a command from [BLAST+ software suite](https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/) (tested version 2.14.0) and should be installed separately.
+    `blastdbcmd` is a command from [BLAST+ software suite](https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/){target="_blank"} (tested version 2.14.0) and should be installed separately.
 
 ### Files from genome_updater
 
-To create a ganon database from files previously downloaded with [genome_updater](https://github.com/pirovc/genome_updater):
+To create a ganon database from files previously downloaded with [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"}:
 
 ```bash
 ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
@@ -361,16 +360,16 @@ Alternatively, `--level assembly` will link the file or sequence target informat
 
 ### Genome sizes (--genome-size-files)
 
-Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/) is used. For `--taxonomy gtdb` the [\*_metadata.tar.gz](https://data.gtdb.ecogenomic.org/releases/latest/) files are used. Those files can be directly provided with the `--genome-size-files` argument.
+Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/){target="_blank"} is used. For `--taxonomy gtdb` the [\*_metadata.tar.gz](https://data.gtdb.ecogenomic.org/releases/latest/){target="_blank"} files are used. Those files can be directly provided with the `--genome-size-files` argument.
 
-Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](#buildupdate).
+Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](outputfiles.md#ganon-buildbuild-customupdate).
 
 ### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
 
 Further taxonomy and assembly linking information has to be collected to properly build the database. `--ncbi-sequence-info` and `--ncbi-file-info` allow customizations on this step.
 
-When `--input-target sequence`, `--ncbi-sequence-info` argument allows the use of NCBI e-utils webservices (`eutils`) or downloads accession2taxid files to extract target information (options `nucl_gb` `nucl_wgs` `nucl_est` `nucl_gss` `pdb` `prot` `dead_nucl` `dead_wgs` `dead_prot`). By default, ganon uses `eutils` up-to 50000 input sequences, otherwise it downloads `nucl_gb` `nucl_wgs` from https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. Previously downloaded files can be directly provided with this argument.
+When `--input-target sequence`, `--ncbi-sequence-info` argument allows the use of NCBI e-utils webservices (`eutils`) or downloads accession2taxid files to extract target information (options `nucl_gb` `nucl_wgs` `nucl_est` `nucl_gss` `pdb` `prot` `dead_nucl` `dead_wgs` `dead_prot`). By default, ganon uses `eutils` up-to 50000 input sequences, otherwise it downloads `nucl_gb` `nucl_wgs` from [https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/](https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/){target="_blank"}. Previously downloaded files can be directly provided with this argument.
 
-When `--input-target file`, `--ncbi-file-info` uses `assembly_summary.txt` from https://ftp.ncbi.nlm.nih.gov/genomes/ to extract target information (options `refseq` `genbank` `refseq_historical` `genbank_historical`. Previously downloaded files can be directly provided with this argument.
+When `--input-target file`, `--ncbi-file-info` uses `assembly_summary.txt` from [https://ftp.ncbi.nlm.nih.gov/genomes/](https://ftp.ncbi.nlm.nih.gov/genomes/){target="_blank"} to extract target information (options `refseq` `genbank` `refseq_historical` `genbank_historical`. Previously downloaded files can be directly provided with this argument.
 
 If you are using outdated, removed or inactive assembly or sequence files and accessions from NCBI, make sure to include `dead_nucl` `dead_wgs` for `--ncbi-sequence-info` or `refseq_historical` `genbank_historical` for `--ncbi-file-info`. `eutils` option does not work with outdated accessions.
