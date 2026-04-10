@@ -1183,8 +1183,8 @@ void write_stats( std::string                                     output_prefix,
         out_sta << "seq_unique_matches_perc" << '\t';
         out_sta << "seq_multiple_matches" << '\t';
         out_sta << "seq_multiple_matches_perc" << '\t';
-        out_sta << "total_seq_matches" << '\t';
-        out_sta << "avg_matches_per_seq" << '\t';
+        out_sta << "matches" << '\t';
+        out_sta << "avg_matches_ref_seq" << '\t';
         out_sta << "dis_matches_rel_filter" << '\t';
         out_sta << "dis_matches_fpr_query" << '\t';
         out_sta << "kmers_proccessed" << '\t';
