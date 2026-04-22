@@ -7,7 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.4.0
+   _|   v. 2.4.1
 - - - - - - - - - -
 
 positional arguments:
@@ -148,10 +148,10 @@ custom arguments:
 taxonomy arguments:
   -x, --taxonomy        Taxonomy matching the --input/--input-file. Enables taxonomic classification, lca and tax.
                         reports [ncbi, gtdb, gtdb-80, gtdb-83, gtdb-86.2, gtdb-89, gtdb-95, gtdb-202, gtdb-207,
-                        gtdb-214.1, gtdb-220, gtdb-226, skip] (default: ncbi)
+                        gtdb-214.1, gtdb-220, gtdb-226, gtdb-232, skip] (default: ncbi)
   -b, --convert-taxonomy 
                         Convert input taxonomy nodes (--taxonomy) to [ncbi-latest, gtdb-80, gtdb-83, gtdb-86.2, gtdb-89,
-                        gtdb-95, gtdb-202, gtdb-207, gtdb-214.1, gtdb-220, gtdb-226]. (default: None)
+                        gtdb-95, gtdb-202, gtdb-207, gtdb-214.1, gtdb-220, gtdb-226, gtdb-232]. (default: None)
   -m, --taxonomy-files [ ...]
                         Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
                         [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)

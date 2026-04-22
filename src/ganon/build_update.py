@@ -904,11 +904,21 @@ def validate_convert_taxonomy(info, tax, cfg):
                     target_tax = GtdbTx(
                         version=tax_ver_to[1], files=cfg.convert_taxonomy_files
                     )
-                    tax.build_translation(target_tax, file=cfg.convert_gtdb_files[0])
+                    tax.build_translation(
+                        target_tax,
+                        file=cfg.convert_gtdb_files[0]
+                        if cfg.convert_gtdb_files
+                        else "",
+                    )
                     info["node"] = info["node"].apply(tax.translate)
                 elif tax_ver_from[0] == "gtdb" and tax_ver_to[0] == "ncbi":
                     target_tax = NcbiTx(files=cfg.convert_taxonomy_files)
-                    tax.build_translation(target_tax, file=cfg.convert_gtdb_files[0])
+                    tax.build_translation(
+                        target_tax,
+                        file=cfg.convert_gtdb_files[0]
+                        if cfg.convert_gtdb_files
+                        else "",
+                    )
                     info["node"] = info["node"].apply(tax.translate)
 
                 # Filter nodes and apply lca to get a one-to-one mapping
