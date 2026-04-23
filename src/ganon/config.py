@@ -476,6 +476,13 @@ class Config:
             default=1,
             help="Number of sub-processes/threads to use",
         )
+        update_general_args.add_argument(
+            "--download-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=8,
+            help="Number of parallel sequence downloads from NCBI.",
+        )
 
         ####################################################################################################
 

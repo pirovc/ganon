@@ -60,7 +60,9 @@ def build(cfg):
             + ",".join(cfg.source)
             + " ["
             + ",".join(cfg.organism_group if cfg.organism_group else cfg.taxid)
-            + "]",
+            + "] (--download-threads "
+            + str(cfg.download_threads)
+            + ")",
             cfg.quiet,
         )
         run_genome_updater_cmd = " ".join(
@@ -79,7 +81,8 @@ def build(cfg):
                 "-o " + files_output_folder,
                 "-M " + cfg.taxonomy if cfg.taxonomy == "gtdb" else "",
                 "-m",
-                "-N",
+                "-G",
+                "-N split",
                 "-i" if resume_download else "",
                 "-s" if cfg.quiet else "",
                 "-w" if not cfg.verbose else "",
@@ -165,13 +168,19 @@ def update(cfg):
     if load_state("update_download", files_output_folder):
         print_log("Download finished - skipping", cfg.quiet)
     else:
-        print_log("Downloading updated files", cfg.quiet)
+        print_log(
+            "Downloading updated files (--download-threads "
+            + str(cfg.download_threads)
+            + ")",
+            cfg.quiet,
+        )
         run_genome_updater_cmd = " ".join(
             [
                 cfg.path_exec["genome_updater"],
                 "-o " + files_output_folder,
                 "-m",
-                "-N",
+                "-G",
+                "-N split",
                 "-s" if cfg.quiet else "",
                 "-w" if not cfg.verbose else "",
             ]

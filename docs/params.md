@@ -214,7 +214,8 @@ optional arguments:
   <summary>ganon update</summary>
 
 ```
-usage: ganon update [-h] -d DB_PREFIX [-o ] [-t ] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon update [-h] -d DB_PREFIX [-o ] [-t ] [--download-threads ] [--restart] [--verbose] [--quiet]
+                    [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -228,6 +229,7 @@ general arguments:
                         Output database prefix. By default will be the same as --db-prefix and overwrite files (default:
                         None)
   -t, --threads         Number of sub-processes/threads to use (default: 1)
+  --download-threads    Number of parallel sequence downloads from NCBI. (default: 8)
 
 optional arguments:
   --restart             Restart build/update from scratch, do not try to resume from the latest possible step.
