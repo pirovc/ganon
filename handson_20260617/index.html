@@ -122,13 +122,14 @@
 <p>The tutorial uses real human skin metagenomics samples and enhances their default classification using metagenome-assembled genomes. Reports and a final table of counts are created, and the results are visualised using taxonomic bars and a heatmap.</p>
 <h2 id="prepare-files-and-tools">Prepare files and tools<a class="headerlink" href="#prepare-files-and-tools" title="Permanent link">:)</a></h2>
 <h3 id="download-files">Download files<a class="headerlink" href="#download-files" title="Permanent link">:)</a></h3>
-<p>Download prepared files and unpack in a working directory of choice:</p>
+<p>Download prepared files and unpack it in a working directory of choice:</p>
 <pre><code class="language-bash">mkdir ganon_handson_20260617
 cd ganon_handson_20260617
-wget ...
-tar xf ...
+wget https://zenodo.org/records/20671089/files/ganon_handson_files_20260617.tar.gz
+tar xf ganon_handson_files_20260617.tar.gz
 </code></pre>
 <h3 id="install-tools">Install tools<a class="headerlink" href="#install-tools" title="Permanent link">:)</a></h3>
+<p>The easiest way to install ganon is with <a href="https://conda-forge.org/download/">conda</a> (instuctions below) but you can also install it from the <a href="https://pirovc.github.io/ganon/#installation-from-source">source</a> if you prefer.</p>
 <ul>
 <li><a href="https://github.com/pirovc/ganon">ganon</a></li>
 </ul>
@@ -162,7 +163,7 @@ cless() {
 $ ganon --version
 version: ganon 2.4.2
 $ genome_updater.sh | grep -m 1 &quot;v&quot; | tr -d ' '
-v0.8.1
+v0.8.0
 $ python -c &quot;import multitax; print(multitax.__version__)&quot;
 1.6.0
 </code></pre>
