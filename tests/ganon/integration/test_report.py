@@ -249,13 +249,13 @@ class TestReport(unittest.TestCase):
             "ganon report failed filtering with --max-count",
         )
 
-    def test_report_type_abundance(self):
+    def test_report_type_dist_abundance(self):
         """
         Test run with report_type abundance
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_report_type_abundance"
-        params["report_type"] = "abundance"
+        params["output_prefix"] = self.results_dir + "test_report_type_dist_abundance"
+        params["report_type"] = "dist+abundance"
 
         # Build config from params
         cfg = Config("report", **params)
@@ -270,7 +270,7 @@ class TestReport(unittest.TestCase):
         # Re-distribution and genome correction, shared sum bigger then 0
         self.assertTrue(
             res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum() > 0,
-            "ganon report has wrong output for --report_type abundance",
+            "ganon report has wrong output for --report_type dist+abundance",
         )
 
     def test_report_type_reads(self):
