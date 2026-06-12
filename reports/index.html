@@ -93,6 +93,10 @@
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../handson_20260617/">ganon2 hands-on 2026 06 17</a>
+                </li>
+              </ul>
       </div>
     </div>
     </nav>
@@ -135,9 +139,9 @@ assembly 17.2%      11.65%     0%         28.85%
 <p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
 <ul>
 <li><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</li>
-<li><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by re-distributing read counts among leaf nodes and correcting by genome size. The re-distribution applies for reads classified with a LCA assignment and it is proportional to the number of unique matches of leaf nodes available in the ganon database (relative to the LCA node). If EM was previously used to re-distribute reads, will only correct for sequence abundance (same as <code>corr</code>). Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (superkingdom phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</li>
-<li><code>dist</code> is the same of <code>reads</code> with read count re-distribution</li>
-<li><code>corr</code> is the same of <code>reads</code> with correction by genome size</li>
+<li><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by correcting by genome size. Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (domain phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</li>
+<li><code>dist</code> will re-distribute read counts among leaf nodes. The re-distribution is proportional to the number of unique matches of leaf nodes available in the ganon database. This is a simpler version of the EM algorithm, with just one iteration. The full EM algorithm (<code>ganon reassign</code>) is recommended over this option.</li>
+<li><code>dist+abundance</code> is the same of <code>dist</code> with correction by genome size.</li>
 <li><code>matches</code> will report the total number of matches classified, either unique or shared. <em>This option will output the total number of matches instead the total number of reads</em></li>
 </ul>
 <h2 id="filter-and-format">Filter and format<a class="headerlink" href="#filter-and-format" title="Permanent link">:)</a></h2>

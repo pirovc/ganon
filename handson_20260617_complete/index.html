@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>ganon2 hands-on - 2026-06-17 - ganon2</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "ganon2 hands-on - 2026-06-17";
+        var mkdocs_page_input_path = "handson_20260617_complete.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> ganon2
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">ganon2</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../start/">Quick Start</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../default_databases/">Databases (ganon build)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../custom_databases/">Custom databases (ganon build-custom)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../classification/">Classification (ganon classify)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reports/">Reports (ganon report)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../handson_20260617/">ganon2 hands-on 2026 06 17</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">ganon2</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">ganon2 hands-on - 2026-06-17</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="ganon2-hands-on-2026-06-17">ganon2 hands-on - 2026-06-17<a class="headerlink" href="#ganon2-hands-on-2026-06-17" title="Permanent link">:)</a></h1>
+<p>This tutorial introduces practical approaches to creating and utilising databases for metagenomics classification with Ganon2. It will cover both basic and advanced options, as well as common pitfalls in metagenomics classification. Topics include selecting databases and taxonomies, choosing parameters and thresholds, and interpreting results.</p>
+<p>By the end, you should have acquired the knowledge required to create your own databases and implement suitable classification strategies to improve your metagenomics analyses.</p>
+<p>The tutorial uses real human skin metagenomics samples and enhances their default classification using metagenome-assembled genomes. Reports and a final table of counts are created, and the results are visualised using taxonomic bars and a heatmap.</p>
+<h2 id="prepare-files-and-tools">Prepare files and tools<a class="headerlink" href="#prepare-files-and-tools" title="Permanent link">:)</a></h2>
+<h3 id="download-files">Download files<a class="headerlink" href="#download-files" title="Permanent link">:)</a></h3>
+<p>Download prepared files and unpack in a working directory of choice:</p>
+<pre><code class="language-bash">mkdir ganon_handson_20260617
+cd ganon_handson_20260617
+wget files.tar.gz
+tar xf files.tar.gz
+</code></pre>
+<h3 id="install-tools">Install tools<a class="headerlink" href="#install-tools" title="Permanent link">:)</a></h3>
+<ul>
+<li><a href="https://github.com/pirovc/ganon">ganon</a></li>
+</ul>
+<pre><code class="language-bash">conda create -c conda-forge -c bioconda -n ganonenv ganon
+</code></pre>
+<ul>
+<li><a href="https://github.com/pirovc/grimer">GRIMER</a> (for visualization)</li>
+</ul>
+<pre><code class="language-bash">conda create -n grimerenv -c conda-forge &quot;python=3.9&quot; &quot;biom-format=2.1.16&quot; &quot;numpy=1.23.5&quot;
+conda activate grimerenv
+conda install &quot;grimer=1.1.0&quot;
+conda deactivate
+</code></pre>
+<h3 id="useful-alias-to-check-tsv-files">Useful alias to check tsv files<a class="headerlink" href="#useful-alias-to-check-tsv-files" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash"># c: like cat but with aligned tabs for tsv files
+alias c=&quot;column -s$'\t' -t&quot;
+
+# cless: like less with c function above
+cless() {
+    if [ -z &quot;$1&quot; ]; then
+        c | less -SN
+    else
+        c &quot;$1&quot; | less -SN
+    fi
+}
+</code></pre>
+<p>If you find them useful, you can add those commands to your <code>~/.bashrc</code> to have it available at all times.</p>
+<h3 id="check-installed-version-and-files">Check installed version and files<a class="headerlink" href="#check-installed-version-and-files" title="Permanent link">:)</a></h3>
+<p>Ganon:</p>
+<pre><code class="language-bash">$ conda activate ganonenv
+$ ganon --version
+version: ganon 2.4.2
+$ genome_updater.sh | grep -m 1 &quot;v&quot; | tr -d ' '
+v0.8.1
+$ python -c &quot;import multitax; print(multitax.__version__)&quot;
+1.6.0
+</code></pre>
+<p>GRIMER:</p>
+<pre><code class="language-bash">$ conda activate grimerenv
+$ grimer --version | grep &quot;grimer&quot;
+grimer 1.1.0
+</code></pre>
+<p>Files:</p>
+<pre><code class="language-bash">$ ls -1 *
+ganon_handson_files_20260617.tar.gz
+
+files:
+aux
+gcmeta
+mgnify
+reads
+rs_bac_cg_ncbi_t1f_files
+rs_bac_gtdb_t1f_files
+</code></pre>
+<h2 id="default-databases">Default databases<a class="headerlink" href="#default-databases" title="Permanent link">:)</a></h2>
+<h3 id="ncbi">NCBI<a class="headerlink" href="#ncbi" title="Permanent link">:)</a></h3>
+<pre><code class="language-bash">conda activate ganonenv
+ganon build --help
+</code></pre>
+<p><a href="../default_databases/#refseq-and-genbank">Please refer to the documentation for more information.</a></p>
+<p>Build default database based on Bacterial RefSeq complete genomes, NCBI Taxonomy, limiting number of assemblies to 1 per family:</p>
+<pre><code class="language-bash">ganon build --source refseq \
+            --organism-group bacteria \
+            --complete-genomes \
+            --genome-updater &quot;-A 'family:1'&quot; \
+            --db-prefix rs_bac_cg_ncbi_t1f \
+            --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf rs_bac_cg_ncbi_t1f_files/
+cp -r files/rs_bac_cg_ncbi_t1f_files .
+ganon build --source refseq \
+            --organism-group bacteria \
+            --complete-genomes \
+            --genome-updater &quot;-A 'family:1'&quot; \
+            --db-prefix rs_bac_cg_ncbi_t1f \
+            --threads 8 \
+            --taxonomy-files files/aux/taxdump.tar.gz \
+            --genome-size-files files/aux/species_genome_size.txt.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<!-- # ![](https://github.githubassets.com/images/icons/emoji/unicode/1f440.png){ width="18" } -->
+
+<ul>
+<li>Check  logs printed after execution in the terminal -&gt; taxonomy distribution of entries.</li>
+<li>Check: generated files <code>rs_bac_cg_ncbi_t1f_files/</code>, <code>rs_bac_cg_ncbi_t1f.tax</code> and <code>rs_bac_cg_ncbi_t1f.hibf</code>. <a href="../outputfiles/#ganon-buildbuild-customupdate">More infos</a>.</li>
+<li>Extra: run with a higher <code>--max-fp</code> (e.g. <code>0.1</code>) and check the diference in index size. <a href="default_databases#false-positive-rate">More infos</a></li>
+<li>Obs: ganon uses <code>genome_updater</code> to download files. <a href="../default_databases/#more-filter-options">More infos</a></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code>"-A 'family:1'"</code> is not recommended for general use - we use it here to get a very small sub-set to run examples fast. <code>"-A 'genus:1'"</code>, <code>"-A 'species:1'"</code>, <code>--top 1</code> (for leaves in taxonomy) or no top assemblies are more commonly used.</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>1) <code>--genome-updater</code> can be used with more filters from genome_updater, check <code>genome_updater.sh -h</code>.</p>
+<p>2) Use <code>genome_updater.sh</code> with parameter <code>-k</code> to check for number of entries before building a database.</p>
+</div>
+<h4 id="update-optional">Update (optional)<a class="headerlink" href="#update-optional" title="Permanent link">:)</a></h4>
+<p>After some days, the database can be update with the newest sequences with the following command:</p>
+<pre><code class="language-bash">ganon update --db-prefix rs_bac_cg_ncbi_t1f
+</code></pre>
+<h3 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h3>
+<p><a href="../default_databases/#gtdb">More infos</a></p>
+<p>Build default database based on Bacterial RefSeq, GTDB, limiting number of assemblies to 1 per family:</p>
+<pre><code class="language-bash">ganon build --source refseq \
+            --organism-group bacteria \
+            --taxonomy gtdb \
+            --genome-updater &quot;-A 'family:1'&quot; \
+            --db-prefix rs_bac_gtdb_t1f \
+            --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf rs_bac_gtdb_t1f_files/
+cp -r files/rs_bac_gtdb_t1f_files .
+ganon build --source refseq \
+            --organism-group bacteria \
+            --taxonomy gtdb \
+            --genome-updater &quot;-A 'family:1'&quot; \
+            --db-prefix rs_bac_gtdb_t1f \
+            --threads 8 \
+            --taxonomy-files files/aux/bac120_taxonomy_r232.tsv.gz \
+            --genome-size-files files/aux/bac120_metadata_r232.tsv.gz \
+                                files/aux/ar53_metadata_r232.tsv.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<ul>
+<li>Check: logs printed after execution in the terminal -&gt; taxonomy distribution of entries.</li>
+<li>Check: generated files <code>rs_bac_cg_ncbi_t1f_files/</code>, <code>rs_bac_cg_ncbi_t1f.tax</code> and <code>rs_bac_cg_ncbi_t1f.hibf</code>. <a href="../outputfiles/#ganon-buildbuild-customupdate">More infos</a>.</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When building gtdb databases, always use <code>--source refseq genbank</code> to get the complete set of GTDB Genomes. Here we use only refseq to reduce the data for our toy example database. Example <code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code> will build a database will all GTDB genomes from the latest release.</p>
+</div>
+<h2 id="classification">Classification<a class="headerlink" href="#classification" title="Permanent link">:)</a></h2>
+<pre><code class="language-bash">ganon classify --help
+</code></pre>
+<p><a href="../classification/">Please refer to the documentation for more information.</a></p>
+<h3 id="samples">Samples<a class="headerlink" href="#samples" title="Permanent link">:)</a></h3>
+<ul>
+<li>3 small samples from human skin study: https://www.ebi.ac.uk/ena/browser/view/PRJNA1201908</li>
+</ul>
+<pre><code class="language-bash">$ zcat files/reads/SampleA_1.fq.gz | wc -l
+8751928
+$ zcat files/reads/SampleA_2.fq.gz | wc -l
+8751928
+$ zcat files/reads/SampleB_1.fq.gz | wc -l
+8270608
+$ zcat files/reads/SampleB_2.fq.gz | wc -l
+8270608
+$ zcat files/reads/SampleC_1.fq.gz | wc -l
+8084424
+$ zcat files/reads/SampleC_2.fq.gz | wc -l
+8084424
+</code></pre>
+<p>Classify paired-end reads against the default built database (NCBI):</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_cg_ncbi_t1f \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_default_ncbi \
+               --threads 8 \
+               --skip-report --multiple-matches skip
+</code></pre>
+<ul>
+<li>Check: stats printed after execution in the terminal. <a href="../classification/#summary-and-stats">More infos</a></li>
+<li>Check: the <code>sampleA_default_ncbi.rep</code> file. <a href="../outputfiles/#ganon-classify">More infos</a></li>
+<li>Obs: results are very bad due to famility top 1 filter in the build step</li>
+<li>Obs: Several paired-end (<code>--paired-reads</code>) and single-end (<code>--single-reads</code>) sequences/reads can be clasified in one run. <a href="../classification/#input-readssequences">More infos</a></li>
+</ul>
+<p>Explaining the stats:</p>
+<pre><code class="language-txt">ganon-classify processed 2187982 sequences (656.395 Mbp) with 77492114 k-mers in 16.3083 seconds (2414.95 Mbp/m)
+22578 sequences classified (1.03191%) &lt;--| QUANTITY |
+  22159 with unique matches (1.01276%)
+  419 with multiple matches (0.0191501%) &lt;--| UNIQUE/SHARED |
+2165404 sequences unclassified (98.9681%)
+matches: 23617 (avg. 1.04602 reference/sequence), 2577 discarded (--rel-filter), 0 discarded (--fpr-query)
+k-mers: 696028/796398 k-mers matched/k-mers from classified sequences (87.397%) &lt;--| QUALITY |
+</code></pre>
+<ul>
+<li>NEXT: Run the same command again with <code>--rel-cutoff 0.2</code> (the default value is <code>0.75</code>) and evaluate the changes in quantity and quality in the stats.</li>
+</ul>
+<p>Same for the GTDB database:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_default_gtdb \
+               --threads 8 \
+               --skip-report --multiple-matches skip
+</code></pre>
+<hr />
+<p><strong>RECAP 1</strong></p>
+<hr />
+<h2 id="custom-databases">Custom databases<a class="headerlink" href="#custom-databases" title="Permanent link">:)</a></h2>
+<pre><code class="language-bash">ganon build-custom --help
+</code></pre>
+<p><a href="../custom_databases/">Please refer to the documentation for more information.</a></p>
+<h3 id="gcmeta">gcMeta<a class="headerlink" href="#gcmeta" title="Permanent link">:)</a></h3>
+<h4 id="build">Build<a class="headerlink" href="#build" title="Permanent link">:)</a></h4>
+<p>Generate custom input file linking files and taxonomy (<a href="../custom_databases/#non-standard-filesheaders-with-input-file">More infos</a>):</p>
+<ul>
+<li>Check original metadata file <code>cless files/gcmeta/metadata.tsv</code></li>
+</ul>
+<pre><code class="language-bash">tail -n+2 files/gcmeta/metadata.tsv | 
+    cut -f 1,9 |  tr ';' '\t' | 
+    awk -F&quot;\t&quot; -v path=&quot;$(pwd)/files/gcmeta/Human_Skin/Human_Skin_species-level_representative_MAGs/&quot; '{for(i=2;i&lt;=8;i++){if(length($i)==3){break}else{leave=$i}}; print path $1&quot;.fa.gz\t&quot;$1&quot;\t&quot;leave}' &gt; gcmeta_ganon_input_file.tsv
+</code></pre>
+<ul>
+<li>Obs: this command extracts the sequence identifier and links it with the file and taxonomy</li>
+<li>Check: file <code>cless gcmeta_ganon_input_file.tsv</code></li>
+</ul>
+<p>Build custom database with previously generated file, using GTDB:</p>
+<pre><code class="language-bash">ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin \
+                   --taxonomy gtdb \
+                   --level leaves \
+                   --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf gcmeta_human_skin_files/
+ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin \
+                   --taxonomy gtdb \
+                   --level leaves \
+                   --threads 8 \
+                   --taxonomy-files files/aux/bac120_taxonomy_r232.tsv.gz \
+                                    files/aux/ar53_taxonomy_r232.tsv.gz \
+                   --genome-size-files files/aux/bac120_metadata_r232.tsv.gz \
+                                       files/aux/ar53_metadata_r232.tsv.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<ul>
+<li>Obs: <code>--level leaves</code> will generate the database at the available taxonomy entry provided (multiple levels)</li>
+<li>Check: log printed after execution in the terminal -&gt; look for "Validating and converting taxonomy"<ul>
+<li>INVALID?</li>
+</ul>
+</li>
+<li>Extra: try to change <code>--level</code> to a specific taxonomic rank (e.g. <code>genus</code>) and see what it happens. It can also be set to <code>file</code> to have a genome level (strain) classification.</li>
+</ul>
+<p>Build custom database with previously generated file, using the <strong>correct</strong> GTDB:</p>
+<pre><code class="language-bash">ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin \
+                   --taxonomy gtdb-220 \
+                   --level leaves \
+                   --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf gcmeta_human_skin_files/
+ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin \
+                   --taxonomy gtdb-220 \
+                   --level leaves \
+                   --threads 8 \
+                   --taxonomy-files files/aux/bac120_taxonomy_r220.tsv.gz \
+                                    files/aux/ar53_taxonomy_r220.tsv.gz \
+                   --genome-size-files files/aux/bac120_metadata_r220.tsv.gz \
+                                       files/aux/ar53_metadata_r220.tsv.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Always verify which version of GTDB was used to generate the classification in the metadata file.</p>
+</div>
+<h4 id="classify">Classify<a class="headerlink" href="#classify" title="Permanent link">:)</a></h4>
+<p>Classify reads with 2 databases:</p>
+<ul>
+<li>The default built database (GTDB) <code>rs_bac_gtdb_t1f</code></li>
+<li>The gcMeta custom database <code>gcmeta_human_skin</code></li>
+</ul>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_2dbs \
+               --threads 8 \
+               --skip-report --multiple-matches skip
+</code></pre>
+<ul>
+<li>Check: stats printed after execution in the terminal. <a href="../classification/#summary-and-stats">More infos</a><ul>
+<li>Changes in quantity and quality.</li>
+</ul>
+</li>
+</ul>
+<h3 id="mgnify">MGnify<a class="headerlink" href="#mgnify" title="Permanent link">:)</a></h3>
+<h4 id="build_1">Build<a class="headerlink" href="#build_1" title="Permanent link">:)</a></h4>
+<p>Once again: generate custom input file linking files and taxonomy (<a href="../custom_databases/#non-standard-filesheaders-with-input-file">More infos</a>):</p>
+<ul>
+<li>Check original metadata file <code>cless files/mgnify/metadata.tsv</code></li>
+</ul>
+<pre><code class="language-bash">tail -n+2 files/mgnify/metadata.tsv | 
+    cut -f 1,15  | tr ';' '\t' | 
+    awk -F&quot;\t&quot; '{leave=&quot;1&quot;;for(i=2;i&lt;=8;i++){if(length($i)==3){break}else{leave=$i}}; print $1&quot;\t&quot;leave}' &gt; mgnify_leaves.txt
+
+join &lt;(find $(pwd)/files/mgnify/mags/ -name &quot;*.fna.gz&quot; | 
+       awk '{n = split($1, f, &quot;/&quot;); print substr(f[n],0, length(f[n])-7)&quot;\t&quot;$1}' | 
+       sort -t$'\t' -k 2,2) \
+     &lt;(sort -t$'\t' -k 1,1 mgnify_leaves.txt) -t$'\t' -o &quot;1.2,2.1,2.2&quot; &gt; mgnify_ganon_input_file.tsv
+</code></pre>
+<ul>
+<li>Check: file <code>cless mgnify_ganon_input_file.tsv</code></li>
+</ul>
+<p>Build custom database with previously generated file, already using the <strong>correct</strong> GTDB version:</p>
+<pre><code class="language-bash">ganon build-custom --input-file mgnify_ganon_input_file.tsv \
+                   --db-prefix mgnify_human_skin \
+                   --taxonomy gtdb-226 \
+                   --level leaves \
+                   --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf mgnify_human_skin_files/
+ganon build-custom --input-file mgnify_ganon_input_file.tsv \
+                   --db-prefix mgnify_human_skin \
+                   --taxonomy gtdb-226 \
+                   --level leaves \
+                   --threads 8 \
+                   --taxonomy-files files/aux/bac120_taxonomy_r226.tsv.gz \
+                                    files/aux/ar53_taxonomy_r226.tsv.gz \
+                   --genome-size-files files/aux/bac120_metadata_r226.tsv.gz \
+                                       files/aux/ar53_metadata_r226.tsv.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<h4 id="classify_1">Classify<a class="headerlink" href="#classify_1" title="Permanent link">:)</a></h4>
+<p>Classify reads with 3 databases:</p>
+<ul>
+<li>The default built database (GTDB) <code>rs_bac_gtdb_t1f</code></li>
+<li>The gcMeta custom database <code>gcmeta_human_skin</code></li>
+<li>The MGnify custom database <code>mgnify_human_skin</code></li>
+</ul>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+                    --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+                    --output-prefix sampleA_3dbs \
+                    --threads 8 \
+                    --skip-report --multiple-matches skip
+</code></pre>
+<ul>
+<li>Check: stats printed after execution in the terminal. <a href="../classification/#summary-and-stats">More infos</a><ul>
+<li>Changes in quantity and quality.</li>
+</ul>
+</li>
+</ul>
+<h3 id="gtdb-gtdb-conversion">GTDB -&gt; GTDB conversion<a class="headerlink" href="#gtdb-gtdb-conversion" title="Permanent link">:)</a></h3>
+<p>Taxonomy version are incompatible:
+- default database uses latest GTDB v232, gcmeta GTDB v220 and MGnify v226
+- This is important when using several databases from diverse sources</p>
+<p>Re-build databases converting to the correct taxonomy version:</p>
+<p>Default:</p>
+<pre><code class="language-bash">ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                        --db-prefix gcmeta_human_skin \
+                        --taxonomy gtdb-220 \
+                        --convert-taxonomy gtdb-232 \
+                        --level leaves \
+                        --threads 8
+
+ganon build-custom --input-file mgnify_ganon_input_file.tsv \
+                   --db-prefix mgnify_human_skin \
+                   --taxonomy gtdb-226 \
+                   --convert-taxonomy gtdb-232 \
+                   --level leaves \
+                   --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf gcmeta_human_skin_files/
+ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                        --db-prefix gcmeta_human_skin \
+                        --taxonomy gtdb-220 \
+                        --convert-taxonomy gtdb-232 \
+                        --level leaves \
+                        --threads 8 \
+                        --taxonomy-files files/aux/bac120_taxonomy_r220.tsv.gz \
+                                         files/aux/ar53_taxonomy_r220.tsv.gz \
+                        --convert-taxonomy-files files/aux/bac120_taxonomy_r232.tsv.gz \
+                                                 files/aux/ar53_taxonomy_r232.tsv.gz \
+                        --convert-gtdb-files files/aux/220_acc_rep_lin_ncbi.tsv.gz \
+                                             files/aux/232_acc_rep_lin_ncbi.tsv.gz \
+                        --genome-size-files files/aux/bac120_metadata_r232.tsv.gz \
+                                            files/aux/ar53_metadata_r232.tsv.gz
+
+rm -rf mgnify_human_skin_files/
+ganon build-custom --input-file mgnify_ganon_input_file.tsv \
+                   --db-prefix mgnify_human_skin \
+                   --taxonomy gtdb-226 \
+                   --convert-taxonomy gtdb-232 \
+                   --level leaves \
+                   --threads 8 \
+                        --taxonomy-files files/aux/bac120_taxonomy_r226.tsv.gz \
+                                         files/aux/ar53_taxonomy_r226.tsv.gz \
+                        --convert-taxonomy-files files/aux/bac120_taxonomy_r232.tsv.gz \
+                                                 files/aux/ar53_taxonomy_r232.tsv.gz \
+                        --convert-gtdb-files files/aux/226_acc_rep_lin_ncbi.tsv.gz \
+                                             files/aux/232_acc_rep_lin_ncbi.tsv.gz \
+                        --genome-size-files files/aux/bac120_metadata_r232.tsv.gz \
+                                            files/aux/ar53_metadata_r232.tsv.gz
+
+</code></pre>
+
+
+</details>
+<p></br></p>
+<ul>
+<li>Re-classify against 3 corrected databases</li>
+</ul>
+<h3 id="gtdb-ncbi-conversion">GTDB -&gt; NCBI conversion<a class="headerlink" href="#gtdb-ncbi-conversion" title="Permanent link">:)</a></h3>
+<p><a href="custom_databases/#conversion">More infos</a></p>
+<p>The table below show the translation rates for each rank from GTDB genomes (R232) to the NCBI taxonomy (2025-09-07):</p>
+<pre><code class="language-txt">        root    domain  phylum  class   order   family  genus   species
+domain  100.00  0.00    0.00    0.00    0.00    0.00    0.00    0.00
+phylum  18.27   74.11   7.61    0.00    0.00    0.00    0.00    0.00
+class   10.54   64.03   20.16   5.27    0.00    0.00    0.00    0.00
+order   5.06    47.94   25.56   15.91   5.53    0.00    0.00    0.00
+family  2.71    39.77   29.38   13.98   9.68    4.49    0.00    0.00
+genus   0.70    20.53   29.70   16.53   12.54   12.84   7.15    0.00
+species 0.13    3.16    3.66    2.73    2.14    2.41    5.07    80.70
+</code></pre>
+<p>The translation from NCBI (2025-09-07) considering only archaeal and bacterial taxa to GTDB (R232):</p>
+<pre><code class="language-txt">        missing root    domain  phylum  class   order   family  genus   species
+domain  0.00    100.00  0.00    0.00    0.00    0.00    0.00    0.00    0.00
+phylum  6.90    14.22   31.03   47.84   0.00    0.00    0.00    0.00    0.00
+class   8.70    13.83   32.41   7.91    37.15   0.00    0.00    0.00    0.00
+order   8.92    9.48    24.54   4.28    9.85    42.94   0.00    0.00    0.00
+family  9.14    4.74    20.14   3.81    6.18    10.91   45.09   0.00    0.00
+genus   13.74   1.11    6.81    1.44    2.81    2.79    16.82   54.48   0.00
+species 82.80   0.03    0.20    0.05    0.09    0.11    0.31    0.82    15.58
+</code></pre>
+<pre><code class="language-bash">ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin_NCBI \
+                   --taxonomy gtdb-220 \
+                   --convert-taxonomy ncbi-latest \
+                   --level leaves \
+                   --threads 8
+</code></pre>
+<details>
+  <summary>Offline</summary>
+
+
+<pre><code class="language-bash">rm -rf gcmeta_human_skin_NCBI/
+ganon build-custom --input-file gcmeta_ganon_input_file.tsv \
+                   --db-prefix gcmeta_human_skin_NCBI \
+                   --taxonomy gtdb-220 \
+                   --convert-taxonomy ncbi-latest \
+                   --level leaves \
+                   --threads 8 \
+                   --taxonomy-files files/aux/bac120_taxonomy_r220.tsv.gz \
+                                    files/aux/ar53_taxonomy_r220.tsv.gz \
+                   --convert-taxonomy-files files/aux/taxdump.tar.gz \
+                   --convert-gtdb-files files/aux/220_acc_rep_lin_ncbi.tsv.gz \
+                   --genome-size-files files/aux/species_genome_size.txt.gz
+</code></pre>
+
+
+</details>
+<p></br></p>
+<ul>
+<li>Check: log printed after execution in the terminal -&gt; look for "Validating and converting taxonomy"</li>
+<li>Read will classify and be re-assigned to lower tax. ranks, but it will introduce more errors</li>
+<li>Obs: alternative, use NCBI taxonomy with GTDB files instead of converting.</li>
+</ul>
+<hr />
+<p><strong>RECAP 2</strong></p>
+<hr />
+<h2 id="classification-in-depth">Classification in depth<a class="headerlink" href="#classification-in-depth" title="Permanent link">:)</a></h2>
+<p>Classification with read re-assignment and report generation:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_reassign_report \
+               --threads 8 \
+               --multiple-matches em \
+               --report-type abundance \
+               --min-count 5e-05
+</code></pre>
+<p>Generate an alternative report based on same base results (<code>sampleA_reassign_report.rep</code>):</p>
+<pre><code class="language-bash">ganon report --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+             --input sampleA_reassign_report.rep \
+             --output-prefix sampleA_alt_report \
+             --sort lineage \
+             --output-format bioboxes \
+             --min-count 1e-03
+</code></pre>
+<h3 id="classification-thresholds">Classification thresholds<a class="headerlink" href="#classification-thresholds" title="Permanent link">:)</a></h3>
+<p>In summary:</p>
+<ul>
+<li><code>--rel-cutoff</code> controls the strictness of the matching algorithm.<ul>
+<li><strong>lower</strong> values -&gt; <strong>more read matches</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>less read matches</strong></li>
+</ul>
+</li>
+<li><code>--rel-filter</code> controls how many matches each read will have, from best to worst<ul>
+<li><strong>lower</strong> values -&gt; <strong>more unique matching reads</strong></li>
+<li><strong>higher</strong> values -&gt; <strong>more multi-matching reads</strong></li>
+</ul>
+</li>
+</ul>
+<p><a href="../classification/#cutoff-and-filter-rel-cutoff-rel-filter">Please refer to the documentation for more information.</a></p>
+<p>Classify with low cutoff and high filter:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_lowcutoff \
+               --threads 8 --skip-report --multiple-matches skip \
+               --rel-cutoff 0.25 \
+               --rel-filter 0.7
+</code></pre>
+<p>Classify with high cutoff and low filter:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_lowfilter \
+               --threads 8 --skip-report --multiple-matches skip \
+               --rel-cutoff 0.9 \
+               --rel-filter 0.1
+</code></pre>
+<ul>
+<li>Check: stats printed after execution in the terminal. <a href="../classification/#summary-and-stats">More infos</a><ul>
+<li>Changes in quantity, quality, shared matches, discarded matches.</li>
+</ul>
+</li>
+</ul>
+<h3 id="multiple-matching-reads">Multiple-matching reads<a class="headerlink" href="#multiple-matching-reads" title="Permanent link">:)</a></h3>
+<p>Expectation-maximization (EM) and Lowest-common-ancestor (LCA) algorithms -&gt; <a href="../classification/#reads-with-multiple-matches">More info</a></p>
+<p>LCA:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+                 --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+                 --output-prefix sampleA_results_lca \
+                 --threads 8 \
+                 --multiple-matches lca \
+                 --report-type abundance
+</code></pre>
+<p>EM:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+                 --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+                 --output-prefix sampleA_results_em \
+                 --threads 8 \
+                 --multiple-matches em \
+                 --report-type abundance
+</code></pre>
+<ul>
+<li>Check: taxonomy report summary and look at the differences in the "shared" col. <a href="../reports/#reports">More infos</a></li>
+<li>Obs: EM + LCA can be done in one classify run  <a href="../classification/#reads-with-multiple-matches">More infos</a></li>
+</ul>
+<h3 id="classification-in-batches">Classification in batches<a class="headerlink" href="#classification-in-batches" title="Permanent link">:)</a></h3>
+<p>Check <code>files/reads/read_batches.tsv</code>:</p>
+<pre><code class="language-txt">sA  files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz
+sB  files/reads/SampleB_1.fq.gz files/reads/SampleB_2.fq.gz
+sC  files/reads/SampleC_1.fq.gz files/reads/SampleC_2.fq.gz
+</code></pre>
+<p>Classify all samples in one run using <code>--batch-reads files/reads/read_batches.tsv</code>:</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --batch-reads files/reads/read_batches.tsv \
+               --output-prefix ./ \
+               --threads 8 \
+               --rel-cutoff 0.2
+</code></pre>
+<ul>
+<li>Check: stats in terminal for all 3 samples.</li>
+<li>Obs: load database(s) only once → may save several hours for large runs</li>
+</ul>
+<h3 id="hierarchical-classification">Hierarchical classification<a class="headerlink" href="#hierarchical-classification" title="Permanent link">:)</a></h3>
+<p>First gcmeta, then mgnify:</p>
+<pre><code class="language-bash">ganon classify --db-prefix        gcmeta_human_skin mgnify_human_skin \
+               --hierarchy-labels 1-GCMETA          2-MGNIFY          \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_gcmeta_mgnify \
+               --threads 8
+</code></pre>
+<p>First mgnify, then gcmeta:</p>
+<pre><code class="language-bash">ganon classify --db-prefix        gcmeta_human_skin mgnify_human_skin \
+               --hierarchy-labels 2-GCMETA          1-MGNIFY          \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_mgnify_gcmeta \
+               --threads 8
+</code></pre>
+<p>Several databases can be user per level, with different thresholds:</p>
+<pre><code class="language-bash">ganon classify --db-prefix        rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --hierarchy-labels 1-base          2-mags            2-mags            \
+               --rel-cutoff       0.5             0.7               0.8               \
+               --rel-filter       0.2             0.5                                 \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_hierarchy_test \
+               --threads 8
+</code></pre>
+<ul>
+<li>Check: stats for each database</li>
+<li>Check: level is reported in the <code>.rep</code> file -&gt; can be used in reports (keep, skip)</li>
+<li>Obs: Reads unclassified in the level will go to the next</li>
+<li>Obs: If <code>--hierarchy-labels</code> is not provided, all databases are run in the same level (same as one big database)</li>
+<li>Obs: Useful to remove host reads, contaminants, prioritize better quality databases, ...</li>
+</ul>
+<h2 id="report">Report<a class="headerlink" href="#report" title="Permanent link">:)</a></h2>
+<p>Generate a base result (<code>sampleA_base_results.rep</code>):</p>
+<pre><code class="language-bash">ganon classify --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+               --paired-reads files/reads/SampleA_1.fq.gz files/reads/SampleA_2.fq.gz \
+               --output-prefix sampleA_base_results \
+               --threads 8 \
+               --skip-report
+</code></pre>
+<p>Abundance - taxonomic profiling:</p>
+<pre><code class="language-bash">ganon report --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+             --input sampleA_base_results.rep \
+             --output-prefix sampleA_report_abundance \
+             --min-count 5e-05 --report-type abundance
+</code></pre>
+<p>Reads - read binning:</p>
+<pre><code class="language-bash">ganon report --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+             --input sampleA_base_results.rep \
+             --output-prefix sampleA_report_reads \
+             --report-type reads
+</code></pre>
+<p>Matches:</p>
+<pre><code class="language-bash">ganon report --db-prefix rs_bac_gtdb_t1f gcmeta_human_skin mgnify_human_skin \
+             --input sampleA_base_results.rep \
+             --output-prefix sampleA_report_matches \
+             --report-type matches
+</code></pre>
+<ul>
+<li>Check: taxonomic summary differences</li>
+</ul>
+<h2 id="table">Table<a class="headerlink" href="#table" title="Permanent link">:)</a></h2>
+<p>Put together several tree-like reports (.tre) into a table of counts. <a href="../table/">More infos</a></p>
+<p>From the batch classification output:</p>
+<pre><code class="language-bash">ganon table --input sA.tre sB.tre sC.tre \
+            --output-file table_top_sample10.tsv
+</code></pre>
+<p>Selecting the top 10 most abundant taxa for each sample, using lineage as header:</p>
+<pre><code class="language-bash">ganon table --input sA.tre sB.tre sC.tre \
+            --output-file table_top_sample10.tsv \
+            --header lineage \
+            --top-sample 10
+</code></pre>
+<p>Selecting the top 10 most abundant species for each sample:</p>
+<pre><code class="language-bash">ganon table --input sA.tre sB.tre sC.tre \
+            --output-file table_top_sample10_species.tsv \
+            --header lineage \
+            --rank species \
+            --top-sample 10
+</code></pre>
+<p>Selecting the top 10 most abundant species among all samples:</p>
+<pre><code class="language-bash">ganon table --input sA.tre sB.tre sC.tre \
+            --output-file table_top_all10.tsv \
+            --rank species \
+            --top-all 10
+</code></pre>
+<ul>
+<li>Check: table files</li>
+</ul>
+<hr />
+<p><strong>RECAP 3</strong></p>
+<hr />
+<h2 id="visualization">Visualization<a class="headerlink" href="#visualization" title="Permanent link">:)</a></h2>
+<p>Generate "parsable" table for GRIMER:</p>
+<pre><code class="language-bash">ganon table --input sA.tre sB.tre sC.tre \
+            --output-file table.tsv \
+            --filtered-label unassigned --unclassified-label unassigned \
+            --header taxid 
+</code></pre>
+<p>Toy metadata file (<code>files/reads/metadata.tsv</code>):</p>
+<pre><code class="language-txt">sample_name  age  group  date        disease
+sA.tre       12   A      2026-05-01  true
+sB.tre       77   B      2025-01-01  false
+sC.tre       21   A      2020-12-03  true
+</code></pre>
+<pre><code class="language-bash">conda activate grimerenv
+grimer --input table.tsv \
+       --metadata-file files/reads/metadata.tsv \
+       --ranks domain phylum class order family genus species \
+       --taxonomy gtdb \
+       --taxonomy-files files/aux/bac120_taxonomy_r226.tsv.gz files/aux/ar53_taxonomy_r226.tsv.gz \
+       --unassigned-header unassigned
+</code></pre>
+<ul>
+<li>Check: <code>output.html</code></li>
+<li>A more complete visualization example: https://pirovc.github.io/grimer-reports/placenta/placenta_mgs.html</li>
+</ul>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../js/extra.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

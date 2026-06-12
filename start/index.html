@@ -93,6 +93,10 @@
                 <li class="toctree-l1"><a class="reference internal" href="../outputfiles/">Output files</a>
                 </li>
               </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../handson_20260617/">ganon2 hands-on 2026 06 17</a>
+                </li>
+              </ul>
       </div>
     </div>
     </nav>
@@ -163,7 +167,7 @@
 </ul>
 <h3 id="ganon-report">ganon report<a class="headerlink" href="#ganon-report" title="Permanent link">:)</a></h3>
 <ul>
-<li><code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>corr</code> or <code>abundance</code> for taxonomic profiling, <code>reads</code> or <code>dist</code> for sequence profiling and <code>matches</code> to report a summary of all matches.</li>
+<li><code>--report-type</code>: reports either taxonomic, sequence or matches abundances. Use <code>abundance</code> for taxonomic profiling, <code>reads</code> for sequence profiling, or <code>matches</code> to report a summary of all matches.</li>
 <li><code>--min-count</code>: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between <code>0.0001</code> (0.01%) and <code>0.001</code> (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively <code>--top-percentile</code> can be used to keep a relative amount of taxa instead a hard cutoff.</li>
 </ul>
 <p>The numeric values above are averages from several experiments with different sample types and database contents. They may not work as expected for your data. If you are not sure which values to use or see something unexpected, please open an <a href="https://github.com/pirovc/ganon/issues" target="_blank">issue</a>.</p>
