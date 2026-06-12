@@ -249,13 +249,13 @@ class TestReport(unittest.TestCase):
             "ganon report failed filtering with --max-count",
         )
 
-    def test_report_type_abundance(self):
+    def test_report_type_dist_abundance(self):
         """
         Test run with report_type abundance
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_report_type_abundance"
-        params["report_type"] = "abundance"
+        params["output_prefix"] = self.results_dir + "test_report_type_dist_abundance"
+        params["report_type"] = "dist+abundance"
 
         # Build config from params
         cfg = Config("report", **params)
@@ -270,7 +270,7 @@ class TestReport(unittest.TestCase):
         # Re-distribution and genome correction, shared sum bigger then 0
         self.assertTrue(
             res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum() > 0,
-            "ganon report has wrong output for --report_type abundance",
+            "ganon report has wrong output for --report_type dist+abundance",
         )
 
     def test_report_type_reads(self):
@@ -321,13 +321,13 @@ class TestReport(unittest.TestCase):
             "ganon report has wrong output for --report_type matches",
         )
 
-    def test_report_type_corr(self):
+    def test_report_type_abundance(self):
         """
         Test run with report_type abundance
         """
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_report_type_corr"
-        params["report_type"] = "corr"
+        params["output_prefix"] = self.results_dir + "test_report_type_abundance"
+        params["report_type"] = "abundance"
 
         # Build config from params
         cfg = Config("report", **params)
@@ -343,12 +343,12 @@ class TestReport(unittest.TestCase):
         self.assertEqual(
             res["tre_pd"][res["tre_pd"]["rank"] == "assembly"]["shared"].sum(),
             0,
-            "ganon report has wrong output for --report_type corr",
+            "ganon report has wrong output for --report_type abundance",
         )
 
     def test_report_type_dist(self):
         """
-        Test run with report_type abundance
+        Test run with report_type dist
         """
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_report_type_dist"
@@ -447,8 +447,8 @@ class TestReport(unittest.TestCase):
         )
 
         params = self.default_params.copy()
-        params["output_prefix"] = self.results_dir + "test_ranks_all_corr"
-        params["report_type"] = "corr"
+        params["output_prefix"] = self.results_dir + "test_ranks_all_abundance"
+        params["report_type"] = "abundance"
         params["ranks"] = "all"
         cfg = Config("report", **params)
         self.assertTrue(

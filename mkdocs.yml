@@ -10,6 +10,7 @@ nav:
     - Reports (ganon report): reports.md
     - Table (ganon table): table.md
     - Output files: outputfiles.md
+    - ganon2 hands-on 2026 06 17: handson_20260617.md
 markdown_extensions:
   - tables
   - attr_list
