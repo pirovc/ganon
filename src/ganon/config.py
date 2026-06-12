@@ -68,7 +68,7 @@ class Config:
         "species",
         "assembly",
     ]
-    choices_report_type = ["abundance", "reads", "matches", "dist", "corr"]
+    choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
     choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
@@ -899,7 +899,7 @@ class Config:
             default="abundance",
             help="Type of report ["
             + ", ".join(self.choices_report_type)
-            + "]. 'abundance' -> tax. abundance (re-distribute read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and shared matches, 'dist' -> like reads with re-distribution of shared read counts only, 'corr' -> like abundance without re-distribution of shared read counts",
+            + "]. 'abundance' -> tax. abundance (correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and shared matches, 'dist' -> simple re-distribution of shared reads based on unique reads, 'dist+abundance' -> like dist corrected by genome size",
             choices=self.choices_report_type,
         )
         report_group_output.add_argument(

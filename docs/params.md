@@ -7,7 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.4.1
+   _|   v. 2.4.2
 - - - - - - - - - -
 
 positional arguments:
@@ -288,8 +288,8 @@ post-processing/report arguments:
                         class order family genus species assembly]. (default: [])
   --min-count           Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1
                         for counts] (default: 5e-05)
-  --report-type         Type of report (.tre) [abundance, reads, matches, dist, corr]. More info in 'ganon report'.
-                        (default: abundance)
+  --report-type         Type of report (.tre) [abundance, reads, matches, dist, dist+abundance]. More info in 'ganon
+                        report'. (default: abundance)
   --skip-report         Disable tree-like report (.tre) at the end of classification. Can be done later with 'ganon
                         report'. (default: False)
 
@@ -394,11 +394,10 @@ output arguments:
   -f, --output-format   Output format [text, tsv, csv, bioboxes]. text outputs a tabulated formatted text file for
                         better visualization. bioboxes is the the CAMI challenge profiling format (only
                         percentage/abundances are reported). (default: tsv)
-  -t, --report-type     Type of report [abundance, reads, matches, dist, corr]. 'abundance' -> tax. abundance (re-
-                        distribute read counts and correct by genome size), 'reads' -> sequence abundance, 'matches' ->
-                        report all unique and shared matches, 'dist' -> like reads with re-distribution of shared read
-                        counts only, 'corr' -> like abundance without re-distribution of shared read counts (default:
-                        abundance)
+  -t, --report-type     Type of report [abundance, reads, matches, dist, dist+abundance]. 'abundance' -> tax. abundance
+                        (correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and
+                        shared matches, 'dist' -> simple re-distribution of shared reads based on unique reads,
+                        'dist+abundance' -> like dist corrected by genome size (default: abundance)
   -r, --ranks [ ...]    Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks
                         [domain phylum class order family genus species assembly]. (default: [])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage

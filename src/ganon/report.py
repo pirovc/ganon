@@ -38,7 +38,7 @@ def report(cfg):
 
         tax = CustomTx(files=dbp, cols=["node", "parent", "rank", "name"], **tax_args)
 
-        if cfg.report_type in ["abundance", "corr"]:
+        if cfg.report_type in ["abundance", "dist+abundance"]:
             try:
                 genome_sizes = parse_genome_size_tax(dbp)
             except ValueError:
@@ -68,7 +68,7 @@ def report(cfg):
             )
 
         # In case no tax was provided, generate genome sizes (for the full tree)
-        if cfg.report_type in ["abundance", "corr"]:
+        if cfg.report_type in ["abundance", "dist+abundance"]:
             genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
     default_ranks = [tax.root_name] + cfg.choices_default_ranks
@@ -254,7 +254,7 @@ def build_report(
     tax.build_lineages()
 
     # Re-distribute lca reads to leaf nodes based on unique matches or shared
-    if cfg.report_type in ["abundance", "dist"]:
+    if cfg.report_type in ["dist", "dist+abundance"]:
         redistribute_shared_reads(merged_rep, tax)
 
     # Count data from merged_rep into a final count per target, depending on report type
@@ -263,7 +263,7 @@ def build_report(
     # Cummulatively sum leaf counts to its lineage parents
     tree_cum_counts = cummulative_sum_tree(target_counts, tax)
 
-    if cfg.report_type in ["abundance", "corr"]:
+    if cfg.report_type in ["abundance", "dist+abundance"]:
         # Correct counts based on estimated genome sizes for default ranks
         # returns tree_cum_counts with corrected FRACTION of counts and use it to calculate the abundances
         # still reports original counts for user
