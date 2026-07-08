@@ -37,12 +37,13 @@ If the `--taxonomy gtdb` option is selected, the latest GTDB taxonomy is downloa
 
 When building, it is possible to convert the input taxonomic nodes to another using the `--convert-taxonomy` option. The database will then be built based on the chosen conversion. Conversion works between pre-defined GTDB versions (see the `ganon build-custom --help` output for a list of supported versions), between NCBI versions, and between GTDB and NCBI (or NCBI and GTDB).
 
- - GTDB to GTDB: conversion is based on the representative genome node between versions. 
- - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB. 
- - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB.
- - NCBI to NCBI: conversion based on the `merged.dmp` file.
+ - GTDB <-> GTDB: conversion is based on tracking the taxa all genomes between versions.
+ - GTDB <-> NCBI: conversion based on the GTDB provided mapping to the NCBI node.
+ - NCBI <-> NCBI: conversion based on the `merged.dmp` file.
 
-Note that resolution of taxonomic nodes may be lost during conversion. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between NCBI and GTDB is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.
+
+!!! warning
+    Note that resolution of taxonomic nodes may be lost during conversion, specially between GTDB and NCBI. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between those taxonomies is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.
 
 Please check the output log from `ganon build-custom` for details on the conversion. The example below uses the command `--taxonomy gtdb-95 --convert-taxonomy gtdb-226` on an input containing 1787 entries:
 

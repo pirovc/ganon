@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa;
+        }
+        
+        .categories-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .category {
+            flex: 1;
+            min-width: 120px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 12px;
+        }
+        
+        .category h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 13px;
+            font-weight: bold;
+            text-align: center;
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .checkbox-container {
+            margin-top: 4px;
+        }
+        
+        .checkbox-container label {
+            display: block;
+            margin-bottom: 2px;
+            cursor: pointer;
+            padding: 1px 0;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            margin-right: 3px;
+            transform: scale(0.9);
+        }
+        
+        .input-field {
+            margin-top: 4px;
+            width: 100%;
+            padding: 3px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            box-sizing: border-box;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        #output {
+            border: 1px solid #ccc;
+            padding: 12px;
+            min-height: 60px;
+            background-color: #ffffff;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background-color: #f0f8ff;
+            border: 1px solid #b0d8ff;
+        }
+        
+        @media (max-width: 600px) {
+            .categories-container {
+                flex-direction: column;
+            }
+            
+            .category {
+                min-width: auto;
+                padding: 6px;
+            }
+            
+            .category h3 {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- All categories in a single row -->
+    <div class="categories-container">
+        <div class="category" data-category="source">
+            <h3>Source</h3>
+            <div class="checkbox-container">
+                <label>
+                    <input type="checkbox" class="source" value="refseq" data-category="source"> RefSeq
+                </label>
+                <label>
+                    <input type="checkbox" class="source" value="genbank" data-category="source"> GenBank
+                </label>
+            </div>
+        </div>
+
+        <div class="category" data-category="organism_group">
+            <h3>Organism Group</h3>
+            <div class="checkbox-container">
+                <label>
+                    <input type="checkbox" class="organism_group" value="archaea" data-category="organism_group"> Archaea
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="bacteria" data-category="organism_group"> Bacteria
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="fungi" data-category="organism_group"> Fungi
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="human" data-category="organism_group"> Human
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="invertebrate" data-category="organism_group"> Invertebrate
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="plant" data-category="organism_group"> Plant
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="protozoa" data-category="organism_group"> Protozoa
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="vertebrate_mammalian" data-category="organism_group"> Vertebrate Mammalian
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="vertebrate_other" data-category="organism_group"> Vertebrate Other
+                </label>
+                <label>
+                    <input type="checkbox" class="organism_group" value="viral" data-category="organism_group"> Viral
+                </label>
+            </div>
+        </div>
+
+        <div class="category" data-category="taxonomy">
+            <h3>Taxonomy</h3>
+            <div class="checkbox-container">
+                <label>
+                    <input type="checkbox" class="taxonomy" value="ncbi" data-category="taxonomy" data-single-select="true"> NCBI
+                </label>
+                <label>
+                    <input type="checkbox" class="taxonomy" value="gtdb" data-category="taxonomy" data-single-select="true"> GTDB
+                </label>
+            </div>
+        </div>
+
+        <div class="category" data-category="refseq_subset">
+            <h3>RefSeq Sub-set</h3>
+            <div class="checkbox-container">
+                <label>
+                    <input type="checkbox" class="refseq_subset" value="complete_genomes" data-category="refseq_subset" data-single-select="true"> Complete Genomes
+                </label>
+                <label>
+                    <input type="checkbox" class="refseq_subset" value="reference_genomes" data-category="refseq_subset" data-single-select="true"> Reference Genomes
+                </label>
+                <label>
+                    <input type="checkbox" class="refseq_subset" value="complete_reference" data-category="refseq_subset" data-single-select="true"> Complete + Reference
+                </label>
+            </div>
+        </div>
+
+        <div class="category" data-category="db_prefix">
+            <h3>Database name</h3>
+            <input type="text" id="db_prefix_input" class="input-field" placeholder="Enter DB prefix">
+        </div>
+    </div>
+    
+    <div id="output">
+        Selected items will appear here...
+    </div>
+
+    <script>
+        // Get all checkboxes and input fields
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const dbPrefixInput = document.getElementById('db_prefix_input');
+        const outputDiv = document.getElementById('output');
+        
+        // Add event listener to each checkbox
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateOutput);
+        });
+        
+        // Add event listener to text input
+        dbPrefixInput.addEventListener('input', updateOutput);
+        
+        // Function to update the output
+        function updateOutput() {
+            // Get all checked checkboxes
+            const checkedCheckboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+            
+            // Group checked items by category
+            const itemsByCategory = {
+                source: [],
+                organism_group: [],
+                taxonomy: [],
+                refseq_subset: []
+            };
+            
+            // Populate the categories
+            checkedCheckboxes.forEach(cb => {
+                const category = cb.getAttribute('data-category');
+                if (itemsByCategory[category]) {
+                    itemsByCategory[category].push(cb.value);
+                }
+            });
+            
+            // Get values from input fields
+            const dbPrefix = dbPrefixInput.value.trim();
+            
+            // Build the output text with the requested format
+            let outputText = "ganon build";
+            
+            // Add source
+            if (itemsByCategory.source.length > 0) {
+                const sourceValues = itemsByCategory.source.join(' ');
+                outputText += ` --source ${sourceValues}`;
+            }
+            
+            // Add organism group
+            if (itemsByCategory.organism_group.length > 0) {
+                const organismGroupValues = itemsByCategory.organism_group.join(' ');
+                outputText += ` --organism-group ${organismGroupValues}`;
+            }
+            
+            // Add taxonomy (single select)
+            if (itemsByCategory.taxonomy.length > 0) {
+                const taxonomyValue = itemsByCategory.taxonomy[0]; // Only one value allowed
+                outputText += ` --taxonomy ${taxonomyValue}`;
+            }
+            
+            // Handle RefSeq sub-set options (single select)
+            const refseqSubsetValue = itemsByCategory.refseq_subset[0];
+            
+            if (refseqSubsetValue === 'complete_genomes') {
+                outputText += ` --complete-genomes`;
+            } else if (refseqSubsetValue === 'reference_genomes') {
+                outputText += ` --reference-genomes`;
+            } else if (refseqSubsetValue === 'complete_reference') {
+                outputText += ` --genome-updater "-F $(printf '%s' '$5 == \"reference genome\" || $12 == \"Complete Genome\"')"`; 
+            }
+            
+            // Add DB prefix
+            if (dbPrefix) {
+                outputText += ` --db-prefix "${dbPrefix}"`;
+            }
+            // Add threads (fixed)
+            outputText += ` --threads 12`;
+
+            // Update the output div
+            outputDiv.innerHTML = outputText || "No items selected";
+        }
+        
+        // Pre-select values when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            // Select source: refseq
+            const refseqCheckbox = document.querySelector('input[value="refseq"]');
+            if (refseqCheckbox) {
+                refseqCheckbox.checked = true;
+            }
+            
+            // Select organism groups: archaea, bacteria, fungi, viral
+            const archaeaCheckbox = document.querySelector('input[value="archaea"]');
+            const bacteriaCheckbox = document.querySelector('input[value="bacteria"]');
+            const fungiCheckbox = document.querySelector('input[value="fungi"]');
+            const viralCheckbox = document.querySelector('input[value="viral"]');
+            
+            if (archaeaCheckbox) archaeaCheckbox.checked = true;
+            if (bacteriaCheckbox) bacteriaCheckbox.checked = true;
+            if (fungiCheckbox) fungiCheckbox.checked = true;
+            if (viralCheckbox) viralCheckbox.checked = true;
+            
+            // Select refseq sub-set: Complete + Reference
+            const completeReferenceCheckbox = document.querySelector('input[value="complete_reference"]');
+            if (completeReferenceCheckbox) {
+                completeReferenceCheckbox.checked = true;
+            }
+            
+            // Select taxonomy: ncbi (single select)
+            const ncbiCheckbox = document.querySelector('input[value="ncbi"]');
+            if (ncbiCheckbox) ncbiCheckbox.checked = true;
+            
+            // Set DB prefix
+            dbPrefixInput.value = "rs_abfv_cgrg";
+            
+            // Update the output to reflect pre-selected values
+            updateOutput();
+        });
+        
+        // Add single-select behavior for taxonomy and refseq_subset
+        document.querySelectorAll('input[data-single-select="true"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    // Uncheck all other checkboxes in the same category
+                    const category = this.getAttribute('data-category');
+                    document.querySelectorAll(`input[data-category="${category}"][data-single-select="true"]`).forEach(otherCheckbox => {
+                        if (otherCheckbox !== this) {
+                            otherCheckbox.checked = false;
+                        }
+                    });
+                }
+                // Update the output
+                updateOutput();
+            });
+        });
+    </script>
+</body>
+</html>
