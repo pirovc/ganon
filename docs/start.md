@@ -8,7 +8,7 @@ conda install -c conda-forge -c bioconda ganon
 
 ## Download and Build a database 
 
-- Bacteria - NCBI RefSeq - representative genomes
+- NCBI RefSeq Bacterial reference genomes
 
 ```bash
 ganon build --db-prefix bac_rs_rg --source refseq --organism-group bacteria --reference-genomes --threads 24

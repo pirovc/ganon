@@ -203,11 +203,19 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 Extra repositories from RefSeq release not included as default databases. [Website](https://www.ncbi.nlm.nih.gov/refseq/){target="_blank"}.
 
 ```bash
-# Download sequence files
+# Plasmid
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/"
-wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
-wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix plasmid --level species --threads 8 --input-target sequence --skip-genome-size
 
+# Plastid
+wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
+ganon build-custom --input plastid.* --db-prefix plastid --level species --threads 8 --input-target sequence --skip-genome-size
+
+# Mitochondrion
+wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
+ganon build-custom --input mitochondrion.* --db-prefix mitochondrion --level species --threads 8 --input-target sequence --skip-genome-size
+
+# All together in one database
 ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --skip-genome-size
 ```
 
@@ -333,11 +341,9 @@ ganon build-custom --input output_folder_genome_updater/version/ --input-recursi
 
 ## Parameter details
 
-### False positive and size (--max-fp, --filter-size)
+### False positive (--max-fp)
 
 ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](classification.md#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
-
-Alternatively, one can set a specific size for the final index with `--filter-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 
 ### minimizers (--window-size, --kmer-size)
 
