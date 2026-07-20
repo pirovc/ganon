@@ -9,9 +9,9 @@ ganon index large sets of genomic reference sequences efficiently and quickly cl
 ## Features
 
 - [Default database build](default_databases.md/)
-    - integrated download of any subset from [RefSeq/Genbank/GTDB](default_databases.md#refseq-and-genbank)
+    - integrated download of any subset from [RefSeq/Genbank/GTDB](default_databases.md)
     - incremental [updates](default_databases.md#update-ganon-update)
-    - [multi-taxonomy](custom_databases.md/#taxonomy) support: [NCBI](https://www.ncbi.nlm.nih.gov/taxonomy){target="_blank"}, [GTDB](default_databases.md#gtdb){target="_blank"}
+    - [multi-taxonomy](custom_databases.md/#taxonomy) support: [NCBI](https://www.ncbi.nlm.nih.gov/taxonomy){target="_blank"}, [GTDB](https://gtdb.ecogenomic.org/){target="_blank"}
 - [Custom database build](custom_databases.md)
     - using local or [non-standard](custom_databases.md/#non-standard-filesheaders-with-input-file) sequence files
     - supports all taxonomic [levels](custom_databases.md/#level) plus strain, assembly, file, sequence or custom specialization

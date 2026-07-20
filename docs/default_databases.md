@@ -35,10 +35,10 @@ The table below lists the resources and time needed to build commonly used sub-s
 
 | RefSeq ¹ | #assemblies | #species | Size ² | Time ² | `ganon build` |
 |:-----------------------------:|:-----------:|:--------:|:------:|:------:|:-------------:|
-| Archaea, Bacteria <br> [**complete genomes**] | 62944 | 15693 | 63 | 47m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg`</details> |
-| Archaea, Bacteria <br> [**reference genomes**] | 23404 | 23401 | 77 | 28m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg`</details> |
-| Archaea, Bacteria <br> [**complete + reference**] | 79268 | 30912 | 194 | 58m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
-| Archaea, Bacteria | 509046 | 76966 | 312 | 10h | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs`</details> |
+| Archaea, Bacteria <br> [**complete genomes**] | 62944 | 15693 | 63 | 47m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --complete-genomes --db-prefix rs_arc_bac_cg`</details> |
+| Archaea, Bacteria <br> [**reference genomes**] | 23404 | 23401 | 77 | 28m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --reference-genomes --db-prefix rs_arc_bac_rg`</details> |
+| Archaea, Bacteria <br> [**complete + reference**] | 79268 | 30912 | 194 | 58m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
+| Archaea, Bacteria | 509046 | 76966 | 312 | 10h | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac`</details> |
 | Fungi | 674 | 668 | 18 | 5m | <details><summary></summary>`ganon build --source refseq --organism-group fungi --threads 48 --db-prefix rs_fungi`</details> |
 | Human | 2 | 1 | 2.3 | 4m | <details><summary></summary>`ganon build --source refseq --organism-group human --threads 48 --db-prefix rs_human`</details> |
 | Plant | 202 | 202 | 79 | 29m | <details><summary></summary>`ganon build --source refseq --organism-group plant --threads 48 --db-prefix rs_plant`</details> |
@@ -193,7 +193,7 @@ genome_updater.sh -e assembly_summary.txt -f "genomic.fna.gz" -o recovered_files
 
 ### False positive
 
-A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](custom_databases.md#false-positive-and-size-max-fp-filter-size). Values between `0.001` (0.1%) and `0.3` (30%) are generally used. 
+A higher `--max-fp` value will generate a smaller database but with a higher number of false positive matches on classification. [More details](custom_databases.md#false-positive-max-fp). Values between `0.001` (0.1%) and `0.3` (30%) are generally used. 
 
 !!! hint
     When using higher `--max-fp` values, more false positive results may be generated. This can be filtered with the `--fpr-query` parameter in `ganon classify` 
@@ -209,7 +209,7 @@ Define how much unique information is stored in the database. [More details](cus
 
 ### Top assemblies
 
-RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can not only bias analysis but also brings redundancy to the database. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed [above](#refseq-and-genbank)) and use the full set of assemblies for specific clade analysis.
+RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can bias analysis towards those organisms. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed [above](#commonly-used-sub-sets)) and use the full set of assemblies for specific clade analysis.
 
 !!! Example
     - `ganon build --top 1` will select one assembly for each taxonomic leaf (NCBI taxonomy still has strain, sub-species, ...)
