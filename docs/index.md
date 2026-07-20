@@ -45,8 +45,8 @@ conda install -c conda-forge -c bioconda ganon
 
 - python >=3.10
 - pandas >=1.2.0
-- [multitax](https://github.com/pirovc/multitax){target="_blank"} >=1.5.1
-- [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"} >=0.7.2
+- [multitax](https://github.com/pirovc/multitax){target="_blank"} >=1.6.0
+- [genome_updater](https://github.com/pirovc/genome_updater){target="_blank"} >=0.8.2
 
 #### C++
 

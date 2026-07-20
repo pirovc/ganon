@@ -21,6 +21,9 @@ The most important parameters and trade-offs to be aware of when using ganon:
 
 ### ganon report
 
+!!! tip
+    `--report-type` and `--min-count` can be set directly on `ganon classify`
+
 - `--report-type`: reports either taxonomic, sequence or matches abundances. Use `abundance` for taxonomic profiling, `reads` for sequence profiling, or `matches` to report a summary of all matches.
 - `--min-count`: cutoff to discard underrepresented taxa. Useful to remove the common long tail of spurious matches and false positives when performing classification. Values between `0.0001` (0.01%) and `0.001` (0.1%) improved sensitivity and precision in our evaluations. The higher the value, the more precise the outcome, with a sensitivity loss. Alternatively `--top-percentile` can be used to keep a relative amount of taxa instead a hard cutoff.
 
