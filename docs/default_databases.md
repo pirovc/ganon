@@ -19,7 +19,7 @@ ganon update -d arc_bac -t 30
 
 ## Simple `ganon build` command generator
 
-<iframe src="http://localhost:8000/ganon_build_generator.html" width="730" height="530" frameborder="0"></iframe>
+<iframe src="https://pirovc.github.io/ganon/ganon_build_generator.html" width="730" height="530" frameborder="0"></iframe>
 
 !!! note
     [More filters](#filters) and [parameters](params.md) are available for `ganon build`
