@@ -34,7 +34,7 @@ The table below lists the resources and time needed to build commonly used sub-s
 - To build smaller databases with less memory, you can apply some [filters](#filters) or [tweak parameters](#reducing-database-size). Note that there will be trade-offs in every reduction.
 
 | RefSeq ¹ | #assemblies | #species | Size ² | Time ² | `ganon build` |
-|:-----------------------------:|:-----------:|:--------:|:------:|:------:|:-------------:|
+|:--------:|:-----------:|:--------:|:------:|:------:|:-------------:|
 | Archaea, Bacteria <br> [**complete genomes**] | 62944 | 15693 | 63 | 47m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --complete-genomes --db-prefix rs_arc_bac_cg`</details> |
 | Archaea, Bacteria <br> [**reference genomes**] | 23404 | 23401 | 77 | 28m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --reference-genomes --db-prefix rs_arc_bac_rg`</details> |
 | Archaea, Bacteria <br> [**complete + reference**] | 79268 | 30912 | 194 | 58m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
@@ -45,14 +45,14 @@ The table below lists the resources and time needed to build commonly used sub-s
 | Protozoa | 129 | 126 | 3 | 81s| <details><summary></summary>`ganon build --source refseq --organism-group protozoa --threads 48 --db-prefix rs_protozoa`</details> |
 | Viral | 15089 | 14082 | 0.41 | 32m | <details><summary></summary>`ganon build --source refseq --organism-group viral --threads 48 --db-prefix rs_viral`</details> |
 
-| Others | #sequences | #species | Size ² | Time ² | `ganon build-custom` |
-|:------:|:-----------:|:--------:|:------:|:------:|:-------------:|
+| Others ¹ | #sequences | #species | Size ² | Time ² | `ganon build-custom` |
+|:--------:|:----------:|:--------:|:------:|:------:|:--------------------:|
 | Plasmid | 135944 | 6708 | 3 | 13m | [build-custom](custom_databases.md#plasmid-plastid-and-mitochondrion-from-refseq) |
 | UniVec_Core | 3155 | 1 | 0.0004 | 13s | [build-custom](custom_databases.md#univec-univec_core) |
 
-| GTDB | #assemblies | #species | Size ² | Time ² | `ganon build` |
-|:------:|:-----------:|:--------:|:------:|:------:|:-------------:|
-| R232 | 900653 | 199913 | 652 | 17h | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
+| GTDB              | #assemblies | #species | Size ² | Time ² | `ganon build` |
+|:-----------------:|:-----------:|:--------:|:------:|:------:|:-------------:|
+| R232 (2026-04-15) | 900653 | 199913 | 652 | 17h | <details><summary></summary>`ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb`</details> |
 
 ¹ *data from 2026-06-21*
 
