@@ -160,7 +160,7 @@ class Config:
             default="avg",
             help="Create smaller or faster filters at the cost of classification speed or database size, respectively ["
             + ", ".join(self.choices_mode)
-            + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.",
+            + "]. If --filter-size is used, smaller/smallest refers to the false positive. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.",
             choices=self.choices_mode,
         )
         build_default_general_args.add_argument(

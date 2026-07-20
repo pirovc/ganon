@@ -88,9 +88,8 @@ general arguments:
                         type ibf. (default: 0)
   -j, --mode            Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
-                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
-                        avg)
+                        smaller/smallest refers to the false positive. By default, an average value is calculated to
+                        balance classification speed and database size. Only valid for --filter-type ibf. (default: avg)
   -y, --min-length      Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
                         type ibf. (default: 0)
   -v, --filter-type     Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
@@ -190,9 +189,8 @@ general arguments:
                         type ibf. (default: 0)
   -j, --mode            Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
-                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
-                        avg)
+                        smaller/smallest refers to the false positive. By default, an average value is calculated to
+                        balance classification speed and database size. Only valid for --filter-type ibf. (default: avg)
   -y, --min-length      Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
                         type ibf. (default: 0)
   -v, --filter-type     Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary

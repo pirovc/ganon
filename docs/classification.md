@@ -228,7 +228,7 @@ since `82` is the best match and `25` is the worst remaining match, the filter w
 
 ### False positive of a query (--fpr-query)
 
-ganon uses Bloom Filters, probabilistic data structures that may return false positive results. The base false positive of a ganon index is controlled by `--max-fp` when building the database. However, this value is the expected false positive for each k-mer. In practice, a sequence (several k-mers) will have a way smaller false positive. ganon calculates the false positive rate of a query as suggested by (Solomon and Kingsford, 2016). The `--fpr-query` will control the max. value accepted to consider a match between a sequence and a reference, avoiding false positives that may be introduce by the properties of the data structure. 
+ganon uses Bloom Filters, probabilistic data structures that may return false positive results. The base false positive of a ganon index is controlled by `--max-fp` when building the database. However, this value is the expected false positive for each k-mer. In practice, a sequence (several k-mers) will have a way smaller false positive. ganon calculates the false positive of a query as suggested by (Solomon and Kingsford, 2016). The `--fpr-query` will control the max. value accepted to consider a match between a sequence and a reference, avoiding false positives that may be introduce by the properties of the data structure. 
 
 By default, `--fpr-query 1e-5` is used and it is applied after the `--rel-cutoff` and `--rel-filter`. Values between `1e-3` and `1e-10` are recommended. This threshold becomes more important when building smaller databases with higher `--max-fp`, assuring that the false positive is under control. In this case however, sensitivity of results may decrease.
 

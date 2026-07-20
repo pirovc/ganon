@@ -37,12 +37,13 @@ If the `--taxonomy gtdb` option is selected, the latest GTDB taxonomy is downloa
 
 When building, it is possible to convert the input taxonomic nodes to another using the `--convert-taxonomy` option. The database will then be built based on the chosen conversion. Conversion works between pre-defined GTDB versions (see the `ganon build-custom --help` output for a list of supported versions), between NCBI versions, and between GTDB and NCBI (or NCBI and GTDB).
 
- - GTDB to GTDB: conversion is based on the representative genome node between versions. 
- - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB. 
- - GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB.
- - NCBI to NCBI: conversion based on the `merged.dmp` file.
+ - GTDB <-> GTDB: conversion is based on tracking the taxa all genomes between versions.
+ - GTDB <-> NCBI: conversion based on the GTDB provided mapping to the NCBI node.
+ - NCBI <-> NCBI: conversion based on the `merged.dmp` file.
 
-Note that resolution of taxonomic nodes may be lost during conversion. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between NCBI and GTDB is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.
+
+!!! warning
+    Note that resolution of taxonomic nodes may be lost during conversion, specially between GTDB and NCBI. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between those taxonomies is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.
 
 Please check the output log from `ganon build-custom` for details on the conversion. The example below uses the command `--taxonomy gtdb-95 --convert-taxonomy gtdb-226` on an input containing 1787 entries:
 
@@ -202,11 +203,19 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 Extra repositories from RefSeq release not included as default databases. [Website](https://www.ncbi.nlm.nih.gov/refseq/){target="_blank"}.
 
 ```bash
-# Download sequence files
+# Plasmid
 wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/"
-wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
-wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix plasmid --level species --threads 8 --input-target sequence --skip-genome-size
 
+# Plastid
+wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/"
+ganon build-custom --input plastid.* --db-prefix plastid --level species --threads 8 --input-target sequence --skip-genome-size
+
+# Mitochondrion
+wget -A genomic.fna.gz -m -nd --quiet --show-progress "ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/"
+ganon build-custom --input mitochondrion.* --db-prefix mitochondrion --level species --threads 8 --input-target sequence --skip-genome-size
+
+# All together in one database
 ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --skip-genome-size
 ```
 
@@ -332,11 +341,9 @@ ganon build-custom --input output_folder_genome_updater/version/ --input-recursi
 
 ## Parameter details
 
-### False positive and size (--max-fp, --filter-size)
+### False positive (--max-fp)
 
 ganon indices are based on bloom filters and can have false positive matches. This can be controlled with `--max-fp` parameter. The lower the `--max-fp`, the less chances of false positives matches on classification, but the larger the database size will be. For example, with `--max-fp 0.01` the database will be build so any target (defined by `--level`) will have 1 in a 100 change of reporting a false k-mer match. [The false positive of the query](classification.md#false-positive-of-a-query-fpr-query) (all k-mers of a read) will be way lower, but directly affected by this value.
-
-Alternatively, one can set a specific size for the final index with `--filter-size`. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.
 
 ### minimizers (--window-size, --kmer-size)
 
