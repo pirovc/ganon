@@ -48,23 +48,25 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                <li class="toctree-l1"><a class="reference internal" href="../important_params/">Important parameters</a>
                 </li>
               </ul>
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Databases (ganon build)</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#refseq-and-genbank">RefSeq and GenBank</a>
+    <li class="toctree-l2"><a class="reference internal" href="#simple-ganon-build-command-generator">Simple ganon build command generator</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#commonly-used-sub-sets">Commonly used sub-sets</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#filters">Filters</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#commonly-used-sub-sets">Commonly used sub-sets</a>
+    <li class="toctree-l3"><a class="reference internal" href="#specific-taxa">Specific taxa</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups</a>
+    <li class="toctree-l3"><a class="reference internal" href="#top-genomestaxa">Top genomes/taxa</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#more-filter-options">More filter options</a>
+    <li class="toctree-l3"><a class="reference internal" href="#refined-filters">Refined filters</a>
     </li>
         </ul>
-    </li>
-    <li class="toctree-l2"><a class="reference internal" href="#gtdb">GTDB</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#update-ganon-update">Update (ganon update)</a>
     </li>
@@ -72,21 +74,15 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#reducing-database-size">Reducing database size</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#filter-type-ibf-and-hibf">Filter type (IBF and HIBF)</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#false-positive-rate">False positive rate</a>
+    <li class="toctree-l3"><a class="reference internal" href="#false-positive">False positive</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#k-mer-and-window-size">k-mer and window size</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#top-assemblies">Top assemblies</a>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#database-level">Database level</a>
+    </li>
     <li class="toctree-l3"><a class="reference internal" href="#split-databases">Split databases</a>
-    </li>
-    <li class="toctree-l3"><a class="reference internal" href="#fixed-size-and-mode-only-for-filter-type-ibf">Fixed size and Mode (only for --filter-type ibf)</a>
-        <ul>
-    <li class="toctree-l4"><a class="reference internal" href="#example">Example</a>
-    </li>
-        </ul>
     </li>
         </ul>
     </li>
@@ -107,6 +103,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
                 </li>
               </ul>
               <ul>
@@ -141,175 +141,270 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="databases">Databases<a class="headerlink" href="#databases" title="Permanent link">:)</a></h1>
-<p>ganon automates the download, update and build of databases based on NCBI RefSeq and GenBank genomes repositories wtih <code>ganon build</code> and <code>update</code> commands, for example:</p>
-<pre><code class="language-bash">ganon build -g archaea bacteria -d arc_bac -c -t 30
+<p><code>ganon build</code> downloads and builds databases based on NCBI RefSeq and/or GenBank genomes repositories with <a href="https://gtdb.ecogenomic.org" target="_blank">GTDB</a> support. For example:</p>
+<pre><code class="language-bash"># All archaeal and bacterial genomes from current RefSeq
+ganon build -b refseq -g archaea bacteria -d rs_arc_bac -c -t 30
 </code></pre>
-<p>This will download archaeal and bacterial complete genomes from RefSeq and build a database with 30 threads. Some day later, the database can be updated to include newest genomes with:</p>
-<pre><code class="language-bash">ganon update -d arc_bac -t 30
+<pre><code class="language-bash"># Some days later, the database can be synced to the latest NCBI version with
+ganon update -d arc_bac -t 30
 </code></pre>
-<p>Additionally, <a href="../custom_databases/">custom databases</a> can be built with customized files and identifiers with the <code>ganon build-custom</code> command.</p>
-<div class="admonition info">
-<p class="admonition-title">Info</p>
-<p>We DO NOT provide pre-built indices for download. ganon can build databases very efficiently. This way, you will always have up-to-date reference sequences and get most out of your data. See examples below for commonly used sub-sets and the respective commands.</p>
+<ul>
+<li>Pre-built databases are not provided. <code>ganon build</code> downloads and build databases easily and efficiently. That way you get the latest and most diverse data available.<ul>
+<li>The <a href="#simple-ganon-build-command-generator">command generator</a> can help you start with the build command.</li>
+</ul>
+</li>
+<li>To build databases based on local/non-standard files, check the <code>ganon build-custom</code> command and <a href="../custom_databases/">documentation</a><ul>
+<li>Examples of commonly used (not standard) databases can be found <a href="../custom_databases/#examples">here</a>.</li>
+</ul>
+</li>
+</ul>
+<h2 id="simple-ganon-build-command-generator">Simple <code>ganon build</code> command generator<a class="headerlink" href="#simple-ganon-build-command-generator" title="Permanent link">:)</a></h2>
+<iframe src="http://localhost:8000/ganon_build_generator.html" width="730" height="530" frameborder="0"></iframe>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a href="#filters">More filters</a> and <a href="../params/">parameters</a> are available for <code>ganon build</code></p>
 </div>
-<h2 id="refseq-and-genbank">RefSeq and GenBank<a class="headerlink" href="#refseq-and-genbank" title="Permanent link">:)</a></h2>
-<p>The NCBI RefSeq and GenBank repositories are common sources of reference sequences for analysing metagenomics data. These repositories are primarily organised by domain/organism group (e.g. Archaea, Bacteria, Fungi, etc.), but can be filtered further. The choice of these filters can drastically affect the outcome of the analysis.</p>
-<p>RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments <a href="https://dx.doi.org/10.1093/nargab/lqaf094" target="_blank">published in the ganon2 article</a>, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification.</p>
-<h3 id="commonly-used-sub-sets">Commonly used sub-sets<a class="headerlink" href="#commonly-used-sub-sets" title="Permanent link">:)</a></h3>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To have more flexibility and extend use cases you can build database separetly for each organism group. In <code>ganon classify</code> you can <a href="../classification/#multiple-and-hierarchical-classification">combine multiple databases in one run or stack them hierarchically</a>.</p>
+</div>
+<h2 id="commonly-used-sub-sets">Commonly used sub-sets<a class="headerlink" href="#commonly-used-sub-sets" title="Permanent link">:)</a></h2>
+<p>The table below lists the resources and time needed to build commonly used sub-sets. By the time you read this, these numbers will have increased slightly. As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources.</p>
+<ul>
+<li>To build smaller databases with less memory, you can apply some <a href="#filters">filters</a> or <a href="#reducing-database-size">tweak parameters</a>. Note that there will be trade-offs in every reduction.</li>
+</ul>
 <table>
 <thead>
 <tr>
-<th style="text-align: center;">RefSeq 2025-11-01</th>
+<th style="text-align: center;">RefSeq ¹</th>
 <th style="text-align: center;">#assemblies</th>
 <th style="text-align: center;">#species</th>
-<th style="text-align: center;">Size*</th>
-<th style="text-align: center;">Time/Mem*</th>
+<th style="text-align: center;">Size ²</th>
+<th style="text-align: center;">Time ²</th>
 <th style="text-align: center;"><code>ganon build</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td style="text-align: center;">All genomes</td>
-<td style="text-align: center;">468399</td>
-<td style="text-align: center;">83798</td>
-<td style="text-align: center;">299</td>
-<td style="text-align: center;">13h08m / 409</td>
-<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs</code></details></td>
+<td style="text-align: center;">Archaea, Bacteria <br> [<strong>complete genomes</strong>]</td>
+<td style="text-align: center;">62944</td>
+<td style="text-align: center;">15693</td>
+<td style="text-align: center;">63</td>
+<td style="text-align: center;">47m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria --threads 48 --complete-genomes --db-prefix rs_arc_bac_cg</code></details></td>
 </tr>
 <tr>
-<td style="text-align: center;">Complete genomes (CG)</td>
-<td style="text-align: center;">68639</td>
-<td style="text-align: center;">27598</td>
-<td style="text-align: center;">55</td>
-<td style="text-align: center;">1h28m / 93</td>
-<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --complete-genomes --db-prefix abfv_rs_cg</code></details></td>
+<td style="text-align: center;">Archaea, Bacteria <br> [<strong>reference genomes</strong>]</td>
+<td style="text-align: center;">23404</td>
+<td style="text-align: center;">23401</td>
+<td style="text-align: center;">77</td>
+<td style="text-align: center;">28m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria --threads 48 --reference-genomes --db-prefix rs_arc_bac_rg</code></details></td>
 </tr>
 <tr>
-<td style="text-align: center;">Reference genomes (RG)</td>
-<td style="text-align: center;">22862</td>
-<td style="text-align: center;">22861</td>
-<td style="text-align: center;">89</td>
-<td style="text-align: center;">28m / 160</td>
-<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --reference-genomes --db-prefix abfv_rs_rg</code></details></td>
+<td style="text-align: center;">Archaea, Bacteria <br> [<strong>complete + reference</strong>]</td>
+<td style="text-align: center;">79268</td>
+<td style="text-align: center;">30912</td>
+<td style="text-align: center;">194</td>
+<td style="text-align: center;">58m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"</code></details></td>
 </tr>
 <tr>
-<td style="text-align: center;">CG + RG</td>
-<td style="text-align: center;">85036</td>
-<td style="text-align: center;">42955</td>
-<td style="text-align: center;">120</td>
-<td style="text-align: center;">1h23m / 191</td>
-<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria fungi viral --threads 48 --db-prefix abfv_rs_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"</code></details></td>
+<td style="text-align: center;">Archaea, Bacteria</td>
+<td style="text-align: center;">509046</td>
+<td style="text-align: center;">76966</td>
+<td style="text-align: center;">312</td>
+<td style="text-align: center;">10h</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac</code></details></td>
+</tr>
+<tr>
+<td style="text-align: center;">Fungi</td>
+<td style="text-align: center;">674</td>
+<td style="text-align: center;">668</td>
+<td style="text-align: center;">18</td>
+<td style="text-align: center;">5m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group fungi --threads 48 --db-prefix rs_fungi</code></details></td>
+</tr>
+<tr>
+<td style="text-align: center;">Human</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">2.3</td>
+<td style="text-align: center;">4m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group human --threads 48 --db-prefix rs_human</code></details></td>
+</tr>
+<tr>
+<td style="text-align: center;">Plant</td>
+<td style="text-align: center;">202</td>
+<td style="text-align: center;">202</td>
+<td style="text-align: center;">79</td>
+<td style="text-align: center;">29m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group plant --threads 48 --db-prefix rs_plant</code></details></td>
+</tr>
+<tr>
+<td style="text-align: center;">Protozoa</td>
+<td style="text-align: center;">129</td>
+<td style="text-align: center;">126</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">81s</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group protozoa --threads 48 --db-prefix rs_protozoa</code></details></td>
+</tr>
+<tr>
+<td style="text-align: center;">Viral</td>
+<td style="text-align: center;">15089</td>
+<td style="text-align: center;">14082</td>
+<td style="text-align: center;">0.41</td>
+<td style="text-align: center;">32m</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq --organism-group viral --threads 48 --db-prefix rs_viral</code></details></td>
 </tr>
 </tbody>
 </table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">Others</th>
+<th style="text-align: center;">#sequences</th>
+<th style="text-align: center;">#species</th>
+<th style="text-align: center;">Size ²</th>
+<th style="text-align: center;">Time ²</th>
+<th style="text-align: center;"><code>ganon build-custom</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">Plasmid</td>
+<td style="text-align: center;">135944</td>
+<td style="text-align: center;">6708</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">13m</td>
+<td style="text-align: center;"><a href="../custom_databases/#plasmid-plastid-and-mitochondrion-from-refseq">build-custom</a></td>
+</tr>
+<tr>
+<td style="text-align: center;">UniVec_Core</td>
+<td style="text-align: center;">3155</td>
+<td style="text-align: center;">1</td>
+<td style="text-align: center;">0.0004</td>
+<td style="text-align: center;">13s</td>
+<td style="text-align: center;"><a href="../custom_databases/#univec-univec_core">build-custom</a></td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">GTDB</th>
+<th style="text-align: center;">#assemblies</th>
+<th style="text-align: center;">#species</th>
+<th style="text-align: center;">Size ²</th>
+<th style="text-align: center;">Time ²</th>
+<th style="text-align: center;"><code>ganon build</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">R232</td>
+<td style="text-align: center;">900653</td>
+<td style="text-align: center;">199913</td>
+<td style="text-align: center;">652</td>
+<td style="text-align: center;">17h</td>
+<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
+</tr>
+</tbody>
+</table>
+<p>¹ <em>data from 2026-06-21</em></p>
+<p>² <em>"Size" (in GB) is the final ganon database size. "Time" accounts for wall time for the build process after downloading files. The memory required for the build is approximate 1.5x the database size. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an AMD EPYC 9454 48-Core Processor, using ganon v2.4.2.</em></p>
 <details>
   <summary>Older data for comparison</summary>
 
 
 <pre><code class="language-txt">
-|          RefSeq (2024-04-20)          | # assemblies | # species | Size (GB) |
+|          RefSeq (2025-11-01) *        | # assemblies | # species | Size (GB) |
+|---------------------------------------|--------------|-----------|-----------|
+| All genomes                           | 468399       | 83798     | 299       |
+| Complete genomes (CG)                 | 68639        | 27598     | 55        |
+| Reference genomes (RG)                | 22862        | 22861     | 89        | 
+| CG + RG                               | 85036        | 42955     | 120       | 
+
+* archaea, bacteria, fungi and viral
+</code></pre>
+
+
+
+<pre><code class="language-txt">
+|          RefSeq (2024-04-20) *        | # assemblies | # species | Size (GB) |
 |---------------------------------------|--------------|-----------|-----------|
 | All genomes                           | 366941       | 64616     | 215       |
 | Complete genomes (CG)                 | 55114        | 24238     | 42        |
 | Reference genomes (RG)                | 19890        | 19888     | 77        | 
 | CG + RG                               | 69600        | 37864     | 100       | 
 
+* archaea, bacteria, fungi and viral
 </code></pre>
 
 
 
-<pre><code class="language-txt">|          RefSeq (2023-03-14)          | # assemblies | # species | Size (GB) |
+<pre><code class="language-txt">|          RefSeq (2023-03-14) *        | # assemblies | # species | Size (GB) |
 |---------------------------------------|--------------|-----------|-----------|
 | All genomes                           | 295219       | 52781     | 160       |
 | All genomes - 1 assembly/species      | 52781        | 52781     | 128       |
 | Complete genomes                      | 44121        | 19715     | 35        |
 | Complete genomes - 1 assembly/species | 19715        | 19715     | 29        |
 | Reference genomes                     | 18073        | 18073     | 69        |
+
+* archaea, bacteria, fungi and viral
 </code></pre>
 
 
 
-<pre><code class="language-txt">|          GenBank (2023-03-14)         | # assemblies | # species | Size (GB) |
+<pre><code class="language-txt">|          GenBank (2023-03-14) *       | # assemblies | # species | Size (GB) |
 |---------------------------------------|--------------|-----------|-----------|
 | All genomes - 1 assembly/species      | 99505        | 99505     | 300       |
 | Complete genomes                      | 92917        | 34815     | 42        |
 | Complete genomes - 1 assembly/species | 34815        | 34815     | 34        |
+
+* archaea, bacteria, fungi and viral
 </code></pre>
+
+
+
+<pre><code class="language-txt">|                GTDB              | # assemblies | # species | Size (GB) |
+|----------------------------------|--------------|-----------|-----------|
+| R226                             | 731982       | 143396    | 501       |
+| R220                             | 596859       | 113104    | 338       |
+| R214                             | 402709       | 85205     | 260       |
+</code></pre>
+
 
 </details>
-
-<div class="admonition info">
-<p class="admonition-title">Info</p>
-<p>The values above are based on RefSeq files from 1 November 2025 for the archaea, bacteria, fungi and viral groups. By the time you read this, these numbers will certainly have increased slightly. The provided commands will download the latest assemblies and require slightly more resources.</p>
+<p><br></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>RefSeq is preferred mainly due to its superior sequence curation and quality. In the experiments <a href="https://dx.doi.org/10.1093/nargab/lqaf094" target="_blank">published in the ganon2 article</a>, the more reference genomes used, the better the results. However, this requires significant computational resources. Combining complete and reference genomes (CG+RG) strikes a good balance, providing good results with a smaller memory footprint and faster classification. Beware that the choice of the database will drastically affect the outcome of the analysis.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th style="text-align: center;">GTDB R226</th>
-<th style="text-align: center;">#assemblies</th>
-<th style="text-align: center;">#species</th>
-<th style="text-align: center;">Size*</th>
-<th style="text-align: center;">Time/Mem*</th>
-<th style="text-align: center;"><code>ganon build</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: center;">All genomes</td>
-<td style="text-align: center;">731982</td>
-<td style="text-align: center;">143396</td>
-<td style="text-align: center;">501</td>
-<td style="text-align: center;">21h17m/618</td>
-<td style="text-align: center;"><details><summary></summary><code>ganon build --source refseq genbank --organism-group archaea bacteria --threads 48 --taxonomy gtdb --db-prefix ab_gtdb</code></details></td>
-</tr>
-</tbody>
-</table>
-<details>
-  <summary>Older data for comparison</summary>
-
-
-<pre><code class="language-txt">|             GTDB R220            | # assemblies | # species | Size (GB) |
-|----------------------------------|--------------|-----------|-----------|
-| All genomes                      | 596859       | 113104    | 338       |
-</code></pre>
-
-
-
-<pre><code class="language-txt">|             GTDB R214            | # assemblies | # species | Size (GB) |
-|----------------------------------|--------------|-----------|-----------|
-| All genomes                      | 402709       | 85205     | 260       |
-</code></pre>
-
-</details>
-
-<div class="admonition info">
-<p class="admonition-title">Info</p>
-<p>GTDB covers only bacteria and archaea groups and has assemblies from RefSeq and GenBank.</p>
-</div>
-<p><em>* "Size" (in GB) is the final ganon database size. "Time/Mem" accounts for wall time and memory (in GB) for the build process after downloading files. Your time may vary based on internet, I/O, memory and CPU speed. 64 threads were used with an Intel(R) Xeon(R) Gold 6348 CPU @ 2.60GHz, using ganon v2.1.1.</em></p>
-<ul>
-<li>As a rule of thumb, the more the better, so choose the most comprehensive sub-set as possible given your computational resources</li>
-<li>It is possible to build databases that consume a fixed size/RAM usage. Beware that smaller filters will increase the false positive rates when classifying. Other approaches <a href="#reducing-database-size">can reduce the size/RAM requirements with some trade-offs</a>.</li>
-<li>Alternatively, you can build one database for each organism group separately and use them in <code>ganon classify</code> in <a href="../classification/#multiple-and-hierarchical-classification">any order or even stack them hierarchically</a>. This way combination of multiple databases are possible, extending use cases.</li>
-</ul>
-<p>Further examples of commonly used database can be found <a href="../custom_databases/#examples">here</a>.</p>
-<h3 id="specific-organisms-or-taxonomic-groups">Specific organisms or taxonomic groups<a class="headerlink" href="#specific-organisms-or-taxonomic-groups" title="Permanent link">:)</a></h3>
-<p>It is also possible to generate databases for specific organisms or taxonomic branches with <code>-a/--taxid</code>, for example:</p>
+<h2 id="filters">Filters<a class="headerlink" href="#filters" title="Permanent link">:)</a></h2>
+<h3 id="specific-taxa">Specific taxa<a class="headerlink" href="#specific-taxa" title="Permanent link">:)</a></h3>
+<p>It is also possible to generate databases for one or more taxonomic branches with <code>-a/--taxid</code>, for example:</p>
 <pre><code class="language-bash">ganon build --source refseq --taxid 562 317 --threads 48 --db-prefix coli_syringae
 </code></pre>
 <p>will download and build a database for all <em>Escherichia coli</em> (taxid:562) and <em>Pseudomonas syringae</em> (taxid:317) assemblies from RefSeq.</p>
-<h3 id="more-filter-options">More filter options<a class="headerlink" href="#more-filter-options" title="Permanent link">:)</a></h3>
+<p>This is also possible with <code>--taxonomy gtdb</code>, for example:</p>
+<pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
+</code></pre>
+<h3 id="top-genomestaxa">Top genomes/taxa<a class="headerlink" href="#top-genomestaxa" title="Permanent link">:)</a></h3>
+<p>Select a specific number of genomes/assemblies for each taxa in the database. For example:</p>
+<ul>
+<li><code>--top 3</code> will select three assemblies for each taxonomic leaf</li>
+<li><code>--genome-updater "-A 'species:1'"</code> will select one assembly for each species node</li>
+</ul>
+<p><a href="#top-assemblies">More infos</a> about top assemblies.</p>
+<h3 id="refined-filters">Refined filters<a class="headerlink" href="#refined-filters" title="Permanent link">:)</a></h3>
 <p>ganon uses <a href="https://github.com/pirovc/genome_updater" target="_blank">genome_updater</a> to manage downloads and further specific options and filters can be provided with the paramer <code>-u/--genome-updater</code>, for example:</p>
 <pre><code class="language-bash">ganon build -g bacteria -t 48 -d bac_refseq --genome-updater &quot;-A 'genus:3' -E 20230101&quot;
 </code></pre>
 <p>will download top 3 archaeal assemblies for each genus with date before 2023-01-01. For more information about genome_updater parameters, please check the <a href="https://github.com/pirovc/genome_updater" target="_blank">repository</a>.</p>
-<h2 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h2>
-<p>By default, ganon will use the NCBI Taxonomy to build the database. However, <a href="https://gtdb.ecogenomic.org" target="_blank">GTDB</a> is fully supported and can be used with the parameter <code>--taxonomy gtdb</code>. </p>
-<p>Filtering by taxonomic entries also work with GTDB, for example:</p>
-<pre><code class="language-bash">ganon build --db-prefix fuso_gtdb --taxid &quot;f__Fusobacteriaceae&quot; --source refseq genbank --taxonomy gtdb --threads 12
-</code></pre>
 <h2 id="update-ganon-update">Update (ganon update)<a class="headerlink" href="#update-ganon-update" title="Permanent link">:)</a></h2>
-<p>Default ganon databases generated with the <code>ganon build</code> can be updated with <code>ganon update</code>. This procedure will download new files and re-generate the ganon database with the updated entries.</p>
+<p>Default ganon databases generated with the <code>ganon build</code> can be updated with <code>ganon update</code>. This procedure will download new files and re-generate the ganon database adding new entires and removing outdated ones. This will keep the choosen database selection in sync with the latest available data.</p>
 <p>For example, a database generated with the following command:</p>
 <pre><code class="language-bash">ganon build --db-prefix arc_cg_rs --source refseq --organism-group archaea --complete-genomes --threads 12
 </code></pre>
@@ -325,18 +420,8 @@
 <pre><code class="language-bash">genome_updater.sh -e assembly_summary.txt -f &quot;genomic.fna.gz&quot; -o recovered_files -m -t 12 
 </code></pre>
 <h2 id="reducing-database-size">Reducing database size<a class="headerlink" href="#reducing-database-size" title="Permanent link">:)</a></h2>
-<h3 id="filter-type-ibf-and-hibf">Filter type (IBF and HIBF)<a class="headerlink" href="#filter-type-ibf-and-hibf" title="Permanent link">:)</a></h3>
-<p>The Hierarchical Interleaved Bloom Filter (HIBF) is an improvement over the default Interleaved Bloom Filter (IBF) and generates <em>smaller</em> databases with <em>faster</em> query times (<a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-023-02971-4" target="_blank">article</a>). However, the HIBF takes a little longer to build and has less flexibility regarding size and further options in ganon. You can choose which filter to use with the <code>--filter-type</code> parameter in <code>ganon build</code> and <code>ganon build-custom</code>.</p>
-<p>Due to differences between the default IBF used in ganon and the HIBF, it is recommended to lower the false positive when using the HIBF. The default value for high sensitivity is 1% (<code>--filter-type hibf --max-fp 0.001</code>).</p>
-<div class="admonition hint">
-<p class="admonition-title">Hint</p>
-<ul>
-<li>For large unbalanced reference sets, lots of reads to query -&gt; HIBF (default)</li>
-<li>For quick database build and more flexibility -&gt; IBF</li>
-</ul>
-</div>
-<h3 id="false-positive-rate">False positive rate<a class="headerlink" href="#false-positive-rate" title="Permanent link">:)</a></h3>
-<p>A higher <code>--max-fp</code> value will generate a smaller database but with a higher number of false positive matches on classification. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>. Values between <code>0.001</code> (0.1%) and <code>0.3</code> (30%) are generally used. </p>
+<h3 id="false-positive">False positive<a class="headerlink" href="#false-positive" title="Permanent link">:)</a></h3>
+<p>A higher <code>--max-fp</code> value will generate a smaller database but with a higher number of false positive matches on classification. <a href="../custom_databases/#false-positive-max-fp">More details</a>. Values between <code>0.001</code> (0.1%) and <code>0.3</code> (30%) are generally used. </p>
 <div class="admonition hint">
 <p class="admonition-title">Hint</p>
 <p>When using higher <code>--max-fp</code> values, more false positive results may be generated. This can be filtered with the <code>--fpr-query</code> parameter in <code>ganon classify</code> </p>
@@ -348,7 +433,7 @@
 <li>The bigger the <code>--window-size</code>, the less information needs to be stored resulting in smaller databases but with decrease classification accuracy.</li>
 </ul>
 <h3 id="top-assemblies">Top assemblies<a class="headerlink" href="#top-assemblies" title="Permanent link">:)</a></h3>
-<p>RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can not only bias analysis but also brings redundancy to the database. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed <a href="#refseq-and-genbank">above</a>) and use the full set of assemblies for specific clade analysis.</p>
+<p>RefSeq and GenBank are highly biased toward some few organisms. This means that some species are highly represented in number of assemblies compared to others. This can bias analysis towards those organisms. Choosing a certain number of top assemblies can mitigate those issues. Database sizes can also be drastically reduced without this redundancy, but "strain-level" analysis are then not possible. We recommend using top assemblies for larger and comprehensive reference sets (like the ones listed <a href="#commonly-used-sub-sets">above</a>) and use the full set of assemblies for specific clade analysis.</p>
 <div class="admonition example">
 <p class="admonition-title">Example</p>
 <ul>
@@ -357,86 +442,21 @@
 <li><code>ganon build --genome-updater "-A 'genus:3'"</code> will select three assemblies for each genus</li>
 </ul>
 </div>
+<h3 id="database-level">Database level<a class="headerlink" href="#database-level" title="Permanent link">:)</a></h3>
+<p>With the <code>--level</code> parameter one can define the final taxonomic level of the database. It can be a taxonomic rank ['species', 'genus', ...], 'leaves' for taxonomic leaves or 'assembly' for a assembly/strain based analysis. The default value in <code>ganon build</code> is <code>species</code> but if you don't need species resolution you can set to a less specific rank (e.g. <code>genus</code>). That will generate smaller databases.</p>
 <h3 id="split-databases">Split databases<a class="headerlink" href="#split-databases" title="Permanent link">:)</a></h3>
 <p>Ganon allows classification with multiple databases in one level or in an hierarchy (<a href="../classification/#multiple-and-hierarchical-classification">More details</a>). This means that databases can be built separately and used in any combination as desired. There are usually some benefits of doing so:</p>
 <ul>
-<li>Smaller databases when building by organism group, for example: one for bacteria, another for viruses, ... since average genome sizes are quite different.</li>
+<li>Smaller databases when building by organism group, for example: one for bacteria, another for viruses, etc.</li>
 <li>Easier to maintain and update.</li>
 <li>Extend use cases and avoid misclassification due to contaminated databases.</li>
 <li>Use databases as quality control, for example: remove reads matching one database of host or vectors (check out <code>ganon report --skip-hierarchy</code>).</li>
 </ul>
-<h3 id="fixed-size-and-mode-only-for-filter-type-ibf">Fixed size and Mode (only for --filter-type ibf)<a class="headerlink" href="#fixed-size-and-mode-only-for-filter-type-ibf" title="Permanent link">:)</a></h3>
-<p>A fixed size for the database filter can be defined with <code>--filter-size</code> when using <code>--filter-type ibf</code>. The smaller the filter size, the higher the false positive chances on classification. When using a fixed filter size, ganon will report the max. and avg. false positive rate at the end of the build. <a href="../custom_databases/#false-positive-and-size-max-fp-filter-size">More details</a>.</p>
-<p><code>--mode</code> offers 5 different categories to build a database controlling the trade-off between size and classification speed.</p>
-<ul>
-<li><code>avg</code>: Balanced mode</li>
-<li><code>smaller</code> or <code>smallest</code>: create smaller databases with slower classification speed</li>
-<li><code>fast</code> or <code>fastest</code>: create bigger databases with faster classification speed</li>
-</ul>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>If <code>--filter-size</code> is used, <code>smaller</code> and <code>smallest</code> refers to the false positive and not to the database size (which is fixed). </p>
-</div>
-<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">:)</a></h4>
-<p>Besides the benefits of using HIBF and specific sub-sets of big repositories shown on the <a href="#commonly-used-sub-sets">default databases table</a>, examples of other reduction strategies with IBF can be seen below:</p>
-<p><em>RefSeq archaeal complete genomes from 2023-05-05</em></p>
-<table>
-<thead>
-<tr>
-<th>Strategy</th>
-<th>Size (MB)</th>
-<th>Smaller</th>
-<th>Trade-off</th>
-<th></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>default</code></td>
-<td>318</td>
-<td>-</td>
-<td>-</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --db-prefix arc_rs_cg --filter-type ibf</code></details></td>
-</tr>
-<tr>
-<td><code>--mode smallest</code></td>
-<td>301</td>
-<td>5%</td>
-<td>Slower classification</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --mode smallest --db-prefix arc_rs_cg_smallest --filter-type ibf</code></details></td>
-</tr>
-<tr>
-<td><code>--filter-size 256</code></td>
-<td>256</td>
-<td>19%</td>
-<td>Higher false positive on classification</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --filter-size 256 --db-prefix arc_rs_cg_fs256 --filter-type ibf</code></details></td>
-</tr>
-<tr>
-<td><code>--window-size 35</code></td>
-<td>249</td>
-<td>21%</td>
-<td>Less sensitive classification</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --window-size 35 --db-prefix arc_rs_cg_ws35 --filter-type ibf</code></details></td>
-</tr>
-<tr>
-<td><code>--max-fp 0.2</code></td>
-<td>190</td>
-<td>40%</td>
-<td>Higher false positive on classification</td>
-<td><details><summary>cmd</summary><code>ganon build --source refseq --organism-group archaea --threads 12 --complete-genomes --max-fp 0.2 --db-prefix arc_rs_cg_fp0.2 --filter-type ibf</code></details></td>
-</tr>
-</tbody>
-</table>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>This is an illustrative example and the reduction proportions for different configuration may be quite different</p>
-</div>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../params/" class="btn btn-neutral float-left" title="Parameters"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../important_params/" class="btn btn-neutral float-left" title="Important parameters"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../custom_databases/" class="btn btn-neutral float-right" title="Custom databases (ganon build-custom)">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -460,7 +480,7 @@
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../params/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../important_params/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../custom_databases/" style="color: #fcfcfc">Next &raquo;</a></span>

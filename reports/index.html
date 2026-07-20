@@ -48,7 +48,7 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                <li class="toctree-l1"><a class="reference internal" href="../important_params/">Important parameters</a>
                 </li>
               </ul>
               <ul>
@@ -87,6 +87,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
                 </li>
               </ul>
               <ul>
@@ -136,7 +140,7 @@ assembly 17.2%      11.65%     0%         28.85%
 </code></pre>
 <p>Details on unique, shared and children values can be found <a href="../outputfiles/#ganon-report">here</a>.</p>
 <h2 id="report-types-report-type">Report types (--report-type)<a class="headerlink" href="#report-types-report-type" title="Permanent link">:)</a></h2>
-<p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>corr</code>, <code>matches</code>:</p>
+<p>Several reports are available with <code>--report-type</code>: <code>reads</code>, <code>abundance</code>, <code>dist</code>, <code>dist+abundance</code>, <code>matches</code>:</p>
 <ul>
 <li><code>reads</code> reports <strong>sequence abundances</strong> which are the basic proportion of reads classified in the sample.</li>
 <li><code>abundance</code> will convert sequence abundance into <strong>taxonomic abundances</strong> by correcting by genome size. Genome size is estimated based on <a href="../custom_databases/#genome-sizes-genome-size-files">NCBI or GTDB auxiliary files</a>. Genome size correction is applied by rank based on default ranks only (domain phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.</li>

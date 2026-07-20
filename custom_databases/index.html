@@ -48,7 +48,7 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                <li class="toctree-l1"><a class="reference internal" href="../important_params/">Important parameters</a>
                 </li>
               </ul>
               <ul>
@@ -118,7 +118,7 @@
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#parameter-details">Parameter details</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#false-positive-and-size-max-fp-filter-size">False positive and size (--max-fp, --filter-size)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#false-positive-max-fp">False positive (--max-fp)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#minimizers-window-size-kmer-size">minimizers (--window-size, --kmer-size)</a>
     </li>
@@ -145,6 +145,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
                 </li>
               </ul>
               <ul>
@@ -207,12 +211,14 @@
 <h3 id="conversion">Conversion<a class="headerlink" href="#conversion" title="Permanent link">:)</a></h3>
 <p>When building, it is possible to convert the input taxonomic nodes to another using the <code>--convert-taxonomy</code> option. The database will then be built based on the chosen conversion. Conversion works between pre-defined GTDB versions (see the <code>ganon build-custom --help</code> output for a list of supported versions), between NCBI versions, and between GTDB and NCBI (or NCBI and GTDB).</p>
 <ul>
-<li>GTDB to GTDB: conversion is based on the representative genome node between versions. </li>
-<li>GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB. </li>
-<li>GTDB to NCBI: conversion based on the GTDB mapping to the NCBI node, as provided by GTDB.</li>
-<li>NCBI to NCBI: conversion based on the <code>merged.dmp</code> file.</li>
+<li>GTDB &lt;-&gt; GTDB: conversion is based on tracking the taxa all genomes between versions.</li>
+<li>GTDB &lt;-&gt; NCBI: conversion based on the GTDB provided mapping to the NCBI node.</li>
+<li>NCBI &lt;-&gt; NCBI: conversion based on the <code>merged.dmp</code> file.</li>
 </ul>
-<p>Note that resolution of taxonomic nodes may be lost during conversion. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between NCBI and GTDB is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Note that resolution of taxonomic nodes may be lost during conversion, specially between GTDB and NCBI. For example, a node in GTDB may map to several nodes in NCBI, in which case the lowest common ancestor is used to achieve a one-to-one conversion. Additionally, conversion between those taxonomies is limited, since GTDB is a subset of NCBI containing only the archaea and bacteria domains.</p>
+</div>
 <p>Please check the output log from <code>ganon build-custom</code> for details on the conversion. The example below uses the command <code>--taxonomy gtdb-95 --convert-taxonomy gtdb-226</code> on an input containing 1787 entries:</p>
 <pre><code>Validating and converting taxonomy
  - Downloading taxonomy and conversion table [gtdb-95 -&gt; gtdb-226]
@@ -331,11 +337,19 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 </div>
 <h3 id="plasmid-plastid-and-mitochondrion-from-refseq">Plasmid, Plastid and Mitochondrion from RefSeq<a class="headerlink" href="#plasmid-plastid-and-mitochondrion-from-refseq" title="Permanent link">:)</a></h3>
 <p>Extra repositories from RefSeq release not included as default databases. <a href="https://www.ncbi.nlm.nih.gov/refseq/" target="_blank">Website</a>.</p>
-<pre><code class="language-bash"># Download sequence files
+<pre><code class="language-bash"># Plasmid
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/&quot;
-wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
-wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix plasmid --level species --threads 8 --input-target sequence --skip-genome-size
 
+# Plastid
+wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
+ganon build-custom --input plastid.* --db-prefix plastid --level species --threads 8 --input-target sequence --skip-genome-size
+
+# Mitochondrion
+wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
+ganon build-custom --input mitochondrion.* --db-prefix mitochondrion --level species --threads 8 --input-target sequence --skip-genome-size
+
+# All together in one database
 ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --skip-genome-size
 </code></pre>
 <h3 id="univec-univec_core">UniVec, UniVec_core<a class="headerlink" href="#univec-univec_core" title="Permanent link">:)</a></h3>
@@ -439,9 +453,8 @@ rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 <pre><code class="language-bash">ganon build-custom --input output_folder_genome_updater/version/ --input-recursive --db-prefix mydb --ncbi-file-info  output_folder_genome_updater/assembly_summary.txt --level assembly --threads 32
 </code></pre>
 <h2 id="parameter-details">Parameter details<a class="headerlink" href="#parameter-details" title="Permanent link">:)</a></h2>
-<h3 id="false-positive-and-size-max-fp-filter-size">False positive and size (--max-fp, --filter-size)<a class="headerlink" href="#false-positive-and-size-max-fp-filter-size" title="Permanent link">:)</a></h3>
+<h3 id="false-positive-max-fp">False positive (--max-fp)<a class="headerlink" href="#false-positive-max-fp" title="Permanent link">:)</a></h3>
 <p>ganon indices are based on bloom filters and can have false positive matches. This can be controlled with <code>--max-fp</code> parameter. The lower the <code>--max-fp</code>, the less chances of false positives matches on classification, but the larger the database size will be. For example, with <code>--max-fp 0.01</code> the database will be build so any target (defined by <code>--level</code>) will have 1 in a 100 change of reporting a false k-mer match. <a href="../classification/#false-positive-of-a-query-fpr-query">The false positive of the query</a> (all k-mers of a read) will be way lower, but directly affected by this value.</p>
-<p>Alternatively, one can set a specific size for the final index with <code>--filter-size</code>. When using this option, please observe the theoretic false positive of the index reported at the end of the building process.</p>
 <h3 id="minimizers-window-size-kmer-size">minimizers (--window-size, --kmer-size)<a class="headerlink" href="#minimizers-window-size-kmer-size" title="Permanent link">:)</a></h3>
 <p>in <code>ganon build</code>, when <code>--window-size</code> &gt; <code>--kmer-size</code> minimizers are used. That means that for a every window, a single k-mer will be selected. It produces smaller database files and requires substantially less memory overall. It may increase building times but will have a huge benefit for classification times. Sensitivity and precision can be reduced by small margins. If <code>--window-size</code> = <code>--kmer-size</code>, all k-mers are going to be used to build the database.</p>
 <h3 id="target-file-or-sequence-input-target">Target file or sequence (--input-target)<a class="headerlink" href="#target-file-or-sequence-input-target" title="Permanent link">:)</a></h3>

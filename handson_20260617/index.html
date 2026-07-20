@@ -48,7 +48,7 @@
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
+                <li class="toctree-l1"><a class="reference internal" href="../important_params/">Important parameters</a>
                 </li>
               </ul>
               <ul>
@@ -69,6 +69,10 @@
               </ul>
               <ul>
                 <li class="toctree-l1"><a class="reference internal" href="../table/">Table (ganon table)</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../params/">Parameters</a>
                 </li>
               </ul>
               <ul>
@@ -252,7 +256,7 @@ rs_bac_gtdb_t1f_files
 <pre><code class="language-bash">conda activate ganonenv
 ganon build --help
 </code></pre>
-<p><a href="../default_databases/#refseq-and-genbank">Please refer to the documentation for more information.</a></p>
+<p><a href="../default_databases/">Please refer to the documentation for more information.</a></p>
 <p>Build default database based on Bacterial RefSeq complete genomes, NCBI Taxonomy, limiting number of assemblies to 1 per family:</p>
 <pre><code class="language-bash">ganon build --source refseq \
             --organism-group bacteria \
@@ -288,7 +292,7 @@ ganon build --source refseq \
 </ul>
 </li>
 <li>Check: generated files <code>rs_bac_cg_ncbi_t1f_files/</code>, <code>rs_bac_cg_ncbi_t1f.tax</code> and <code>rs_bac_cg_ncbi_t1f.hibf</code>. <a href="../outputfiles/#ganon-buildbuild-customupdate">More infos</a>.</li>
-<li>Extra: run with a higher <code>--max-fp</code> (e.g. <code>0.1</code>) and check the diference in index size. <a href="default_databases#false-positive-rate">More infos</a></li>
+<li>Extra: run with a higher <code>--max-fp</code> (e.g. <code>0.1</code>) and check the diference in index size. <a href="../default_databases/#false-positive">More infos</a></li>
 <li>Extra: see possible extra filters for <code>--genome-updater</code> with  <code>genome_updater.sh -h</code> <a href="https://github.com/pirovc/genome_updater">More infos</a></li>
 </ul>
 <div class="admonition warning">
@@ -304,7 +308,7 @@ ganon build --source refseq \
 <pre><code class="language-bash">ganon update --db-prefix rs_bac_cg_ncbi_t1f
 </code></pre>
 <h3 id="gtdb">GTDB<a class="headerlink" href="#gtdb" title="Permanent link">:)</a></h3>
-<p><a href="../default_databases/#gtdb">More infos</a></p>
+<p><a href="../default_databases/">More infos</a></p>
 <p>Build default database based on Bacterial RefSeq, GTDB, limiting number of assemblies to 1 per family:</p>
 <pre><code class="language-bash">ganon build --source refseq \
             --organism-group bacteria \
@@ -336,7 +340,7 @@ ganon build --source refseq \
 <ul>
 <li>Check: logs printed after execution in the terminal -&gt; taxonomy distribution of entries at "Validating and converting taxonomy".</li>
 <li>Check: generated files <code>rs_bac_gtdb_t1f_files/</code>, <code>rs_bac_gtdb_t1f.tax</code> and <code>rs_bac_gtdb_t1f.hibf</code>. <a href="../outputfiles/#ganon-buildbuild-customupdate">More infos</a>.</li>
-<li>Extra: instead of building by organism group, one can select one or more taxonomic nodes with <code>--taxid</code> <a href="../default_databases/#specific-organisms-or-taxonomic-groups">More infos</a></li>
+<li>Extra: instead of building by organism group, one can select one or more taxonomic nodes with <code>--taxid</code> <a href="../default_databases/#specific-taxa">More infos</a></li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -661,7 +665,7 @@ ganon build-custom --input-file mgnify_ganon_input_file.tsv \
                     --skip-report --multiple-matches skip
 </code></pre>
 <h3 id="gtdb-ncbi-conversion">GTDB -&gt; NCBI conversion<a class="headerlink" href="#gtdb-ncbi-conversion" title="Permanent link">:)</a></h3>
-<p><a href="custom_databases/#conversion">More infos</a></p>
+<p><a href="../custom_databases/#conversion">More infos</a></p>
 <p>Translation rates for each rank from GTDB genomes (R232) to the NCBI taxonomy (2025-09-07):</p>
 <pre><code class="language-txt">        root    domain  phylum  class   order   family  genus   species
 domain  100.00  0.00    0.00    0.00    0.00    0.00    0.00    0.00
