@@ -256,7 +256,7 @@
             } else if (refseqSubsetValue === 'reference_genomes') {
                 outputText += ` --reference-genomes`;
             } else if (refseqSubsetValue === 'complete_reference') {
-                outputText += ` --genome-updater "-F $(printf '%s' '$5 == \"reference genome\" || $12 == \"Complete Genome\"')"`; 
+                outputText += ` --complete-and-reference-genomes`; 
             }
             
             // Add DB prefix

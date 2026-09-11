@@ -37,7 +37,7 @@ The table below lists the resources and time needed to build commonly used sub-s
 |:--------:|:-----------:|:--------:|:------:|:------:|:-------------:|
 | Archaea, Bacteria <br> [**complete genomes**] | 62944 | 15693 | 63 | 47m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --complete-genomes --db-prefix rs_arc_bac_cg`</details> |
 | Archaea, Bacteria <br> [**reference genomes**] | 23404 | 23401 | 77 | 28m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --reference-genomes --db-prefix rs_arc_bac_rg`</details> |
-| Archaea, Bacteria <br> [**complete + reference**] | 79268 | 30912 | 194 | 58m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac_cgrg --verbose --genome-updater "-F $(printf "'%s'" '$5 == "reference genome" || $12 == "Complete Genome"')"`</details> |
+| Archaea, Bacteria <br> [**complete + reference**] | 79268 | 30912 | 194 | 58m | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac_cgrg --verbose --complete-and-reference-genomes`</details> |
 | Archaea, Bacteria | 509046 | 76966 | 312 | 10h | <details><summary></summary>`ganon build --source refseq --organism-group archaea bacteria --threads 48 --db-prefix rs_arc_bac`</details> |
 | Fungi | 674 | 668 | 18 | 5m | <details><summary></summary>`ganon build --source refseq --organism-group fungi --threads 48 --db-prefix rs_fungi`</details> |
 | Human | 2 | 1 | 2.3 | 4m | <details><summary></summary>`ganon build --source refseq --organism-group human --threads 48 --db-prefix rs_human`</details> |

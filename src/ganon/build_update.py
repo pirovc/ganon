@@ -76,6 +76,9 @@ def build(cfg):
                 "-A " + str(cfg.top) if cfg.top else "",
                 "-l 'complete genome'" if cfg.complete_genomes else "",
                 "-c 'reference genome'" if cfg.reference_genomes else "",
+                '-F \'$5 == "reference genome" || $12 == "Complete Genome"\''
+                if cfg.complete_and_reference_genomes
+                else "",
                 "-f 'genomic.fna.gz'",
                 "-t " + str(cfg.download_threads),
                 "-o " + files_output_folder,

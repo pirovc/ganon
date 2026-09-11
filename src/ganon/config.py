@@ -261,13 +261,19 @@ class Config:
             "-c",
             "--complete-genomes",
             action="store_true",
-            help="Download only sub-set of complete genomes",
+            help="Download only sub-set of complete genomes. Mutually exclusive --complete-and-reference-genomes",
         )
         build_download_args.add_argument(
             "-r",
             "--reference-genomes",
             action="store_true",
-            help="Download only sub-set of reference genomes",
+            help="Download only sub-set of reference genomes. Mutually exclusive --complete-and-reference-genomes",
+        )
+        build_download_args.add_argument(
+            "-e",
+            "--complete-and-reference-genomes",
+            action="store_true",
+            help="Download union of complete and reference genomes sub-set. Mutually exclusive --complete-genomes/--reference-genomes",
         )
         build_download_args.add_argument(
             "-u",
@@ -1284,6 +1290,21 @@ class Config:
             if self.organism_group and self.taxid:
                 print_log("--organism-group is mutually exclusive with --taxid")
                 return False
+
+            if self.complete_and_reference_genomes:
+                if self.complete_genomes or self.reference_genomes:
+                    print_log(
+                        "--complete-and-reference-genomes is mutually exclusive with --complete-genomes/--reference-genomes"
+                    )
+                    return False
+
+                if self.genome_updater and "-F" in self.genome_updater:
+                    print_log(
+                        "Custom filters (-F) in --genome-updater and --complete-and-reference-genomes "
+                        "are incompatible. Remove --complete-and-reference-genomes and add to your filter: "
+                        '-F \'(\\$5 == "reference genome" || \\$12 == "Complete Genome") && your_filter\''
+                    )
+                    return False
 
         elif self.which == "build-custom":
             if not self.input_file and not self.input:

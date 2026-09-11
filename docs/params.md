@@ -31,9 +31,9 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-u ] [-z [ ...]]
-                   [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ]
-                   [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-e] [-u ]
+                   [-z [ ...]] [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ]
+                   [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -64,9 +64,14 @@ download arguments:
   -b, --source [ ...]   Source to download [refseq, genbank] (default: ['refseq'])
   -o, --top             Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
-                        Download only sub-set of complete genomes (default: False)
+                        Download only sub-set of complete genomes. Mutually exclusive --complete-and-reference-genomes
+                        (default: False)
   -r, --reference-genomes
-                        Download only sub-set of reference genomes (default: False)
+                        Download only sub-set of reference genomes. Mutually exclusive --complete-and-reference-genomes
+                        (default: False)
+  -e, --complete-and-reference-genomes
+                        Download union of complete and reference genomes sub-set. Mutually exclusive --complete-
+                        genomes/--reference-genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -z, --genome-size-files [ ...]
