@@ -68,7 +68,7 @@ The log shows how many input entries were mapped for each rank between GTDB vers
 
 Alternatively to the automatic input methods, it is possible to manually define the input with either standard or **non-standard filenames, accessions and headers** to build custom databases with `--input-file`. This file should contain the following fields (tab-separated):
 
-`file [<tab> target <tab> node <tab> specialization <tab> specialization_name].`
+`file [<tab> target <tab> node <tab> specialization <tab> specialization_name]`
 
 - `file`: relative or full path to the sequence file
 - `target`: any unique text to name the file, to be used in the taxonomy
