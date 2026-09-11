@@ -195,7 +195,7 @@ do
         if [[ ! -z "${acc_retrieved}" ]]; then 
             for i in $(seq 1 ${att});
             do
-                xml_link="$(retrieve_assembly_uid_xml "${acc_retrieved//$'\n'/&id=}" "${ncbi_api_key}")"
+                xml_link="$(retrieve_assembly_uid_xml "${acc_retrieved//$'\n'/$'&'id=}" "${ncbi_api_key}")"
                 # request with several &id= instead of comma separated to get in order
                 all_id_link="$(echo "${xml_link}" | tr -d '\n' | grep -oP '(?<=<LinkSet>).*?(?=</LinkSet>)' | tr -d ' ' | tr -d '\t')"
                 
