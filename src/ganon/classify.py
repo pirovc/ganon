@@ -1,4 +1,4 @@
-from ganon.util import find_rep_files, run, print_log, check_file
+from ganon.util import run, print_log, check_file
 from ganon.report import report
 from ganon.reassign import reassign
 from ganon.config import Config
@@ -74,23 +74,25 @@ def classify(cfg):
         prefixes = [cfg.output_prefix]
 
     if cfg.multiple_matches == "em":
-        reassign_params = {
-            "input_prefix": list(prefixes),
-            "remove_all": False if cfg.output_all else True,
-            "skip_one": False if cfg.output_one else True,
-            "verbose": cfg.verbose,
-            "quiet": cfg.quiet,
-        }
-        reassign_cfg = Config("reassign", **reassign_params)
         print_log("- - - - - - - - - -", cfg.quiet)
-        ret = reassign(reassign_cfg)
-        if not ret:
-            return False
+        for prefix in prefixes:
+            reassign_params = {
+                "input_prefix": prefix,
+                "remove_all": False if cfg.output_all else True,
+                "skip_one": False if cfg.output_one else True,
+                "verbose": cfg.verbose,
+                "quiet": cfg.quiet,
+            }
+            reassign_cfg = Config("reassign", **reassign_params)
+            ret = reassign(reassign_cfg)
+            if not ret:
+                return False
 
     if tax_files and not cfg.skip_report:
         report_params = {
             "db_prefix": cfg.db_prefix,
-            "input": [str(rep) for pre in prefixes for rep in find_rep_files(pre)],
+            # "input": [str(rep) for pre in prefixes for rep in find_rep_files(pre)],
+            "input": [f"{r}.rep" for r in prefixes],
             "min_count": cfg.min_count,
             "ranks": cfg.ranks,
             "output_format": "tsv",

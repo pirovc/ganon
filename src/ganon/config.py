@@ -760,16 +760,15 @@ class Config:
             "--input-prefix",
             type=str,
             required=True,
-            nargs="*",
             metavar="",
-            help="Input prefix to find files from ganon classify (.rep and .all)",
+            help="Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all is required for read re-assignent.",
         )
         reassign_group_required.add_argument(
             "-o",
             "--output-prefix",
             type=str,
             default="",
-            help="Alternative output prefix for reassigned files. If not provided, will use same path of input files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example: {output_prefix}{filename}.one",
+            help="Alternative output prefix for reassigned files. If not provided, will overwrite original input files (.rep, .one).",
         )
 
         reassign_em = reassign_parser.add_argument_group("EM arguments")
