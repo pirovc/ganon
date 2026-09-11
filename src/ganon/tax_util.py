@@ -169,7 +169,8 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
         # Skipping genome sizes, all set to 1
         for node in nodes:
             for t in tax.lineage(node):
-                genome_sizes[t] = 1
+                if t not in genome_sizes:
+                    genome_sizes[t] = 1
     else:
         # Download and parse auxiliary files containing genome sizes
         leaves_sizes = parse_genome_size_files(cfg, build_output_folder)
@@ -178,13 +179,19 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
         print_log("Estimating genome sizes", cfg.quiet)
 
         # Check if entries are on tax and distribute values to available tax. leaves
-        for t in list(leaves_sizes.keys()):
-            if not tax.latest(t):
-                del leaves_sizes[t]
+        for node in list(leaves_sizes.keys()):
+            latest_node = tax.latest(node)
+            if latest_node == tax.undefined_node:
+                del leaves_sizes[node]
             else:
+                # Replace leave size with latest node
+                if latest_node != node:
+                    leaves_sizes[latest_node] = leaves_sizes[node]
+                    del leaves_sizes[node]
                 # Store genome size estimation for all leaf nodes available in the taxonomy
-                for leaf in tax.leaves(t):
-                    leaves_sizes[leaf] = leaves_sizes[t]
+                for leaf in tax.leaves(latest_node):
+                    if leaf not in leaves_sizes:
+                        leaves_sizes[leaf] = leaves_sizes[latest_node]
 
         # Calculate genome size estimates for used nodes (and their lineage)
         # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
@@ -194,15 +201,16 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                 # Skip if already calculated
                 if t not in genome_sizes:
                     cnt = 0
-                    avg = 0
+                    sumlen = 0
                     # Make average of available genome sizes in children leaves
                     for leaf in tax.leaves(t):
                         if leaf in leaves_sizes:
                             cnt += 1
-                            avg += leaves_sizes[leaf]
-                    genome_sizes[t] = int(avg / cnt) if cnt else 0
+                            sumlen += leaves_sizes[leaf]
+                    genome_sizes[t] = int(sumlen / cnt) if cnt else 0
 
-        # If there is no matching between taxonomy and leaves, average the whole and save to root to be redistributed in the next step
+        # If there is not a single match between taxonomy and leaves
+        # average all leaves_sizes to root (to be redistributed in the next step)
         if sum(genome_sizes.values()) == 0:
             if leaves_sizes:
                 genome_sizes[tax.root_node] = int(
