@@ -391,7 +391,7 @@ def build_custom(cfg, which_call: str = "build_custom"):
                     )
                 )
 
-            # Get estimates of genome sizes 
+            # Get estimates of genome sizes
             # before filtering tax to get better estimates of nodes "out-of-reach"
             genome_sizes = get_genome_size(
                 cfg, unique_nodes, tax, info, user_bins_col, build_output_folder
