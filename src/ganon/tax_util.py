@@ -165,7 +165,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     If information of a certain node is not provided, uses the closest estimate of parent nodes
     """
     genome_sizes = {}
-    if cfg.skip_genome_size:
+    if cfg.genome_size == "skip":
         # Skipping genome sizes, all set to 1
         for node in nodes:
             for t in tax.lineage(node):
@@ -174,7 +174,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     else:
         leaves_sizes = {}
 
-        if info is not None:
+        if cfg.genome_size == "species+assembly" and info is not None:
             # get median sizes from info (assembly_summary)
             leaves_sizes.update(
                 info.groupby(by=user_bins_col)["genome_size"]
