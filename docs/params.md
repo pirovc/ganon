@@ -7,11 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-<<<<<<< HEAD
    _|   v. 2.4.4
-=======
-   _|   v. 2.4.2.dev9+g3c2298a32
->>>>>>> 9e252b9 (small fixes)
 - - - - - - - - - -
 
 positional arguments:
@@ -221,7 +217,6 @@ optional arguments:
   <summary>ganon update</summary>
 
 ```
-<<<<<<< HEAD
 usage: ganon update [-h] -d DB_PREFIX [-o ] [-t ] [--download-threads ] [--restart] [--verbose] [--quiet]
                     [--write-info-file]
 
@@ -499,5 +494,3 @@ filter arguments:
 ```
 
 </details>
-=======
->>>>>>> 9e252b9 (small fixes)
