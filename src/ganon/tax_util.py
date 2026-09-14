@@ -106,7 +106,7 @@ def parse_genome_size_files(cfg, build_output_folder):
         print_log("Parsing auxiliary files for genome size", cfg.quiet)
         files = cfg.genome_size_files
 
-    leaves_sizes = {}
+    sizes = {}
     if cfg.taxonomy.startswith("ncbi"):
         for file in files:
             with gzip.open(file, "rt") as f:
@@ -115,7 +115,7 @@ def parse_genome_size_files(cfg, build_output_folder):
                 next(f)
                 for line in f:
                     fields = line.rstrip().split("\t")
-                    leaves_sizes[fields[0]] = int(fields[3])
+                    sizes[fields[0]] = int(fields[3])
 
     elif cfg.taxonomy.startswith("gtdb"):
         for file in files:
@@ -128,16 +128,16 @@ def parse_genome_size_files(cfg, build_output_folder):
                     t = fields[19].split(";")[-1]  # species taxid (leaf)
                     # In GTDB, several genome sizes are available for each node
                     # accumulate them in a list and make average
-                    if t not in leaves_sizes:
-                        leaves_sizes[t] = []
-                    leaves_sizes[t].append(int(fields[16]))
+                    if t not in sizes:
+                        sizes[t] = []
+                    sizes[t].append(int(fields[16]))
 
         # Average sizes
-        for t in list(leaves_sizes.keys()):
-            leaves_sizes[t] = int(sum(leaves_sizes[t]) / len(leaves_sizes[t]))
+        for t in list(sizes.keys()):
+            sizes[t] = int(sum(sizes[t]) / len(sizes[t]))
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    return leaves_sizes
+    return sizes
 
 
 def parse_genome_size_tax(tax_files):
@@ -158,7 +158,7 @@ def parse_genome_size_tax(tax_files):
     return genome_sizes
 
 
-def get_genome_size(cfg, nodes, tax, build_output_folder):
+def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     """
     Estimate genome sizes based on auxiliary files
     Only used nodes and lineage are calculated, based on the full set of values provided
@@ -172,8 +172,21 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                 if t not in genome_sizes:
                     genome_sizes[t] = 1
     else:
+        leaves_sizes = {}
+
+        if info is not None:
+            # get median sizes from info (assembly_summary)
+            leaves_sizes.update(
+                info.groupby(by=user_bins_col)["genome_size"]
+                .median()
+                .dropna()
+                .astype(int)
+                .to_dict()
+            )
+
         # Download and parse auxiliary files containing genome sizes
-        leaves_sizes = parse_genome_size_files(cfg, build_output_folder)
+        # this file has precedence over previously leaves sizes
+        leaves_sizes.update(parse_genome_size_files(cfg, build_output_folder))
 
         tx = time.time()
         print_log("Estimating genome sizes", cfg.quiet)
@@ -181,17 +194,20 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
         # Check if entries are on tax and distribute values to available tax. leaves
         for node in list(leaves_sizes.keys()):
             latest_node = tax.latest(node)
+
             if latest_node == tax.undefined_node:
                 del leaves_sizes[node]
+                continue
             else:
                 # Replace leave size with latest node
                 if latest_node != node:
                     leaves_sizes[latest_node] = leaves_sizes[node]
                     del leaves_sizes[node]
-                # Store genome size estimation for all leaf nodes available in the taxonomy
-                for leaf in tax.leaves(latest_node):
-                    if leaf not in leaves_sizes:
-                        leaves_sizes[leaf] = leaves_sizes[latest_node]
+
+            # Store genome size estimation for all leaf nodes available in the taxonomy
+            for leaf in tax.leaves(latest_node):
+                if leaf not in leaves_sizes:
+                    leaves_sizes[leaf] = leaves_sizes[latest_node]
 
         # Calculate genome size estimates for used nodes (and their lineage)
         # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
@@ -509,13 +525,20 @@ def parse_assembly_summary(info, assembly_summary_files, level):
             sep="\t",
             header=None,
             skiprows=header_lines,
-            # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
-            usecols=[0, 5, 7, 8],
-            names=["target", "node", "organism_name", "infraspecific_name"],
+            # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name, 26:genome_size
+            usecols=[0, 5, 7, 8, 25],
+            names=[
+                "target",
+                "node",
+                "organism_name",
+                "infraspecific_name",
+                "genome_size",
+            ],
             index_col="target",
             converters={
                 "target": lambda x: x if x in unique_acc else None,
                 "node": str,
+                "genome_size": int,
             },
         )
         tmp_acc_node = tmp_acc_node[
