@@ -595,7 +595,7 @@ def run_eutils(
     info.to_csv(accessions_file, columns=[], header=False)
 
     # (-k) always return all entries in the same order
-    # (-e) get taxid length
+    # (-e) get taxid and sequence length
     # (-a) get assembly accession
     # (-m) get assembly name
     # || true to ignore exit status in case some sequences were not retrieved
