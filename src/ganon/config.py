@@ -287,7 +287,6 @@ class Config:
         build_download_args.add_argument(
             "--genome-size",
             type=str,
-            nargs="*",
             default=["species+assembly"],
             metavar="",
             help="Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all sizes to 1. ["
@@ -369,7 +368,6 @@ class Config:
         build_custom_args.add_argument(
             "--genome-size",
             type=str,
-            nargs="*",
             default=["species+assembly"],
             metavar="",
             help="Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all sizes to 1. ["
@@ -885,7 +883,6 @@ class Config:
         report_group_dbtax.add_argument(
             "--genome-size",
             type=str,
-            nargs="*",
             default=["species+assembly"],
             metavar="",
             help="Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all sizes to 1. ["
