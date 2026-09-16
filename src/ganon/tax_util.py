@@ -164,6 +164,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     Only used nodes and lineage are calculated, based on the full set of values provided
     If information of a certain node is not provided, uses the closest estimate of parent nodes
     """
+
     genome_sizes = {}
     if cfg.genome_size == "skip":
         # Skipping genome sizes, all set to 1
@@ -175,7 +176,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
         leaves_sizes = {}
 
         if cfg.genome_size == "species+assembly" and info is not None:
-            # get median sizes from info (assembly_summary)
+            # get median sizes from info (assembly sizes)
             leaves_sizes.update(
                 info.groupby(by=user_bins_col)["genome_size"]
                 .median()
@@ -185,7 +186,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
             )
 
         # Download and parse auxiliary files containing genome sizes
-        # this file has precedence over previously leaves sizes
+        # this file has precedence over previous leaves sizes
         leaves_sizes.update(parse_genome_size_files(cfg, build_output_folder))
 
         tx = time.time()
@@ -598,27 +599,36 @@ def run_eutils(
     # (-e) get taxid and sequence length
     # (-a) get assembly accession
     # (-m) get assembly name
+    # (-s) get assembly size
     # || true to ignore exit status in case some sequences were not retrieved
     run_get_seq_info_cmd = "{0} -i {1} -k {2} {3} || true".format(
         cfg.path_exec["get_seq_info"],
         accessions_file,
         "" if skip_taxid else "-e",
-        "-a -m" if level == "assembly" else "",
+        "-a -m -s",
     )
 
     stdout = run(run_get_seq_info_cmd, ret_stdout=True, shell=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
     if level == "assembly":
-        # return target, [taxid,] specialization, specialization_name
+        # return target, [sequence_len, taxid,] specialization, specialization_name, assembly_size
         if skip_taxid:
             return pd.read_csv(
                 StringIO(stdout),
                 sep="\t",
-                names=["target", "specialization", "specialization_name"],
+                names=[
+                    "target",
+                    "specialization",
+                    "specialization_name",
+                    "genome_size",
+                ],
                 index_col="target",
                 header=None,
                 dtype=object,
+                converters={
+                    "genome_size": int,
+                },
                 na_values="na",
             )
         else:
@@ -631,22 +641,42 @@ def run_eutils(
                     "node",
                     "specialization",
                     "specialization_name",
+                    "genome_size",
                 ],
                 index_col="target",
                 header=None,
-                usecols=["target", "node", "specialization", "specialization_name"],
+                usecols=[
+                    "target",
+                    "node",
+                    "specialization",
+                    "specialization_name",
+                    "genome_size",
+                ],
                 dtype=object,
+                converters={
+                    "genome_size": int,
+                },
                 na_values="na",
             )
     else:
-        # return target, taxid
+        # return target, taxid, genome_size
         return pd.read_csv(
             StringIO(stdout),
             sep="\t",
-            names=["target", "length", "node"],
+            names=[
+                "target",
+                "length",
+                "node",
+                "specialization",
+                "specialization_name",
+                "genome_size",
+            ],
             index_col="target",
             header=None,
-            usecols=["target", "node"],
+            usecols=["target", "node", "genome_size"],
             dtype=object,
+            converters={
+                "genome_size": int,
+            },
             na_values="na",
         )

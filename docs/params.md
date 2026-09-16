@@ -32,8 +32,8 @@ options:
 
 ```
 usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-e] [-u ]
-                   [--genome-size [ ...]] [--genome-size-files [ ...]] [--download-threads ] -d DB_PREFIX [-t ] [-p ]
-                   [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [--genome-size ] [--genome-size-files [ ...]] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ]
+                   [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -74,7 +74,7 @@ download arguments:
                         genomes/--reference-genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
-  --genome-size [ ...]  Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
+  --genome-size         Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
                         from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all
                         sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
   --genome-size-files [ ...]
@@ -120,10 +120,10 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [--genome-size [ ...]]
-                          [--genome-size-files [ ...]] [-x ] [-b ] [-m [ ...]] [-u [ ...]] [-g [ ...]]
-                          [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ]
-                          [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [--genome-size ] [--genome-size-files [ ...]]
+                          [-x ] [-b ] [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]]
+                          -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose]
+                          [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -148,7 +148,7 @@ custom arguments:
                         available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
                         specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
-  --genome-size [ ...]  Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
+  --genome-size         Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
                         from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all
                         sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
   --genome-size-files [ ...]
@@ -368,7 +368,7 @@ other arguments:
   <summary>ganon report</summary>
 
 ```
-usage: ganon report [-h] -i [ ...] [-e INPUT_EXTENSION] [-d [ ...]] [-x ] [-m [ ...]] [--genome-size [ ...]]
+usage: ganon report [-h] -i [ ...] [-e INPUT_EXTENSION] [-d [ ...]] [-x ] [-m [ ...]] [--genome-size ]
                     [--genome-size-files [ ...]] [-o OUTPUT_PREFIX] [-f ] [-t ] [-r [ ...]] [-s ] [-a] [-y] [-p [ ...]]
                     [-k [ ...]] [-c ] [-n] [--verbose] [--quiet] [--min-count ] [--max-count ] [--names [ ...]]
                     [--names-with [ ...]] [--taxids [ ...]]
@@ -391,7 +391,7 @@ db/tax arguments:
   -m, --taxonomy-files [ ...]
                         Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
                         [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
-  --genome-size [ ...]  Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
+  --genome-size         Genome size estimation method. species retrieves size based on species_genome_size.txt.gz file
                         from NCBI. assembly retrieve genome sizes from assembly_summary.txt when available. skip set all
                         sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
   --genome-size-files [ ...]
