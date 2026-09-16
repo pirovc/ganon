@@ -160,7 +160,7 @@ class Config:
             default="avg",
             help="Create smaller or faster filters at the cost of classification speed or database size, respectively ["
             + ", ".join(self.choices_mode)
-            + "]. If --filter-size is used, smaller/smallest refers to the false positive rate. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.",
+            + "]. If --filter-size is used, smaller/smallest refers to the false positive. By default, an average value is calculated to balance classification speed and database size. Only valid for --filter-type ibf.",
             choices=self.choices_mode,
         )
         build_default_general_args.add_argument(
@@ -261,13 +261,19 @@ class Config:
             "-c",
             "--complete-genomes",
             action="store_true",
-            help="Download only sub-set of complete genomes",
+            help="Download only sub-set of complete genomes. Mutually exclusive --complete-and-reference-genomes",
         )
         build_download_args.add_argument(
             "-r",
             "--reference-genomes",
             action="store_true",
-            help="Download only sub-set of reference genomes",
+            help="Download only sub-set of reference genomes. Mutually exclusive --complete-and-reference-genomes",
+        )
+        build_download_args.add_argument(
+            "-e",
+            "--complete-and-reference-genomes",
+            action="store_true",
+            help="Download union of complete and reference genomes sub-set. Mutually exclusive --complete-genomes/--reference-genomes",
         )
         build_download_args.add_argument(
             "-u",
@@ -754,16 +760,15 @@ class Config:
             "--input-prefix",
             type=str,
             required=True,
-            nargs="*",
             metavar="",
-            help="Input prefix to find files from ganon classify (.rep and .all)",
+            help="Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all is required for read re-assignent.",
         )
         reassign_group_required.add_argument(
             "-o",
             "--output-prefix",
             type=str,
             default="",
-            help="Alternative output prefix for reassigned files. If not provided, will use same path of input files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example: {output_prefix}{filename}.one",
+            help="Alternative output prefix for reassigned files. If not provided, will overwrite original input files (.rep, .one).",
         )
 
         reassign_em = reassign_parser.add_argument_group("EM arguments")
@@ -1284,6 +1289,21 @@ class Config:
             if self.organism_group and self.taxid:
                 print_log("--organism-group is mutually exclusive with --taxid")
                 return False
+
+            if self.complete_and_reference_genomes:
+                if self.complete_genomes or self.reference_genomes:
+                    print_log(
+                        "--complete-and-reference-genomes is mutually exclusive with --complete-genomes/--reference-genomes"
+                    )
+                    return False
+
+                if self.genome_updater and "-F" in self.genome_updater:
+                    print_log(
+                        "Custom filters (-F) in --genome-updater and --complete-and-reference-genomes "
+                        "are incompatible. Remove --complete-and-reference-genomes and add to your filter: "
+                        '-F \'(\\$5 == "reference genome" || \\$12 == "Complete Genome") && your_filter\''
+                    )
+                    return False
 
         elif self.which == "build-custom":
             if not self.input_file and not self.input:

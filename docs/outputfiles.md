@@ -38,10 +38,10 @@ Each line in this report is a taxonomic entry (including the root node), with th
 | 3   | lineage      | taxonomic id. lineage | 1\|2\|1224\|28216\|80840\|80864\|12916\|80878 |
 | 4   | name         | scientific name | Acidovorax temperans |
 | 5   | # unique     | reads that matched exclusively to this target | 5 |
-| 6   | # shared     | reads with non-unique matches (re)assigned to this target with <br> em/lca/`--report-type abundance/dist` <br> OR shared matches with `--report-type matches` | 10 |
+| 6   | # shared     | reads with non-unique matches (re)assigned to this target with <br> em/lca/`--report-type dist` <br> OR shared matches with `--report-type matches` | 10 |
 | 7   | # children   | unique + shared assignments to all children nodes of this target | 20 |
 | 8   | # cumulative | unique + shared + children assignments up-to this target | 35 |
-| 9   | % cumulative | percentage of cumulative assignments <br> OR estimated relative abundance with `--report-type abundance/corr` | 43.24 |
+| 9   | % cumulative | percentage of cumulative assignments <br> OR estimated relative abundance with `--report-type abundance` | 43.24 |
 
 - The first line of the report file will show the number of unclassified reads (not for `--report-type matches` or `--normalize`)
 

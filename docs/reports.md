@@ -21,7 +21,7 @@ Details on unique, shared and children values can be found [here](outputfiles.md
 
 ## Report types (--report-type)
 
-Several reports are available with `--report-type`: `reads`, `abundance`, `dist`, `corr`, `matches`:
+Several reports are available with `--report-type`: `reads`, `abundance`, `dist`, `dist+abundance`, `matches`:
 
 - `reads` reports **sequence abundances** which are the basic proportion of reads classified in the sample.
 - `abundance` will convert sequence abundance into **taxonomic abundances** by correcting by genome size. Genome size is estimated based on [NCBI or GTDB auxiliary files](custom_databases.md#genome-sizes-genome-size-files). Genome size correction is applied by rank based on default ranks only (domain phylum class order family genus species assembly). Read counts in intermediate ranks will be corrected based on the closest parent default rank and re-assigned to its original rank.

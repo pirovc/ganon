@@ -31,9 +31,9 @@ options:
   <summary>ganon build</summary>
 
 ```
-usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-u ] [-z [ ...]]
-                   [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ]
-                   [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-e] [-u ]
+                   [-z [ ...]] [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ]
+                   [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -64,9 +64,14 @@ download arguments:
   -b, --source [ ...]   Source to download [refseq, genbank] (default: ['refseq'])
   -o, --top             Download limited assemblies for each taxa. 0 for all. (default: 0)
   -c, --complete-genomes
-                        Download only sub-set of complete genomes (default: False)
+                        Download only sub-set of complete genomes. Mutually exclusive --complete-and-reference-genomes
+                        (default: False)
   -r, --reference-genomes
-                        Download only sub-set of reference genomes (default: False)
+                        Download only sub-set of reference genomes. Mutually exclusive --complete-and-reference-genomes
+                        (default: False)
+  -e, --complete-and-reference-genomes
+                        Download union of complete and reference genomes sub-set. Mutually exclusive --complete-
+                        genomes/--reference-genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   -z, --genome-size-files [ ...]
@@ -88,9 +93,8 @@ general arguments:
                         type ibf. (default: 0)
   -j, --mode            Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
-                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
-                        avg)
+                        smaller/smallest refers to the false positive. By default, an average value is calculated to
+                        balance classification speed and database size. Only valid for --filter-type ibf. (default: avg)
   -y, --min-length      Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
                         type ibf. (default: 0)
   -v, --filter-type     Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
@@ -190,9 +194,8 @@ general arguments:
                         type ibf. (default: 0)
   -j, --mode            Create smaller or faster filters at the cost of classification speed or database size,
                         respectively [avg, smaller, smallest, faster, fastest]. If --filter-size is used,
-                        smaller/smallest refers to the false positive rate. By default, an average value is calculated
-                        to balance classification speed and database size. Only valid for --filter-type ibf. (default:
-                        avg)
+                        smaller/smallest refers to the false positive. By default, an average value is calculated to
+                        balance classification speed and database size. Only valid for --filter-type ibf. (default: avg)
   -y, --min-length      Skip sequences smaller then value defined. 0 to not skip any sequence. Only valid for --filter-
                         type ibf. (default: 0)
   -v, --filter-type     Variant of bloom filter to use [hibf, ibf]. hibf requires raptor >= v3.0.1 installed or binary
@@ -325,19 +328,18 @@ other arguments:
   <summary>ganon reassign</summary>
 
 ```
-usage: ganon reassign [-h] -i [ ...] [-o OUTPUT_PREFIX] [-e ] [-s ] [--remove-all] [--skip-one] [--skip-rep] [--verbose]
+usage: ganon reassign [-h] -i  [-o OUTPUT_PREFIX] [-e ] [-s ] [--remove-all] [--skip-one] [--skip-rep] [--verbose]
                       [--quiet]
 
 options:
   -h, --help            show this help message and exit
 
 required arguments:
-  -i, --input-prefix [ ...]
-                        Input prefix to find files from ganon classify (.rep and .all)
+  -i, --input-prefix    Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all
+                        is required for read re-assignent.
   -o, --output-prefix OUTPUT_PREFIX
-                        Alternative output prefix for reassigned files. If not provided, will use same path of input
-                        files (will overwrite .rep). In case of multiple files, the output will be the suffix. Example:
-                        {output_prefix}{filename}.one (default: )
+                        Alternative output prefix for reassigned files. If not provided, will overwrite original input
+                        files (.rep, .one). (default: )
 
 EM arguments:
   -e, --max-iter        Max. number of iterations for the EM algorithm. If 0, will run until convergence (check
