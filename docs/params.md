@@ -76,7 +76,7 @@ download arguments:
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
   --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
                         file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
-                        sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
   --genome-size-files [ ...]
                         Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
@@ -150,7 +150,7 @@ custom arguments:
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
   --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
                         file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
-                        sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
   --genome-size-files [ ...]
                         Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
@@ -393,7 +393,7 @@ db/tax arguments:
                         [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
   --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
                         file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
-                        sizes to 1. [species+assembly, species, skip] (default: ['species+assembly'])
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
   --genome-size-files [ ...]
                         Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
