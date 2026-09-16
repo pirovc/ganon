@@ -69,7 +69,7 @@ def report(cfg):
 
         # In case no tax was provided, generate genome sizes (for the full tree)
         if cfg.report_type in ["abundance", "dist+abundance"]:
-            genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
+            genome_sizes = get_genome_size(cfg, tax.leaves(), tax, None, None, "./")
 
     default_ranks = [tax.root_name] + cfg.choices_default_ranks
 

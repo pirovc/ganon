@@ -32,8 +32,8 @@ options:
 
 ```
 usage: ganon build [-h] [-g [ ...]] [-a [ ...]] [-l ] [-x ] [-m [ ...]] [-b [ ...]] [-o ] [-c] [-r] [-e] [-u ]
-                   [-z [ ...]] [--skip-genome-size] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ]
-                   [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
+                   [--genome-size ] [--genome-size-files [ ...]] [--download-threads ] -d DB_PREFIX [-t ] [-p ] [-k ]
+                   [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -74,10 +74,14 @@ download arguments:
                         genomes/--reference-genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
-  -z, --genome-size-files [ ...]
-                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
-  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
-                        full genomes. (default: False)
+  --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
+                        file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
+  --genome-size-files [ ...]
+                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
+                        'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
+                        https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)
   --download-threads    Number of parallel sequence downloads from NCBI. (default: 8)
 
 general arguments:
@@ -116,10 +120,10 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [-z [ ...]] [--skip-genome-size] [-x ] [-b ]
-                          [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]] -d DB_PREFIX
-                          [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet]
-                          [--write-info-file]
+usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [--genome-size ] [--genome-size-files [ ...]]
+                          [-x ] [-b ] [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]]
+                          -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose]
+                          [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -144,10 +148,14 @@ custom arguments:
                         available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
                         specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
-  -z, --genome-size-files [ ...]
-                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
-  --skip-genome-size    Do not attempt to get genome sizes. Activate this option when using sequences not representing
-                        full genomes. (default: False)
+  --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
+                        file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
+  --genome-size-files [ ...]
+                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
+                        'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
+                        https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)
 
 taxonomy arguments:
   -x, --taxonomy        Taxonomy matching the --input/--input-file. Enables taxonomic classification, lca and tax.
@@ -360,10 +368,10 @@ other arguments:
   <summary>ganon report</summary>
 
 ```
-usage: ganon report [-h] -i [ ...] [-e INPUT_EXTENSION] [-d [ ...]] [-x ] [-m [ ...]] [-z [ ...]] [--skip-genome-size]
-                    [-o OUTPUT_PREFIX] [-f ] [-t ] [-r [ ...]] [-s ] [-a] [-y] [-p [ ...]] [-k [ ...]] [-c ] [-n]
-                    [--verbose] [--quiet] [--min-count ] [--max-count ] [--names [ ...]] [--names-with [ ...]]
-                    [--taxids [ ...]]
+usage: ganon report [-h] -i [ ...] [-e INPUT_EXTENSION] [-d [ ...]] [-x ] [-m [ ...]] [--genome-size ]
+                    [--genome-size-files [ ...]] [-o OUTPUT_PREFIX] [-f ] [-t ] [-r [ ...]] [-s ] [-a] [-y] [-p [ ...]]
+                    [-k [ ...]] [-c ] [-n] [--verbose] [--quiet] [--min-count ] [--max-count ] [--names [ ...]]
+                    [--names-with [ ...]] [--taxids [ ...]]
 
 options:
   -h, --help            show this help message and exit
@@ -383,10 +391,14 @@ db/tax arguments:
   -m, --taxonomy-files [ ...]
                         Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
                         [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
-  -z, --genome-size-files [ ...]
-                        Specific files for genome size estimation - otherwise files will be downloaded (default: None)
-  --skip-genome-size    Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when
-                        using sequences not representing full genomes. (default: False)
+  --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
+                        file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
+                        sizes to 1. [species+assembly, species, skip] (default: species+assembly)
+  --genome-size-files [ ...]
+                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
+                        'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
+                        https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)
 
 output arguments:
   -o, --output-prefix OUTPUT_PREFIX
