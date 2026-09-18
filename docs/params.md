@@ -7,7 +7,7 @@ usage: ganon [-h] [-v]
 - - - - - - - - - -
    _  _  _  _  _   
   (_|(_|| |(_)| |  
-   _|   v. 2.4.2
+   _|   v. 2.4.3
 - - - - - - - - - -
 
 positional arguments:
@@ -400,7 +400,8 @@ output arguments:
                         (correct by genome size), 'reads' -> sequence abundance, 'matches' -> report all unique and
                         shared matches, 'dist' -> simple re-distribution of shared reads based on unique reads,
                         'dist+abundance' -> like dist corrected by genome size (default: abundance)
-  -r, --ranks [ ...]    Ranks to report ['', 'all', custom list]. 'all' for all possible ranks. empty for default ranks
+  -r, --ranks [ ...]    Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may
+                        contain grouped ranks using comma, e.g. 'domain,realm' kingdom phylum. empty for default ranks
                         [domain phylum class order family genus species assembly]. (default: [])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
