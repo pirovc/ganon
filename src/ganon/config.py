@@ -914,7 +914,7 @@ class Config:
             nargs="*",
             metavar="",
             default=[],
-            help="Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may contain grouped ranks using comma, e.g. 'domain,realm' kingdom phylum. empty for default ranks ["
+            help="Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may contain grouped ranks using comma to be reported at the same level, e.g. 'domain,realm' kingdom phylum. empty for default ranks ["
             + " ".join(self.choices_default_ranks)
             + "].",
         )
