@@ -72,17 +72,44 @@ def report(cfg):
             genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
     default_ranks = [tax.root_name] + cfg.choices_default_ranks
-
+    grouped_ranks = []
     # define fixed_ranks or leave it empty for all
+    # grouped ranks are an auxiliary data structure used only when printing
     if cfg.ranks and cfg.ranks[0] == "all":
         fixed_ranks = []
     else:
         if not cfg.ranks or cfg.ranks == [""]:
             fixed_ranks = default_ranks
         else:
-            fixed_ranks = [tax.root_name] + cfg.ranks
+            fixed_ranks = [tax.root_name]
+            if any(["," in r for r in cfg.ranks]):
+                grouped_ranks = [[tax.root_name]]
+                for r in cfg.ranks:
+                    split_ranks_group = r.split(",")
+                    fixed_ranks.extend(split_ranks_group)
+                    grouped_ranks.append(split_ranks_group)
+            else:
+                fixed_ranks += cfg.ranks
 
-    any_rep = False
+    # Validate grouped ranks to check if possible to be printed on the same level
+    if grouped_ranks:
+        for group in grouped_ranks:
+            if len(group) > 1:
+                group_nodes = []
+                for rk in group:
+                    lin_nodes = set()
+                    for node in tax.nodes_rank(rk):
+                        lin_nodes.update(set(tax.lineage(node)))
+                    lin_nodes.discard(tax.root_node)
+                    group_nodes.append(lin_nodes)
+
+                # If there are any repeated node among groups
+                if len(set.union(*group_nodes)) < sum(len(s) for s in group_nodes):
+                    print_log(
+                        f" - {','.join(group)} have share one or more parent nodes and cannot be grouped at the same level",
+                        cfg.quiet,
+                    )
+                    return False
 
     # Parse report file
     for rep_file in rep_files:
@@ -119,6 +146,7 @@ def report(cfg):
                         genome_sizes,
                         output_file_h,
                         fixed_ranks,
+                        grouped_ranks,
                         default_ranks,
                         cfg,
                         rep_file,
@@ -145,6 +173,7 @@ def report(cfg):
                 genome_sizes,
                 out_file_prefix,
                 fixed_ranks,
+                grouped_ranks,
                 default_ranks,
                 cfg,
                 rep_file,
@@ -216,6 +245,7 @@ def build_report(
     genome_sizes,
     output_file,
     fixed_ranks,
+    grouped_ranks,
     default_ranks,
     cfg,
     rep_file,
@@ -325,7 +355,13 @@ def build_report(
     if cfg.output_format == "bioboxes":
         print("@Version:0.10.0", file=tre_file)
         print("@SampleID:" + rep_file + " " + ",".join(reports.keys()), file=tre_file)
-        print("@Ranks:" + "|".join(fixed_ranks[1:]), file=tre_file)
+        if grouped_ranks:
+            print(
+                "@Ranks:" + "|".join([",".join(gr) for gr in grouped_ranks[1:]]),
+                file=tre_file,
+            )
+        else:
+            print("@Ranks:" + "|".join(fixed_ranks[1:]), file=tre_file)
         print("@Taxonomy:" + ",".join(tax.sources), file=tre_file)
         print("@@TAXID\tRANK\tTAXPATH\tTAXPATHSN\tPERCENTAGE", file=tre_file)
 
@@ -350,9 +386,25 @@ def build_report(
         rank = tax.rank(node)
 
         if fixed_ranks:
+            # Change fixed ranks based on groups, keeping fixed number of ranks
+            if grouped_ranks:
+                fixed_ranks = []
+                ranks_lin = tax.rank_lineage(node)
+                for group in grouped_ranks:
+                    if len(group) == 1:
+                        fixed_ranks.append(group[0])
+                    else:
+                        found_rank = tax.undefined_rank
+                        for grank in group:
+                            if grank in ranks_lin:
+                                found_rank = grank
+                                break
+                        # Add found rank to fixed ranks, otherwise add undefined to print an empty entry ||
+                        fixed_ranks.append(found_rank)
+
             rank_idx = fixed_ranks.index(rank)
             lineage = tax.lineage(node, ranks=fixed_ranks[: rank_idx + 1])
-        else:
+        else:  # all
             lineage = tax.lineage(node)
 
         if cfg.output_format == "bioboxes":
