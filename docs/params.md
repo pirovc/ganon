@@ -401,8 +401,9 @@ output arguments:
                         shared matches, 'dist' -> simple re-distribution of shared reads based on unique reads,
                         'dist+abundance' -> like dist corrected by genome size (default: abundance)
   -r, --ranks [ ...]    Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may
-                        contain grouped ranks using comma, e.g. 'domain,realm' kingdom phylum. empty for default ranks
-                        [domain phylum class order family genus species assembly]. (default: [])
+                        contain grouped ranks using comma to be reported at the same level, e.g. 'domain,realm' kingdom
+                        phylum. empty for default ranks [domain phylum class order family genus species assembly].
+                        (default: [])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
