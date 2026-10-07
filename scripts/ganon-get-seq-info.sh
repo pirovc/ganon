@@ -61,11 +61,12 @@ ncbi_api_key=""
 keep_all=0
 get_assembly_accession=0
 get_assembly_name=0
+get_assembly_size=0
 get_length_taxid=0
 replace_not_found_accession=0
 
 OPTIND=1 # Reset getopts
-while getopts "i:l:n:kretam" opt; do
+while getopts "i:l:n:kretams" opt; do
   case ${opt} in
     i) input_file=${OPTARG} ;;
     l) list_acc=${OPTARG} ;;
@@ -75,6 +76,7 @@ while getopts "i:l:n:kretam" opt; do
     e) get_length_taxid=1 ;;
     a) get_assembly_accession=1 ;;
     m) get_assembly_name=1 ;;
+    s) get_assembly_size=1 ;;
 
     h|\?) showhelp; exit 1 ;;
     :) echo "Option -${OPTARG} requires an argument." >&2; exit 1 ;;
@@ -84,8 +86,8 @@ if [ ${OPTIND} -eq 1 ]; then showhelp; exit 1; fi
 shift $((OPTIND-1))
 [ "$1" = "--" ] && shift
 
-if [[ "${get_length_taxid}" -eq 0 && "${get_assembly_accession}" -eq 0 && "${get_assembly_name}" -eq 0 ]]; then
-    echo "At least one option has to be active (-e -a -m)"; exit 1;
+if [[ "${get_length_taxid}" -eq 0 && "${get_assembly_accession}" -eq 0 && "${get_assembly_name}" -eq 0 && "${get_assembly_size}" -eq 0 ]]; then
+    echo "At least one option has to be active (-e -a -m -s)"; exit 1;
 fi
 
 if [[ "${input_file}" == "-" ]]; then
@@ -173,7 +175,7 @@ do
 
         if [ "${keep_all}" -eq 1 ]; then
             # Keep all output lines
-            out="$(join -1 1 -2 1 <(echo "${acc}" | sort -k 1,1 ) <(echo "${out}" | sort -k 1,1) -t$'\t' -o "1.1,2.2,2.3" -a 1 -e "na")"           
+            out="$(join <(echo "${acc}" | sort -k 1,1 ) <(echo "${out}" | sort -k 1,1) -t$'\t' -o "1.1,2.2,2.3" -a 1 -e "na")"           
         fi
 
     else
@@ -182,7 +184,7 @@ do
     fi
 
     # if should retrieve assembly accessions/names
-    if [ "${get_assembly_accession}" -eq 0 ] && [ "${get_assembly_name}" -eq 0 ]; then
+    if [ "${get_assembly_accession}" -eq 0 ] && [ "${get_assembly_name}" -eq 0 ] && [ "${get_assembly_size}" -eq 0 ]; then
         # Print results sorted
         echo "$(sort_in_out "${out}" "${acc}")"
     else
@@ -252,6 +254,12 @@ do
                         assemblyname_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<Organism>)[^<]+')"
                         uid_assemblyname_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblyname_summary_assembly}") --delimiters '\t')"
                     fi
+
+                    if [ "${get_assembly_size}" -eq 1 ]; then 
+                        assemblysize_summary_assembly="$(echo "${xml_summary_assembly}" | grep -oP '(?<=<Stat category="total_length" sequence_tag="all">)[^<]+')"
+                        uid_assemblysize_summary_assembly="$(paste <(echo "${uid_summary_assembly}") <(echo "${assemblysize_summary_assembly}") --delimiters '\t')"
+                    fi
+
                     break
                 fi
             done
@@ -265,34 +273,21 @@ do
         fi
 
         final="${out}"
-        # define output
-        if [ "${get_length_taxid}" -eq 1 ]; then
-            out_fields="0,1.2,1.3,2.2";
-        else
-            out_fields="0,2.2";
-        fi
-
         if [ "${get_assembly_accession}" -eq 1 ]; then 
             # link uids (not found for esummary)
             acc_assemblyaccession="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyaccession_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e PLACEHOLDER_NOT_FOUND)"
             # check for entries without assembly found (not found for elink)
-            final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyaccession}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e PLACEHOLDER_NOT_FOUND)"
-            
-            # fix output for assembly name
-            if [ "${get_assembly_name}" -eq 1 ]; then 
-                if [ "${get_length_taxid}" -eq 1 ]; then
-                    out_fields="0,1.2,1.3,1.4,2.2";
-                else
-                    out_fields="0,1.2,2.2";
-                fi
-            fi
+            final="$(join <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyaccession}" | sort -k 1,1) -t$'\t' -a 1 -e PLACEHOLDER_NOT_FOUND)"
         fi
 
         if [ "${get_assembly_name}" -eq 1 ]; then 
-            #echo "${uid_assemblyname_summary_assembly}"
             acc_assemblyname="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblyname_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e PLACEHOLDER_NOT_FOUND)"
-            #echo "${acc_assemblyname}"
-            final="$(join -1 1 -2 1 <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyname}" | sort -k 1,1) -t$'\t' -o ${out_fields} -a 1 -e PLACEHOLDER_NOT_FOUND)"
+            final="$(join <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblyname}" | sort -k 1,1) -t$'\t' -a 1 -e PLACEHOLDER_NOT_FOUND)"
+        fi
+
+        if [ "${get_assembly_size}" -eq 1 ]; then 
+            acc_assemblysize="$(join -1 2 -2 1 <(echo "${acc_uid_link}" | sort -k 2,2) <(echo "${uid_assemblysize_summary_assembly}" | sort -k 1,1 | uniq) -t$'\t' -o "1.1,2.2" -a 1 -e PLACEHOLDER_NOT_FOUND)"
+            final="$(join <(echo "${final}" | sort -k 1,1) <(echo "${acc_assemblysize}" | sort -k 1,1) -t$'\t' -a 1 -e PLACEHOLDER_NOT_FOUND)"
         fi
 
         # Print final
@@ -323,7 +318,7 @@ then
 fi
 if [[ ! -z "${failed_assembly}" ]];
 then
-    (>&2 printf "Failed to get assembly accession/name for:\n${failed_assembly}")
+    (>&2 printf "Failed to get assembly accession/name/size for:\n${failed_assembly}")
 fi
 if [[ ! -z "${failed}" || ! -z "${failed_assembly}" ]];
 then

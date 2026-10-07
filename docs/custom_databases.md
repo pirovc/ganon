@@ -365,11 +365,19 @@ In `ganon build` the default value is `species`. In `ganon build-custom` the lev
 
 Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI. `--level leaves` or `--level species` (or `genus`, `family`, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization (4th col.) defined in the `--input-file`.
 
-### Genome sizes (--genome-size-files)
+### Genome sizes (--genome-size, --genome-size-files)
 
-Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/){target="_blank"} is used. For `--taxonomy gtdb` the [\*_metadata.tar.gz](https://data.gtdb.ecogenomic.org/releases/latest/){target="_blank"} files are used. Those files can be directly provided with the `--genome-size-files` argument.
+Ganon will automatically download auxiliary files to define an exact or approximate genome size for each entry in the taxonomic tree.
+
+For `--taxonomy gtdb` the [bac120_metadata.tsv.gz](https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz) and [ar53_metadata.tsv.gz](https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz) files are used and the assembly size is retrieved for every entry.
+
+For `--taxonomy ncbi` the [species_genome_size.txt.gz](https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/){target="_blank"} is used. This file contains the expected genome size for a couple of thousands species and is used as the gold standard. If `--genome-size species+assembly` is used, missing values for genome sizes are based on assembly sizes, if available.
+
+Local files can be directly provided with the `--genome-size-files` argument
 
 Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](outputfiles.md#ganon-buildbuild-customupdate).
+
+`--genome-size skip` will not estimate genome sizes, setting all values to 1
 
 ### Retrieving info (--ncbi-sequence-info, --ncbi-file-info)
 
