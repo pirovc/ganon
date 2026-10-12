@@ -106,7 +106,7 @@ def parse_genome_size_files(cfg, build_output_folder):
         print_log("Parsing auxiliary files for genome size", cfg.quiet)
         files = cfg.genome_size_files
 
-    leaves_sizes = {}
+    sizes = {}
     if cfg.taxonomy.startswith("ncbi"):
         for file in files:
             with gzip.open(file, "rt") as f:
@@ -115,7 +115,7 @@ def parse_genome_size_files(cfg, build_output_folder):
                 next(f)
                 for line in f:
                     fields = line.rstrip().split("\t")
-                    leaves_sizes[fields[0]] = int(fields[3])
+                    sizes[fields[0]] = int(fields[3])
 
     elif cfg.taxonomy.startswith("gtdb"):
         for file in files:
@@ -128,16 +128,16 @@ def parse_genome_size_files(cfg, build_output_folder):
                     t = fields[19].split(";")[-1]  # species taxid (leaf)
                     # In GTDB, several genome sizes are available for each node
                     # accumulate them in a list and make average
-                    if t not in leaves_sizes:
-                        leaves_sizes[t] = []
-                    leaves_sizes[t].append(int(fields[16]))
+                    if t not in sizes:
+                        sizes[t] = []
+                    sizes[t].append(int(fields[16]))
 
         # Average sizes
-        for t in list(leaves_sizes.keys()):
-            leaves_sizes[t] = int(sum(leaves_sizes[t]) / len(leaves_sizes[t]))
+        for t in list(sizes.keys()):
+            sizes[t] = int(sum(sizes[t]) / len(sizes[t]))
     print_log(" - done in " + str("%.2f" % (time.time() - tx)) + "s.\n", cfg.quiet)
 
-    return leaves_sizes
+    return sizes
 
 
 def parse_genome_size_tax(tax_files):
@@ -158,33 +158,57 @@ def parse_genome_size_tax(tax_files):
     return genome_sizes
 
 
-def get_genome_size(cfg, nodes, tax, build_output_folder):
+def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     """
     Estimate genome sizes based on auxiliary files
     Only used nodes and lineage are calculated, based on the full set of values provided
     If information of a certain node is not provided, uses the closest estimate of parent nodes
     """
+
     genome_sizes = {}
-    if cfg.skip_genome_size:
+    if cfg.genome_size == "skip":
         # Skipping genome sizes, all set to 1
         for node in nodes:
             for t in tax.lineage(node):
-                genome_sizes[t] = 1
+                if t not in genome_sizes:
+                    genome_sizes[t] = 1
     else:
+        leaves_sizes = {}
+
+        if cfg.genome_size == "species+assembly" and info is not None:
+            # get median sizes from info (assembly sizes)
+            leaves_sizes.update(
+                info.groupby(by=user_bins_col)["genome_size"]
+                .median()
+                .dropna()
+                .astype(int)
+                .to_dict()
+            )
+
         # Download and parse auxiliary files containing genome sizes
-        leaves_sizes = parse_genome_size_files(cfg, build_output_folder)
+        # this file has precedence over previous leaves sizes
+        leaves_sizes.update(parse_genome_size_files(cfg, build_output_folder))
 
         tx = time.time()
         print_log("Estimating genome sizes", cfg.quiet)
 
         # Check if entries are on tax and distribute values to available tax. leaves
-        for t in list(leaves_sizes.keys()):
-            if not tax.latest(t):
-                del leaves_sizes[t]
+        for node in list(leaves_sizes.keys()):
+            latest_node = tax.latest(node)
+
+            if latest_node == tax.undefined_node:
+                del leaves_sizes[node]
+                continue
             else:
-                # Store genome size estimation for all leaf nodes available in the taxonomy
-                for leaf in tax.leaves(t):
-                    leaves_sizes[leaf] = leaves_sizes[t]
+                # Replace leave size with latest node
+                if latest_node != node:
+                    leaves_sizes[latest_node] = leaves_sizes[node]
+                    del leaves_sizes[node]
+
+            # Store genome size estimation for all leaf nodes available in the taxonomy
+            for leaf in tax.leaves(latest_node):
+                if leaf not in leaves_sizes:
+                    leaves_sizes[leaf] = leaves_sizes[latest_node]
 
         # Calculate genome size estimates for used nodes (and their lineage)
         # using the complete content of leaves_sizes (keeping approx. the same estimates between different dbs)
@@ -194,15 +218,16 @@ def get_genome_size(cfg, nodes, tax, build_output_folder):
                 # Skip if already calculated
                 if t not in genome_sizes:
                     cnt = 0
-                    avg = 0
+                    sumlen = 0
                     # Make average of available genome sizes in children leaves
                     for leaf in tax.leaves(t):
                         if leaf in leaves_sizes:
                             cnt += 1
-                            avg += leaves_sizes[leaf]
-                    genome_sizes[t] = int(avg / cnt) if cnt else 0
+                            sumlen += leaves_sizes[leaf]
+                    genome_sizes[t] = int(sumlen / cnt) if cnt else 0
 
-        # If there is no matching between taxonomy and leaves, average the whole and save to root to be redistributed in the next step
+        # If there is not a single match between taxonomy and leaves
+        # average all leaves_sizes to root (to be redistributed in the next step)
         if sum(genome_sizes.values()) == 0:
             if leaves_sizes:
                 genome_sizes[tax.root_node] = int(
@@ -501,13 +526,20 @@ def parse_assembly_summary(info, assembly_summary_files, level):
             sep="\t",
             header=None,
             skiprows=header_lines,
-            # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name
-            usecols=[0, 5, 7, 8],
-            names=["target", "node", "organism_name", "infraspecific_name"],
+            # usecols = 1:assembly_accession, 6:taxid, 8:organism_name, 9:infraspecific_name, 26:genome_size
+            usecols=[0, 5, 7, 8, 25],
+            names=[
+                "target",
+                "node",
+                "organism_name",
+                "infraspecific_name",
+                "genome_size",
+            ],
             index_col="target",
             converters={
                 "target": lambda x: x if x in unique_acc else None,
                 "node": str,
+                "genome_size": int,
             },
         )
         tmp_acc_node = tmp_acc_node[
@@ -564,30 +596,39 @@ def run_eutils(
     info.to_csv(accessions_file, columns=[], header=False)
 
     # (-k) always return all entries in the same order
-    # (-e) get taxid length
+    # (-e) get taxid and sequence length
     # (-a) get assembly accession
     # (-m) get assembly name
+    # (-s) get assembly size
     # || true to ignore exit status in case some sequences were not retrieved
     run_get_seq_info_cmd = "{0} -i {1} -k {2} {3} || true".format(
         cfg.path_exec["get_seq_info"],
         accessions_file,
         "" if skip_taxid else "-e",
-        "-a -m" if level == "assembly" else "",
+        "-a -m -s",
     )
 
     stdout = run(run_get_seq_info_cmd, ret_stdout=True, shell=True, quiet=cfg.quiet)
 
     # set "na" as NaN with na_values="na"
     if level == "assembly":
-        # return target, [taxid,] specialization, specialization_name
+        # return target, [sequence_len, taxid,] specialization, specialization_name, assembly_size
         if skip_taxid:
             return pd.read_csv(
                 StringIO(stdout),
                 sep="\t",
-                names=["target", "specialization", "specialization_name"],
+                names=[
+                    "target",
+                    "specialization",
+                    "specialization_name",
+                    "genome_size",
+                ],
                 index_col="target",
                 header=None,
                 dtype=object,
+                converters={
+                    "genome_size": int,
+                },
                 na_values="na",
             )
         else:
@@ -600,22 +641,42 @@ def run_eutils(
                     "node",
                     "specialization",
                     "specialization_name",
+                    "genome_size",
                 ],
                 index_col="target",
                 header=None,
-                usecols=["target", "node", "specialization", "specialization_name"],
+                usecols=[
+                    "target",
+                    "node",
+                    "specialization",
+                    "specialization_name",
+                    "genome_size",
+                ],
                 dtype=object,
+                converters={
+                    "genome_size": int,
+                },
                 na_values="na",
             )
     else:
-        # return target, taxid
+        # return target, taxid, genome_size
         return pd.read_csv(
             StringIO(stdout),
             sep="\t",
-            names=["target", "length", "node"],
+            names=[
+                "target",
+                "length",
+                "node",
+                "specialization",
+                "specialization_name",
+                "genome_size",
+            ],
             index_col="target",
             header=None,
-            usecols=["target", "node"],
+            usecols=["target", "node", "genome_size"],
             dtype=object,
+            converters={
+                "genome_size": int,
+            },
             na_values="na",
         )

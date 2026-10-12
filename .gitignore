@@ -49,6 +49,7 @@ site/
 
 # Tests results
 tests/ganon/results
+tests/ganon/downloads
 
 # Versioning from setuptools_scm
 /VERSION.txt

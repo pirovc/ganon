@@ -370,7 +370,7 @@ class TestBuildCustom(unittest.TestCase):
         params["input"] = None
         params["input_file"] = data_dir + "build-custom/convert/convert_gtdb.tsv"
         params["input_target"] = "sequence"
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         params["level"] = "leaves"
         params["taxonomy"] = "gtdb-95"
         params["taxonomy_files"] = [
@@ -424,7 +424,7 @@ class TestBuildCustom(unittest.TestCase):
         params["input"] = None
         params["input_file"] = data_dir + "build-custom/convert/convert_gtdb.tsv"
         params["input_target"] = "sequence"
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         params["level"] = "family"
         params["taxonomy"] = "gtdb-95"
         params["taxonomy_files"] = [
@@ -463,7 +463,7 @@ class TestBuildCustom(unittest.TestCase):
         params["input"] = None
         params["input_file"] = data_dir + "build-custom/convert/convert_ncbi.tsv"
         params["input_target"] = "sequence"
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         params["level"] = "species"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = [
@@ -506,7 +506,7 @@ class TestBuildCustom(unittest.TestCase):
         params["input"] = None
         params["input_file"] = data_dir + "build-custom/convert/convert_ncbi.tsv"
         params["input_target"] = "sequence"
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         params["level"] = "class"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = [
