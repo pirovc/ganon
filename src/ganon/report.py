@@ -71,6 +71,8 @@ def report(cfg):
         if cfg.report_type in ["abundance", "dist+abundance"]:
             genome_sizes = get_genome_size(cfg, tax.leaves(), tax, "./")
 
+    any_rep = False
+
     default_ranks = [tax.root_name] + cfg.choices_default_ranks
     grouped_ranks = []
     # define fixed_ranks or leave it empty for all
@@ -756,7 +758,7 @@ def filter_report(
     }
     filter_counts_msg["max_count"] = {
         "count": 0,
-        "msg": "entries ignored with --max-count " + str(cfg.min_count),
+        "msg": "entries ignored with --max-count " + str(cfg.max_count),
     }
     filter_counts_msg["taxids"] = {
         "count": 0,
@@ -898,7 +900,7 @@ def sort_report(filtered_cum_counts, tree_cum_perc, sort, fixed_ranks, tax, merg
             sorted_nodes = sorted(
                 filtered_cum_counts,
                 key=lambda k: (
-                    -merged_rep[k]["unique"] if k in merged_rep else 0,
+                    -merged_rep[k]["unique_reads"] if k in merged_rep else 0,
                     -tree_cum_perc[k],
                 ),
                 reverse=False,
