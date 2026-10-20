@@ -69,6 +69,7 @@ class Config:
         "assembly",
     ]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
+    choices_sort = ["rank", "lineage", "count", "unique"]
     choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
@@ -924,7 +925,10 @@ class Config:
             type=str,
             metavar="",
             default="",
-            help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            help="Sort report by ["
+            + ", ".join(self.choices_sort)
+            + "]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            choices=self.choices_sort,
         )
         report_group_output.add_argument(
             "-a",

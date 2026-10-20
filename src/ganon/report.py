@@ -442,7 +442,7 @@ def build_report(
 
         if rank not in rank_stats:
             rank_stats[rank] = {"unique": 0, "shared": 0, "children": 0, "total": 0}
-        
+
         rank_stats[rank]["unique"] += unique
         rank_stats[rank]["shared"] += shared
         rank_stats[rank]["children"] += children
