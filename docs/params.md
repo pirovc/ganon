@@ -252,8 +252,8 @@ optional arguments:
 usage: ganon classify [-h] -d [DB_PREFIX ...] -o OUTPUT_PREFIX [-s [reads.fq[.gz] ...]]
                       [-p [reads.1.fq[.gz] reads.2.fq[.gz] ...]] [-a [file.tsv ...]] [-c [ ...]] [-e [ ...]] [-m ]
                       [--ranks [ ...]] [--min-count ] [--report-type ] [--skip-report] [--output-one] [--output-all]
-                      [--output-unclassified] [--output-stats] [--output-single] [-t ] [-b] [-f [ ...]] [-l [ ...]]
-                      [--verbose] [--quiet]
+                      [--output-unclassified] [--output-stats] [--output-single] [-t ] [--reassign-threads ] [-b]
+                      [-f [ ...]] [-l [ ...]] [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
@@ -308,6 +308,7 @@ output arguments:
 
 other arguments:
   -t, --threads         Number of sub-processes/threads to use (default: 1)
+  --reassign-threads    Number of sub-processes to run reassign in parallel when using --batch-reads (default: 1)
   -b, --binning         Optimized parameters for binning (--rel-cutoff 0.25 --rel-filter 0 --min-count 0 --report-type
                         reads). Will report sequence abundances (.tre) instead of tax. abundance. (default: False)
   -f, --fpr-query [ ...]

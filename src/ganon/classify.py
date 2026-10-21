@@ -76,6 +76,7 @@ def classify(cfg):
 
     if cfg.multiple_matches == "em":
         print_log("- - - - - - - - - -", cfg.quiet)
+
         rparams = []
         for prefix in prefixes:
             reassign_params = {
@@ -83,18 +84,20 @@ def classify(cfg):
                 "remove_all": False if cfg.output_all else True,
                 "skip_one": False if cfg.output_one else True,
                 "verbose": cfg.verbose,
-                "quiet": True if cfg.batch_reads else cfg.quiet,
+                "quiet": True
+                if cfg.batch_reads and cfg.reassign_threads > 1
+                else cfg.quiet,
             }
             rparams.append(Config("reassign", **reassign_params))
 
         rets = []
         if cfg.batch_reads:
-            print_log(f"Reassigning reads for {len(prefixes)} samples", cfg.quiet)
-            pool = Pool(cfg.threads if cfg.threads < 8 else 8)
-            rets = pool.imap(reassign, rparams)
-            pool.close()
-            pool.join()
-            rets = list(rets)
+            print_log(
+                f"Reassigning reads for {len(prefixes)} samples (--reassign-threads {cfg.reassign_threads})",
+                cfg.quiet,
+            )
+            with Pool(cfg.reassign_threads) as pool:
+                rets = list(pool.map(reassign, rparams))
             print_log("\nDone", cfg.quiet)
         else:
             rets.append(reassign(rparams[0]))

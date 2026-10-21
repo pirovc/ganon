@@ -704,6 +704,13 @@ class Config:
             help="Number of sub-processes/threads to use",
         )
         classify_group_other.add_argument(
+            "--reassign-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=1,
+            help="Number of sub-processes to run reassign in parallel when using --batch-reads",
+        )
+        classify_group_other.add_argument(
             "-b",
             "--binning",
             action="store_true",
