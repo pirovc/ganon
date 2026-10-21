@@ -595,7 +595,7 @@ def parse_input_file(input_file, info_cols, input_target, quiet):
     parse user provided --input-file with all specifications for input
     """
     info = pd.read_csv(input_file, sep="\t", header=None, skiprows=0, dtype=object)
-    # Need to rename columns after parsing since file can have 1 to 5
+    # Need to rename columns after parsing since file can have 1 to 6
     info.rename(columns=lambda x: info_cols[x], inplace=True)
     info = pd.concat([info, pd.DataFrame(columns=info_cols)])
 

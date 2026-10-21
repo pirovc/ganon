@@ -49,7 +49,7 @@ function showhelp {
     echo $' -e Get sequence length and taxid'
     echo $' -a Get assembly accession (latest)'
     echo $' -m Get assembly name'
-
+    echo $' -s Get assembly length'
 
 
     echo
