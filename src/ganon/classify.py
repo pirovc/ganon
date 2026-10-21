@@ -2,7 +2,7 @@ from ganon.util import run, print_log, check_file
 from ganon.report import report
 from ganon.reassign import reassign
 from ganon.config import Config
-import multiprocessing as mp
+from multiprocessing import Pool
 
 
 def classify(cfg):
@@ -76,6 +76,7 @@ def classify(cfg):
 
     if cfg.multiple_matches == "em":
         print_log("- - - - - - - - - -", cfg.quiet)
+
         rparams = []
         for prefix in prefixes:
             reassign_params = {
@@ -83,19 +84,20 @@ def classify(cfg):
                 "remove_all": False if cfg.output_all else True,
                 "skip_one": False if cfg.output_one else True,
                 "verbose": cfg.verbose,
-                "quiet": True if cfg.batch_reads else cfg.quiet,
+                "quiet": True
+                if cfg.batch_reads and cfg.reassign_threads > 1
+                else cfg.quiet,
             }
             rparams.append(Config("reassign", **reassign_params))
 
         rets = []
         if cfg.batch_reads:
-            print_log(f"Reassigning reads for {len(prefixes)} samples", cfg.quiet)
-            with mp.Pool(cfg.threads if cfg.threads < 8 else 8) as pool:
-                for ret in pool.map(reassign, rparams):
-                    rets.append(ret)
-                    if not ret:
-                        break
-                    print_log(".", end="", quiet=cfg.quiet)
+            print_log(
+                f"Reassigning reads for {len(prefixes)} samples (--reassign-threads {cfg.reassign_threads})",
+                cfg.quiet,
+            )
+            with Pool(cfg.reassign_threads) as pool:
+                rets = list(pool.map(reassign, rparams))
             print_log("\nDone", cfg.quiet)
         else:
             rets.append(reassign(rparams[0]))

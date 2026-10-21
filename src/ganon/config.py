@@ -69,6 +69,7 @@ class Config:
         "assembly",
     ]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
+    choices_sort = ["rank", "lineage", "count", "unique"]
     choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
@@ -703,6 +704,13 @@ class Config:
             help="Number of sub-processes/threads to use",
         )
         classify_group_other.add_argument(
+            "--reassign-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=1,
+            help="Number of sub-processes to run reassign in parallel when using --batch-reads",
+        )
+        classify_group_other.add_argument(
             "-b",
             "--binning",
             action="store_true",
@@ -924,7 +932,10 @@ class Config:
             type=str,
             metavar="",
             default="",
-            help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            help="Sort report by ["
+            + ", ".join(self.choices_sort)
+            + "]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            choices=self.choices_sort,
         )
         report_group_output.add_argument(
             "-a",
