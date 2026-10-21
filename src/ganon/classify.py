@@ -2,10 +2,7 @@ from ganon.util import run, print_log, check_file
 from ganon.report import report
 from ganon.reassign import reassign
 from ganon.config import Config
-import multiprocessing as mp
-
-# Fixes freezing states due to fork https://pythonspeed.com/articles/python-multiprocessing/
-mp.set_start_method("spawn")
+from multiprocessing import Pool
 
 
 def classify(cfg):
@@ -93,8 +90,11 @@ def classify(cfg):
         rets = []
         if cfg.batch_reads:
             print_log(f"Reassigning reads for {len(prefixes)} samples", cfg.quiet)
-            with mp.Pool(cfg.threads if cfg.threads < 8 else 8) as pool:
-                rets = list(pool.imap(reassign, rparams))
+            pool = Pool(cfg.threads if cfg.threads < 8 else 8)
+            rets = pool.imap(reassign, rparams)
+            pool.close()
+            pool.join()
+            rets = list(rets)
             print_log("\nDone", cfg.quiet)
         else:
             rets.append(reassign(rparams[0]))
