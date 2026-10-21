@@ -599,6 +599,9 @@ def parse_input_file(input_file, info_cols, input_target, quiet):
     info.rename(columns=lambda x: info_cols[x], inplace=True)
     info = pd.concat([info, pd.DataFrame(columns=info_cols)])
 
+    # genome size to int
+    info["genome_size"] = info["genome_size"].astype(int)
+
     # If no target was provided and target is file, use filename
     if info["target"].isna().all() and input_target == "file":
         info["target"] = info["file"].apply(os.path.basename)
