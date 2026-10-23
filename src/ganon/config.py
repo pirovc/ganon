@@ -289,7 +289,7 @@ class Config:
             type=str,
             default="auto",
             metavar="",
-            help="Genome size estimation method. 'standard' estimate sizes based on standard definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
             + ", ".join(self.choices_genome_size)
             + "]",
             choices=self.choices_genome_size,
@@ -299,7 +299,7 @@ class Config:
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Use local files for genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
         build_download_args.add_argument(
             "--download-threads",
@@ -370,7 +370,7 @@ class Config:
             type=str,
             default="auto",
             metavar="",
-            help="Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz' file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all sizes to 1. ["
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
             + ", ".join(self.choices_genome_size)
             + "]",
             choices=self.choices_genome_size,
@@ -380,7 +380,7 @@ class Config:
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Use local files for genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
 
         build_custom_taxonomy_args = build_custom_parser.add_argument_group(
@@ -885,7 +885,7 @@ class Config:
             type=str,
             default="auto",
             metavar="",
-            help="Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz' file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all sizes to 1. ["
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
             + ", ".join(self.choices_genome_size)
             + "]",
             choices=self.choices_genome_size,
@@ -895,7 +895,7 @@ class Config:
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Use local files for genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
 
         report_group_output = report_parser.add_argument_group("output arguments")

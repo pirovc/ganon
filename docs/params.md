@@ -74,13 +74,13 @@ download arguments:
                         genomes/--reference-genomes (default: False)
   -u, --genome-updater 
                         Additional genome_updater parameters (https://github.com/pirovc/genome_updater) (default: None)
-  --genome-size         Genome size estimation method. 'standard' estimate sizes based on standard definitions (files
-                        will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from
-                        assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both.
+  --genome-size         Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions
+                        (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes
+                        from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both.
                         'skip' set all sizes to 1. See documentation for more details. [auto, standard, assembly-custom,
                         skip] (default: auto)
   --genome-size-files [ ...]
-                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
                         'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
                         https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)
@@ -150,11 +150,13 @@ custom arguments:
                         available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
                         specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
-  --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
-                        file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
-                        sizes to 1. [auto, standard, assembly-custom, skip] (default: auto)
+  --genome-size         Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions
+                        (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes
+                        from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both.
+                        'skip' set all sizes to 1. See documentation for more details. [auto, standard, assembly-custom,
+                        skip] (default: auto)
   --genome-size-files [ ...]
-                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
                         'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
                         https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)
@@ -394,11 +396,13 @@ db/tax arguments:
   -m, --taxonomy-files [ ...]
                         Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp
                         [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz (default: None)
-  --genome-size         Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz'
-                        file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all
-                        sizes to 1. [auto, standard, assembly-custom, skip] (default: auto)
+  --genome-size         Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions
+                        (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes
+                        from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both.
+                        'skip' set all sizes to 1. See documentation for more details. [auto, standard, assembly-custom,
+                        skip] (default: auto)
   --genome-size-files [ ...]
-                        Use local files for genome size estimation, otherwise files will be downloaded: ncbi ->
+                        Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi ->
                         'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb ->
                         'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz
                         https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz' (default: None)

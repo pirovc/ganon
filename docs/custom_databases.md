@@ -398,7 +398,7 @@ Alternatively, `--level assembly` will link the file or sequence target informat
 
 ### Genome sizes (--genome-size, --genome-size-files)
 
-ganon will automatically download auxiliary files and try to define an exact or approximate genome size for each entry in the taxonomy. Those values are later on used to correct the abundances of taxonomic profiling.
+ganon will automatically download auxiliary files and try to define an exact or approximate genome size for each entry in the taxonomy. Those values are later on used to correct abundances for taxonomic profiling.
 
 For `--taxonomy gtdb` the [bac120_metadata.tsv.gz](https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz){target="_blank"} and [ar53_metadata.tsv.gz](https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz){target="_blank"} files are used as standard and the assembly size is retrieved for every entry.
 
@@ -408,9 +408,9 @@ Local files can be directly provided with the `--genome-size-files` argument.
 
 There are some options to define genome sizes: `auto`, `standard`, `assembly-custom` and `skip`.
 
-- `auto` is the default mode. It first use the standard files listed above to define a baseline for genome sizes. After, it attemps to complement missing values with assembly sizes (if available) or use direct values provided in the `--input-file`.
+- `auto` is the default mode. It first use the standard files listed above to define a baseline for genome sizes. After, it attemps to complement missing values with assembly sizes (if available) or use [custom sizes](#custom-genome-size) provided in the `--input-file`.
 - `standard` will only use standard values to define genome sizes (this was the default until ganon v2.4.*).
-- `assembly-custom` will only use assembly sizes or custom values to define genome sizes.
+- `assembly-custom` will only use assembly sizes (when available) or [custom sizes](#custom-genome-size) (if provided) to define genome sizes.
 - `skip` will not estimate genome sizes, setting all values to 1.
 
 Obs: Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the [ganon database](outputfiles.md#ganon-buildbuild-customupdate).

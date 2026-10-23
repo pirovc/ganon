@@ -174,11 +174,11 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
                     genome_sizes[t] = 1
     else:
         leaves_sizes = {}
-
         if cfg.genome_size in ["auto", "assembly-custom"] and info is not None:
-            # get median sizes from info (assembly sizes)
+            # get median sizes from info (assembly sizes) if not set to 1 (values not provided)
             leaves_sizes.update(
-                info.groupby(by=user_bins_col)["genome_size"]
+                info[info["genome_size"] != 1]
+                .groupby(by=user_bins_col)["genome_size"]
                 .median()
                 .dropna()
                 .astype(int)
@@ -540,7 +540,7 @@ def parse_assembly_summary(info, assembly_summary_files, level):
             converters={
                 "target": lambda x: x if x in unique_acc else None,
                 "node": str,
-                "genome_size": int,
+                "genome_size": lambda x: int(x) if x else 1,
             },
         )
         tmp_acc_node = tmp_acc_node[
@@ -628,7 +628,7 @@ def run_eutils(
                 header=None,
                 dtype=object,
                 converters={
-                    "genome_size": int,
+                    "genome_size": lambda x: int(x) if x else 1,
                 },
                 na_values="na",
             )
@@ -655,7 +655,7 @@ def run_eutils(
                 ],
                 dtype=object,
                 converters={
-                    "genome_size": int,
+                    "genome_size": lambda x: int(x) if x else 1,
                 },
                 na_values="na",
             )
@@ -677,7 +677,7 @@ def run_eutils(
             usecols=["target", "node", "genome_size"],
             dtype=object,
             converters={
-                "genome_size": int,
+                "genome_size": lambda x: int(x) if x else 1,
             },
             na_values="na",
         )
