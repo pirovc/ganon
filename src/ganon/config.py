@@ -68,7 +68,7 @@ class Config:
         "species",
         "assembly",
     ]
-    choices_genome_size = ["species+assembly", "species", "skip"]
+    choices_genome_size = ["auto", "standard", "assembly-custom", "skip"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
     choices_sort = ["rank", "lineage", "count", "unique"]
     choices_multiple_matches = ["em", "lca", "skip"]
@@ -287,9 +287,9 @@ class Config:
         build_download_args.add_argument(
             "--genome-size",
             type=str,
-            default="species+assembly",
+            default="auto",
             metavar="",
-            help="Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz' file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all sizes to 1. ["
+            help="Genome size estimation method. 'standard' estimate sizes based on standard definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
             + ", ".join(self.choices_genome_size)
             + "]",
             choices=self.choices_genome_size,
@@ -368,7 +368,7 @@ class Config:
         build_custom_args.add_argument(
             "--genome-size",
             type=str,
-            default="species+assembly",
+            default="auto",
             metavar="",
             help="Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz' file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all sizes to 1. ["
             + ", ".join(self.choices_genome_size)
@@ -883,7 +883,7 @@ class Config:
         report_group_dbtax.add_argument(
             "--genome-size",
             type=str,
-            default="species+assembly",
+            default="auto",
             metavar="",
             help="Genome size estimation method. 'species' estimate sizes based on 'species_genome_size.txt.gz' file from NCBI. 'assembly' retrieve genome sizes from assemblies if available. skip set all sizes to 1. ["
             + ", ".join(self.choices_genome_size)

@@ -175,7 +175,7 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
     else:
         leaves_sizes = {}
 
-        if cfg.genome_size == "species+assembly" and info is not None:
+        if cfg.genome_size in ["auto", "assembly-custom"] and info is not None:
             # get median sizes from info (assembly sizes)
             leaves_sizes.update(
                 info.groupby(by=user_bins_col)["genome_size"]
@@ -185,9 +185,10 @@ def get_genome_size(cfg, nodes, tax, info, user_bins_col, build_output_folder):
                 .to_dict()
             )
 
-        # Download and parse auxiliary files containing genome sizes
-        # this file has precedence over previous leaves sizes
-        leaves_sizes.update(parse_genome_size_files(cfg, build_output_folder))
+        if cfg.genome_size in ["auto", "standard"]:
+            # Download and parse auxiliary files containing genome sizes
+            # this file has precedence over previous leaves sizes
+            leaves_sizes.update(parse_genome_size_files(cfg, build_output_folder))
 
         tx = time.time()
         print_log("Estimating genome sizes", cfg.quiet)
