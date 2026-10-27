@@ -75,7 +75,7 @@ Alternatively to the automatic input methods, it is possible to manually define 
 - `node`: taxonomic node (e.g. taxid) to link entry with taxonomy
 - `specialization`: creates a specialized taxonomic level with a custom name, allowing files to be grouped
 - `specialization_name`: a name for the specialization, to be used in the taxonomy
-- `genome_size`: a custom genome size to be used
+- `genome_size`: a custom genome size of the target
 
 !!! warning
     the `target` and `specialization` fields (2nd and 4th col) cannot be the same as the `node` (3rd col)
@@ -163,7 +163,7 @@ The classification max. level against this database will depend on the value set
 
 ### Custom genome size
 
-Custom [genome sizes](#genome-sizes-genome-size-genome-size-files) can be provided in the file, either for `--input-target sequence` or `file` with or without specialization information. Note that `--genome-size` must be set to `auto` or `assembly-custom`. The examples below show tabs as `<tab>` for clarity.
+Custom [genome sizes](#genome-sizes-genome-size-genome-size-files) can be provided in the file, either for `--input-target sequence` or `file` with or without specialization information. Note that `--genome-size` must be set to `auto` or `assembly-custom` for those values to be used. The examples below show tabs as `<tab>` for clarity.
 
 With specialiation:
 

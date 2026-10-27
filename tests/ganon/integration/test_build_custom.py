@@ -1541,6 +1541,100 @@ class TestBuildCustom(unittest.TestCase):
             "genome size does not match input",
         )
 
+    def test_input_file_6col_missing_some_gs(self):
+        """
+        ganon build-custom --input-file with 6 cols
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_6col_missing_some_gs"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = (
+            data_dir + "build-custom/species_genome_size.txt.gz"
+        )
+        params["level"] = "custom"
+
+        write_input_file(
+            files,
+            data_dir + "build-custom/assembly_summary.txt",
+            params["input_file"],
+            cols=[
+                "file",
+                "target",
+                "node",
+                "specialization",
+                "specialization_name",
+                "genome_size",
+            ],
+        )
+
+        with open(params["input_file"] + "_new", "w") as new_inpf:
+            with open(params["input_file"], "r") as inpf:
+                for i, line in enumerate(inpf):
+                    fields = line.rstrip().split("\t")
+                    # delete every second genome size
+                    if i % 2:
+                        fields[5] = ""
+                    print(*fields, sep="\t", file=new_inpf)
+
+        os.rename(params["input_file"] + "_new", params["input_file"])
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(
+            res["target"]["file"].isin(files).all(), "Files missing from target"
+        )
+        self.assertEqual(
+            len(files), res["target"].shape[0], "Wrong number of files on target"
+        )
+        self.assertTrue(
+            res["info"]["file"].isin(files).all(), "Files missing from info"
+        )
+        self.assertEqual(
+            len(files), res["info"].shape[0], "Wrong number of files on info"
+        )
+
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "custom", "Wrong taxonomy")
+        self.assertEqual(
+            sorted(res["tax"].leaves()),
+            sorted(res["info"]["specialization"]),
+            "Wrong taxonomy",
+        )
+        self.assertEqual(
+            sorted(map(res["tax"].name, res["tax"].leaves())),
+            sorted(res["info"]["specialization_name"]),
+            "Wrong taxonomy",
+        )
+
+        # Check if genome size in tax is the same provided in the input file
+        gs_input = dict(res["info"][["specialization", "genome_size"]].dropna().values)
+        # Only 2 genomes with provided genome size
+        self.assertEqual(len(gs_input), 2, "wrong number of input genome sizes")
+
+        gs_tax = {}
+        with open(params["db_prefix"] + ".tax", "r") as tfile:
+            for line in tfile:
+                node, _, rank, _, gs = line.rstrip().split("\t")
+                if rank == params["level"]:
+                    if node in gs_input:
+                        self.assertEqual(
+                            gs_input[node], gs, "genome size does not match input"
+                        )
+                    else:
+                        self.assertTrue(int(gs) > 1, "genome size not calculated")
+
     def test_input_file_6col_wo_spec(self):
         """
         ganon build-custom --input-file with 6 cols without specialization

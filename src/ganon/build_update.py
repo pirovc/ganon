@@ -397,6 +397,11 @@ def build_custom(cfg, which_call: str = "build_custom"):
                 cfg, unique_nodes, tax, info, user_bins_col, build_output_folder
             )
 
+            # copy calculated genome sizes to info to write info_file
+            info["genome_size"] = (
+                info[user_bins_col] if user_bins_col != "target" else info.index
+            ).map(genome_sizes.get)
+
             # filter only used tax. nodes after genome size
             tax.filter(unique_nodes)
 
@@ -814,7 +819,14 @@ def write_info_file(info, filename):
     db_prefix.info.tsv
     """
     info.reset_index()[
-        ["file", "target", "node", "specialization", "specialization_name"]
+        [
+            "file",
+            "target",
+            "node",
+            "specialization",
+            "specialization_name",
+            "genome_size",
+        ]
     ].to_csv(filename, sep="\t", header=False, index=False)
 
 
