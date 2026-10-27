@@ -332,6 +332,7 @@ def build_custom(cfg, which_call: str = "build_custom"):
 
         # Set-up input info
         info = load_input(cfg, input_files, build_output_folder)
+
         # Define user bins for writing taxonomy and target info file
         user_bins_col = "target"  # Default as target
         if cfg.level in cfg.choices_level:
@@ -369,7 +370,7 @@ def build_custom(cfg, which_call: str = "build_custom"):
 
         # Filter and write taxonomy
         if tax:
-            unique_nodes = info["node"].unique()
+            unique_nodes = set(info["node"].unique())
 
             # Check if targets/specializations are not overlapping with taxids
             if (user_bins_col == "target" and info.index.isin(unique_nodes).any()) or (
@@ -382,22 +383,30 @@ def build_custom(cfg, which_call: str = "build_custom"):
                 )
                 return False
 
-            # Get estimates of genome sizes
-            genome_sizes = get_genome_size(cfg, unique_nodes, tax, build_output_folder)
+            # Add specialization to taxonomy, add to unique nodes
+            if user_bins_col != "node":
+                unique_nodes.update(
+                    add_specialization_to_tax(
+                        tax, info, user_bins_col, cfg.level, cfg.input_target
+                    )
+                )
 
-            # filter only used tax. nodes
+            # Get estimates of genome sizes
+            # before filtering tax to get better estimates of nodes "out-of-reach"
+            genome_sizes = get_genome_size(
+                cfg, unique_nodes, tax, info, user_bins_col, build_output_folder
+            )
+
+            # copy calculated genome sizes to info to write info_file
+            info["genome_size"] = (
+                info[user_bins_col] if user_bins_col != "target" else info.index
+            ).map(genome_sizes.get)
+
+            # filter only used tax. nodes after genome size
             tax.filter(unique_nodes)
 
             # write tax with added nodes and genome sizes
-            write_tax(
-                cfg.db_prefix + ".tax",
-                info,
-                tax,
-                genome_sizes,
-                user_bins_col,
-                cfg.level,
-                cfg.input_target,
-            )
+            write_tax(cfg.db_prefix + ".tax", tax, genome_sizes)
 
         # If requested, save a copy of the info file to re-run build quicker
         if cfg.write_info_file:
@@ -591,9 +600,13 @@ def parse_input_file(input_file, info_cols, input_target, quiet):
     parse user provided --input-file with all specifications for input
     """
     info = pd.read_csv(input_file, sep="\t", header=None, skiprows=0, dtype=object)
-    # Need to rename columns after parsing since file can have 1 to 5
+    # Need to rename columns after parsing since file can have 1 to 6
     info.rename(columns=lambda x: info_cols[x], inplace=True)
     info = pd.concat([info, pd.DataFrame(columns=info_cols)])
+
+    # if some genome size is provided, convert to int and set as 1 if not provided
+    if not info["genome_size"].isna().all():
+        info["genome_size"] = info["genome_size"].fillna(1).astype(int)
 
     # If no target was provided and target is file, use filename
     if info["target"].isna().all() and input_target == "file":
@@ -617,7 +630,14 @@ def load_input(cfg, input_files, build_output_folder):
     or extracted from file/sequences
     """
     tx = time.time()
-    info_cols = ["file", "target", "node", "specialization", "specialization_name"]
+    info_cols = [
+        "file",
+        "target",
+        "node",
+        "specialization",
+        "specialization_name",
+        "genome_size",
+    ]
 
     # Parse/load info without setting index
     if cfg.input_file:
@@ -736,32 +756,34 @@ def load_taxonomy(cfg, build_output_folder):
     return tax
 
 
-def write_tax(tax_file, info, tax, genome_sizes, user_bins_col, level, input_target):
+def add_specialization_to_tax(tax, info, user_bins_col, level, input_target):
+    # Set rank to level or input_target
+    added_nodes = set()
+    tax_rank = level if level else input_target
+    for target, row in info.iterrows():
+        tax_node = (
+            row["specialization"] if user_bins_col == "specialization" else target
+        )
+        tax_name = (
+            row["specialization_name"] if user_bins_col == "specialization" else target
+        )
+
+        # Check if node is already present with correct parent
+        # in case of input-target sequence, info has repeated pairs of node/parent
+        if tax.latest(tax_node) is tax.undefined_node:
+            tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
+            added_nodes.add(tax_node)
+        else:
+            assert tax.parent(tax_node) == row["node"]
+
+    return added_nodes
+
+
+def write_tax(tax_file, tax, genome_sizes):
     """
     write tabular taxonomy file .tax
     may include specialization as nodes
     """
-
-    # Add specialization if not using direct taxonomic nodes
-    if user_bins_col != "node":
-        # Set rank to level or input_target
-        tax_rank = level if level else input_target
-        for target, row in info.iterrows():
-            tax_node = (
-                row["specialization"] if user_bins_col == "specialization" else target
-            )
-            tax_name = (
-                row["specialization_name"]
-                if user_bins_col == "specialization"
-                else target
-            )
-
-            # Check if node is already present with correct parent
-            # in case of input-target sequence, info has repeated pairs of node/parent
-            if tax.latest(tax_node) is tax.undefined_node:
-                tax.add(tax_node, row["node"], name=tax_name, rank=tax_rank)
-            else:
-                assert tax.parent(tax_node) == row["node"]
 
     # Write filtered taxonomy with added nodes
     rm_files(tax_file)
@@ -797,7 +819,14 @@ def write_info_file(info, filename):
     db_prefix.info.tsv
     """
     info.reset_index()[
-        ["file", "target", "node", "specialization", "specialization_name"]
+        [
+            "file",
+            "target",
+            "node",
+            "specialization",
+            "specialization_name",
+            "genome_size",
+        ]
     ].to_csv(filename, sep="\t", header=False, index=False)
 
 
