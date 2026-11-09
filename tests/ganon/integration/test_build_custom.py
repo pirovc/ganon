@@ -1623,7 +1623,6 @@ class TestBuildCustom(unittest.TestCase):
         # Only 2 genomes with provided genome size
         self.assertEqual(len(gs_input), 2, "wrong number of input genome sizes")
 
-        gs_tax = {}
         with open(params["db_prefix"] + ".tax", "r") as tfile:
             for line in tfile:
                 node, _, rank, _, gs = line.rstrip().split("\t")

@@ -296,12 +296,11 @@ def build_report(
     tree_cum_counts = cummulative_sum_tree(target_counts, tax)
 
     if cfg.report_type in ["abundance", "dist+abundance"]:
-        # Correct counts based on estimated genome sizes for default ranks
-        # returns tree_cum_counts with corrected FRACTION of counts and use it to calculate the abundances
-        # still reports original counts for user
-        corr_tree_cum_counts = correct_genome_size(
-            target_counts, genome_sizes, tax, default_ranks
-        )
+        # Correct counts based on estimated genome sizes
+        # returns tree_cum_counts with corrected FRACTION of counts and
+        # use it to calculate the abundances percentages
+        # still reports original counts in (tree_cum_counts) report
+        corr_tree_cum_counts = correct_genome_size(target_counts, genome_sizes, tax)
         tree_cum_perc = cummulative_perc_tree(corr_tree_cum_counts, total)
     else:
         # Simple percentage calculation
@@ -629,82 +628,44 @@ def redistribute_shared_reads(merged_rep, tax):
             merged_rep[target]["lca_reads"] = 0
 
 
-def correct_genome_size(target_counts, genome_sizes, tax, default_ranks):
+def correct_genome_size(target_counts, genome_sizes, tax):
     """
-    Correct counts with genome sizes based only on default ranks.
-    Leaf or nodes in between are counted for its closest default parent
-    Other ranks are ignored on the correction but re-inserted later
-    Correct counts (allowing fractions) independently for each tax. level and regenerate cum tree at the end
+    Correct read counts with genome sizes, normalizing by total counts.
+    Normalization will change for each report since relative abundance is compositional.
+    Returns cummulative correct counts (fractions).
     """
-    ranked_counts = {}
-    lost_targets = {}
-    no_genome_size_cnt = 0
-    total_rank_ratio = {r: 0 for r in default_ranks}
-    total_rank_count = {r: 0 for r in default_ranks}
+
+    no_gs = 0
+    gs_root = genome_sizes[tax.root_node]
+    total_ratio = 0
+    total_count = 0
+
+    def get_genome_size(target):
+        gs = genome_sizes.get(target, 1)
+        return gs if gs > 1 else gs_root
+
+    # Calculate rations for normalization
     for target, count in target_counts.items():
-        # Define closest parent based on default ranks and save count
-        closest_parent = tax.closest_parent(target, ranks=default_ranks)
-        if closest_parent not in ranked_counts:
-            ranked_counts[closest_parent] = 0
-        ranked_counts[closest_parent] += count
+        if target not in genome_sizes or genome_sizes[target] == 1:
+            no_gs += 1
+        total_ratio += count / get_genome_size(target)
+        total_count += count
 
-        # Keep track of targets merged into default ranks
-        if closest_parent != target:
-            lost_targets[target] = closest_parent
-
-        # Sum total counts for each default rank
-        gs = (
-            genome_sizes[closest_parent]
-            if closest_parent in genome_sizes
-            else genome_sizes[tax.root_node]
-        )
-        # Keep track of genome sizes = 1 (no genome size available)
-        if gs == 1:
-            no_genome_size_cnt += 1
-        closest_rank = tax.rank(closest_parent)
-        total_rank_ratio[closest_rank] += count / gs
-        total_rank_count[closest_rank] += count
-
-    # Warning, some genomes have no proper size
-    if no_genome_size_cnt > 0 and len(target_counts) != no_genome_size_cnt:
+    # Print warning if only some entries do not have genome size
+    if no_gs and len(target_counts) > no_gs:
         print_log(
-            " - WARNING: "
-            + str(no_genome_size_cnt)
-            + " genomes without proper genome size, abundance estimation may be biased. Use a --report-type without genome size correction or omit --db-prefix on ganon report to re-generate genome sizes."
+            f" - {no_gs} target(s) without valid genome sizes (1) will be corrected by the root size ({gs_root})"
         )
 
-    # Correct counts by the genome sizes (only default ranks)
-    corr_counts = {t: 0 for t in ranked_counts.keys()}
-    for node in ranked_counts.keys():
-        rank_node = tax.rank(node)
-        gs = genome_sizes[node] if node in genome_sizes else genome_sizes[tax.root_node]
-        corr_counts[node] = total_rank_count[rank_node] * (
-            (ranked_counts[node] / gs) / total_rank_ratio[rank_node]
+    corr_counts = {}
+    # Correct count by genome size and normalize by pre calculate total and ratio
+    for target, count in target_counts.items():
+        corr_counts[target] = total_count * (
+            (count / get_genome_size(target)) / total_ratio
         )
-
-    # Corrected counts should match original
-    assert sum(target_counts.values()) == round(sum(corr_counts.values())), (
-        "invalid number of counts after correction"
-    )
 
     # Generate cumulative tree based on corrected counts
-    corr_tree = cummulative_sum_tree(corr_counts, tax)
-
-    # Re-insert lost targets in the tree
-    # They can be either leaf or ranks in between default ranks (e.g. strain or suborder)
-    # Step necessary to report any rank in abundance node (default rank nodes are unchanged)
-    for target, closest_parent in lost_targets.items():
-        # all ranks in between default ranks will receive proportional counts from parent
-        for t in tax.lineage(target, root_node=closest_parent)[1:]:
-            # In case of a leaf node, re-add to the tree
-            if t not in corr_tree:
-                corr_tree[t] = 0
-            # Sum proportional amount of reads of default parent node to all nodes in between
-            corr_tree[t] += target_counts[target] * (
-                corr_counts[closest_parent] / ranked_counts[closest_parent]
-            )
-
-    return corr_tree
+    return cummulative_sum_tree(corr_counts, tax)
 
 
 def cummulative_sum_tree(target_count, tax):
