@@ -300,7 +300,7 @@ post-processing/report arguments:
                         algorithm can be executed later with 'ganon reassign' using the .all file (--output-all).
                         (default: em)
   --ranks [ ...]        Ranks to report taxonomic abundances (.tre). empty will report default ranks [domain phylum
-                        class order family genus species]. (default: [])
+                        class order family genus species assembly]. (default: [])
   --min-count           Minimum percentage/counts to report an taxa (.tre) [use values between 0-1 for percentage, >1
                         for counts] (default: 5e-05)
   --report-type         Type of report (.tre) [abundance, reads, matches, dist, dist+abundance]. More info in 'ganon
@@ -421,9 +421,10 @@ output arguments:
                         'dist+abundance' -> like dist corrected by genome size (default: abundance)
   -r, --ranks [ ...]    Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may
                         contain grouped ranks using comma to be reported at the same level, e.g. 'domain,realm' kingdom
-                        phylum. empty for default ranks [domain phylum class order family genus species]. (default: [])
+                        phylum. empty for default ranks [domain phylum class order family genus species assembly].
+                        (default: [])
   -b, --ranks-abundance [ ...]
-                        Ranks to consider for genome size abundance correction. Uses all ranks by default. (default: [])
+                        Ranks to consider for genome size abundance correction ['all', custom list]. (default: ['all'])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
@@ -439,7 +440,7 @@ output arguments:
                         [])
   -c, --top-percentile 
                         Top percentile filter, based on percentage/relative abundance. Applied only at default ranks
-                        [domain phylum class order family genus species] (default: 0)
+                        [domain phylum class order family genus species assembly] (default: 0)
   -n, --normalize       Ignore the number of unclassified reads, normalizing the output to 100%. Use with caution, can
                         drastically change abundance estimations. (default: False)
 

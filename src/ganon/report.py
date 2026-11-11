@@ -46,7 +46,8 @@ def report(cfg):
                         break
                 else:
                     print_log(
-                        "No valid genome sizes (>1) found for abundance correction, value will not be corrected."
+                        "No valid genome sizes (>1) found for abundance correction, value will not be corrected.",
+                        cfg.quiet,
                     )
 
             except ValueError:
@@ -309,7 +310,7 @@ def build_report(
         # use it to calculate the abundances percentages
         # still reports original counts in (tree_cum_counts) report
         corr_tree_cum_counts = correct_genome_size(
-            target_counts, genome_sizes, tax, cfg.ranks_abundance
+            target_counts, genome_sizes, tax, cfg.ranks_abundance, cfg.quiet
         )
         tree_cum_perc = cummulative_perc_tree(corr_tree_cum_counts, total)
     else:
@@ -638,24 +639,24 @@ def redistribute_shared_reads(merged_rep, tax):
             merged_rep[target]["lca_reads"] = 0
 
 
-def correct_genome_size(target_counts, genome_sizes, tax, ranks_abundance):
+def correct_genome_size(target_counts, genome_sizes, tax, ranks_abundance, quiet):
     """
     Correct read counts with genome sizes, normalizing by total counts.
     Normalization will change for each report since relative abundance is compositional.
-    Returns cummulative correct counts (fractions).
+    Returns not-rounded counts scaled to total_counts (float).
     """
-    no_gs = 0
     total_ratio = 0
     total_count = 0
-    ranks_abundance_set = set(ranks_abundance) if ranks_abundance else None
+    root_gs_cnt = 0
+    ranks_abundance_set = set(ranks_abundance) if "all" not in ranks_abundance else None
 
-    def get_genome_size(target):
-        """
-        Get size of target or closest parent with valid genome size (>1)
-        limiting search by ranks_abundance if provided
-        """
+    target_gs = {}
+
+    for target, count in target_counts.items():
+        # Get size of target or closest parent with valid genome size (>1)
+        # limiting search by ranks_abundance if provided
         for node in reversed(tax.lineage(target)):
-            # Keep only ranks in ranks_abundance
+            # Keep only ranks in ranks_abundance in the correct hierchical order if provided
             if (
                 ranks_abundance_set is not None
                 and tax.rank(node) not in ranks_abundance_set
@@ -663,22 +664,30 @@ def correct_genome_size(target_counts, genome_sizes, tax, ranks_abundance):
                 continue
             gs = genome_sizes.get(node, 1)
             if gs > 1:
-                return gs
-        return genome_sizes[tax.root_node]
+                target_gs[target] = gs
+                if node == tax.root_node and target != tax.root_node:
+                    root_gs_cnt += 1
+                break
 
-    # Calculate rations for normalization
-    for target, count in target_counts.items():
-        if target not in genome_sizes or genome_sizes[target] == 1:
-            no_gs += 1
-        total_ratio += count / get_genome_size(target)
+        # If no genome size assigned, default to root
+        if target not in target_gs:
+            target_gs[target] = genome_sizes[tax.root_node]
+            root_gs_cnt += 1
+
+        # Calculate ratios for normalization
+        total_ratio += count / target_gs[target]
         total_count += count
+
+    if root_gs_cnt:
+        print_log(
+            f" - WARNING: {root_gs_cnt} target(s) were corrected with the root node genome size",
+            quiet=quiet,
+        )
 
     corr_counts = {}
     # Correct count by genome size and normalize by pre calculate total and ratio
     for target, count in target_counts.items():
-        corr_counts[target] = total_count * (
-            (count / get_genome_size(target)) / total_ratio
-        )
+        corr_counts[target] = total_count * ((count / target_gs[target]) / total_ratio)
 
     # Generate cumulative tree based on corrected counts
     return cummulative_sum_tree(corr_counts, tax)

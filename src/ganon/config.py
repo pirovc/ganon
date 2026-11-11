@@ -66,6 +66,7 @@ class Config:
         "family",
         "genus",
         "species",
+        "assembly",
     ]
     choices_genome_size = ["auto", "standard", "assembly-custom", "skip"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
@@ -944,8 +945,8 @@ class Config:
             type=str,
             nargs="*",
             metavar="",
-            default=[],
-            help="Ranks to consider for genome size abundance correction. Uses all ranks by default.",
+            default=["all"],
+            help="Ranks to consider for genome size abundance correction ['all', custom list].",
         )
         report_group_output.add_argument(
             "-s",
