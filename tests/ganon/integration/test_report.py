@@ -256,7 +256,7 @@ class TestReport(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_report_type_dist_abundance"
         params["report_type"] = "dist+abundance"
-
+        params["ranks"] = Config.choices_default_ranks + ["assembly"]
         # Build config from params
         cfg = Config("report", **params)
         # Run
@@ -353,6 +353,7 @@ class TestReport(unittest.TestCase):
         params = self.default_params.copy()
         params["output_prefix"] = self.results_dir + "test_report_type_dist"
         params["report_type"] = "dist"
+        params["ranks"] = Config.choices_default_ranks + ["assembly"]
 
         # Build config from params
         cfg = Config("report", **params)

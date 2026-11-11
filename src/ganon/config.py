@@ -66,7 +66,6 @@ class Config:
         "family",
         "genus",
         "species",
-        "assembly",
     ]
     choices_genome_size = ["auto", "standard", "assembly-custom", "skip"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
@@ -938,6 +937,15 @@ class Config:
             help="Ranks to report ['', 'all', custom list]. 'all' to report full lineage avaiable. custom list may contain grouped ranks using comma to be reported at the same level, e.g. 'domain,realm' kingdom phylum. empty for default ranks ["
             + " ".join(self.choices_default_ranks)
             + "].",
+        )
+        report_group_output.add_argument(
+            "-b",
+            "--ranks-abundance",
+            type=str,
+            nargs="*",
+            metavar="",
+            default=[],
+            help="Ranks to consider for genome size abundance correction. Uses all ranks by default.",
         )
         report_group_output.add_argument(
             "-s",

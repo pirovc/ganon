@@ -41,6 +41,14 @@ def report(cfg):
         if cfg.report_type in ["abundance", "dist+abundance"]:
             try:
                 genome_sizes = parse_genome_size_tax(dbp)
+                for gs in genome_sizes.values():
+                    if gs > 1:
+                        break
+                else:
+                    print_log(
+                        "No valid genome sizes (>1) found for abundance correction, value will not be corrected."
+                    )
+
             except ValueError:
                 print_log(
                     "Failed to get genome sizes from .tax files, run ganon report without -d/--db-prefix"
@@ -300,7 +308,9 @@ def build_report(
         # returns tree_cum_counts with corrected FRACTION of counts and
         # use it to calculate the abundances percentages
         # still reports original counts in (tree_cum_counts) report
-        corr_tree_cum_counts = correct_genome_size(target_counts, genome_sizes, tax)
+        corr_tree_cum_counts = correct_genome_size(
+            target_counts, genome_sizes, tax, cfg.ranks_abundance
+        )
         tree_cum_perc = cummulative_perc_tree(corr_tree_cum_counts, total)
     else:
         # Simple percentage calculation
@@ -628,21 +638,33 @@ def redistribute_shared_reads(merged_rep, tax):
             merged_rep[target]["lca_reads"] = 0
 
 
-def correct_genome_size(target_counts, genome_sizes, tax):
+def correct_genome_size(target_counts, genome_sizes, tax, ranks_abundance):
     """
     Correct read counts with genome sizes, normalizing by total counts.
     Normalization will change for each report since relative abundance is compositional.
     Returns cummulative correct counts (fractions).
     """
-
     no_gs = 0
-    gs_root = genome_sizes[tax.root_node]
     total_ratio = 0
     total_count = 0
+    ranks_abundance_set = set(ranks_abundance) if ranks_abundance else None
 
     def get_genome_size(target):
-        gs = genome_sizes.get(target, 1)
-        return gs if gs > 1 else gs_root
+        """
+        Get size of target or closest parent with valid genome size (>1)
+        limiting search by ranks_abundance if provided
+        """
+        for node in reversed(tax.lineage(target)):
+            # Keep only ranks in ranks_abundance
+            if (
+                ranks_abundance_set is not None
+                and tax.rank(node) not in ranks_abundance_set
+            ):
+                continue
+            gs = genome_sizes.get(node, 1)
+            if gs > 1:
+                return gs
+        return genome_sizes[tax.root_node]
 
     # Calculate rations for normalization
     for target, count in target_counts.items():
@@ -650,12 +672,6 @@ def correct_genome_size(target_counts, genome_sizes, tax):
             no_gs += 1
         total_ratio += count / get_genome_size(target)
         total_count += count
-
-    # Print warning if only some entries do not have genome size
-    if no_gs and len(target_counts) > no_gs:
-        print_log(
-            f" - {no_gs} target(s) without valid genome sizes (1) will be corrected by the root size ({gs_root})"
-        )
 
     corr_counts = {}
     # Correct count by genome size and normalize by pre calculate total and ratio
