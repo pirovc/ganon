@@ -940,6 +940,15 @@ class Config:
             + "].",
         )
         report_group_output.add_argument(
+            "-b",
+            "--ranks-abundance",
+            type=str,
+            nargs="*",
+            metavar="",
+            default=["all"],
+            help="Limit the ranks that genome sizes are considered for abundance estimation. Counts in other ranks will be corrected by the size of its closest parent. By default consider all ranks. ['all', custom list].",
+        )
+        report_group_output.add_argument(
             "-s",
             "--sort",
             type=str,

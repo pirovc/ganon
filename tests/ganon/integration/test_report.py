@@ -1002,6 +1002,71 @@ class TestReport(unittest.TestCase):
             "ganon report inconsistend on bioboxes output format",
         )
 
+    def test_ranks_abundance(self):
+        """
+        Test run with --ranks-abundance
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_ranks_abundance"
+        params["ranks_abundance"] = ["species"]
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error"
+        )
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # Targets above the species rank can only be corrected with the root size
+        with open(params["output_prefix"] + ".log", "r") as log_file:
+            self.assertIn(
+                "were corrected with the root node genome size",
+                log_file.read(),
+                "ganon report did not warn about root genome size correction",
+            )
+
+    def test_ranks_abundance_quiet(self):
+        """
+        Test run with --ranks-abundance and --quiet
+        """
+        params = self.default_params.copy()
+        params["output_prefix"] = self.results_dir + "test_ranks_abundance_quiet"
+        params["ranks_abundance"] = ["species"]
+        params["verbose"] = False
+        params["quiet"] = True
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error"
+        )
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+
+        # Warnings are suppressed with --quiet
+        with open(params["output_prefix"] + ".log", "r") as log_file:
+            self.assertNotIn(
+                "were corrected with the root node genome size", log_file.read()
+            )
+
+    def test_default_ranks_include_assembly(self):
+        """
+        Test if assembly is reported with default ranks
+        """
+        params = self.default_params.copy()
+        params["db_prefix"] = [self.results_dir + "base_build2"]
+        params["output_prefix"] = self.results_dir + "test_default_ranks_assembly"
+
+        cfg = Config("report", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["output_prefix"]), "ganon report exited with an error"
+        )
+        res = report_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon report has inconsistent results")
+        self.assertTrue(
+            (res["tre_pd"]["rank"].str.strip() == "assembly").any(),
+            "assembly rank missing from default report",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
