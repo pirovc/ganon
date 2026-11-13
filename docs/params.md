@@ -424,7 +424,9 @@ output arguments:
                         phylum. empty for default ranks [domain phylum class order family genus species assembly].
                         (default: [])
   -b, --ranks-abundance [ ...]
-                        Ranks to consider for genome size abundance correction ['all', custom list]. (default: ['all'])
+                        Limit the ranks that genome sizes are considered for abundance estimation. Counts in other ranks
+                        will be corrected by the size of its closest parent. By default consider all ranks. ['all',
+                        custom list]. (default: ['all'])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the

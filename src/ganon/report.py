@@ -46,7 +46,7 @@ def report(cfg):
                         break
                 else:
                     print_log(
-                        "No valid genome sizes (>1) found for abundance correction, value will not be corrected.",
+                        "No valid genome sizes (>1) found for abundance correction, counts will not be corrected.",
                         cfg.quiet,
                     )
 

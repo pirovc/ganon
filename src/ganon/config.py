@@ -946,7 +946,7 @@ class Config:
             nargs="*",
             metavar="",
             default=["all"],
-            help="Ranks to consider for genome size abundance correction ['all', custom list].",
+            help="Limit the ranks that genome sizes are considered for abundance estimation. Counts in other ranks will be corrected by the size of its closest parent. By default consider all ranks. ['all', custom list].",
         )
         report_group_output.add_argument(
             "-s",
