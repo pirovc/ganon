@@ -21,7 +21,7 @@ def report(cfg):
     tax_args = {
         "undefined_node": "",
         "undefined_rank": "na",
-        "undefined_name": "na",
+        "undefined_name": "",
         "root_node": "1",
         "root_name": "root",
         "root_rank": "root",
