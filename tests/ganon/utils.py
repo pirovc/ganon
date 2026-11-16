@@ -242,6 +242,9 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
             return None
 
     # Validate specialization and targets
+    custom_rank_name = (
+        params["custom_rank_name"] if params["custom_rank_name"] else params["level"]
+    )
     if params["level"] in ["assembly", "custom"]:  # specializations
         # Check if target_info has the correct value
         if not (res["target"]["target"] == res["info"]["specialization"]).all():
@@ -250,7 +253,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
 
         # Check if specialization rank is present in tax
         if params["taxonomy"] != "skip":
-            if params["level"] not in res["tax"]._ranks.values():
+            if custom_rank_name not in res["tax"]._ranks.values():
                 print("Rank missing from tax")
                 return None
     else:
@@ -267,7 +270,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
         ]:  # If given and not assembly or custom, should be a taxonomic rank or leaves
             # Check if specialization rank is present in tax (skip for leaves, not a specific rank)
             if params["taxonomy"] != "skip" and params["level"] != "leaves":
-                if params["level"] not in res["tax"]._ranks.values():
+                if custom_rank_name not in res["tax"]._ranks.values():
                     print("Rank missing from tax")
                     return None
             else:
@@ -283,7 +286,12 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
 
             # Check if specialization rank is present in tax
             if params["taxonomy"] != "skip":
-                if params["input_target"] not in res["tax"]._ranks.values():
+                custom_rank_name = (
+                    params["custom_rank_name"]
+                    if params["custom_rank_name"]
+                    else params["input_target"]
+                )
+                if custom_rank_name not in res["tax"]._ranks.values():
                     print("Rank missing from tax")
                     return None
 

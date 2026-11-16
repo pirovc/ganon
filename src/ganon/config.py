@@ -366,6 +366,13 @@ class Config:
             + "]. assembly will retrieve and use the assembly accession and name. custom requires and uses the specialization field in the --input-file.",
         )
         build_custom_args.add_argument(
+            "-z",
+            "--custom-rank-name",
+            type=str,
+            metavar="",
+            help="Give a specific name for the specialized custom tax. rank.",
+        )
+        build_custom_args.add_argument(
             "--genome-size",
             type=str,
             default="auto",
