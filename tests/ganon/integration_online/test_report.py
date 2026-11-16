@@ -107,7 +107,7 @@ class TestReport(unittest.TestCase):
         params["output_prefix"] = self.results_dir + "test_ncbi_skip_genome_size"
         params["taxonomy"] = "ncbi"
         params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         # Build config from params
         cfg = Config("report", **params)
         self.assertTrue(
@@ -204,7 +204,7 @@ class TestReport(unittest.TestCase):
             data_dir + "build-custom/ar53_taxonomy.tsv.gz",
             data_dir + "build-custom/bac120_taxonomy.tsv.gz",
         ]
-        params["skip_genome_size"] = True
+        params["genome_size"] = "skip"
         # Build config from params
         cfg = Config("report", **params)
         self.assertTrue(

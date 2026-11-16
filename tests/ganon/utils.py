@@ -80,13 +80,21 @@ def parse_target(target_file):
 
 
 def parse_info(info_file):
-    colums = ["file", "target", "node", "specialization", "specialization_name"]
+    colums = [
+        "file",
+        "target",
+        "node",
+        "specialization",
+        "specialization_name",
+        "genome_size",
+    ]
     types = {
         "file": "str",
         "target": "str",
         "node": "str",
         "specialization": "str",
         "specialization_name": "str",
+        "genome_size": "str",
     }
     return pd.read_table(
         info_file, sep="\t", header=None, skiprows=0, names=colums, dtype=types
@@ -201,7 +209,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
             print("Wrong number of targets")
             return None
 
-    # res["info"] fields ['file', 'target', 'node', 'specialization', 'specialization_name']
+    # res["info"] fields ['file', 'target', 'node', 'specialization', 'specialization_name', 'genome_size']
     if "input_file" in params and params["input_file"]:
         # Parse info file if provided
         res["info"] = parse_info(params["input_file"])
@@ -234,6 +242,9 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
             return None
 
     # Validate specialization and targets
+    custom_rank_name = (
+        params["custom_rank_name"] if params["custom_rank_name"] else params["level"]
+    )
     if params["level"] in ["assembly", "custom"]:  # specializations
         # Check if target_info has the correct value
         if not (res["target"]["target"] == res["info"]["specialization"]).all():
@@ -242,7 +253,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
 
         # Check if specialization rank is present in tax
         if params["taxonomy"] != "skip":
-            if params["level"] not in res["tax"]._ranks.values():
+            if custom_rank_name not in res["tax"]._ranks.values():
                 print("Rank missing from tax")
                 return None
     else:
@@ -259,7 +270,7 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
         ]:  # If given and not assembly or custom, should be a taxonomic rank or leaves
             # Check if specialization rank is present in tax (skip for leaves, not a specific rank)
             if params["taxonomy"] != "skip" and params["level"] != "leaves":
-                if params["level"] not in res["tax"]._ranks.values():
+                if custom_rank_name not in res["tax"]._ranks.values():
                     print("Rank missing from tax")
                     return None
             else:
@@ -275,7 +286,12 @@ def build_sanity_check_and_parse(params, skipped_targets: bool = False):
 
             # Check if specialization rank is present in tax
             if params["taxonomy"] != "skip":
-                if params["input_target"] not in res["tax"]._ranks.values():
+                custom_rank_name = (
+                    params["custom_rank_name"]
+                    if params["custom_rank_name"]
+                    else params["input_target"]
+                )
+                if custom_rank_name not in res["tax"]._ranks.values():
                     print("Rank missing from tax")
                     return None
 
@@ -517,8 +533,16 @@ def write_input_file(
     files,
     assembly_summary,
     output_file,
-    cols: list = ["file", "target", "node", "specialization", "specialization_name"],
+    cols: list = [
+        "file",
+        "target",
+        "node",
+        "specialization",
+        "specialization_name",
+        "genome_size",
+    ],
     sequence: bool = False,
+    species_taxid: bool = False,
 ):
     """
     Generates a simulated --input-file based on an assembly summary and a list of files
@@ -540,18 +564,23 @@ def write_input_file(
             # assembly accession as target
             target = fields[0]
             # taxid as node
-            node = fields[5]
+            node = fields[5] if not species_taxid else fields[6]
             # use biosample as specialization
             spec = fields[2]
             # use name + strain for specialization name
             spec_name = fields[7] + " " + fields[8]
+            # get genome_size
+            genome_size = fields[25]
 
             input_file[file].update(
                 {
-                    "target": target,
-                    "node": node,
-                    "specialization": spec,
-                    "specialization_name": spec_name,
+                    "target": target if "target" in cols else "",
+                    "node": node if "node" in cols else "",
+                    "specialization": spec if "specialization" in cols else "",
+                    "specialization_name": spec_name
+                    if "specialization_name" in cols
+                    else "",
+                    "genome_size": genome_size if "genome_size" in cols else "",
                 }
             )
 
@@ -560,8 +589,6 @@ def write_input_file(
             if sequence:
                 for seq in list_sequences([vals["file"]]):
                     vals["target"] = seq
-                    print(
-                        "\t".join([v for k, v in vals.items() if k in cols]), file=outf
-                    )
+                    print("\t".join([v for k, v in vals.items()]), file=outf)
             else:
-                print("\t".join([v for k, v in vals.items() if k in cols]), file=outf)
+                print("\t".join([v for k, v in vals.items()]), file=outf)

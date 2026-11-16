@@ -68,7 +68,9 @@ class Config:
         "species",
         "assembly",
     ]
+    choices_genome_size = ["auto", "standard", "assembly-custom", "skip"]
     choices_report_type = ["abundance", "reads", "matches", "dist", "dist+abundance"]
+    choices_sort = ["rank", "lineage", "count", "unique"]
     choices_multiple_matches = ["em", "lca", "skip"]
     choices_report_output = ["text", "tsv", "csv", "bioboxes"]
     choices_mode = ["avg", "smaller", "smallest", "faster", "fastest"]
@@ -283,17 +285,21 @@ class Config:
             help="Additional genome_updater parameters (https://github.com/pirovc/genome_updater)",
         )
         build_download_args.add_argument(
-            "-z",
+            "--genome-size",
+            type=str,
+            default="auto",
+            metavar="",
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
+            + ", ".join(self.choices_genome_size)
+            + "]",
+            choices=self.choices_genome_size,
+        )
+        build_download_args.add_argument(
             "--genome-size-files",
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Specific files for genome size estimation - otherwise files will be downloaded",
-        )
-        build_download_args.add_argument(
-            "--skip-genome-size",
-            action="store_true",
-            help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
         build_download_args.add_argument(
             "--download-threads",
@@ -361,16 +367,27 @@ class Config:
         )
         build_custom_args.add_argument(
             "-z",
+            "--custom-rank-name",
+            type=str,
+            metavar="",
+            help="Give a specific name for the specialized custom tax. rank.",
+        )
+        build_custom_args.add_argument(
+            "--genome-size",
+            type=str,
+            default="auto",
+            metavar="",
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
+            + ", ".join(self.choices_genome_size)
+            + "]",
+            choices=self.choices_genome_size,
+        )
+        build_custom_args.add_argument(
             "--genome-size-files",
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Specific files for genome size estimation - otherwise files will be downloaded",
-        )
-        build_custom_args.add_argument(
-            "--skip-genome-size",
-            action="store_true",
-            help="Do not attempt to get genome sizes. Activate this option when using sequences not representing full genomes.",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
 
         build_custom_taxonomy_args = build_custom_parser.add_argument_group(
@@ -703,6 +720,13 @@ class Config:
             help="Number of sub-processes/threads to use",
         )
         classify_group_other.add_argument(
+            "--reassign-threads",
+            type=unsigned_int(minval=1),
+            metavar="",
+            default=1,
+            help="Number of sub-processes to run reassign in parallel when using --batch-reads",
+        )
+        classify_group_other.add_argument(
             "-b",
             "--binning",
             action="store_true",
@@ -864,17 +888,21 @@ class Config:
             help="Use local taxonomy files instead of downloading. For ncbi: taxdump.tar.gz OR nodes.dmp [names.dmp merged.dmp]. For gtdb: *taxonomy.tsv.gz",
         )
         report_group_dbtax.add_argument(
-            "-z",
+            "--genome-size",
+            type=str,
+            default="auto",
+            metavar="",
+            help="Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both. 'skip' set all sizes to 1. See documentation for more details. ["
+            + ", ".join(self.choices_genome_size)
+            + "]",
+            choices=self.choices_genome_size,
+        )
+        report_group_dbtax.add_argument(
             "--genome-size-files",
             type=file_exists,
             nargs="*",
             metavar="",
-            help="Specific files for genome size estimation - otherwise files will be downloaded",
-        )
-        report_group_dbtax.add_argument(
-            "--skip-genome-size",
-            action="store_true",
-            help="Do not attempt to get genome sizes. Valid only without --db-prefix. Activate this option when using sequences not representing full genomes.",
+            help="Use local files for standard genome size estimation, otherwise files will be downloaded: ncbi -> 'https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/species_genome_size.txt.gz', gtdb -> 'https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz'",
         )
 
         report_group_output = report_parser.add_argument_group("output arguments")
@@ -919,12 +947,24 @@ class Config:
             + "].",
         )
         report_group_output.add_argument(
+            "-b",
+            "--ranks-abundance",
+            type=str,
+            nargs="*",
+            metavar="",
+            default=["all"],
+            help="Limit the ranks that genome sizes are considered for abundance estimation. Counts in other ranks will be corrected by the size of its closest parent. By default consider all ranks. ['all', custom list].",
+        )
+        report_group_output.add_argument(
             "-s",
             "--sort",
             type=str,
             metavar="",
             default="",
-            help="Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            help="Sort report by ["
+            + ", ".join(self.choices_sort)
+            + "]. Default: rank (with custom --ranks) or lineage (with --ranks all)",
+            choices=self.choices_sort,
         )
         report_group_output.add_argument(
             "-a",
