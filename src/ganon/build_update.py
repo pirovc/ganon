@@ -1045,9 +1045,16 @@ def validate_convert_taxonomy(info, tax, cfg):
 
 def get_gu_current_version(assembly_summary):
     """
-    return current version from genome_updater
+    return current version from genome_updater dir
+    based on the last existing value on second column of history.tsv (#new label)
     """
-    return os.path.dirname(os.readlink(assembly_summary))
+    last_version = ""
+    with open(os.path.dirname(assembly_summary) + "/history.tsv", "r") as hfile:
+        for line in hfile:
+            fields = line.rstrip().split("\t")
+            if fields[1]:
+                last_version = fields[1]
+    return last_version
 
 
 def restart_build(fld):
