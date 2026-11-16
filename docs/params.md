@@ -374,9 +374,9 @@ other arguments:
 
 ```
 usage: ganon report [-h] -i [ ...] [-e INPUT_EXTENSION] [-d [ ...]] [-x ] [-m [ ...]] [--genome-size ]
-                    [--genome-size-files [ ...]] [-o OUTPUT_PREFIX] [-f ] [-t ] [-r [ ...]] [-s ] [-a] [-y] [-p [ ...]]
-                    [-k [ ...]] [-c ] [-n] [--verbose] [--quiet] [--min-count ] [--max-count ] [--names [ ...]]
-                    [--names-with [ ...]] [--taxids [ ...]]
+                    [--genome-size-files [ ...]] [-o OUTPUT_PREFIX] [-f ] [-t ] [-r [ ...]] [-b [ ...]] [-s ] [-a] [-y]
+                    [-p [ ...]] [-k [ ...]] [-c ] [-n] [--verbose] [--quiet] [--min-count ] [--max-count ]
+                    [--names [ ...]] [--names-with [ ...]] [--taxids [ ...]]
 
 options:
   -h, --help            show this help message and exit
@@ -423,6 +423,10 @@ output arguments:
                         contain grouped ranks using comma to be reported at the same level, e.g. 'domain,realm' kingdom
                         phylum. empty for default ranks [domain phylum class order family genus species assembly].
                         (default: [])
+  -b, --ranks-abundance [ ...]
+                        Limit the ranks that genome sizes are considered for abundance estimation. Counts in other ranks
+                        will be corrected by the size of its closest parent. By default consider all ranks. ['all',
+                        custom list]. (default: ['all'])
   -s, --sort            Sort report by [rank, lineage, count, unique]. Default: rank (with custom --ranks) or lineage
                         (with --ranks all) (default: )
   -a, --no-orphan       Omit orphan nodes from the final report. Otherwise, orphan nodes (= nodes not found in the
