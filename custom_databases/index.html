@@ -96,6 +96,8 @@
     </li>
         </ul>
     </li>
+    <li class="toctree-l3"><a class="reference internal" href="#custom-genome-size">Custom genome size</a>
+    </li>
         </ul>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a>
@@ -126,7 +128,7 @@
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#build-level-level">Build level (--level)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#genome-sizes-genome-size-files">Genome sizes (--genome-size-files)</a>
+    <li class="toctree-l3"><a class="reference internal" href="#genome-sizes-genome-size-genome-size-files">Genome sizes (--genome-size, --genome-size-files)</a>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#retrieving-info-ncbi-sequence-info-ncbi-file-info">Retrieving info (--ncbi-sequence-info, --ncbi-file-info)</a>
     </li>
@@ -236,13 +238,14 @@ domain           0              1
 <p>The log shows how many input entries were mapped for each rank between GTDB versions 95 and 226. Twelve entries could not be translated and will not be used for the build. The number of entries that can be mapped directly between ranks (e.g. species to species or genus to genus) is also reduced, resulting in some loss of resolution.</p>
 <h2 id="non-standard-filesheaders-with-input-file">Non-standard files/headers with <code>--input-file</code><a class="headerlink" href="#non-standard-filesheaders-with-input-file" title="Permanent link">:)</a></h2>
 <p>Alternatively to the automatic input methods, it is possible to manually define the input with either standard or <strong>non-standard filenames, accessions and headers</strong> to build custom databases with <code>--input-file</code>. This file should contain the following fields (tab-separated):</p>
-<p><code>file [&lt;tab&gt; target &lt;tab&gt; node &lt;tab&gt; specialization &lt;tab&gt; specialization_name]</code></p>
+<p><code>file [&lt;tab&gt; target &lt;tab&gt; node &lt;tab&gt; specialization &lt;tab&gt; specialization_name &lt;tab&gt; genome_size]</code></p>
 <ul>
 <li><code>file</code>: relative or full path to the sequence file</li>
 <li><code>target</code>: any unique text to name the file, to be used in the taxonomy</li>
 <li><code>node</code>: taxonomic node (e.g. taxid) to link entry with taxonomy</li>
 <li><code>specialization</code>: creates a specialized taxonomic level with a custom name, allowing files to be grouped</li>
 <li><code>specialization_name</code>: a name for the specialization, to be used in the taxonomy</li>
+<li><code>genome_size</code>: a custom genome size of the target</li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -305,6 +308,16 @@ others.fasta     header2        666  StrainA  My Strain
 <li><code>--level sequence</code> -&gt; use the sequence header with node as parent</li>
 <li><code>--level leaves</code> or <code>species</code>,<code>genus</code>,... -&gt; files are grouped by taxonomy</li>
 </ul>
+<h3 id="custom-genome-size">Custom genome size<a class="headerlink" href="#custom-genome-size" title="Permanent link">:)</a></h3>
+<p>Custom <a href="#genome-sizes-genome-size-genome-size-files">genome sizes</a> can be provided in the file, either for <code>--input-target sequence</code> or <code>file</code> with or without specialization information. Note that <code>--genome-size</code> must be set to <code>auto</code> or <code>assembly-custom</code> for those values to be used. The examples below show tabs as <code>&lt;tab&gt;</code> for clarity.</p>
+<p>With specialiation:</p>
+<pre><code class="language-tsv">sequences.fasta &lt;tab&gt; sequences &lt;tab&gt; 562 &lt;tab&gt; ID44444 &lt;tab&gt; Escherichia coli TW10119  &lt;tab&gt; 250000
+others.fasta    &lt;tab&gt; others    &lt;tab&gt; 623 &lt;tab&gt; ID55555 &lt;tab&gt; Shigella flexneri 1a      &lt;tab&gt; 36585
+</code></pre>
+<p>Without specialiation:</p>
+<pre><code class="language-tsv">sequences.fasta &lt;tab&gt; sequences &lt;tab&gt; 562 &lt;tab&gt; &lt;tab&gt; &lt;tab&gt; 250000
+others.fasta    &lt;tab&gt; others    &lt;tab&gt; 623 &lt;tab&gt; &lt;tab&gt; &lt;tab&gt; 36585
+</code></pre>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">:)</a></h2>
 <p>Below you will find some examples from commonly used repositories for metagenomics analysis with <code>ganon build-custom</code>: </p>
 <h3 id="humgut">HumGut<a class="headerlink" href="#humgut" title="Permanent link">:)</a></h3>
@@ -339,30 +352,38 @@ ganon build-custom --input-file HumGut_ganon_input_file.tsv --taxonomy-files gtd
 <p>Extra repositories from RefSeq release not included as default databases. <a href="https://www.ncbi.nlm.nih.gov/refseq/" target="_blank">Website</a>.</p>
 <pre><code class="language-bash"># Plasmid
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plasmid/&quot;
-ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix plasmid --level species --threads 8 --input-target sequence --skip-genome-size
+ganon build-custom --input plasmid.* --db-prefix plasmid --level species --threads 8 --input-target sequence --genome-size skip
 
 # Plastid
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/plastid/&quot;
-ganon build-custom --input plastid.* --db-prefix plastid --level species --threads 8 --input-target sequence --skip-genome-size
+ganon build-custom --input plastid.* --db-prefix plastid --level species --threads 8 --input-target sequence --genome-size skip
 
 # Mitochondrion
 wget -A genomic.fna.gz -m -nd --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/mitochondrion/&quot;
-ganon build-custom --input mitochondrion.* --db-prefix mitochondrion --level species --threads 8 --input-target sequence --skip-genome-size
+ganon build-custom --input mitochondrion.* --db-prefix mitochondrion --level species --threads 8 --input-target sequence --genome-size skip
 
 # All together in one database
-ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --skip-genome-size
+ganon build-custom --input plasmid.* plastid.* mitochondrion.* --db-prefix ppm --level species --threads 8 --input-target sequence --genome-size skip
 </code></pre>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>To classify plasmids separately from the organism source, one can create a custom taxonomic entry for each plasmid and classify them under the species taxid <code>45202</code> (unidentified plasmid) with the plasmid size based on sequence size for abundance correction. After downloading the files, create a custom input file:</p>
+<p><code>for f in plasmid.*.fna.gz; do
+    zcat $f | awk -v file=$f '/^&gt;/{acc=substr($1,2); names[acc]=substr($0,length(acc)+3)} !/^&gt;/{lens[acc]+=length($0)}END{for(l in lens){print file"\t"l"\t45202\t"l"\t"names[l]"\t"lens[l]}}' &gt;&gt; plasmid_input_file.tsv
+done</code></p>
+<p>Run ganon: <code>ganon build-custom --input-file plasmid_input_file.tsv --db-prefix plasmid_custom --level custom --threads 8 --input-target sequence</code></p>
+</div>
 <h3 id="univec-univec_core">UniVec, UniVec_core<a class="headerlink" href="#univec-univec_core" title="Permanent link">:)</a></h3>
 <p>"UniVec is a non-redundant database of sequences commonly attached to cDNA or genomic DNA during the cloning process." <a href="https://ftp.ncbi.nlm.nih.gov/pub/UniVec/README.uv" target="_blank">Website</a>. Useful to screen for vector and linker/adapter contamination. UniVec_core is a sub-set of the UniVec selected to reduce the false positive hits from real biological sources.</p>
 <pre><code class="language-bash"># UniVec
 wget -O &quot;UniVec.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec&quot; 
 echo -e &quot;UniVec.fasta\tUniVec\t81077&quot; &gt; UniVec_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8 --skip-genome-size
+ganon build-custom --input-file UniVec_ganon_input_file.tsv --db-prefix UniVec --level leaves --threads 8 --genome-size skip
 
 # UniVec_Core
 wget -O &quot;UniVec_Core.fasta&quot; --quiet --show-progress &quot;ftp://ftp.ncbi.nlm.nih.gov/pub/UniVec/UniVec_Core&quot; 
 echo -e &quot;UniVec_Core.fasta\tUniVec_Core\t81077&quot; &gt; UniVec_Core_ganon_input_file.tsv
-ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8 --skip-genome-size
+ganon build-custom --input-file UniVec_Core_ganon_input_file.tsv --db-prefix UniVec_Core --level leaves --threads 8 --genome-size skip
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -466,9 +487,23 @@ rm -rf &quot;${db}&quot; &quot;${db}_ganon_input_file.tsv&quot;
 <p>The <code>--level</code> parameter defines the max. depth of the database for classification. This parameter is relevant because the <code>--max-fp</code> is going to be guaranteed at the <code>--level</code> chosen. </p>
 <p>In <code>ganon build</code> the default value is <code>species</code>. In <code>ganon build-custom</code> the level will be the same as <code>--input-target</code>, meaning that classification will be done either at <code>file</code> or <code>sequence</code> level.</p>
 <p>Alternatively, <code>--level assembly</code> will link the file or sequence target information with assembly accessions retrieved from NCBI. <code>--level leaves</code> or <code>--level species</code> (or <code>genus</code>, <code>family</code>, ...) will link the targets with taxonomic information and prune the tree at the chosen level. <code>--level custom</code> will use specialization (4th col.) defined in the <code>--input-file</code>.</p>
-<h3 id="genome-sizes-genome-size-files">Genome sizes (--genome-size-files)<a class="headerlink" href="#genome-sizes-genome-size-files" title="Permanent link">:)</a></h3>
-<p>Ganon will automatically download auxiliary files to define an approximate genome size for each entry in the taxonomic tree. For <code>--taxonomy ncbi</code> the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/" target="_blank">species_genome_size.txt.gz</a> is used. For <code>--taxonomy gtdb</code> the <a href="https://data.gtdb.ecogenomic.org/releases/latest/" target="_blank">*_metadata.tar.gz</a> files are used. Those files can be directly provided with the <code>--genome-size-files</code> argument.</p>
-<p>Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the <a href="../outputfiles/#ganon-buildbuild-customupdate">ganon database</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When building with default (empty) <code>--level</code> or <code>--level custom/assembly</code> the additional rank in the taxonomy can be named with the parameter <code>--custom-rank-name</code>, otherwise will be named depending on the configuration (<code>file</code>,<code>sequence</code>,<code>custom</code>,<code>assembly</code>)</p>
+</div>
+<h3 id="genome-sizes-genome-size-genome-size-files">Genome sizes (--genome-size, --genome-size-files)<a class="headerlink" href="#genome-sizes-genome-size-genome-size-files" title="Permanent link">:)</a></h3>
+<p>ganon will automatically download auxiliary files and try to define an exact or approximate genome size for each entry in the taxonomy. Those values are later on used to correct abundances for taxonomic profiling.</p>
+<p>For <code>--taxonomy gtdb</code> the <a href="https://data.gtdb.ecogenomic.org/releases/latest/bac120_metadata.tsv.gz" target="_blank">bac120_metadata.tsv.gz</a> and <a href="https://data.gtdb.ecogenomic.org/releases/latest/ar53_metadata.tsv.gz" target="_blank">ar53_metadata.tsv.gz</a> files are used as standard and the assembly size is retrieved for every entry.</p>
+<p>For <code>--taxonomy ncbi</code> the <a href="https://ftp.ncbi.nlm.nih.gov/genomes/ASSEMBLY_REPORTS/" target="_blank">species_genome_size.txt.gz</a> is used as standard. This file contains the expected genome size for a couple of thousands species based on multiple assemblies.</p>
+<p>Local files can be directly provided with the <code>--genome-size-files</code> argument.</p>
+<p>There are some options to define genome sizes: <code>auto</code>, <code>standard</code>, <code>assembly-custom</code> and <code>skip</code>.</p>
+<ul>
+<li><code>auto</code> is the default mode. It first use the standard files listed above to define a baseline for genome sizes. After, it attemps to complement missing values with assembly sizes (if available) or use <a href="#custom-genome-size">custom sizes</a> provided in the <code>--input-file</code>.</li>
+<li><code>standard</code> will only use standard values to define genome sizes (this was the default until ganon v2.4.*).</li>
+<li><code>assembly-custom</code> will only use assembly sizes (when available) or <a href="#custom-genome-size">custom sizes</a> (if provided) to define genome sizes.</li>
+<li><code>skip</code> will not estimate genome sizes, setting all values to 1.</li>
+</ul>
+<p>Obs: Genome sizes of parent nodes are calculated as the average of the respective children nodes. Other nodes without direct assigned genome sizes will use the closest parent with a pre-calculated genome size. The genome sizes are stored in the <a href="../outputfiles/#ganon-buildbuild-customupdate">ganon database</a>.</p>
 <h3 id="retrieving-info-ncbi-sequence-info-ncbi-file-info">Retrieving info (--ncbi-sequence-info, --ncbi-file-info)<a class="headerlink" href="#retrieving-info-ncbi-sequence-info-ncbi-file-info" title="Permanent link">:)</a></h3>
 <p>Further taxonomy and assembly linking information has to be collected to properly build the database. <code>--ncbi-sequence-info</code> and <code>--ncbi-file-info</code> allow customizations on this step.</p>
 <p>When <code>--input-target sequence</code>, <code>--ncbi-sequence-info</code> argument allows the use of NCBI e-utils webservices (<code>eutils</code>) or downloads accession2taxid files to extract target information (options <code>nucl_gb</code> <code>nucl_wgs</code> <code>nucl_est</code> <code>nucl_gss</code> <code>pdb</code> <code>prot</code> <code>dead_nucl</code> <code>dead_wgs</code> <code>dead_prot</code>). By default, ganon uses <code>eutils</code> up-to 50000 input sequences, otherwise it downloads <code>nucl_gb</code> <code>nucl_wgs</code> from <a href="https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/" target="_blank">https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/</a>. Previously downloaded files can be directly provided with this argument.</p>
