@@ -122,10 +122,10 @@ optional arguments:
   <summary>ganon build-custom</summary>
 
 ```
-usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [--genome-size ] [--genome-size-files [ ...]]
-                          [-x ] [-b ] [-m [ ...]] [-u [ ...]] [-g [ ...]] [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]]
-                          -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ] [-j ] [-y ] [-v ] [--restart] [--verbose]
-                          [--quiet] [--write-info-file]
+usage: ganon build-custom [-h] [-i [ ...]] [-e ] [-c] [-n ] [-a ] [-l ] [-z ] [--genome-size ]
+                          [--genome-size-files [ ...]] [-x ] [-b ] [-m [ ...]] [-u [ ...]] [-g [ ...]]
+                          [--keep-invalid-taxa] [-r [ ...]] [-q [ ...]] -d DB_PREFIX [-t ] [-p ] [-k ] [-w ] [-s ] [-f ]
+                          [-j ] [-y ] [-v ] [--restart] [--verbose] [--quiet] [--write-info-file]
 
 options:
   -h, --help            show this help message and exit
@@ -150,6 +150,8 @@ custom arguments:
                         available taxonomic rank [species, genus, ...] or 'leaves' (requires --taxonomy). Further
                         specialization options [assembly, custom]. assembly will retrieve and use the assembly accession
                         and name. custom requires and uses the specialization field in the --input-file. (default: None)
+  -z, --custom-rank-name 
+                        Give a specific name for the specialized custom tax. rank. (default: None)
   --genome-size         Genome size estimation method. 'standard' estimate sizes based on standard taxa size definitions
                         (files will be downloaded or provided with --genome-size-files). 'assembly-custom' use sizes
                         from assemblies (if availble) or custom values from the --input-file. 'auto' uses a mix of both.

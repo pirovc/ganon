@@ -387,7 +387,12 @@ def build_custom(cfg, which_call: str = "build_custom"):
             if user_bins_col != "node":
                 unique_nodes.update(
                     add_specialization_to_tax(
-                        tax, info, user_bins_col, cfg.level, cfg.input_target
+                        tax,
+                        info,
+                        user_bins_col,
+                        cfg.level,
+                        cfg.input_target,
+                        cfg.custom_rank_name,
                     )
                 )
 
@@ -756,10 +761,15 @@ def load_taxonomy(cfg, build_output_folder):
     return tax
 
 
-def add_specialization_to_tax(tax, info, user_bins_col, level, input_target):
+def add_specialization_to_tax(
+    tax, info, user_bins_col, level, input_target, custom_rank_name
+):
     # Set rank to level or input_target
     added_nodes = set()
-    tax_rank = level if level else input_target
+    if custom_rank_name:
+        tax_rank = custom_rank_name
+    else:
+        tax_rank = level if level else input_target
     for target, row in info.iterrows():
         tax_node = (
             row["specialization"] if user_bins_col == "specialization" else target

@@ -638,6 +638,50 @@ class TestBuildCustom(unittest.TestCase):
         res = build_sanity_check_and_parse(vars(cfg))
         self.assertIsNotNone(res, "ganon build-custom sanity check failed")
 
+    def test_level_file_custom_rank_name(self):
+        """
+        ganon build-custom --input-target file and --custom-rank-name TEST and --level default
+        """
+
+        # --level default (file) NCBI
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_custom_rank_name_ncbi"
+        params["input_target"] = "file"
+        params["custom_rank_name"] = "TEST"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["ncbi_file_info"] = data_dir + "build-custom/assembly_summary.txt"
+        params["genome_size_files"] = (
+            data_dir + "build-custom/species_genome_size.txt.gz"
+        )
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        # --level default (file) GTDB
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_level_file_custom_rank_name_gtdb"
+        params["input_target"] = "file"
+        params["custom_rank_name"] = "TEST"
+        params["taxonomy"] = "gtdb"
+        params["taxonomy_files"] = [
+            data_dir + "build-custom/ar53_taxonomy.tsv.gz",
+            data_dir + "build-custom/bac120_taxonomy.tsv.gz",
+        ]
+        params["genome_size_files"] = [
+            data_dir + "build-custom/ar53_metadata.tsv.gz",
+            data_dir + "build-custom/bac120_metadata.tsv.gz",
+        ]
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
     def test_level_file_taxrank(self):
         """
         ganon build-custom --input-target file and --level {taxonomic rank}
@@ -1539,6 +1583,73 @@ class TestBuildCustom(unittest.TestCase):
             sorted(res["info"]["genome_size"]),
             sorted(gs_tax),
             "genome size does not match input",
+        )
+
+    def test_input_file_6col_custom_rank_name(self):
+        """
+        ganon build-custom --input-file with 6 cols and --custom-rank-name
+        """
+        files = list_files_folder(data_dir + "build-custom/files/", ext="fna.gz")
+
+        params = self.default_params.copy()
+        params["db_prefix"] = self.results_dir + "test_input_file_6col_custom_rank_name"
+        params["input"] = ""
+        params["input_file"] = params["db_prefix"] + ".input_file.tsv"
+        params["taxonomy"] = "ncbi"
+        params["taxonomy_files"] = data_dir + "build-custom/taxdump.tar.gz"
+        params["genome_size_files"] = (
+            data_dir + "build-custom/species_genome_size.txt.gz"
+        )
+        params["level"] = "custom"
+        params["custom_rank_name"] = "TEST"
+
+        write_input_file(
+            files,
+            data_dir + "build-custom/assembly_summary.txt",
+            params["input_file"],
+            cols=[
+                "file",
+                "target",
+                "node",
+                "specialization",
+                "specialization_name",
+                "genome_size",
+            ],
+        )
+
+        cfg = Config("build-custom", **params)
+        self.assertTrue(
+            run_ganon(cfg, params["db_prefix"]), "ganon build-custom run failed"
+        )
+        res = build_sanity_check_and_parse(vars(cfg))
+        self.assertIsNotNone(res, "ganon build-custom sanity check failed")
+
+        self.assertTrue(
+            res["target"]["file"].isin(files).all(), "Files missing from target"
+        )
+        self.assertEqual(
+            len(files), res["target"].shape[0], "Wrong number of files on target"
+        )
+        self.assertTrue(
+            res["info"]["file"].isin(files).all(), "Files missing from info"
+        )
+        self.assertEqual(
+            len(files), res["info"].shape[0], "Wrong number of files on info"
+        )
+
+        # Check tax. level (default file)
+        leaves_rank = set(map(res["tax"].rank, res["tax"].leaves()))
+        self.assertEqual(len(leaves_rank), 1, "Wrong taxonomy")
+        self.assertEqual(leaves_rank.pop(), "TEST", "Wrong taxonomy")
+        self.assertEqual(
+            sorted(res["tax"].leaves()),
+            sorted(res["info"]["specialization"]),
+            "Wrong taxonomy",
+        )
+        self.assertEqual(
+            sorted(map(res["tax"].name, res["tax"].leaves())),
+            sorted(res["info"]["specialization_name"]),
+            "Wrong taxonomy",
         )
 
     def test_input_file_6col_missing_some_gs(self):

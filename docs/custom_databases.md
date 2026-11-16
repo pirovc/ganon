@@ -396,6 +396,9 @@ In `ganon build` the default value is `species`. In `ganon build-custom` the lev
 
 Alternatively, `--level assembly` will link the file or sequence target information with assembly accessions retrieved from NCBI. `--level leaves` or `--level species` (or `genus`, `family`, ...) will link the targets with taxonomic information and prune the tree at the chosen level. `--level custom` will use specialization (4th col.) defined in the `--input-file`.
 
+!!! note
+    When building with default (empty) `--level` or `--level custom/assembly` the additional rank in the taxonomy can be named with the parameter `--custom-rank-name`, otherwise will be named depending on the configuration (`file`,`sequence`,`custom`,`assembly`)
+
 ### Genome sizes (--genome-size, --genome-size-files)
 
 ganon will automatically download auxiliary files and try to define an exact or approximate genome size for each entry in the taxonomy. Those values are later on used to correct abundances for taxonomic profiling.
