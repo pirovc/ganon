@@ -64,7 +64,7 @@ def reassign(cfg):
 
         prob = {}
         read_matches = {}
-        initial_weight = {}
+        unique_counts = {}
 
         with open(af, "r") as all_file:
             for line in all_file:
@@ -73,45 +73,42 @@ def reassign(cfg):
                     read_matches[readid] = []
                 read_matches[readid].append((targets[target], int(kcount)))
 
-                # Not all targets have unique matches, initialize all targets with zero weights
-                if targets[target] not in initial_weight:
-                    initial_weight[targets[target]] = 0
+        # initialize all targets with zero weights
+        unique_counts = {tid: 0 for tid in targets.values()}
 
-        # Assign unique matches as initial weights
-        # Calculate first probabilities based on weights (unique matches)
-
-        EPS = 1e-9
-        total_weight = len(read_matches)
-        total_initial_weight = 0
-        n_targets = len(initial_weight)
-
+        # Initialization
         for matches in read_matches.values():
             if len(matches) == 1:
-                total_initial_weight += 1
-                initial_weight[matches[0][0]] += 1
+                unique_counts[matches[0][0]] += 1
 
-        if total_initial_weight == 0:
-            total_initial_weight = 1
+        # Initialize prob. target considering unique reads + epsilon
+        # epsilon as a pseudocount to not have 0 initial weights
+        EPS = 1e-9
+        n_targets = len(unique_counts)
 
-        for target, unique in initial_weight.items():
-            prob[target] = (unique + EPS) / (total_weight + EPS * n_targets)
+        n_reads = len(read_matches)
+
+        n_unique = sum(unique_counts.values())
+        for target, unique in unique_counts.items():
+            prob[target] = (unique + EPS) / (n_unique + EPS * n_targets)
 
         # EM loop
         em_ite_cnt = 0
         while True:
-            # internal float accumulator: u_t + Σ_r γ_rt
-            expected_counts = {t: float(u) for t, u in initial_weight.items()}
-
+            expected_counts = {t: float(u) for t, u in unique_counts.items()}
             for matches in read_matches.values():
-                # Unique reads are already fully counted in initial_weight
+                # Unique reads are already fully counted in unique_counts
                 if len(matches) == 1:
                     continue
 
-                # E-step: γ_rt = p_t * c_rt / Σ_u p_u * c_ru
-                weights = [
-                    (target, prob[target] * kcount) for target, kcount in matches
-                ]
-                denom = sum(w for _, w in weights)
+                # E-step: unnormalised responsibilities
+                weights = []
+                denom = 0.0
+                for target, kcount in matches:
+                    # Use kmer count as a relative weigth for the match
+                    w = prob[target] * kcount
+                    weights.append((target, w))
+                    denom += w
 
                 # should not happend with EPS
                 if denom == 0.0:
@@ -119,13 +116,15 @@ def reassign(cfg):
                     for target, _ in matches:
                         expected_counts[target] += share
                 else:
+                    # Add weighted observation to the counts
                     for target, w in weights:
                         expected_counts[target] += w / denom
 
-            # M-step: p_t = expected_count_t / R
+            # M-step: p_t = expected_count_t / n_reads
+            # Calculate new probability based on expected_counts
             diff = 0.0
             for target, count in expected_counts.items():
-                new_prob = count / total_weight
+                new_prob = count / n_reads
                 diff += abs(prob[target] - new_prob)
                 prob[target] = new_prob
 
@@ -147,14 +146,14 @@ def reassign(cfg):
             em_ite_cnt += 1
 
         # Final hard E-step: one integer count per read
-        reassigned_matches = initial_weight.copy()  # int: u_t
+        reassigned_matches = unique_counts.copy()
         for matches in read_matches.values():
             if len(matches) > 1:
-                target, _ = get_top_match(matches, prob)  # argmax p_t * c_rt
+                target, _ = get_top_match(matches, prob)
                 reassigned_matches[target] += 1
 
         # Sum = #unique reads + #multi reads = R
-        assert sum(reassigned_matches.values()) == total_weight
+        assert sum(reassigned_matches.values()) == n_reads
 
         # Skip .one file (just generate .rep)
         if not cfg.skip_one:
