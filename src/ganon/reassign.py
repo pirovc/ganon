@@ -79,8 +79,12 @@ def reassign(cfg):
 
         # Assign unique matches as initial weights
         # Calculate first probabilities based on weights (unique matches)
+
+        EPS = 1e-9
         total_weight = len(read_matches)
         total_initial_weight = 0
+        n_targets = len(initial_weight)
+
         for matches in read_matches.values():
             if len(matches) == 1:
                 total_initial_weight += 1
@@ -90,24 +94,37 @@ def reassign(cfg):
             total_initial_weight = 1
 
         for target, unique in initial_weight.items():
-            prob[target] = unique / total_initial_weight
+            prob[target] = (unique + EPS) / (total_weight + EPS * n_targets)
 
         # EM loop
         em_ite_cnt = 0
         while True:
-            # Make copy of initial weights
-            reassigned_matches = initial_weight.copy()
+            # internal float accumulator: u_t + Σ_r γ_rt
+            expected_counts = {t: float(u) for t, u in initial_weight.items()}
 
             for matches in read_matches.values():
-                # Skip unique matches
-                if len(matches) > 1:
-                    # Get match with highest probability in this round
-                    t, _ = get_top_match(matches, prob)
-                    reassigned_matches[t] += 1
+                # Unique reads are already fully counted in initial_weight
+                if len(matches) == 1:
+                    continue
 
-            diff = 0
-            # Calculate new probabilities based on "simulated" re-distributed reads for the next round
-            for target, count in reassigned_matches.items():
+                # E-step: γ_rt = p_t * c_rt / Σ_u p_u * c_ru
+                weights = [
+                    (target, prob[target] * kcount) for target, kcount in matches
+                ]
+                denom = sum(w for _, w in weights)
+
+                # should not happend with EPS
+                if denom == 0.0:
+                    share = 1.0 / len(matches)
+                    for target, _ in matches:
+                        expected_counts[target] += share
+                else:
+                    for target, w in weights:
+                        expected_counts[target] += w / denom
+
+            # M-step: p_t = expected_count_t / R
+            diff = 0.0
+            for target, count in expected_counts.items():
                 new_prob = count / total_weight
                 diff += abs(prob[target] - new_prob)
                 prob[target] = new_prob
@@ -128,6 +145,16 @@ def reassign(cfg):
                 break
 
             em_ite_cnt += 1
+
+        # Final hard E-step: one integer count per read
+        reassigned_matches = initial_weight.copy()  # int: u_t
+        for matches in read_matches.values():
+            if len(matches) > 1:
+                target, _ = get_top_match(matches, prob)  # argmax p_t * c_rt
+                reassigned_matches[target] += 1
+
+        # Sum = #unique reads + #multi reads = R
+        assert sum(reassigned_matches.values()) == total_weight
 
         # Skip .one file (just generate .rep)
         if not cfg.skip_one:
@@ -208,17 +235,10 @@ def reassign(cfg):
 
 
 def get_top_match(matches, prob):
-    # Get top match based on prob
-    # In case all targets have equal probabilities (max_p==0 at the end)
-    # set first match as target (also the case for no unique matches)
-    target = matches[0][0]
-    kcount = matches[0][1]
-
-    max_p = 0
-    for m, k in matches:
-        if prob[m] > max_p:
-            max_p = prob[m]
-            target = m
-            kcount = k
-
+    target, kcount = matches[0]
+    best = prob[target] * kcount
+    for t, k in matches[1:]:
+        score = prob[t] * k
+        if score > best or (score == best and k > kcount):
+            target, kcount, best = t, k, score
     return target, kcount
