@@ -148,7 +148,6 @@ struct ReadOut
     std::string              readID;
     std::vector< ReadMatch > matches;
     std::string              prefix;
-    size_t                   n_hashes = 0;
 };
 
 struct Rep
@@ -156,9 +155,6 @@ struct Rep
     size_t matches                    = 0;
     size_t seqs_lca                   = 0;
     size_t seqs_unique                = 0;
-    size_t matches_hashes             = 0;
-    size_t seqs_lca_hashes            = 0;
-    size_t seqs_unique_hashes         = 0;
     size_t discarded_matches_filter   = 0;
     size_t discarded_matches_fprquery = 0;
 };
@@ -486,11 +482,6 @@ inline TRep sum_reports( std::vector< TRep > const& reports )
             report_sum[prefix_target].matches += rep.matches;
             report_sum[prefix_target].seqs_lca += rep.seqs_lca;
             report_sum[prefix_target].seqs_unique += rep.seqs_unique;
-
-            report_sum[prefix_target].matches_hashes += rep.matches_hashes;
-            report_sum[prefix_target].seqs_lca_hashes += rep.seqs_lca_hashes;
-            report_sum[prefix_target].seqs_unique_hashes += rep.seqs_unique_hashes;
-
             report_sum[prefix_target].discarded_matches_filter += rep.discarded_matches_filter;
             report_sum[prefix_target].discarded_matches_fprquery += rep.discarded_matches_fprquery;
         }
@@ -591,14 +582,13 @@ size_t filter_matches(
 
     for ( auto const& [target, count_fpr] : matches )
     {
-        const size_t kcount = std::get< 0 >( count_fpr );
-        if ( kcount >= threshold_filter )
+        if ( std::get< 0 >( count_fpr ) >= threshold_filter )
         {
             // Filter by fpr-query
             if ( min_fpr_query < 1.0 )
             {
                 double q = 1;
-                for ( size_t i = 0; i <= kcount; i++ )
+                for ( size_t i = 0; i <= std::get< 0 >( count_fpr ); i++ )
                 {
                     q -= binom( n_hashes, i ) * pow( std::get< 1 >( count_fpr ), i )
                          * pow( 1 - std::get< 1 >( count_fpr ), n_hashes - i );
@@ -611,8 +601,7 @@ size_t filter_matches(
             }
 
             rep[{ read_out.prefix, target }].matches++;
-            rep[{ read_out.prefix, target }].matches_hashes += kcount;
-            read_out.matches.push_back( ReadMatch{ target, kcount } );
+            read_out.matches.push_back( ReadMatch{ target, std::get< 0 >( count_fpr ) } );
         }
         else
         {
@@ -634,7 +623,6 @@ void lca_matches( ReadOut& read_out, ReadOut& read_out_lca, size_t max_count_rea
 
     std::string target_lca = lca.getLCA( targets );
     rep[{ read_out.prefix, target_lca }].seqs_lca++;
-    rep[{ read_out.prefix, target_lca }].seqs_lca_hashes += max_count_read;
     read_out_lca.matches.push_back( ReadMatch{ target_lca, max_count_read } );
 }
 
@@ -775,7 +763,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
 
                 if ( count_filtered_matches > 0 )
                 {
-                    read_out.n_hashes = n_hashes;
                     total[rb.prefix].seqs_classified++;
                     total[rb.prefix].kmers_from_classified_seqs += n_hashes;
                     total[rb.prefix].kmers_matches += max_count_read;
@@ -787,7 +774,6 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         {
                             // just one match, copy read read_out and set as unique
                             read_out_lca = read_out;
-                            rep[{ read_out.prefix, read_out.matches[0].target }].seqs_unique_hashes += max_count_read;
                             rep[{ read_out.prefix, read_out.matches[0].target }].seqs_unique++;
                         }
                         else
@@ -803,14 +789,12 @@ void classify( std::vector< Filter< TFilter > >& filters,
                         // Not running lca and has unique match
                         if ( count_filtered_matches == 1 )
                         {
-                            rep[{ read_out.prefix, read_out.matches[0].target }].seqs_unique_hashes += max_count_read;
                             rep[{ read_out.prefix, read_out.matches[0].target }].seqs_unique++;
                         }
                         else
                         {
                             // without tax, no lca, count multi-matches to a root node
                             // to keep consistency among reports (no. of classified reads)
-                            rep[{ read_out.prefix, config.tax_root_node }].seqs_lca_hashes += max_count_read;
                             rep[{ read_out.prefix, config.tax_root_node }].seqs_lca++;
                         }
                     }
@@ -859,8 +843,6 @@ void write_report( TRep& rep, TTax& tax, std::map< std::string, std::ofstream >&
             out[prefix] << hierarchy_label << '\t' << target << '\t' << report.matches << '\t' << report.seqs_unique
                         << '\t' << report.seqs_lca;
 
-            // out[prefix] << '\t' << report.matches_hashes << '\t' << report.seqs_unique_hashes
-            //             << '\t' << report.seqs_lca_hashes;
             if ( !tax.empty() )
             {
                 out[prefix] << '\t' << tax.at( target ).rank << '\t' << tax.at( target ).name;
@@ -1313,9 +1295,7 @@ void write_classified( SafeQueue< ReadOut >& classified_queue, std::map< std::st
         {
             for ( size_t i = 0; i < ro.matches.size(); ++i )
             {
-                out[ro.prefix] << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count;
-                // out[ro.prefix] << '\t'  << static_cast< double >(ro.n_hashes);
-                out[ro.prefix] << '\n';
+                out[ro.prefix] << ro.readID << '\t' << ro.matches[i].target << '\t' << ro.matches[i].kmer_count << '\n';
             }
         }
         else

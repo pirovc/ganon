@@ -814,11 +814,6 @@ class Config:
         )
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
-        reassign_em.add_argument(
-            "--output-single",
-            action="store_true",
-            help="Use this option if ganon classify --output-single was used.",
-        )
         reassign_group_other.add_argument(
             "--remove-all",
             action="store_true",
@@ -1532,6 +1527,17 @@ class Config:
 
             if self.output_one and self.multiple_matches == "skip":
                 print_log("--output-one requires --multiple-matches em/lca")
+                return False
+
+            if (
+                self.output_single
+                and self.multiple_matches == "em"
+                and self.hierarchy_labels
+                and len(set(self.hierarchy_labels)) > 1
+            ):
+                print_log(
+                    "--output-single with multiple hierarchies and EM reassignment is not supported"
+                )
                 return False
 
         elif self.which == "report":

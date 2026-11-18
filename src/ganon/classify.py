@@ -84,7 +84,6 @@ def classify(cfg):
                 "remove_all": False if cfg.output_all else True,
                 "skip_one": False if cfg.output_one else True,
                 "verbose": cfg.verbose,
-                "output_single": True if cfg.output_single else False,
                 "quiet": True
                 if cfg.batch_reads and cfg.reassign_threads > 1
                 else cfg.quiet,
