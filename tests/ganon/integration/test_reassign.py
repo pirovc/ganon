@@ -110,7 +110,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
         }
         cfg = Config("reassign", **params)
@@ -164,8 +164,9 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
+            "output_single": True,
         }
         cfg = Config("reassign", **params)
         self.assertTrue(
@@ -225,7 +226,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
         }
         cfg = Config("reassign", **params)
@@ -277,7 +278,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "remove_all": True,
         }
@@ -292,7 +293,7 @@ class TestReassign(unittest.TestCase):
         self.assertIsNotNone(res, "ganon reassign has inconsistent results")
 
         # .all file removed
-        self.assertFalse(check_files(params["input_prefix"], "all"))
+        self.assertFalse(check_files(params["input"][:-4], "all"))
 
         # Check if all reads got properly reported
         self.assertEqual(
@@ -329,7 +330,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "skip_one": True,
         }
@@ -381,7 +382,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "skip_rep": True,
         }

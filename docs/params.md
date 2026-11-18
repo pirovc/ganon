@@ -343,15 +343,15 @@ other arguments:
   <summary>ganon reassign</summary>
 
 ```
-usage: ganon reassign [-h] -i  [-o OUTPUT_PREFIX] [-e ] [-s ] [--remove-all] [--skip-one] [--skip-rep] [--verbose]
-                      [--quiet]
+usage: ganon reassign [-h] -i  [-o OUTPUT_PREFIX] [-e ] [-s ] [--output-single] [--remove-all] [--skip-one] [--skip-rep]
+                      [--verbose] [--quiet]
 
 options:
   -h, --help            show this help message and exit
 
 required arguments:
-  -i, --input-prefix    Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all
-                        is required for read re-assignent.
+  -i, --input           Report file from ganon classify (.rep). ganon classify --output-all is required for read re-
+                        assignent (.all files should be in the same directory or the .rep).
   -o, --output-prefix OUTPUT_PREFIX
                         Alternative output prefix for reassigned files. If not provided, will overwrite original input
                         files (.rep, .one). (default: )
@@ -360,6 +360,7 @@ EM arguments:
   -e, --max-iter        Max. number of iterations for the EM algorithm. If 0, will run until convergence (check
                         --threshold) (default: 10)
   -s, --threshold       Convergence threshold limit to stop the EM algorithm. (default: 0)
+  --output-single       Use this option if ganon classify --output-single was used. (default: False)
 
 other arguments:
   --remove-all          Remove input file (.all) after processing. (default: False)

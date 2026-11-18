@@ -781,11 +781,11 @@ class Config:
         )
         reassign_group_required.add_argument(
             "-i",
-            "--input-prefix",
-            type=str,
+            "--input",
+            type=file_exists,
             required=True,
             metavar="",
-            help="Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all is required for read re-assignent.",
+            help="Report file from ganon classify (.rep). ganon classify --output-all is required for read re-assignent (.all files should be in the same directory or the .rep).",
         )
         reassign_group_required.add_argument(
             "-o",
@@ -814,6 +814,11 @@ class Config:
         )
 
         reassign_group_other = reassign_parser.add_argument_group("other arguments")
+        reassign_em.add_argument(
+            "--output-single",
+            action="store_true",
+            help="Use this option if ganon classify --output-single was used.",
+        )
         reassign_group_other.add_argument(
             "--remove-all",
             action="store_true",
