@@ -781,11 +781,11 @@ class Config:
         )
         reassign_group_required.add_argument(
             "-i",
-            "--input-prefix",
-            type=str,
+            "--input",
+            type=file_exists,
             required=True,
             metavar="",
-            help="Input prefix of files generated in ganon classify (.rep and .all). ganon classify --output-all is required for read re-assignent.",
+            help="Report file from ganon classify (.rep). ganon classify --output-all is required for read re-assignent (.all files should be in the same directory or the .rep).",
         )
         reassign_group_required.add_argument(
             "-o",
@@ -1527,6 +1527,17 @@ class Config:
 
             if self.output_one and self.multiple_matches == "skip":
                 print_log("--output-one requires --multiple-matches em/lca")
+                return False
+
+            if (
+                self.output_single
+                and self.multiple_matches == "em"
+                and self.hierarchy_labels
+                and len(set(self.hierarchy_labels)) > 1
+            ):
+                print_log(
+                    "--output-single with multiple hierarchies and EM reassignment is not supported"
+                )
                 return False
 
         elif self.which == "report":
