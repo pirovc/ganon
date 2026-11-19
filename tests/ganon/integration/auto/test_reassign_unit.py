@@ -275,6 +275,23 @@ class TestRunEm(ReassignTestCase):
             sum(reassigned.values()), len(read_matches), "reads were lost/duplicated"
         )
 
+    def test_max_iter_is_respected(self):
+        """--max-iter stops the EM loop after the requested number of iterations"""
+        targets = {("1", "A"): 0, ("1", "B"): 1}
+        read_matches = {
+            "r1": [(0, 1)],
+            "r2": [(1, 1)],
+            "r3": [(0, 1), (1, 100)],
+        }
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            run_em(self.em_cfg(quiet=False, max_iter=2), read_matches, targets)
+
+        iterations = [
+            line for line in stderr.getvalue().splitlines() if "Iteration" in line
+        ]
+        self.assertEqual(len(iterations), 2, "--max-iter not respected")
+
     def test_kcount_breaks_a_probability_tie(self):
         """With equal probabilities the match with the highest k-count wins"""
         targets = {("1", "A"): 0, ("1", "B"): 1}
