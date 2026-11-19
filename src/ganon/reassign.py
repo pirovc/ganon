@@ -113,8 +113,8 @@ def run_em(cfg, read_matches, targets):
         diff = 0.0
         for target, count in expected_counts.items():
             new_prob = count / n_reads
-            prob[target] = new_prob
             diff += abs(prob[target] - new_prob)
+            prob[target] = new_prob
 
         print_log(
             " - Iteration " + str(em_ite_cnt + 1) + " (" + str(round(diff, 8)) + ")",
