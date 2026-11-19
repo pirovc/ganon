@@ -59,45 +59,45 @@ def parse_all_file(all_file, hierarchy):
 
 
 def run_em(cfg, read_matches, targets):
-
-    prob = {}
     # Initialization
-    # initialize all targets with zero weights
-    # count one with unique matches
+    # Use unique counts for each target as initial weights
     unique_counts = {tid: 0 for tid in targets.values()}
     for matches in read_matches.values():
         if len(matches) == 1:
             unique_counts[matches[0][0]] += 1
 
-    # Initialize prob. target considering unique reads + epsilon
-    # epsilon as a pseudocount to not have 0 initial weights
+    # Initialize probabilities for each target considering unique reads + epsilon
+    # epsilon is used as a pseudocount to not have target with 0 weights
+    prob = {}
     EPS = 1e-9
     n_targets = len(unique_counts)
-    n_reads = len(read_matches)
-
     n_unique = sum(unique_counts.values())
     for target, unique in unique_counts.items():
         prob[target] = (unique + EPS) / (n_unique + EPS * n_targets)
 
     # EM loop
     em_ite_cnt = 0
+    n_reads = len(read_matches)
     while True:
+        # Initialize expected counts based on unique counts
         expected_counts = {t: float(u) for t, u in unique_counts.items()}
+
         for matches in read_matches.values():
-            # Unique reads are already fully counted in unique_counts
+            # Unique reads are already in unique_counts initialization
             if len(matches) == 1:
                 continue
 
             # E-step: unnormalised responsibilities
+            # calculate the expected prob. of each match
             weights = []
             denom = 0.0
             for target, kcount in matches:
-                # Use kmer count as a relative weigth for the match
+                # Use kmer count of a match as a relative weigth for the prob.
                 w = prob[target] * kcount
                 weights.append((target, w))
                 denom += w
 
-            # should not happend with EPS - here as safeguard
+            # should not happend using EPS - implemented here as safeguard
             if denom == 0.0:
                 share = 1.0 / len(matches)
                 for target, _ in matches:
@@ -109,14 +109,15 @@ def run_em(cfg, read_matches, targets):
 
         # M-step: p_t = expected_count_t / n_reads
         # Calculate new probability based on expected_counts
+        # sum difference from last round for iteration control
         diff = 0.0
         for target, count in expected_counts.items():
             new_prob = count / n_reads
-            diff += abs(prob[target] - new_prob)
             prob[target] = new_prob
+            diff += abs(prob[target] - new_prob)
 
         print_log(
-            " - Iteration " + str(em_ite_cnt + 1) + " (" + str(round(diff, 6)) + ")",
+            " - Iteration " + str(em_ite_cnt + 1) + " (" + str(round(diff, 8)) + ")",
             cfg.quiet,
         )
 
@@ -133,11 +134,10 @@ def run_em(cfg, read_matches, targets):
 
         em_ite_cnt += 1
 
-    # Final hard E-step: one integer count per read
-
+    # Final hard E-step: select a match for each target with highest prob
+    # save to top_matches if .one needs to be reported
     top_matches = {}
     reassigned_matches = unique_counts.copy()
-
     for read, matches in read_matches.items():
         if len(matches) > 1:
             target, kcount = get_top_match(matches, prob)
@@ -221,31 +221,34 @@ def write_rep(output_prefix, new_rep_lines, rep_file_totals):
 
 
 def reassign(cfg):
+    if cfg.skip_one and cfg.skip_rep:
+        print_log(
+            "No valid output with --skip-one and --skip-rep. Select one or the other.",
+            cfg.quiet,
+        )
+        return False
 
     print_log("Reassigning reads", cfg.quiet)
 
-    if cfg.skip_one and cfg.skip_rep:
-        print_log("No valid output with --skip-one and --skip-rep", cfg.quiet)
-        return False
-
+    # Check .rep file
     rep_file_path = pathlib.Path(cfg.input)
     rep_file_prefix = str(pathlib.Path(rep_file_path.parent, rep_file_path.stem))
-
     if not check_file(rep_file_path):
         print_log(f"Report file not found [{rep_file_path}]", cfg.quiet)
         return False
 
+    # Parse .rep file
     hierarchies, rep_file_totals = parse_rep(rep_file_path)
-
     if not hierarchies:
         print_log(f"No valid report entries to reassign [{cfg.input}]", cfg.quiet)
         return False
 
+    # Define related .all file(s)
     all_files = define_all_files(rep_file_prefix, hierarchies, cfg.quiet)
-
     if all_files is None:
         return False
 
+    # Define output_prefix
     if cfg.output_prefix:
         output_prefix = cfg.output_prefix
     else:
@@ -255,11 +258,13 @@ def reassign(cfg):
     for hierarchy, all_file in all_files.items():
         print_log(all_file + (" [" + hierarchy + "]" if hierarchy else ""), cfg.quiet)
 
+        # Parse .all file
         read_matches, targets = parse_all_file(all_file, hierarchy)
 
+        # Execute Expectation-Maximization algo
         reassigned_matches, top_matches = run_em(cfg, read_matches, targets)
 
-        # Skip .one file (just generate .rep)
+        # Write .one file
         if not cfg.skip_one:
             if len(all_files) == 1:
                 one_file_out = output_prefix + ".one"
@@ -271,6 +276,7 @@ def reassign(cfg):
                 cfg.quiet,
             )
 
+        # Generate .rep lines
         if not cfg.skip_rep:
             new_rep_lines.extend(
                 generate_rep(rep_file_path, hierarchy, reassigned_matches, targets)
@@ -283,11 +289,18 @@ def reassign(cfg):
     if cfg.remove_all:
         for all_file in all_files.values():
             os.remove(all_file)
+
     print_log("", cfg.quiet)
     return True
 
 
 def get_top_match(matches, prob):
+    """
+    Select match with highest prob.
+    In case of an exact tie, the first on the matches list is chosen.
+    The order is based on the .all file, which comes from the C++ robin_hood::unordered_map,
+    this may lead to different results across builds/platforms.
+    """
     target, kcount = matches[0]
     best = prob[target] * kcount
     for t, k in matches[1:]:
