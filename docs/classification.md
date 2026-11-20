@@ -83,7 +83,7 @@ By default ganon will classify less reads in favour of sensitivity. To classify 
 
 Multiple database classification can be performed providing several inputs for `--db-prefix`. They are required to be built with the same `--kmer-size` and `--window-size` values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.
 
-To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. When using multiple hierarchical levels, output files will be generated for each level (use `--output-single` to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. `--rel-cutoff`) while others are set for each hierarchical level (e.g. `--rel-filter`)
+To classify reads in a hierarchical order, `--hierarchy-labels` should be provided. When using multiple hierarchical levels, output files will be generated for each level. Please note that some parameters are set for each database (e.g. `--rel-cutoff`) while others are set for each hierarchical level (e.g. `--rel-filter`)
 
 <details>
   <summary>Examples</summary>
@@ -158,6 +158,9 @@ Prefixes can also be directories. If they do not already exist, they will be cre
 path/to/results/reads1/output  path/to/my/single_end_reads.fq
 path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
 ```
+
+!!! tip
+    When running multiple samples, the read reassignment procedure can be sped up using the `--reassign-threads` option for parallel execution. However, memory may prevent too many reassignments from being run simultaneously, since all read matches are loaded into memory.
 
 !!! warning
     When using the `--hierarchy-labels` option with several database levels, sequences that are not classified between levels will be stored in memory. This can result in higher memory usage when processing multiple inputs in one run with the `--batch-reads` option.

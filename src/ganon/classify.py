@@ -80,7 +80,7 @@ def classify(cfg):
         rparams = []
         for prefix in prefixes:
             reassign_params = {
-                "input_prefix": prefix,
+                "input": prefix + ".rep",
                 "remove_all": False if cfg.output_all else True,
                 "skip_one": False if cfg.output_one else True,
                 "verbose": cfg.verbose,

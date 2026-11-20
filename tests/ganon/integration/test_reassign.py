@@ -110,7 +110,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
         }
         cfg = Config("reassign", **params)
@@ -136,56 +136,18 @@ class TestReassign(unittest.TestCase):
 
     def test_hierarchy_output_single(self):
         """
-        Test ganon classify with two database
+        Test ganon classify with two database, output single and EM (not supported)
         """
         params_classify = self.default_params_classify.copy()
         params_classify["output_prefix"] = self.results_dir + "hierarchy_output_single"
         params_classify["hierarchy_labels"] = ["A", "B"]
         params_classify["output_single"] = True
-        params_classify["rel_cutoff"] = ["0.1", "0.01"]
 
         # Build config from params
         cfg = Config("classify", **params_classify)
-        self.assertTrue(
+        self.assertFalse(
             run_ganon(cfg, params_classify["output_prefix"]),
             "ganon classify exited with an error",
-        )
-        res = classify_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon classify has inconsistent results")
-        # There are multiple matches on output
-        self.assertTrue(
-            len(res["all_pd"].readid) > len(res["all_pd"].readid.unique()),
-            "ganon classify has only unique matches",
-        )
-        total_reads_classified = (
-            res["rep_pd"]["unique"].fillna(0).astype(int).sum()
-            + res["rep_pd"]["lca"].fillna(0).astype(int).sum()
-        )
-
-        # Reassign
-        params = {
-            "input_prefix": params_classify["output_prefix"],
-            "output_prefix": params_classify["output_prefix"] + "_reassigned",
-        }
-        cfg = Config("reassign", **params)
-        self.assertTrue(
-            run_ganon(cfg, params["output_prefix"]),
-            "ganon reassign exited with an error",
-        )
-        res = reassign_sanity_check_and_parse(vars(cfg))
-        self.assertIsNotNone(res, "ganon reassign has inconsistent results")
-        # There are only single matches on output
-        self.assertEqual(
-            len(res["one_pd"].readid),
-            len(res["all_pd"].readid.unique()),
-            "ganon reassign has multiple matches",
-        )
-        # Check if all reads got properly reported
-        self.assertEqual(
-            total_reads_classified,
-            res["rep_pd"]["unique"].fillna(0).astype(int).sum()
-            + res["rep_pd"]["lca"].fillna(0).astype(int).sum(),
-            "ganon reassign reported wrong number of reads",
         )
 
     def test_hierarchy_output_split(self):
@@ -225,7 +187,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
         }
         cfg = Config("reassign", **params)
@@ -277,7 +239,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "remove_all": True,
         }
@@ -292,7 +254,7 @@ class TestReassign(unittest.TestCase):
         self.assertIsNotNone(res, "ganon reassign has inconsistent results")
 
         # .all file removed
-        self.assertFalse(check_files(params["input_prefix"], "all"))
+        self.assertFalse(check_files(params["input"][:-4], "all"))
 
         # Check if all reads got properly reported
         self.assertEqual(
@@ -329,7 +291,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "skip_one": True,
         }
@@ -381,7 +343,7 @@ class TestReassign(unittest.TestCase):
 
         # Reassign
         params = {
-            "input_prefix": params_classify["output_prefix"],
+            "input": params_classify["output_prefix"] + ".rep",
             "output_prefix": params_classify["output_prefix"] + "_reassigned",
             "skip_rep": True,
         }
