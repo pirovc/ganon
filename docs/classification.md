@@ -159,6 +159,9 @@ path/to/results/reads1/output  path/to/my/single_end_reads.fq
 path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
 ```
 
+!!! tip
+    When running multiple samples, the read reassignment procedure can be sped up using the `--reassign-threads` option for parallel execution. However, memory may prevent too many reassignments from being run simultaneously, since all read matches are loaded into memory.
+
 !!! warning
     When using the `--hierarchy-labels` option with several database levels, sequences that are not classified between levels will be stored in memory. This can result in higher memory usage when processing multiple inputs in one run with the `--batch-reads` option.
 
