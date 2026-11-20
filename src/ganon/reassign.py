@@ -138,12 +138,28 @@ def run_em(cfg, read_matches, targets):
     # save to top_matches if .one needs to be reported
     top_matches = {}
     reassigned_matches = unique_counts.copy()
+    ties = 0
     for read, matches in read_matches.items():
         if len(matches) > 1:
-            target, kcount = get_top_match(matches, prob)
+            target, kcount, tie = get_top_match(matches, prob)
+            ties += 1 if tie else 0
             reassigned_matches[target] += 1
             if not cfg.skip_one:
                 top_matches[read] = (target, kcount)
+
+    # Print stats
+    n_multi = n_reads - n_unique
+    n_multi_matches = sum(len(m) for m in read_matches.values() if len(m) > 1)
+    print_log(
+        f"{n_multi}/{n_reads} reads with multiple matches "
+        f"({n_multi_matches} matches) re-assigned among {n_targets} targets.",
+        cfg.quiet,
+    )
+    if ties:
+        print_log(
+            f"{ties}/{n_multi} of reads with multiple matches had exact ties after re-assignment (first appearing match selected).",
+            cfg.quiet,
+        )
 
     if sum(reassigned_matches.values()) != len(read_matches):
         raise RuntimeError("Inconsistent read redistribution")
@@ -303,8 +319,12 @@ def get_top_match(matches, prob):
     """
     target, kcount = matches[0]
     best = prob[target] * kcount
+    tie = False
     for t, k in matches[1:]:
         score = prob[t] * k
         if score > best or (score == best and k > kcount):
             target, kcount, best = t, k, score
-    return target, kcount
+            tie = False
+        elif score == best and k == kcount:
+            tie = True
+    return target, kcount, tie

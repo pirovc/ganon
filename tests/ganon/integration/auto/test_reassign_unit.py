@@ -376,17 +376,25 @@ class TestGetTopMatch(ReassignTestCase):
     def test_highest_score_wins(self):
         """The match with the highest probability*k-count wins"""
         # A higher probability can outweigh a larger k-count
-        self.assertEqual(get_top_match([(0, 10), (1, 20)], {0: 0.9, 1: 0.1}), (0, 10))
+        self.assertEqual(
+            get_top_match([(0, 10), (1, 20)], {0: 0.9, 1: 0.1}), (0, 10, False)
+        )
         # A much larger k-count can outweigh a lower probability
-        self.assertEqual(get_top_match([(0, 1), (1, 100)], {0: 0.9, 1: 0.1}), (1, 100))
+        self.assertEqual(
+            get_top_match([(0, 1), (1, 100)], {0: 0.9, 1: 0.1}), (1, 100, False)
+        )
 
     def test_kcount_breaks_equal_score(self):
         """Equal scores are broken by the highest k-count"""
-        self.assertEqual(get_top_match([(0, 10), (1, 20)], {0: 0.5, 1: 0.5}), (1, 20))
+        self.assertEqual(
+            get_top_match([(0, 10), (1, 20)], {0: 0.5, 1: 0.5}), (1, 20, False)
+        )
 
     def test_first_match_wins_on_full_tie(self):
         """A full tie keeps the first match (current behaviour)"""
-        self.assertEqual(get_top_match([(0, 10), (1, 10)], {0: 0.5, 1: 0.5}), (0, 10))
+        self.assertEqual(
+            get_top_match([(0, 10), (1, 10)], {0: 0.5, 1: 0.5}), (0, 10, True)
+        )
 
 
 class TestWriteOne(ReassignTestCase):
