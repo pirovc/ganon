@@ -202,7 +202,7 @@ k-mers: 12025/15235 k-mers matched/k-mers from classified sequences (78.9301%)
 <h2 id="multiple-and-hierarchical-classification">Multiple and Hierarchical classification<a class="headerlink" href="#multiple-and-hierarchical-classification" title="Permanent link">:)</a></h2>
 <p><code>ganon classify</code> can be performed in multiple databases at the same time. The databases can also be provided in a hierarchical order. </p>
 <p>Multiple database classification can be performed providing several inputs for <code>--db-prefix</code>. They are required to be built with the same <code>--kmer-size</code> and <code>--window-size</code> values. Multiple databases are considered as one (as if built together) and redundancy in content (same reference in two or more databases) is allowed.</p>
-<p>To classify reads in a hierarchical order, <code>--hierarchy-labels</code> should be provided. When using multiple hierarchical levels, output files will be generated for each level (use <code>--output-single</code> to generate a single output from multiple hierarchical levels). Please note that some parameters are set for each database (e.g. <code>--rel-cutoff</code>) while others are set for each hierarchical level (e.g. <code>--rel-filter</code>)</p>
+<p>To classify reads in a hierarchical order, <code>--hierarchy-labels</code> should be provided. When using multiple hierarchical levels, output files will be generated for each level. Please note that some parameters are set for each database (e.g. <code>--rel-cutoff</code>) while others are set for each hierarchical level (e.g. <code>--rel-filter</code>)</p>
 <details>
   <summary>Examples</summary>
   <br>
@@ -268,6 +268,10 @@ reads2  path/to/my/single_end_reads_again.fq
 <pre><code>path/to/results/reads1/output  path/to/my/single_end_reads.fq
 path/to/results/reads2/output  path/to/my/paired_end_reads.1.fq.gz path/to/my/paired_end_reads.2.fq.gz
 </code></pre>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>When running multiple samples, the read reassignment procedure can be sped up using the <code>--reassign-threads</code> option for parallel execution. However, memory may prevent too many reassignments from being run simultaneously, since all read matches are loaded into memory.</p>
+</div>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>When using the <code>--hierarchy-labels</code> option with several database levels, sequences that are not classified between levels will be stored in memory. This can result in higher memory usage when processing multiple inputs in one run with the <code>--batch-reads</code> option.</p>
