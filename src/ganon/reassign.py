@@ -61,10 +61,13 @@ def parse_all_file(all_file, hierarchy):
 def run_em(cfg, read_matches, targets):
     # Initialization
     # Use unique counts for each target as initial weights
+    n_multi_matches = 0
     unique_counts = {tid: 0 for tid in targets.values()}
     for matches in read_matches.values():
         if len(matches) == 1:
             unique_counts[matches[0][0]] += 1
+        else:
+            n_multi_matches += len(matches)
 
     # Initialize probabilities for each target considering unique reads + epsilon
     # epsilon is used as a pseudocount to not have target with 0 weights
@@ -78,9 +81,10 @@ def run_em(cfg, read_matches, targets):
     # EM loop
     em_ite_cnt = 0
     n_reads = len(read_matches)
+
     while True:
         # Initialize expected counts based on unique counts
-        expected_counts = {t: float(u) for t, u in unique_counts.items()}
+        expected_counts = unique_counts.copy()
 
         for matches in read_matches.values():
             # Unique reads are already in unique_counts initialization
@@ -89,13 +93,10 @@ def run_em(cfg, read_matches, targets):
 
             # E-step: unnormalised responsibilities
             # calculate the expected prob. of each match
-            weights = []
+            # Use kmer count of a match as a relative weigth for the prob.
             denom = 0.0
             for target, kcount in matches:
-                # Use kmer count of a match as a relative weigth for the prob.
-                w = prob[target] * kcount
-                weights.append((target, w))
-                denom += w
+                denom += prob[target] * kcount
 
             # should not happend using EPS - implemented here as safeguard
             if denom == 0.0:
@@ -104,8 +105,8 @@ def run_em(cfg, read_matches, targets):
                     expected_counts[target] += share
             else:
                 # Add weighted observation to the counts
-                for target, w in weights:
-                    expected_counts[target] += w / denom
+                for target, kcount in matches:
+                    expected_counts[target] += (prob[target] * kcount) / denom
 
         # M-step: p_t = expected_count_t / n_reads
         # Calculate new probability based on expected_counts
@@ -149,7 +150,6 @@ def run_em(cfg, read_matches, targets):
 
     # Print stats
     n_multi = n_reads - n_unique
-    n_multi_matches = sum(len(m) for m in read_matches.values() if len(m) > 1)
     print_log(
         f"{n_multi}/{n_reads} reads with multiple matches "
         f"({n_multi_matches} matches) re-assigned among {n_targets} targets.",
