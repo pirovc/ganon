@@ -147,10 +147,9 @@ def run_em(cfg, read_matches, targets):
             if not cfg.skip_one:
                 top_matches[read] = (target, kcount)
 
+    # Print stats
     n_multi = n_reads - n_unique
     n_multi_matches = sum(len(m) for m in read_matches.values() if len(m) > 1)
-
-    print_log(f"{n_unique}/{n_reads} reads with a unique match kept", cfg.quiet)
     print_log(
         f"{n_multi}/{n_reads} reads with multiple matches "
         f"({n_multi_matches} matches) re-assigned among {n_targets} targets.",
@@ -158,7 +157,7 @@ def run_em(cfg, read_matches, targets):
     )
     if ties:
         print_log(
-            f" - {ties}/{n_multi} of reads with multi. matches had exact ties (same score and k-count) after re-assignment. \n   Keeping first match for each read based on order of .all file.",
+            f"{ties}/{n_multi} of reads with multiple matches had exact ties after re-assignment (first appearing match selected).",
             cfg.quiet,
         )
 
